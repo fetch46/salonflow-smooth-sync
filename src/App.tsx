@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
 import Booking from "@/pages/Booking";
+import Appointments from "@/pages/Appointments";
 import NotFound from "@/pages/NotFound";
 import { Toaster } from "@/components/ui/sonner";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -19,6 +20,16 @@ function App() {
           element={
             <DashboardLayout>
               <Dashboard />
+            </DashboardLayout>
+          } 
+        />
+        
+        {/* Appointments page with layout */}
+        <Route 
+          path="/appointments" 
+          element={
+            <DashboardLayout>
+              <Appointments />
             </DashboardLayout>
           } 
         />
