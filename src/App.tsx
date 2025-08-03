@@ -5,6 +5,7 @@ import Booking from "@/pages/Booking";
 import Appointments from "@/pages/Appointments";
 import Clients from "@/pages/Clients";
 import Staff from "@/pages/Staff";
+import Services from "@/pages/Services";
 import NotFound from "@/pages/NotFound";
 import { Toaster } from "@/components/ui/sonner";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -52,6 +53,16 @@ function App() {
           element={
             <DashboardLayout>
               <Staff />
+            </DashboardLayout>
+          } 
+        />
+        
+        {/* Services page with layout */}
+        <Route 
+          path="/services" 
+          element={
+            <DashboardLayout>
+              <Services />
             </DashboardLayout>
           } 
         />
