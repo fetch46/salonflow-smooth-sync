@@ -1,282 +1,753 @@
-import React, { useEffect, useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
-import { Edit2, Trash2, Eye, MoreVertical } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Plus, Package, MapPin, AlertTriangle, Trash2, Edit } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
-const Services = () => {
-  const [services, setServices] = useState([]);
-  const [goods, setGoods] = useState([]);
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [type, setType] = useState("Goods");
-  const [price, setPrice] = useState("");
-  const [kitItems, setKitItems] = useState([]);
-  const [editingId, setEditingId] = useState(null);
-  const [search, setSearch] = useState("");
+type InventoryItem = {
+  id: string;
+  name: string;
+  description: string;
+  type: 'good' | 'service';
+  sku: string;
+  unit: string;
+  reorder_point: number;
+  is_active: boolean;
+};
+
+type StorageLocation = {
+  id: string;
+  name: string;
+  description: string;
+  is_active: boolean;
+};
+
+type InventoryLevel = {
+  id: string;
+  item_id: string;
+  location_id: string;
+  quantity: number;
+  inventory_items: InventoryItem;
+  storage_locations: StorageLocation;
+};
+
+type ServiceKit = {
+  id: string;
+  service_id: string;
+  good_id: string;
+  quantity: number;
+  good: InventoryItem;
+};
+
+export default function Inventory() {
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [locations, setLocations] = useState<StorageLocation[]>([]);
+  const [levels, setLevels] = useState<InventoryLevel[]>([]);
+  const [serviceKits, setServiceKits] = useState<ServiceKit[]>([]);
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [editingLocation, setEditingLocation] = useState<StorageLocation | null>(null);
+
+  // Form states
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    type: "good" as 'good' | 'service',
+    sku: "",
+    unit: "",
+    reorder_point: 0
+  });
+
+  const [locationFormData, setLocationFormData] = useState({
+    name: "",
+    description: ""
+  });
+
+  const [kitItems, setKitItems] = useState<Array<{ good_id: string; quantity: number }>>([]);
 
   useEffect(() => {
-    const savedServices = JSON.parse(localStorage.getItem("services")) || [];
-    const savedGoods = JSON.parse(localStorage.getItem("goods")) || [];
-    setServices(savedServices);
-    setGoods(savedGoods);
+    fetchData();
   }, []);
 
-  const saveToLocalStorage = (updated) => {
-    localStorage.setItem("services", JSON.stringify(updated));
-    setServices(updated);
-  };
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch items
+      const { data: itemsData } = await supabase
+        .from("inventory_items")
+        .select("*")
+        .eq("is_active", true)
+        .order("name");
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const newItem = {
-      id: editingId || Date.now(),
-      name,
-      description,
-      type,
-      price: parseFloat(price),
-      kitItems: type === "Service" ? kitItems : [],
-    };
+      // Fetch locations
+      const { data: locationsData } = await supabase
+        .from("storage_locations")
+        .select("*")
+        .eq("is_active", true)
+        .order("name");
 
-    const updated = editingId
-      ? services.map((item) => (item.id === editingId ? newItem : item))
-      : [...services, newItem];
+      // Fetch inventory levels with joins
+      const { data: levelsData } = await supabase
+        .from("inventory_levels")
+        .select(`
+          *,
+          inventory_items!inner(*),
+          storage_locations!inner(*)
+        `)
+        .eq("inventory_items.is_active", true)
+        .eq("storage_locations.is_active", true);
 
-    saveToLocalStorage(updated);
-    resetForm();
-  };
+      // Fetch service kits
+      const { data: kitsData } = await supabase
+        .from("service_kits")
+        .select(`
+          *,
+          good:inventory_items!service_kits_good_id_fkey(*)
+        `);
 
-  const handleEdit = (item) => {
-    setName(item.name);
-    setDescription(item.description);
-    setType(item.type);
-    setPrice(item.price.toString());
-    setKitItems(item.kitItems || []);
-    setEditingId(item.id);
-  };
-
-  const handleDelete = (id) => {
-    const updated = services.filter((item) => item.id !== id);
-    saveToLocalStorage(updated);
-  };
-
-  const resetForm = () => {
-    setName("");
-    setDescription("");
-    setType("Goods");
-    setPrice("");
-    setKitItems([]);
-    setEditingId(null);
-  };
-
-  const toggleKitItem = (id) => {
-    const exists = kitItems.find((item) => item.id === id);
-    if (exists) {
-      setKitItems(kitItems.filter((item) => item.id !== id));
-    } else {
-      setKitItems([...kitItems, { id, quantity: 1 }]);
+      setItems((itemsData || []) as InventoryItem[]);
+      setLocations((locationsData || []) as StorageLocation[]);
+      setLevels((levelsData || []) as InventoryLevel[]);
+      setServiceKits((kitsData || []) as ServiceKit[]);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch inventory data",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const updateKitQuantity = (id, quantity) => {
-    setKitItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, quantity: Number(quantity) } : item
-      )
-    );
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      if (editingItem) {
+        const { error } = await supabase
+          .from("inventory_items")
+          .update(formData)
+          .eq("id", editingItem.id);
+
+        if (error) throw error;
+
+        // Update service kit if it's a service
+        if (formData.type === 'service' && kitItems.length > 0) {
+          // Delete existing kit items
+          await supabase
+            .from("service_kits")
+            .delete()
+            .eq("service_id", editingItem.id);
+
+          // Insert new kit items
+          const { error: kitError } = await supabase
+            .from("service_kits")
+            .insert(
+              kitItems.map(kit => ({
+                service_id: editingItem.id,
+                good_id: kit.good_id,
+                quantity: kit.quantity
+              }))
+            );
+
+          if (kitError) throw kitError;
+        }
+
+        toast({
+          title: "Success",
+          description: "Item updated successfully"
+        });
+      } else {
+        const { data: newItem, error } = await supabase
+          .from("inventory_items")
+          .insert(formData)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // Insert service kit if it's a service
+        if (formData.type === 'service' && kitItems.length > 0) {
+          const { error: kitError } = await supabase
+            .from("service_kits")
+            .insert(
+              kitItems.map(kit => ({
+                service_id: newItem.id,
+                good_id: kit.good_id,
+                quantity: kit.quantity
+              }))
+            );
+
+          if (kitError) throw kitError;
+        }
+
+        toast({
+          title: "Success",
+          description: "Item created successfully"
+        });
+      }
+
+      resetForm();
+      setIsDialogOpen(false);
+      fetchData();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save item",
+        variant: "destructive"
+      });
+    }
   };
 
-  const getKitItemQuantity = (id) => {
-    const found = kitItems.find((item) => item.id === id);
-    return found ? found.quantity : 1;
+  const handleLocationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      if (editingLocation) {
+        const { error } = await supabase
+          .from("storage_locations")
+          .update(locationFormData)
+          .eq("id", editingLocation.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: "Location updated successfully"
+        });
+      } else {
+        const { error } = await supabase
+          .from("storage_locations")
+          .insert(locationFormData);
+
+        if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: "Location created successfully"
+        });
+      }
+
+      resetLocationForm();
+      setIsLocationDialogOpen(false);
+      fetchData();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save location",
+        variant: "destructive"
+      });
+    }
   };
 
-  const isKitSelected = (id) => {
-    return kitItems.some((item) => item.id === id);
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      description: "",
+      type: "good",
+      sku: "",
+      unit: "",
+      reorder_point: 0
+    });
+    setKitItems([]);
+    setEditingItem(null);
   };
 
-  const filteredServices = services.filter((item) =>
-    item.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const resetLocationForm = () => {
+    setLocationFormData({
+      name: "",
+      description: ""
+    });
+    setEditingLocation(null);
+  };
 
-  const getGoodName = (id) => goods.find((g) => g.id === id)?.name || "Unknown";
+  const handleEdit = (item: InventoryItem) => {
+    setFormData(item);
+    setEditingItem(item);
+    
+    // Load kit items if it's a service
+    if (item.type === 'service') {
+      const kits = serviceKits.filter(kit => kit.service_id === item.id);
+      setKitItems(kits.map(kit => ({
+        good_id: kit.good_id,
+        quantity: kit.quantity
+      })));
+    }
+    
+    setIsDialogOpen(true);
+  };
+
+  const handleEditLocation = (location: StorageLocation) => {
+    setLocationFormData({
+      name: location.name,
+      description: location.description || ""
+    });
+    setEditingLocation(location);
+    setIsLocationDialogOpen(true);
+  };
+
+  const addKitItem = () => {
+    setKitItems([...kitItems, { good_id: "", quantity: 1 }]);
+  };
+
+  const updateKitItem = (index: number, field: 'good_id' | 'quantity', value: string | number) => {
+    const newKitItems = [...kitItems];
+    newKitItems[index] = { ...newKitItems[index], [field]: value };
+    setKitItems(newKitItems);
+  };
+
+  const removeKitItem = (index: number) => {
+    setKitItems(kitItems.filter((_, i) => i !== index));
+  };
+
+  const getTotalQuantity = (itemId: string) => {
+    return levels
+      .filter(level => level.item_id === itemId)
+      .reduce((total, level) => total + level.quantity, 0);
+  };
+
+  const isLowStock = (item: InventoryItem) => {
+    if (item.type === 'service') return false;
+    const total = getTotalQuantity(item.id);
+    return total <= item.reorder_point;
+  };
+
+  const goodsItems = items.filter(item => item.type === 'good');
+  const serviceItems = items.filter(item => item.type === 'service');
+
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-64">Loading...</div>;
+  }
 
   return (
-    <div className="p-6 space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>{editingId ? "Edit Item" : "Add Item"}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Name</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} required />
-              </div>
-              <div>
-                <Label>Type</Label>
-                <Select value={type} onValueChange={(val) => setType(val)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Goods">Goods</SelectItem>
-                    <SelectItem value="Service">Service</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Price</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label>Description</Label>
-                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} />
-              </div>
-            </div>
-
-            {type === "Service" && (
-              <div>
-                <Label className="mb-2 block">Select Goods for Kit</Label>
-                <div className="space-y-2">
-                  {goods.map((good) => (
-                    <div key={good.id} className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={isKitSelected(good.id)}
-                        onChange={() => toggleKitItem(good.id)}
-                      />
-                      <span className="w-32">{good.name}</span>
-                      {isKitSelected(good.id) && (
-                        <Input
-                          type="number"
-                          className="w-24"
-                          min={1}
-                          value={getKitItemQuantity(good.id)}
-                          onChange={(e) => updateKitQuantity(good.id, e.target.value)}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-2 justify-end">
-              <Button type="submit">{editingId ? "Update" : "Add"}</Button>
-              <Button type="button" variant="outline" onClick={resetForm}>
-                Cancel
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Inventory Management</h1>
+        <div className="flex gap-2">
+          <Dialog open={isLocationDialogOpen} onOpenChange={setIsLocationDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" onClick={resetLocationForm}>
+                <MapPin className="w-4 h-4 mr-2" />
+                Add Location
               </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {editingLocation ? "Edit Location" : "Add New Location"}
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleLocationSubmit} className="space-y-4">
+                <div>
+                  <Label htmlFor="location-name">Name</Label>
+                  <Input
+                    id="location-name"
+                    value={locationFormData.name}
+                    onChange={(e) => setLocationFormData({...locationFormData, name: e.target.value})}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="location-description">Description</Label>
+                  <Textarea
+                    id="location-description"
+                    value={locationFormData.description}
+                    onChange={(e) => setLocationFormData({...locationFormData, description: e.target.value})}
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsLocationDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit">
+                    {editingLocation ? "Update" : "Create"} Location
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Items</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Input
-            placeholder="Search items..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <div className="overflow-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="bg-muted">
-                  <th className="text-left p-3">Name</th>
-                  <th className="text-left p-3">Type</th>
-                  <th className="text-left p-3">Price</th>
-                  <th className="text-left p-3">Kit (if service)</th>
-                  <th className="text-left p-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredServices.map((service) => (
-                  <tr key={service.id} className="border-t">
-                    <td className="p-3">{service.name}</td>
-                    <td className="p-3">{service.type}</td>
-                    <td className="p-3">KES {service.price}</td>
-                    <td className="p-3">
-                      {service.type === "Service" && service.kitItems.length > 0 ? (
-                        <ul className="list-disc list-inside text-muted-foreground">
-                          {service.kitItems.map((item) => (
-                            <li key={item.id}>
-                              {getGoodName(item.id)} - {item.quantity}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                    <td className="p-3">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => alert(JSON.stringify(service, null, 2))}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEdit(service)}>
-                            <Edit2 className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDelete(service.id)}
-                            className="text-red-600 focus:text-red-600"
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={resetForm}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Item
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingItem ? "Edit Item" : "Add New Item"}
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="name">Name</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="type">Type</Label>
+                    <Select
+                      value={formData.type}
+                      onValueChange={(value: 'good' | 'service') => {
+                        setFormData({...formData, type: value});
+                        if (value === 'service') {
+                          setFormData(prev => ({...prev, unit: 'service', reorder_point: 0}));
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="good">Good</SelectItem>
+                        <SelectItem value="service">Service</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="sku">SKU</Label>
+                    <Input
+                      id="sku"
+                      value={formData.sku}
+                      onChange={(e) => setFormData({...formData, sku: e.target.value})}
+                    />
+                  </div>
+                  {formData.type === 'good' && (
+                    <>
+                      <div>
+                        <Label htmlFor="unit">Unit</Label>
+                        <Input
+                          id="unit"
+                          value={formData.unit}
+                          onChange={(e) => setFormData({...formData, unit: e.target.value})}
+                          placeholder="e.g., piece, bottle, kg"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="reorder-point">Reorder Point</Label>
+                        <Input
+                          id="reorder-point"
+                          type="number"
+                          value={formData.reorder_point}
+                          onChange={(e) => setFormData({...formData, reorder_point: parseInt(e.target.value) || 0})}
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {formData.type === 'service' && (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <Label>Service Kit (Goods Required)</Label>
+                      <Button type="button" variant="outline" size="sm" onClick={addKitItem}>
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add Good
+                      </Button>
+                    </div>
+                    {kitItems.map((kit, index) => (
+                      <div key={index} className="flex gap-2 items-end">
+                        <div className="flex-1">
+                          <Label>Good</Label>
+                          <Select
+                            value={kit.good_id}
+                            onValueChange={(value) => updateKitItem(index, 'good_id', value)}
                           >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {filteredServices.length === 0 && (
-              <p className="text-muted-foreground mt-4">No services found.</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a good" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {goodsItems.map((good) => (
+                                <SelectItem key={good.id} value={good.id}>
+                                  {good.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="w-24">
+                          <Label>Quantity</Label>
+                          <Input
+                            type="number"
+                            value={kit.quantity}
+                            onChange={(e) => updateKitItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                            min="1"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeKitItem(index)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit">
+                    {editingItem ? "Update" : "Create"} Item
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+        <Tabs defaultValue="goods" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="goods">Products</TabsTrigger>
+          <TabsTrigger value="services">Services</TabsTrigger>
+          <TabsTrigger value="locations">Locations</TabsTrigger>
+          <TabsTrigger value="levels">Stock Levels</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="goods">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="w-5 h-5" />
+                Goods Inventory
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>SKU</TableHead>
+                    <TableHead>Unit</TableHead>
+                    <TableHead>Total Stock</TableHead>
+                    <TableHead>Reorder Point</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {goodsItems.map((item) => {
+                    const totalQty = getTotalQuantity(item.id);
+                    const lowStock = isLowStock(item);
+                    
+                    return (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell>{item.sku}</TableCell>
+                        <TableCell>{item.unit}</TableCell>
+                        <TableCell>{totalQty}</TableCell>
+                        <TableCell>{item.reorder_point}</TableCell>
+                        <TableCell>
+                          {lowStock ? (
+                            <Badge variant="destructive" className="flex items-center gap-1 w-fit">
+                              <AlertTriangle className="w-3 h-3" />
+                              Low Stock
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">In Stock</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(item)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="services">
+          <Card>
+            <CardHeader>
+              <CardTitle>Services</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>SKU</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Kit Items</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {serviceItems.map((item) => {
+                    const kits = serviceKits.filter(kit => kit.service_id === item.id);
+                    
+                    return (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell>{item.sku}</TableCell>
+                        <TableCell>{item.description}</TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            {kits.map((kit) => (
+                              <Badge key={kit.id} variant="outline" className="mr-1">
+                                {kit.good.name} × {kit.quantity}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(item)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="locations">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="w-5 h-5" />
+                Storage Locations
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {locations.map((location) => (
+                    <TableRow key={location.id}>
+                      <TableCell className="font-medium">{location.name}</TableCell>
+                      <TableCell>{location.description}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditLocation(location)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="levels">
+          <Card>
+            <CardHeader>
+              <CardTitle>Stock Levels by Location</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead>Unit</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {levels.map((level) => {
+                    const lowStock = level.quantity <= level.inventory_items.reorder_point;
+                    
+                    return (
+                      <TableRow key={level.id}>
+                        <TableCell className="font-medium">
+                          {level.inventory_items.name}
+                        </TableCell>
+                        <TableCell>{level.storage_locations.name}</TableCell>
+                        <TableCell>{level.quantity}</TableCell>
+                        <TableCell>{level.inventory_items.unit}</TableCell>
+                        <TableCell>
+                          {lowStock ? (
+                            <Badge variant="destructive" className="flex items-center gap-1 w-fit">
+                              <AlertTriangle className="w-3 h-3" />
+                              Low Stock
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">Normal</Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
-};
-
-export default Services;
+}
