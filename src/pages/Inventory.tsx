@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -7,257 +7,229 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   DropdownMenu,
+  DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Edit2,
-  Trash2,
-  Eye,
-  MoreVertical,
-  Boxes,
-  Layers,
-} from "lucide-react";
+import { Edit2, Trash2, Eye, MoreVertical } from "lucide-react";
 
-interface Service {
-  id: number;
-  name: string;
-  description: string;
-  type: "service" | "goods";
-  reorderPoint?: number;
-}
-
-export default function Services() {
-  const [services, setServices] = useState<Service[]>([]);
+const Services = () => {
+  const [services, setServices] = useState([]);
+  const [goods, setGoods] = useState([]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [type, setType] = useState<"service" | "goods">("service");
-  const [reorderPoint, setReorderPoint] = useState<number | undefined>(
-    undefined
-  );
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [type, setType] = useState("Goods");
+  const [price, setPrice] = useState("");
+  const [kitItems, setKitItems] = useState([]);
+  const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "service" | "goods">("all");
 
-  const handleAddOrUpdate = () => {
-    if (!name.trim()) return;
+  useEffect(() => {
+    const savedServices = JSON.parse(localStorage.getItem("services")) || [];
+    const savedGoods = JSON.parse(localStorage.getItem("goods")) || [];
+    setServices(savedServices);
+    setGoods(savedGoods);
+  }, []);
 
-    const newService: Service = {
-      id: editingId ?? Date.now(),
+  const saveToLocalStorage = (updated) => {
+    localStorage.setItem("services", JSON.stringify(updated));
+    setServices(updated);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const newItem = {
+      id: editingId || Date.now(),
       name,
       description,
       type,
-      reorderPoint: type === "goods" ? reorderPoint ?? 0 : undefined,
+      price: parseFloat(price),
+      kitItems: type === "Service" ? kitItems : [],
     };
 
-    setServices((prev) =>
-      editingId
-        ? prev.map((s) => (s.id === editingId ? newService : s))
-        : [...prev, newService]
-    );
+    const updated = editingId
+      ? services.map((item) => (item.id === editingId ? newItem : item))
+      : [...services, newItem];
 
+    saveToLocalStorage(updated);
     resetForm();
   };
 
-  const handleEdit = (service: Service) => {
-    setEditingId(service.id);
-    setName(service.name);
-    setDescription(service.description);
-    setType(service.type);
-    setReorderPoint(service.reorderPoint);
+  const handleEdit = (item) => {
+    setName(item.name);
+    setDescription(item.description);
+    setType(item.type);
+    setPrice(item.price.toString());
+    setKitItems(item.kitItems || []);
+    setEditingId(item.id);
   };
 
-  const handleDelete = (id: number) => {
-    setServices((prev) => prev.filter((s) => s.id !== id));
+  const handleDelete = (id) => {
+    const updated = services.filter((item) => item.id !== id);
+    saveToLocalStorage(updated);
   };
 
   const resetForm = () => {
-    setEditingId(null);
     setName("");
     setDescription("");
-    setType("service");
-    setReorderPoint(undefined);
+    setType("Goods");
+    setPrice("");
+    setKitItems([]);
+    setEditingId(null);
   };
 
-  const filteredServices = useMemo(() => {
-    return services.filter((s) => {
-      const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase());
-      const matchesFilter = filter === "all" || s.type === filter;
-      return matchesSearch && matchesFilter;
-    });
-  }, [services, search, filter]);
+  const toggleKitItem = (id) => {
+    if (kitItems.includes(id)) {
+      setKitItems(kitItems.filter((itemId) => itemId !== id));
+    } else {
+      setKitItems([...kitItems, id]);
+    }
+  };
+
+  const filteredServices = services.filter((item) =>
+    item.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
-    <div className="p-6 space-y-6 w-full">
-      {/* Dashboard Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="shadow-md border-blue-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Items</CardTitle>
-            <Boxes className="h-5 w-5 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{services.length}</div>
-          </CardContent>
-        </Card>
-        <Card className="shadow-md border-green-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Services</CardTitle>
-            <Layers className="h-5 w-5 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {services.filter((s) => s.type === "service").length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="shadow-md border-yellow-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Goods</CardTitle>
-            <Boxes className="h-5 w-5 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {services.filter((s) => s.type === "goods").length}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Form Section */}
-      <Card className="shadow-md">
+    <div className="p-6 space-y-6">
+      <Card>
         <CardHeader>
-          <CardTitle>{editingId ? "Edit" : "Add"} Item</CardTitle>
+          <CardTitle>{editingId ? "Edit Item" : "Add Item"}</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid md:grid-cols-3 gap-4">
-            <div>
-              <Label>Name</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-            <div>
-              <Label>Type</Label>
-              <Select value={type} onValueChange={(val) => setType(val as "service" | "goods")}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="service">Service</SelectItem>
-                  <SelectItem value="goods">Goods</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {type === "goods" && (
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label>Reorder Point</Label>
+                <Label>Name</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} required />
+              </div>
+              <div>
+                <Label>Type</Label>
+                <Select value={type} onValueChange={(val) => setType(val)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Goods">Goods</SelectItem>
+                    <SelectItem value="Service">Service</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Price</Label>
                 <Input
                   type="number"
-                  value={reorderPoint ?? ""}
-                  onChange={(e) => setReorderPoint(Number(e.target.value))}
+                  step="0.01"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  required
                 />
               </div>
+              <div className="md:col-span-2">
+                <Label>Description</Label>
+                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+              </div>
+            </div>
+
+            {type === "Service" && (
+              <div>
+                <Label className="mb-2 block">Select Goods for Kit</Label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {goods.map((good) => (
+                    <label key={good.id} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={kitItems.includes(good.id)}
+                        onChange={() => toggleKitItem(good.id)}
+                      />
+                      <span>{good.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             )}
-          </div>
-          <div>
-            <Label>Description</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} />
-          </div>
-          <div className="flex justify-end gap-2">
-            {editingId && <Button variant="outline" onClick={resetForm}>Cancel</Button>}
-            <Button onClick={handleAddOrUpdate}>
-              {editingId ? "Update" : "Add"} Item
-            </Button>
-          </div>
+
+            <div className="flex gap-2 justify-end">
+              <Button type="submit">{editingId ? "Update" : "Add"}</Button>
+              <Button type="button" variant="outline" onClick={resetForm}>
+                Cancel
+              </Button>
+            </div>
+          </form>
         </CardContent>
       </Card>
 
-      {/* Filters */}
-      <div className="flex items-center justify-between">
-        <Input
-          placeholder="Search by name..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-sm"
-        />
-        <Select value={filter} onValueChange={(val) => setFilter(val as any)}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="service">Service</SelectItem>
-            <SelectItem value="goods">Goods</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full border rounded-md">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="p-3 text-left">Name</th>
-              <th className="p-3 text-left">Type</th>
-              <th className="p-3 text-left">Reorder Point</th>
-              <th className="p-3 text-left">Description</th>
-              <th className="p-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredServices.map((service) => (
-              <tr key={service.id} className="border-b hover:bg-gray-50">
-                <td className="p-3">{service.name}</td>
-                <td className="p-3">
-                  <Badge variant={service.type === "goods" ? "secondary" : "default"}>
-                    {service.type}
-                  </Badge>
-                </td>
-                <td className="p-3">{service.type === "goods" ? service.reorderPoint : "-"}</td>
-                <td className="p-3">{service.description}</td>
-                <td className="p-3 text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button size="icon" variant="ghost" className="hover:bg-gray-100">
-                        <MoreVertical className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => alert(`Viewing ${service.name}`)}>
-                        <Eye className="w-4 h-4 mr-2" /> View
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleEdit(service)}>
-                        <Edit2 className="w-4 h-4 mr-2" /> Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleDelete(service.id)}
-                        className="text-red-600"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" /> Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {filteredServices.length === 0 && (
-          <p className="text-center text-muted-foreground py-6">No services found.</p>
-        )}
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Items</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Input
+            placeholder="Search services..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <div className="overflow-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="bg-muted">
+                  <th className="text-left p-3">Name</th>
+                  <th className="text-left p-3">Type</th>
+                  <th className="text-left p-3">Price</th>
+                  <th className="text-left p-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredServices.map((service) => (
+                  <tr key={service.id} className="border-t">
+                    <td className="p-3">{service.name}</td>
+                    <td className="p-3">{service.type}</td>
+                    <td className="p-3">KES {service.price}</td>
+                    <td className="p-3">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => alert(`Viewing ${service.name}`)}
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+                            View
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEdit(service)}>
+                            <Edit2 className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDelete(service.id)}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filteredServices.length === 0 && (
+              <p className="text-muted-foreground mt-4">No services found.</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
-}
+};
+
+export default Services;
