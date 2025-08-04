@@ -27,6 +27,8 @@ import {
   TrendingUp,
   Package,
   Star,
+  Eye,
+  MoreVertical,
 } from "lucide-react";
 import {
   Dialog,
@@ -35,6 +37,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -51,13 +59,13 @@ interface Service {
   updated_at: string;
 }
 
-// --- MOCK BOOKING DATA (replace with real query once bookings table exists) ---
 interface BookingService {
   service_id: string;
   service_name: string;
   total_bookings: number;
   total_revenue: number;
 }
+
 const MOCK_BOOKINGS: BookingService[] = [
   { service_id: "1", service_name: "Classic Facial", total_bookings: 42, total_revenue: 2520 },
   { service_id: "2", service_name: "Haircut & Style", total_bookings: 38, total_revenue: 2280 },
@@ -94,7 +102,6 @@ export default function Services() {
     is_active: true,
   });
 
-  /* -----------------  FETCHES ----------------- */
   useEffect(() => {
     fetchServices();
   }, []);
@@ -120,7 +127,6 @@ export default function Services() {
     }
   };
 
-  /* -----------------  CRUD ----------------- */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -192,7 +198,6 @@ export default function Services() {
     }
   };
 
-  /* -----------------  HELPERS ----------------- */
   const formatPrice = (price: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(price);
 
@@ -213,7 +218,6 @@ export default function Services() {
     });
   }, [services, searchTerm, categoryFilter]);
 
-  /* -----------------  DASHBOARD METRICS ----------------- */
   const dashboard = useMemo(() => {
     const active = services.filter((s) => s.is_active).length;
     const inactive = services.length - active;
@@ -224,19 +228,15 @@ export default function Services() {
   }, [services]);
 
   if (loading) {
-    return (
-      <div className="p-6">
-        <div className="text-center">Loading services...</div>
-      </div>
-    );
+    return <div className="p-6 text-center">Loading services...</div>;
   }
 
   return (
     <div className="p-6 space-y-6">
-      {/* ================= MINI-DASHBOARD ================= */}
+      {/* DASHBOARD */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Services</CardTitle>
             <Package className="w-5 h-5 text-muted-foreground" />
           </CardHeader>
@@ -245,7 +245,7 @@ export default function Services() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Active Services</CardTitle>
             <TrendingUp className="w-5 h-5 text-muted-foreground" />
           </CardHeader>
@@ -254,7 +254,7 @@ export default function Services() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Inactive Services</CardTitle>
             <Tag className="w-5 h-5 text-muted-foreground" />
           </CardHeader>
@@ -263,7 +263,7 @@ export default function Services() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
             <DollarSign className="w-5 h-5 text-muted-foreground" />
           </CardHeader>
@@ -273,7 +273,7 @@ export default function Services() {
         </Card>
       </div>
 
-      {/* Best Selling Services */}
+      {/* Best Selling */}
       {dashboard.bestSelling.length > 0 && (
         <Card>
           <CardHeader>
@@ -285,11 +285,9 @@ export default function Services() {
           <CardContent>
             <div className="space-y-2">
               {dashboard.bestSelling.map((b, idx) => (
-                <div key={b.service_id} className="flex items-center justify-between text-sm">
+                <div key={b.service_id} className="flex justify-between text-sm">
                   <span className="font-medium">{idx + 1}. {b.service_name}</span>
-                  <span>
-                    {b.total_bookings} bookings • {formatPrice(b.total_revenue)}
-                  </span>
+                  <span>{b.total_bookings} bookings • {formatPrice(b.total_revenue)}</span>
                 </div>
               ))}
             </div>
@@ -297,7 +295,7 @@ export default function Services() {
         </Card>
       )}
 
-      {/* ================= HEADER + ADD BUTTON ================= */}
+      {/* Header + Button */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Services Management</h1>
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
@@ -314,58 +312,25 @@ export default function Services() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <Label htmlFor="name">Service Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
+                <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
               </div>
               <div>
                 <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={3}
-                />
+                <Textarea id="description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={3} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="duration">Duration (minutes) *</Label>
-                  <Input
-                    id="duration"
-                    type="number"
-                    min="15"
-                    step="15"
-                    value={formData.duration_minutes}
-                    onChange={(e) =>
-                      setFormData({ ...formData, duration_minutes: parseInt(e.target.value) })
-                    }
-                    required
-                  />
+                  <Input id="duration" type="number" min="15" step="15" value={formData.duration_minutes} onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) })} required />
                 </div>
                 <div>
                   <Label htmlFor="price">Price *</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.price}
-                    onChange={(e) =>
-                      setFormData({ ...formData, price: parseFloat(e.target.value) })
-                    }
-                    required
-                  />
+                  <Input id="price" type="number" min="0" step="0.01" value={formData.price} onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })} required />
                 </div>
               </div>
               <div>
                 <Label htmlFor="category">Category</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) => setFormData({ ...formData, category: value })}
-                >
+                <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
@@ -379,9 +344,7 @@ export default function Services() {
                 </Select>
               </div>
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
-                  Cancel
-                </Button>
+                <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
                 <Button type="submit">{editingService ? "Update" : "Create"}</Button>
               </div>
             </form>
@@ -389,16 +352,11 @@ export default function Services() {
         </Dialog>
       </div>
 
-      {/* ================= SEARCH / FILTERS ================= */}
+      {/* Filters */}
       <div className="flex gap-4 mb-6">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search services..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
+          <Input placeholder="Search services..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
         </div>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-48">
@@ -415,15 +373,13 @@ export default function Services() {
         </Select>
       </div>
 
-      {/* ================= SERVICES TABLE ================= */}
+      {/* Services Table */}
       <div className="border rounded-md">
         {filteredServices.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">
-              {searchTerm || categoryFilter !== "all"
-                ? "No services found matching your filters"
-                : "No services found"}
-            </p>
+          <div className="text-center py-12 text-muted-foreground">
+            {searchTerm || categoryFilter !== "all"
+              ? "No services found matching your filters"
+              : "No services found"}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -451,14 +407,34 @@ export default function Services() {
                       </Badge>
                     </td>
                     <td className="p-3">
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(service)}>
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(service.id)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() =>
+                              alert(`Viewing details for ${service.name}`)
+                            }
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+                            View
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEdit(service)}>
+                            <Edit2 className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDelete(service.id)}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   </tr>
                 ))}
@@ -469,4 +445,4 @@ export default function Services() {
       </div>
     </div>
   );
-}
+                                                                                                                           }
