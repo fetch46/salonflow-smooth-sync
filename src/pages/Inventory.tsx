@@ -8,7 +8,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   DropdownMenu,
@@ -84,16 +90,36 @@ const Services = () => {
   };
 
   const toggleKitItem = (id) => {
-    if (kitItems.includes(id)) {
-      setKitItems(kitItems.filter((itemId) => itemId !== id));
+    const exists = kitItems.find((item) => item.id === id);
+    if (exists) {
+      setKitItems(kitItems.filter((item) => item.id !== id));
     } else {
-      setKitItems([...kitItems, id]);
+      setKitItems([...kitItems, { id, quantity: 1 }]);
     }
+  };
+
+  const updateKitQuantity = (id, quantity) => {
+    setKitItems((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, quantity: Number(quantity) } : item
+      )
+    );
+  };
+
+  const getKitItemQuantity = (id) => {
+    const found = kitItems.find((item) => item.id === id);
+    return found ? found.quantity : 1;
+  };
+
+  const isKitSelected = (id) => {
+    return kitItems.some((item) => item.id === id);
   };
 
   const filteredServices = services.filter((item) =>
     item.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  const getGoodName = (id) => goods.find((g) => g.id === id)?.name || "Unknown";
 
   return (
     <div className="p-6 space-y-6">
@@ -139,16 +165,25 @@ const Services = () => {
             {type === "Service" && (
               <div>
                 <Label className="mb-2 block">Select Goods for Kit</Label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                <div className="space-y-2">
                   {goods.map((good) => (
-                    <label key={good.id} className="flex items-center space-x-2">
+                    <div key={good.id} className="flex items-center gap-3">
                       <input
                         type="checkbox"
-                        checked={kitItems.includes(good.id)}
+                        checked={isKitSelected(good.id)}
                         onChange={() => toggleKitItem(good.id)}
                       />
-                      <span>{good.name}</span>
-                    </label>
+                      <span className="w-32">{good.name}</span>
+                      {isKitSelected(good.id) && (
+                        <Input
+                          type="number"
+                          className="w-24"
+                          min={1}
+                          value={getKitItemQuantity(good.id)}
+                          onChange={(e) => updateKitQuantity(good.id, e.target.value)}
+                        />
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>
@@ -170,7 +205,7 @@ const Services = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <Input
-            placeholder="Search services..."
+            placeholder="Search items..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -181,6 +216,7 @@ const Services = () => {
                   <th className="text-left p-3">Name</th>
                   <th className="text-left p-3">Type</th>
                   <th className="text-left p-3">Price</th>
+                  <th className="text-left p-3">Kit (if service)</th>
                   <th className="text-left p-3">Actions</th>
                 </tr>
               </thead>
@@ -191,6 +227,19 @@ const Services = () => {
                     <td className="p-3">{service.type}</td>
                     <td className="p-3">KES {service.price}</td>
                     <td className="p-3">
+                      {service.type === "Service" && service.kitItems.length > 0 ? (
+                        <ul className="list-disc list-inside text-muted-foreground">
+                          {service.kitItems.map((item) => (
+                            <li key={item.id}>
+                              {getGoodName(item.id)} - {item.quantity}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td className="p-3">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
@@ -198,9 +247,7 @@ const Services = () => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => alert(`Viewing ${service.name}`)}
-                          >
+                          <DropdownMenuItem onClick={() => alert(JSON.stringify(service, null, 2))}>
                             <Eye className="mr-2 h-4 w-4" />
                             View
                           </DropdownMenuItem>
