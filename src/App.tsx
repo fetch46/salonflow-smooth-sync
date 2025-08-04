@@ -77,6 +77,16 @@ function App() {
             </DashboardLayout>
           } 
         />
+
+        {/* Invoices page with layout */}
+        <Route 
+          path="/services" 
+          element={
+            <DashboardLayout>
+              <Invoice />
+            </DashboardLayout>
+          } 
+        /> 
         
         {/* Booking page */}
         <Route path="/booking" element={<Booking />} />
