@@ -3,14 +3,47 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Plus, Search, Receipt, DollarSign, FileText, Clock } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Receipt,
+  DollarSign,
+  FileText,
+  Clock,
+} from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -237,35 +270,31 @@ export default function Invoices() {
 
   return (
     <DashboardLayout>
-      <div className="w-full max-w-[1600px] mx-auto space-y-6 p-6 pt-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold tracking-tight">Invoices</h2>
-          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => { setEditingInvoice(null); resetForm(); }}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Invoice
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>{editingInvoice ? "Edit Invoice" : "Create New Invoice"}</DialogTitle>
-                <DialogDescription>
-                  {editingInvoice ? "Update the invoice details." : "Fill in the invoice information."}
-                </DialogDescription>
-              </DialogHeader>
-              {/* Modal form content here – kept unchanged */}
-              {/* ...same form as before... */}
-            </DialogContent>
-          </Dialog>
+      <div className="p-6 mx-auto max-w-[1600px] space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Invoices</h1>
+            <p className="text-muted-foreground">Manage and track your client invoices</p>
+          </div>
+          <Button
+            onClick={() => {
+              setEditingInvoice(null);
+              resetForm();
+              setIsModalOpen(true);
+            }}
+            className="flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            New Invoice
+          </Button>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card><CardHeader className="flex justify-between pb-2"><CardTitle className="text-sm font-medium">Total Invoices</CardTitle><Receipt className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{stats.total}</div></CardContent></Card>
-          <Card><CardHeader className="flex justify-between pb-2"><CardTitle className="text-sm font-medium">Draft</CardTitle><FileText className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{stats.draft}</div></CardContent></Card>
-          <Card><CardHeader className="flex justify-between pb-2"><CardTitle className="text-sm font-medium">Sent</CardTitle><Clock className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{stats.sent}</div></CardContent></Card>
-          <Card><CardHeader className="flex justify-between pb-2"><CardTitle className="text-sm font-medium">Total Paid</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">${stats.totalAmount.toFixed(2)}</div><p className="text-xs text-muted-foreground">{stats.paid} invoices</p></CardContent></Card>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card><CardContent className="p-4"><div className="text-2xl font-bold text-primary">{stats.total}</div><p className="text-sm text-muted-foreground">Total Invoices</p></CardContent></Card>
+          <Card><CardContent className="p-4"><div className="text-2xl font-bold text-gray-700">{stats.draft}</div><p className="text-sm text-muted-foreground">Draft</p></CardContent></Card>
+          <Card><CardContent className="p-4"><div className="text-2xl font-bold text-blue-700">{stats.sent}</div><p className="text-sm text-muted-foreground">Sent</p></CardContent></Card>
+          <Card><CardContent className="p-4"><div className="text-2xl font-bold text-green-600">${stats.totalAmount.toFixed(2)}</div><p className="text-sm text-muted-foreground">Paid</p></CardContent></Card>
         </div>
 
         {/* Search */}
@@ -279,7 +308,7 @@ export default function Invoices() {
           />
         </div>
 
-        {/* Invoices Table */}
+        {/* Invoice Table */}
         <Card>
           <CardHeader>
             <CardTitle>All Invoices</CardTitle>
@@ -308,7 +337,7 @@ export default function Invoices() {
                     <TableCell>${invoice.total_amount.toFixed(2)}</TableCell>
                     <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                     <TableCell>
-                      <div className="flex space-x-2">
+                      <div className="flex gap-2">
                         <Button variant="outline" size="sm" onClick={() => handleEdit(invoice)}>Edit</Button>
                         <Button variant="outline" size="sm" onClick={() => handleDelete(invoice.id)}>Delete</Button>
                       </div>
