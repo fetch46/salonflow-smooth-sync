@@ -7,8 +7,7 @@ import {
   Button, Input, Badge, Label, Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead,
   TableHeader, TableRow, Dialog, DialogTrigger, DialogContent, DialogHeader,
-  DialogTitle, DialogFooter, Textarea
-} //from "@/components/ui"; // Update based on actual imports
+  DialogTitle, DialogFooter, Textarea} from "@/components/ui"; // Update based on actual imports
 
 import { format } from "date-fns";
 
