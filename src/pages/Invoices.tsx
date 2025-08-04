@@ -2,34 +2,28 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+  Card, CardContent, CardHeader, CardTitle, CardDescription,
+  Button, Input, Badge, Label, Select, SelectContent, SelectItem,
+  SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead,
+  TableHeader, TableRow, Dialog, DialogTrigger, DialogContent, DialogHeader,
+  DialogTitle, DialogFooter, Textarea
+} from "@/components/ui"; // Update based on actual imports
+
 import { format } from "date-fns";
-import { saveAs } from "file-saver";
+
+// Replace with actual user role logic
+const currentUserRole = "admin"; // or "staff"
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [filteredInvoices, setFilteredInvoices] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [modalInvoice, setModalInvoice] = useState<any | null>(null);
+
+  const pageSize = 5;
 
   useEffect(() => {
     fetchInvoices();
@@ -37,9 +31,7 @@ export default function InvoicesPage() {
 
   const fetchInvoices = async () => {
     const { data, error } = await supabase.from("invoices").select("*").order("created_at", { ascending: false });
-    if (error) {
-      console.error("Error fetching invoices:", error.message);
-    } else {
+    if (!error && data) {
       setInvoices(data);
       setFilteredInvoices(data);
     }
@@ -51,31 +43,19 @@ export default function InvoicesPage() {
 
   const filterInvoices = () => {
     let filtered = [...invoices];
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(inv => inv.status === statusFilter);
-    }
-
-    if (dateFilter) {
-      filtered = filtered.filter(inv =>
-        format(new Date(inv.created_at), "yyyy-MM-dd") === dateFilter
-      );
-    }
-
+    if (statusFilter !== "all") filtered = filtered.filter(i => i.status === statusFilter);
+    if (dateFilter) filtered = filtered.filter(i => format(new Date(i.created_at), "yyyy-MM-dd") === dateFilter);
     setFilteredInvoices(filtered);
+    setCurrentPage(1);
   };
 
   const exportToCSV = () => {
-    const csvContent =
-      "data:text/csv;charset=utf-8," +
-      ["Invoice No,Client,Amount,Status,Created At"]
-        .concat(
-          filteredInvoices.map(
-            (inv) =>
-              `${inv.invoice_number},${inv.client_name},${inv.total},${inv.status},${inv.created_at}`
-          )
+    const csvContent = "data:text/csv;charset=utf-8," +
+      ["Invoice No,Client,Amount,Status,Date"].concat(
+        filteredInvoices.map(i =>
+          `${i.invoice_number},${i.client_name},${i.total},${i.status},${i.created_at}`
         )
-        .join("\n");
+      ).join("\n");
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -86,48 +66,25 @@ export default function InvoicesPage() {
     document.body.removeChild(link);
   };
 
+  const paginatedInvoices = filteredInvoices.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const totalPages = Math.ceil(filteredInvoices.length / pageSize);
+
   return (
-    <div className="w-full max-w-full mx-auto space-y-6 px-8 pt-6">
+    <div className="px-8 py-6 space-y-6">
+      {/* Dashboard */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Invoices</CardTitle>
-            <CardDescription>Total number of invoices</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{invoices.length}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Paid</CardTitle>
-            <CardDescription>Invoices marked as paid</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{invoices.filter(i => i.status === "paid").length}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Unpaid</CardTitle>
-            <CardDescription>Invoices not yet paid</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{invoices.filter(i => i.status === "unpaid").length}</div>
-          </CardContent>
-        </Card>
+        <Card><CardHeader><CardTitle>Total Invoices</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{invoices.length}</div></CardContent></Card>
+        <Card><CardHeader><CardTitle>Paid</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{invoices.filter(i => i.status === "paid").length}</div></CardContent></Card>
+        <Card><CardHeader><CardTitle>Unpaid</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{invoices.filter(i => i.status === "unpaid").length}</div></CardContent></Card>
       </div>
 
-      <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4 mt-4">
-        <div className="flex flex-wrap gap-4">
+      {/* Filters */}
+      <div className="flex flex-wrap justify-between gap-4 items-end">
+        <div className="flex gap-4 flex-wrap">
           <div>
             <Label>Status</Label>
-            <Select onValueChange={(val) => setStatusFilter(val)} defaultValue="all">
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Filter status" />
-              </SelectTrigger>
+            <Select defaultValue="all" onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
                 <SelectItem value="paid">Paid</SelectItem>
@@ -135,29 +92,20 @@ export default function InvoicesPage() {
               </SelectContent>
             </Select>
           </div>
-
           <div>
             <Label>Date</Label>
-            <Input
-              type="date"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="w-[160px]"
-            />
+            <Input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} className="w-[150px]" />
           </div>
         </div>
-
         <div className="flex gap-2">
-          <Button variant="outline" onClick={exportToCSV}>Export to CSV</Button>
-          {/* PDF export logic can be added using libraries like jsPDF if needed */}
+          <Button onClick={exportToCSV} variant="outline">Export CSV</Button>
         </div>
       </div>
 
+      {/* Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>All Invoices</CardTitle>
-        </CardHeader>
-        <CardContent className="overflow-auto">
+        <CardHeader><CardTitle>Invoices</CardTitle></CardHeader>
+        <CardContent className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -166,34 +114,63 @@ export default function InvoicesPage() {
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Date</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredInvoices.length > 0 ? (
-                filteredInvoices.map((inv) => (
-                  <TableRow key={inv.id}>
-                    <TableCell>{inv.invoice_number}</TableCell>
-                    <TableCell>{inv.client_name}</TableCell>
-                    <TableCell>KES {Number(inv.total).toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Badge variant={inv.status === "paid" ? "default" : "destructive"}>
-                        {inv.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{format(new Date(inv.created_at), "PPP")}</TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                    No invoices found
+              {paginatedInvoices.map(inv => (
+                <TableRow key={inv.id}>
+                  <TableCell>{inv.invoice_number}</TableCell>
+                  <TableCell>{inv.client_name}</TableCell>
+                  <TableCell>KES {Number(inv.total).toLocaleString()}</TableCell>
+                  <TableCell>
+                    <Badge variant={inv.status === "paid" ? "default" : "destructive"}>{inv.status}</Badge>
+                  </TableCell>
+                  <TableCell>{format(new Date(inv.created_at), "PPP")}</TableCell>
+                  <TableCell className="flex gap-2">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button size="sm" variant="outline" onClick={() => setModalInvoice(inv)}>View</Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader><DialogTitle>Invoice Details</DialogTitle></DialogHeader>
+                        <div>
+                          <p><strong>Client:</strong> {inv.client_name}</p>
+                          <p><strong>Invoice #:</strong> {inv.invoice_number}</p>
+                          <p><strong>Total:</strong> KES {inv.total}</p>
+                          <p><strong>Status:</strong> {inv.status}</p>
+                          <p><strong>Date:</strong> {format(new Date(inv.created_at), "PPP")}</p>
+                        </div>
+                        {currentUserRole === "admin" && (
+                          <DialogFooter>
+                            <Button>Edit</Button>
+                          </DialogFooter>
+                        )}
+                      </DialogContent>
+                    </Dialog>
+
+                    {currentUserRole === "admin" && (
+                      <Button size="sm" variant="destructive">Delete</Button>
+                    )}
                   </TableCell>
                 </TableRow>
+              ))}
+              {paginatedInvoices.length === 0 && (
+                <TableRow><TableCell colSpan={6} className="text-center py-6">No invoices found.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-4 mt-4">
+          <Button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Previous</Button>
+          <span>Page {currentPage} of {totalPages}</span>
+          <Button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Next</Button>
+        </div>
+      )}
     </div>
   );
 }
