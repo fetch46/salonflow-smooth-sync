@@ -4,6 +4,7 @@ import Dashboard from "@/pages/Dashboard";
 import Booking from "@/pages/Booking";
 import Appointments from "@/pages/Appointments";
 import Clients from "@/pages/Clients";
+import Invoices from "@/pages/Invoices";
 import Staff from "@/pages/Staff";
 import Services from "@/pages/Services";
 import Inventory from "@/pages/Inventory";
@@ -80,7 +81,7 @@ function App() {
 
         {/* Invoices page with layout */}
         <Route 
-          path="/services" 
+          path="/invoices" 
           element={
             <DashboardLayout>
               <Invoice />
