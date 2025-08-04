@@ -14,12 +14,11 @@ import {
   Search,
   Edit2,
   Trash2,
-  Phone,
-  Mail,
-  MapPin,
   Users,
   UserPlus,
   UserX,
+  Eye,
+  MoreHorizontal,
 } from "lucide-react";
 import {
   Dialog,
@@ -29,6 +28,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -340,7 +345,7 @@ export default function Clients() {
                   <th className="p-3 text-left font-semibold">Phone</th>
                   <th className="p-3 text-left font-semibold">Address</th>
                   <th className="p-3 text-left font-semibold">Status</th>
-                  <th className="p-3 text-left font-semibold">Actions</th>
+                  <th className="p-3 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -359,23 +364,28 @@ export default function Clients() {
                         {client.is_active ? "Active" : "Inactive"}
                       </Badge>
                     </td>
-                    <td className="p-3">
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(client)}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(client.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                    <td className="p-3 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="w-5 h-5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => alert("View profile feature coming soon")}>
+                            <Eye className="mr-2 w-4 h-4" /> View Profile
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEdit(client)}>
+                            <Edit2 className="mr-2 w-4 h-4" /> Edit Customer
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDelete(client.id)}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="mr-2 w-4 h-4" /> Delete Customer
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   </tr>
                 ))}
