@@ -238,7 +238,7 @@ export default function Invoices() {
 
   return (
     <DashboardLayout>
-      <div className="w-full max-w-full mx-auto space-y-6 p-6 pt-4">
+      <div className="w-full max-w-full mx-auto space-y-6 px-8 pt-6">
         <div className="flex items-center justify-between">
           <h2 className="text-3xl font-bold tracking-tight">Invoices</h2>
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
@@ -255,7 +255,7 @@ export default function Invoices() {
                   {editingInvoice ? "Update the invoice details." : "Fill in the invoice information."}
                 </DialogDescription>
               </DialogHeader>
-              {/* Keep your form here as it was */}
+              {/* Your form goes here */}
             </DialogContent>
           </Dialog>
         </div>
