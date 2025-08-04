@@ -541,9 +541,9 @@ export default function Inventory() {
         </div>
       </div>
 
-      <Tabs defaultValue="goods" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="goods">Goods</TabsTrigger>
+        <Tabs defaultValue="goods" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="goods">Products</TabsTrigger>
           <TabsTrigger value="services">Services</TabsTrigger>
           <TabsTrigger value="locations">Locations</TabsTrigger>
           <TabsTrigger value="levels">Stock Levels</TabsTrigger>
