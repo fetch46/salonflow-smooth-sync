@@ -6,11 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Plus, Search, Receipt, DollarSign, FileText, Clock } from "lucide-react";
+import { Plus, Search, Receipt, DollarSign, FileText, Clock, MoreVertical, Eye, Edit, Send, Printer, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -237,7 +238,7 @@ export default function Invoices() {
 
   return (
     <DashboardLayout>
-      <div className="w-full max-w-[1600px] mx-auto space-y-6 p-6 pt-4">
+      <div className="w-full max-w-full mx-auto space-y-6 p-6 pt-4">
         <div className="flex items-center justify-between">
           <h2 className="text-3xl font-bold tracking-tight">Invoices</h2>
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
@@ -254,13 +255,12 @@ export default function Invoices() {
                   {editingInvoice ? "Update the invoice details." : "Fill in the invoice information."}
                 </DialogDescription>
               </DialogHeader>
-              {/* Modal form content here – kept unchanged */}
-              {/* ...same form as before... */}
+              {/* Keep your form here as it was */}
             </DialogContent>
           </Dialog>
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card><CardHeader className="flex justify-between pb-2"><CardTitle className="text-sm font-medium">Total Invoices</CardTitle><Receipt className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{stats.total}</div></CardContent></Card>
           <Card><CardHeader className="flex justify-between pb-2"><CardTitle className="text-sm font-medium">Draft</CardTitle><FileText className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{stats.draft}</div></CardContent></Card>
@@ -271,12 +271,7 @@ export default function Invoices() {
         {/* Search */}
         <div className="flex items-center space-x-2">
           <Search className="h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search invoices..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-sm"
-          />
+          <Input placeholder="Search invoices..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm" />
         </div>
 
         {/* Invoices Table */}
@@ -308,10 +303,18 @@ export default function Invoices() {
                     <TableCell>${invoice.total_amount.toFixed(2)}</TableCell>
                     <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                     <TableCell>
-                      <div className="flex space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => handleEdit(invoice)}>Edit</Button>
-                        <Button variant="outline" size="sm" onClick={() => handleDelete(invoice.id)}>Delete</Button>
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem onClick={() => alert("Viewing invoice...")}><Eye className="mr-2 h-4 w-4" /> View Invoice</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEdit(invoice)}><Edit className="mr-2 h-4 w-4" /> Edit Invoice</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => alert("Sending invoice...")}><Send className="mr-2 h-4 w-4" /> Send Invoice</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => alert("Printing invoice...")}><Printer className="mr-2 h-4 w-4" /> Print Invoice</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDelete(invoice.id)} className="text-red-600"><Trash2 className="mr-2 h-4 w-4" /> Delete Invoice</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
