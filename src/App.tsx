@@ -84,7 +84,7 @@ function App() {
           path="/invoices" 
           element={
             <DashboardLayout>
-              <Invoice />
+              <Invoices />
             </DashboardLayout>
           } 
         /> 
