@@ -9,6 +9,7 @@ import {
   ClipboardList,
   Home,
   UserCheck,
+  Receipt,
   Scissors
 } from "lucide-react";
 
