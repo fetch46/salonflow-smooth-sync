@@ -27,7 +27,6 @@ import {
   Edit2,
   Trash2,
   Eye,
-  Plus,
   MoreVertical,
   Boxes,
   Layers,
@@ -195,7 +194,7 @@ export default function Services() {
         />
         <Select value={filter} onValueChange={(val) => setFilter(val as any)}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue />
+            <SelectValue placeholder="Filter by type" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All</SelectItem>
@@ -231,14 +230,12 @@ export default function Services() {
                 <td className="p-3 text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
+                      <Button size="icon" variant="ghost" className="hover:bg-gray-100">
                         <MoreVertical className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => alert(`Viewing ${service.name}`)}
-                      >
+                      <DropdownMenuItem onClick={() => alert(`Viewing ${service.name}`)}>
                         <Eye className="w-4 h-4 mr-2" /> View
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleEdit(service)}>
@@ -263,4 +260,4 @@ export default function Services() {
       </div>
     </div>
   );
-              }
+}
