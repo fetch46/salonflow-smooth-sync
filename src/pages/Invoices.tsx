@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Card, CardContent, CardHeader, CardTitle, CardDescription,
-  Button, Input, Badge, Label, Select, SelectContent, SelectItem,
-  SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead,
-  TableHeader, TableRow, Dialog, DialogTrigger, DialogContent, DialogHeader,
-  DialogTitle, DialogFooter, Textarea} from "@/components/ui"; // Update based on actual imports
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 import { format } from "date-fns";
 
