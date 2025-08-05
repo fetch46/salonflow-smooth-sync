@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, FileText, Calendar, User, DollarSign } from "lucide-react";
+import { Plus, Search, FileText, Calendar, User, DollarSign, Eye, Edit, Printer, Trash2, MoreHorizontal } from "lucide-react";
 import { format } from "date-fns";
 
 interface JobCard {
@@ -27,7 +28,7 @@ export default function JobCards() {
   const [jobCards, setJobCards] = useState<JobCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchJobCards();
@@ -50,6 +51,22 @@ export default function JobCards() {
       console.error("Error fetching job cards:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteJobCard = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this job card?')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('job_cards')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      fetchJobCards();
+    } catch (error) {
+      console.error('Error deleting job card:', error);
     }
   };
 
@@ -93,25 +110,10 @@ export default function JobCards() {
           <h1 className="text-3xl font-bold">Job Cards</h1>
           <p className="text-muted-foreground">Manage and track service job cards</p>
         </div>
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-          <DialogTrigger asChild>
-            <Button className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              New Job Card
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create New Job Card</DialogTitle>
-            </DialogHeader>
-            <JobCardForm
-              onSuccess={() => {
-                setIsFormOpen(false);
-                fetchJobCards();
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => navigate('/job-cards/new')} className="flex items-center gap-2">
+          <Plus className="h-4 w-4" />
+          New Job Card
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -186,6 +188,7 @@ export default function JobCards() {
                   <TableHead>Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Amount</TableHead>
+                  <TableHead className="w-[50px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -202,6 +205,36 @@ export default function JobCards() {
                     </TableCell>
                     <TableCell>{getStatusBadge(jobCard.status)}</TableCell>
                     <TableCell>Ksh {jobCard.total_amount.toFixed(2)}</TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => navigate(`/job-cards/${jobCard.id}`)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate(`/job-cards/${jobCard.id}/edit`)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => window.print()}>
+                            <Printer className="h-4 w-4 mr-2" />
+                            Print
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleDeleteJobCard(jobCard.id)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

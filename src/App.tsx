@@ -10,6 +10,7 @@ import Services from "@/pages/Services";
 import Inventory from "@/pages/Inventory";
 import NotFound from "@/pages/NotFound";
 import JobCards from "@/pages/JobCards";
+import CreateJobCard from "@/pages/CreateJobCard";
 import Expenses from "@/pages/Expenses";
 import Purchases from "@/pages/Purchases";
 import ClientProfile from "@/pages/ClientProfile";
@@ -85,10 +86,20 @@ function App() {
 
         {/* Job Cards page with layout */}
         <Route 
-          path="/jobcards" 
+          path="/job-cards" 
           element={
             <DashboardLayout>
               <JobCards />
+            </DashboardLayout>
+          } 
+        />
+
+        {/* Create Job Card page with layout */}
+        <Route 
+          path="/job-cards/new" 
+          element={
+            <DashboardLayout>
+              <CreateJobCard />
             </DashboardLayout>
           } 
         />
