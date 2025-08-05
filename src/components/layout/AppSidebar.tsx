@@ -33,7 +33,7 @@ const menuItems = [
   { title: "Staff", url: "/staff", icon: UserCheck },
   { title: "Services", url: "/services", icon: Scissors },
   { title: "Inventory", url: "/inventory", icon: Package },
-  { title: "Job Cards", url: "/jobcards", icon: ClipboardList },
+  { title: "Job Cards", url: "/job-cards", icon: ClipboardList },
   { title: "Invoices", url: "/invoices", icon: Receipt },
   { title: "Expenses", url: "/expenses", icon: CreditCard },
   { title: "Purchases", url: "/purchases", icon: Package },
