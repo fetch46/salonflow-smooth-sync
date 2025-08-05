@@ -9,6 +9,10 @@ import Staff from "@/pages/Staff";
 import Services from "@/pages/Services";
 import Inventory from "@/pages/Inventory";
 import NotFound from "@/pages/NotFound";
+import JobCards from "@/pages/JobCards";
+import Expenses from "@/pages/Expenses";
+import Purchases from "@/pages/Purchases";
+import ClientProfile from "@/pages/ClientProfile";
 import { Toaster } from "@/components/ui/sonner";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
@@ -79,6 +83,16 @@ function App() {
           } 
         />
 
+        {/* Job Cards page with layout */}
+        <Route 
+          path="/jobcards" 
+          element={
+            <DashboardLayout>
+              <JobCards />
+            </DashboardLayout>
+          } 
+        />
+
         {/* Invoices page with layout */}
         <Route 
           path="/invoices" 
@@ -87,7 +101,37 @@ function App() {
               <Invoices />
             </DashboardLayout>
           } 
-        /> 
+        />
+
+        {/* Expenses page with layout */}
+        <Route 
+          path="/expenses" 
+          element={
+            <DashboardLayout>
+              <Expenses />
+            </DashboardLayout>
+          } 
+        />
+
+        {/* Purchases page with layout */}
+        <Route 
+          path="/purchases" 
+          element={
+            <DashboardLayout>
+              <Purchases />
+            </DashboardLayout>
+          } 
+        />
+
+        {/* Client Profile page with layout */}
+        <Route 
+          path="/clients/:id" 
+          element={
+            <DashboardLayout>
+              <ClientProfile />
+            </DashboardLayout>
+          } 
+        />
         
         {/* Booking page */}
         <Route path="/booking" element={<Booking />} />
