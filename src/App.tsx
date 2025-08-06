@@ -32,6 +32,8 @@ import PlansDebug from "@/components/debug/PlansDebug";
 import TestPlans from "@/pages/TestPlans";
 import DatabaseTest from "@/components/debug/DatabaseTest";
 import LoadingDebug from "@/components/debug/LoadingDebug";
+import TestDashboard from "@/pages/TestDashboard";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // SAAS-specific wrapper component to handle routing logic
 const AppRoutes = () => {
@@ -82,6 +84,7 @@ const AppRoutes = () => {
         <Route path="/debug/database" element={<DatabaseTest />} />
         <Route path="/debug/loading" element={<LoadingDebug />} />
         <Route path="/test/plans" element={<TestPlans />} />
+        <Route path="/test/dashboard" element={<TestDashboard />} />
         <Route path="/setup" element={<OrganizationSetup />} />
         <Route path="*" element={<Navigate to="/setup" replace />} />
       </Routes>
@@ -97,6 +100,7 @@ const AppRoutes = () => {
       <Route path="/debug/database" element={<DatabaseTest />} />
       <Route path="/debug/loading" element={<LoadingDebug />} />
       <Route path="/test/plans" element={<TestPlans />} />
+      <Route path="/test/dashboard" element={<TestDashboard />} />
       
       {/* Redirect auth pages if already logged in */}
       <Route path="/login" element={<Navigate to="/dashboard" replace />} />
@@ -144,12 +148,14 @@ const AppRoutes = () => {
 
 function App() {
   return (
-    <SaasProvider>
-      <Router>
-        <AppRoutes />
-        <Toaster />
-      </Router>
-    </SaasProvider>
+    <ErrorBoundary>
+      <SaasProvider>
+        <Router>
+          <AppRoutes />
+          <Toaster />
+        </Router>
+      </SaasProvider>
+    </ErrorBoundary>
   );
 }
 
