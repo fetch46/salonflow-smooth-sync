@@ -165,9 +165,9 @@ export default function Services() {
   useEffect(() => {
     fetchServices();
     fetchAvailableProducts();
-  }, []);
+  }, [fetchServices, fetchAvailableProducts]);
 
-  const fetchServices = async () => {
+  const fetchServices = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -183,7 +183,7 @@ export default function Services() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const refreshData = async () => {
     try {
@@ -197,7 +197,7 @@ export default function Services() {
     }
   };
 
-  const fetchAvailableProducts = async () => {
+  const fetchAvailableProducts = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from("inventory_items")
@@ -210,7 +210,7 @@ export default function Services() {
     } catch (error) {
       console.error("Error fetching products:", error);
     }
-  };
+  }, []);
 
   const fetchServiceKits = async (serviceId: string) => {
     try {

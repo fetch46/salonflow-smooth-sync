@@ -122,9 +122,9 @@ export default function Staff() {
 
   useEffect(() => {
     fetchStaff();
-  }, []);
+  }, [fetchStaff]);
 
-  const fetchStaff = async () => {
+  const fetchStaff = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -144,7 +144,7 @@ export default function Staff() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   const refreshData = async () => {
     try {

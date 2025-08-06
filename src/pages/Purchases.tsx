@@ -75,9 +75,9 @@ export default function Purchases() {
   useEffect(() => {
     fetchPurchases();
     fetchInventoryItems();
-  }, []);
+  }, [fetchPurchases, fetchInventoryItems]);
 
-  const fetchPurchases = async () => {
+  const fetchPurchases = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -97,9 +97,9 @@ export default function Purchases() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const fetchInventoryItems = async () => {
+  const fetchInventoryItems = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from("inventory_items")
@@ -113,7 +113,7 @@ export default function Purchases() {
     } catch (error) {
       console.error("Error fetching inventory items:", error);
     }
-  };
+  }, []);
 
   const fetchPurchaseItems = async (purchaseId: string) => {
     try {
@@ -171,21 +171,21 @@ export default function Purchases() {
     setPurchaseItems(purchaseItems.filter((_, i) => i !== index));
   };
 
-  const calculateTotals = () => {
+    const calculateTotals = useCallback(() => {
     const subtotal = purchaseItems.reduce((sum, item) => sum + item.total_cost, 0);
     const taxAmount = parseFloat(formData.tax_amount) || 0;
     const total = subtotal + taxAmount;
-
+    
     setFormData(prev => ({
       ...prev,
       subtotal: subtotal.toString(),
       total_amount: total.toString(),
     }));
-  };
+  }, [purchaseItems, formData.tax_amount]);
 
   useEffect(() => {
     calculateTotals();
-  }, [purchaseItems, formData.tax_amount]);
+  }, [purchaseItems, formData.tax_amount, calculateTotals]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

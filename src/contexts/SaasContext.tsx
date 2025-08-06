@@ -167,7 +167,7 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [checkSuperAdminStatus]);
 
   const switchOrganization = useCallback(async (organizationId: string) => {
     const newOrg = organizations.find(org => org.id === organizationId);

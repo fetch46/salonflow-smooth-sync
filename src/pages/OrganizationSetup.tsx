@@ -71,10 +71,10 @@ const OrganizationSetup = () => {
     }, 5000); // 5 second delay for auto-fallback
     
     return () => clearTimeout(fallbackTimer);
-  }, []);
+  }, [fetchPlans, mockPlans]);
 
   // Mock plans for testing
-  const mockPlans = [
+  const mockPlans = useMemo(() => [
     {
       id: 'mock-starter',
       name: 'Starter',
@@ -149,9 +149,9 @@ const OrganizationSetup = () => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
-  ];
+  ], []);
 
-  const fetchPlans = async () => {
+  const fetchPlans = useCallback(async () => {
     try {
       console.log('Fetching subscription plans...');
       const { data, error } = await supabase
@@ -192,7 +192,7 @@ const OrganizationSetup = () => {
       setSelectedPlan(mockPlans.find(p => p.slug === 'professional')?.id || mockPlans[0]?.id);
       toast.error('Failed to load subscription plans from database, showing demo plans');
     }
-  };
+  }, [mockPlans]);
 
   const generateSlug = (name: string) => {
     return name

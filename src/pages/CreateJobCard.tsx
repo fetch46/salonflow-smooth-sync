@@ -204,7 +204,7 @@ export default function CreateJobCard() {
     if (appointmentId) {
       loadAppointmentData(appointmentId);
     }
-  }, [appointmentId, appointments]);
+  }, [appointmentId, appointments, loadAppointmentData]);
 
   useEffect(() => {
     // Calculate totals when services change
@@ -221,7 +221,7 @@ export default function CreateJobCard() {
     if (selectedServices.length > 0) {
       loadServiceKits();
     }
-  }, [selectedServices]);
+  }, [selectedServices, loadServiceKits]);
 
   const fetchInitialData = async () => {
     setLoading(true);
@@ -245,7 +245,7 @@ export default function CreateJobCard() {
     }
   };
 
-  const loadAppointmentData = (appointmentId: string) => {
+  const loadAppointmentData = useCallback((appointmentId: string) => {
     const appointment = appointments.find(apt => apt.id === appointmentId);
     if (appointment) {
       setSelectedAppointment(appointment);
@@ -267,9 +267,9 @@ export default function CreateJobCard() {
         services: service ? [service.id] : []
       }));
     }
-  };
+  }, [appointments, clients, services]);
 
-  const loadServiceKits = async () => {
+  const loadServiceKits = useCallback(async () => {
     if (selectedServices.length === 0) return;
     
     try {
@@ -295,7 +295,7 @@ export default function CreateJobCard() {
       console.error("Error loading service kits:", error);
       toast.error("Failed to load service materials");
     }
-  };
+  }, [selectedServices]);
 
   const updateProductQuantity = (productId: string, quantity: number) => {
     setJobCardData(prev => ({

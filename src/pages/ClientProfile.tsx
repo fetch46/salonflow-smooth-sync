@@ -81,9 +81,9 @@ export default function ClientProfile() {
     if (id) {
       fetchClientData();
     }
-  }, [id]);
+  }, [id, fetchClientData]);
 
-  const fetchClientData = async () => {
+  const fetchClientData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -150,7 +150,7 @@ export default function ClientProfile() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   const getStatusBadge = (status: string) => {
     const statusColors = {
