@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Search, ShoppingCart, CreditCard, DollarSign, Package, Trash2, User, Receipt, Calculator } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { createSaleWithFallback } from "@/utils/mockDatabase";
 
 interface Product {
   id: string;
@@ -236,38 +237,10 @@ export default function POS() {
         payment_method: paymentData.payment_method,
         status: "completed",
         notes: paymentData.notes || null,
-        created_at: new Date().toISOString(),
       };
 
-      const { data: sale, error: saleError } = await supabase
-        .from("sales")
-        .insert([saleData])
-        .select()
-        .single();
-
-      if (saleError) throw saleError;
-
-      // Insert sale items
-      const saleItems = cart.map(item => ({
-        sale_id: sale.id,
-        product_id: item.product.id,
-        quantity: item.quantity,
-        unit_price: item.product.selling_price,
-        discount_percentage: item.discount,
-        total_price: item.total,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from("sale_items")
-        .insert(saleItems);
-
-      if (itemsError) throw itemsError;
-
-      // Update inventory (reduce stock)
-      for (const item of cart) {
-        // This would typically update stock levels
-        // For now, we'll skip this as we removed stock level tracking
-      }
+      // Use fallback function to handle missing database tables
+      const sale = await createSaleWithFallback(supabase, saleData, cart);
 
       setCurrentSale(sale);
       setIsPaymentModalOpen(false);

@@ -793,6 +793,417 @@ export type Database = {
         }
         Relationships: []
       }
+      sales: {
+        Row: {
+          id: string;
+          sale_number: string;
+          customer_id: string | null;
+          customer_name: string;
+          subtotal: number;
+          tax_amount: number;
+          discount_amount: number;
+          total_amount: number;
+          payment_method: string;
+          status: string;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          sale_number: string;
+          customer_id?: string | null;
+          customer_name: string;
+          subtotal?: number;
+          tax_amount?: number;
+          discount_amount?: number;
+          total_amount?: number;
+          payment_method: string;
+          status?: string;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          sale_number?: string;
+          customer_id?: string | null;
+          customer_name?: string;
+          subtotal?: number;
+          tax_amount?: number;
+          discount_amount?: number;
+          total_amount?: number;
+          payment_method?: string;
+          status?: string;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      }
+      sale_items: {
+        Row: {
+          id: string;
+          sale_id: string;
+          product_id: string;
+          quantity: number;
+          unit_price: number;
+          discount_percentage: number;
+          total_price: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          sale_id: string;
+          product_id: string;
+          quantity?: number;
+          unit_price: number;
+          discount_percentage?: number;
+          total_price: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          sale_id?: string;
+          product_id?: string;
+          quantity?: number;
+          unit_price?: number;
+          discount_percentage?: number;
+          total_price?: number;
+          created_at?: string;
+        };
+      }
+      invoices: {
+        Row: {
+          id: string;
+          invoice_number: string;
+          customer_id: string | null;
+          customer_name: string;
+          customer_email: string | null;
+          customer_phone: string | null;
+          subtotal: number;
+          tax_amount: number;
+          discount_amount: number;
+          total_amount: number;
+          status: string;
+          due_date: string | null;
+          payment_method: string | null;
+          notes: string | null;
+          jobcard_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          invoice_number: string;
+          customer_id?: string | null;
+          customer_name: string;
+          customer_email?: string | null;
+          customer_phone?: string | null;
+          subtotal?: number;
+          tax_amount?: number;
+          discount_amount?: number;
+          total_amount?: number;
+          status?: string;
+          due_date?: string | null;
+          payment_method?: string | null;
+          notes?: string | null;
+          jobcard_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          invoice_number?: string;
+          customer_id?: string | null;
+          customer_name?: string;
+          customer_email?: string | null;
+          customer_phone?: string | null;
+          subtotal?: number;
+          tax_amount?: number;
+          discount_amount?: number;
+          total_amount?: number;
+          status?: string;
+          due_date?: string | null;
+          payment_method?: string | null;
+          notes?: string | null;
+          jobcard_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      }
+      invoice_items: {
+        Row: {
+          id: string;
+          invoice_id: string;
+          service_id: string | null;
+          product_id: string | null;
+          description: string;
+          quantity: number;
+          unit_price: number;
+          discount_percentage: number;
+          staff_id: string | null;
+          commission_percentage: number;
+          total_price: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          invoice_id: string;
+          service_id?: string | null;
+          product_id?: string | null;
+          description: string;
+          quantity?: number;
+          unit_price: number;
+          discount_percentage?: number;
+          staff_id?: string | null;
+          commission_percentage?: number;
+          total_price: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          invoice_id?: string;
+          service_id?: string | null;
+          product_id?: string | null;
+          description?: string;
+          quantity?: number;
+          unit_price?: number;
+          discount_percentage?: number;
+          staff_id?: string | null;
+          commission_percentage?: number;
+          total_price?: number;
+          created_at?: string;
+        };
+      }
+      suppliers: {
+        Row: {
+          id: string;
+          name: string;
+          contact_person: string | null;
+          email: string | null;
+          phone: string | null;
+          address: string | null;
+          city: string | null;
+          state: string | null;
+          zip_code: string | null;
+          country: string | null;
+          supplier_type: string | null;
+          payment_terms: string | null;
+          tax_id: string | null;
+          website: string | null;
+          notes: string | null;
+          is_active: boolean;
+          rating: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          contact_person?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          address?: string | null;
+          city?: string | null;
+          state?: string | null;
+          zip_code?: string | null;
+          country?: string | null;
+          supplier_type?: string | null;
+          payment_terms?: string | null;
+          tax_id?: string | null;
+          website?: string | null;
+          notes?: string | null;
+          is_active?: boolean;
+          rating?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          contact_person?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          address?: string | null;
+          city?: string | null;
+          state?: string | null;
+          zip_code?: string | null;
+          country?: string | null;
+          supplier_type?: string | null;
+          payment_terms?: string | null;
+          tax_id?: string | null;
+          website?: string | null;
+          notes?: string | null;
+          is_active?: boolean;
+          rating?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      }
+      accounts: {
+        Row: {
+          id: string;
+          account_code: string;
+          account_name: string;
+          account_type: string;
+          account_subtype: string;
+          parent_account_id: string | null;
+          description: string | null;
+          is_active: boolean;
+          opening_balance: number;
+          current_balance: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_code: string;
+          account_name: string;
+          account_type: string;
+          account_subtype: string;
+          parent_account_id?: string | null;
+          description?: string | null;
+          is_active?: boolean;
+          opening_balance?: number;
+          current_balance?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          account_code?: string;
+          account_name?: string;
+          account_type?: string;
+          account_subtype?: string;
+          parent_account_id?: string | null;
+          description?: string | null;
+          is_active?: boolean;
+          opening_balance?: number;
+          current_balance?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+      }
+      account_transactions: {
+        Row: {
+          id: string;
+          account_id: string;
+          transaction_date: string;
+          description: string;
+          debit_amount: number;
+          credit_amount: number;
+          reference_type: string | null;
+          reference_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          transaction_date: string;
+          description: string;
+          debit_amount?: number;
+          credit_amount?: number;
+          reference_type?: string | null;
+          reference_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          account_id?: string;
+          transaction_date?: string;
+          description?: string;
+          debit_amount?: number;
+          credit_amount?: number;
+          reference_type?: string | null;
+          reference_id?: string | null;
+          created_at?: string;
+        };
+      }
+      inventory_adjustments: {
+        Row: {
+          id: string;
+          adjustment_number: string;
+          adjustment_date: string;
+          adjustment_type: string;
+          reason: string;
+          status: string;
+          notes: string | null;
+          total_items: number;
+          created_by: string | null;
+          approved_by: string | null;
+          approved_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          adjustment_number: string;
+          adjustment_date: string;
+          adjustment_type: string;
+          reason: string;
+          status?: string;
+          notes?: string | null;
+          total_items?: number;
+          created_by?: string | null;
+          approved_by?: string | null;
+          approved_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          adjustment_number?: string;
+          adjustment_date?: string;
+          adjustment_type?: string;
+          reason?: string;
+          status?: string;
+          notes?: string | null;
+          total_items?: number;
+          created_by?: string | null;
+          approved_by?: string | null;
+          approved_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      }
+      inventory_adjustment_items: {
+        Row: {
+          id: string;
+          adjustment_id: string;
+          item_id: string;
+          current_quantity: number;
+          adjusted_quantity: number;
+          difference: number;
+          unit_cost: number;
+          total_cost: number;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          adjustment_id: string;
+          item_id: string;
+          current_quantity: number;
+          adjusted_quantity: number;
+          difference: number;
+          unit_cost?: number;
+          total_cost?: number;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          adjustment_id?: string;
+          item_id?: string;
+          current_quantity?: number;
+          adjusted_quantity?: number;
+          difference?: number;
+          unit_cost?: number;
+          total_cost?: number;
+          notes?: string | null;
+          created_at?: string;
+        };
+      }
     }
     Views: {
       [_ in never]: never
