@@ -50,29 +50,6 @@ const OrganizationSetup = () => {
     industry: '',
   });
 
-  useEffect(() => {
-    fetchPlans();
-    
-    // Set up auto-fallback to mock plans if database plans don't load
-    const fallbackTimer = setTimeout(() => {
-      setPlans(currentPlans => {
-        if (currentPlans.length === 0) {
-          console.log('Auto-loading mock plans after 5 seconds');
-          toast.info('📦 Loaded demo plans automatically - you can complete setup normally');
-          // Also select the professional plan
-          const professionalPlan = mockPlans.find(p => p.slug === 'professional');
-          if (professionalPlan) {
-            setSelectedPlan(professionalPlan.id);
-          }
-          return mockPlans;
-        }
-        return currentPlans;
-      });
-    }, 5000); // 5 second delay for auto-fallback
-    
-    return () => clearTimeout(fallbackTimer);
-  }, [fetchPlans, mockPlans]);
-
   // Mock plans for testing
   const mockPlans = useMemo(() => [
     {
@@ -193,6 +170,29 @@ const OrganizationSetup = () => {
       toast.error('Failed to load subscription plans from database, showing demo plans');
     }
   }, [mockPlans]);
+
+  useEffect(() => {
+    fetchPlans();
+    
+    // Set up auto-fallback to mock plans if database plans don't load
+    const fallbackTimer = setTimeout(() => {
+      setPlans(currentPlans => {
+        if (currentPlans.length === 0) {
+          console.log('Auto-loading mock plans after 5 seconds');
+          toast.info('📦 Loaded demo plans automatically - you can complete setup normally');
+          // Also select the professional plan
+          const professionalPlan = mockPlans.find(p => p.slug === 'professional');
+          if (professionalPlan) {
+            setSelectedPlan(professionalPlan.id);
+          }
+          return mockPlans;
+        }
+        return currentPlans;
+      });
+    }, 5000); // 5 second delay for auto-fallback
+    
+    return () => clearTimeout(fallbackTimer);
+  }, [fetchPlans, mockPlans]);
 
   const generateSlug = (name: string) => {
     return name
