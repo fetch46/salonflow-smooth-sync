@@ -222,7 +222,7 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
   const hasFeature = (feature: string): boolean => {
     if (!subscriptionPlan || !isSubscriptionActive) {
       // During trial or if no subscription, allow basic features
-      const basicFeatures = ['appointments', 'clients', 'staff', 'basic_reports'];
+      const basicFeatures = ['appointments', 'clients', 'staff', 'services', 'reports'];
       return basicFeatures.includes(feature);
     }
 

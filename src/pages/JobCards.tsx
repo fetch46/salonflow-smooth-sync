@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
+import { CreateButtonGate } from "@/components/features/FeatureGate";
 import { 
   Plus, 
   Search, 
@@ -395,13 +396,15 @@ export default function JobCards() {
             </DropdownMenuContent>
           </DropdownMenu>
           
-          <Button 
-            onClick={() => navigate('/job-cards/new')} 
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            New Job Card
-          </Button>
+          <CreateButtonGate feature="job_cards">
+            <Button 
+              onClick={() => navigate('/job-cards/new')} 
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              New Job Card
+            </Button>
+          </CreateButtonGate>
         </div>
       </div>
 
@@ -587,13 +590,15 @@ export default function JobCards() {
                     </p>
                   </div>
                   {!searchTerm && statusFilter === "all" && (
-                    <Button 
-                      onClick={() => navigate('/job-cards/new')}
-                      className="bg-indigo-600 hover:bg-indigo-700"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Create First Job Card
-                    </Button>
+                    <CreateButtonGate feature="job_cards">
+                      <Button 
+                        onClick={() => navigate('/job-cards/new')}
+                        className="bg-indigo-600 hover:bg-indigo-700"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create First Job Card
+                      </Button>
+                    </CreateButtonGate>
                   )}
                 </div>
               ) : (
