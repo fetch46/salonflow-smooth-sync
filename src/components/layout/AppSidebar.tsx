@@ -1,25 +1,26 @@
-import { NavLink, useLocation } from "react-router-dom";
 import { useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 import {
   Calendar,
   Users,
-  CreditCard,
-  Package,
-  BarChart3,
-  Settings,
-  ClipboardList,
-  Home,
-  UserCheck,
-  Receipt,
   Scissors,
+  Package,
+  Receipt,
+  DollarSign,
+  FileText,
+  Settings,
   ChevronDown,
   ChevronRight,
   Building,
   ShoppingCart,
   Calculator,
-  TrendingUp
+  TrendingUp,
+  CreditCard,
+  AdjustmentsHorizontal,
+  Crown,
+  Lock,
+  Sparkles,
 } from "lucide-react";
-
 import {
   Sidebar,
   SidebarContent,
@@ -33,135 +34,378 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   SidebarTrigger,
-  useSidebar,
 } from "@/components/ui/sidebar";
+import { Badge } from "@/components/ui/badge";
+import { useFeatureGating } from "@/hooks/useFeatureGating";
+import { useSaas } from "@/contexts/SaasContext";
 
-const menuItems = [
-  { title: "Dashboard", url: "/dashboard", icon: Home },
-  { title: "Appointments", url: "/appointments", icon: Calendar },
-  { title: "Clients", url: "/clients", icon: Users },
-  { title: "Staff", url: "/staff", icon: UserCheck },
-  { title: "Services", url: "/services", icon: Scissors },
-  { 
-    title: "Inventory", 
-    url: "/inventory", 
+interface MenuSubItem {
+  title: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string }>;
+  feature: string;
+}
+
+interface MenuItem {
+  title: string;
+  url?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  feature: string;
+  subItems?: MenuSubItem[];
+}
+
+const menuItems: MenuItem[] = [
+  {
+    title: "Dashboard",
+    url: "/dashboard",
+    icon: TrendingUp,
+    feature: "reports", // Basic dashboard is part of reports
+  },
+  {
+    title: "Appointments",
+    url: "/appointments",
+    icon: Calendar,
+    feature: "appointments",
+  },
+  {
+    title: "Clients",
+    url: "/clients",
+    icon: Users,
+    feature: "clients",
+  },
+  {
+    title: "Staff",
+    url: "/staff",
+    icon: Users,
+    feature: "staff",
+  },
+  {
+    title: "Services",
+    url: "/services",
+    icon: Scissors,
+    feature: "services",
+  },
+  {
+    title: "Inventory",
     icon: Package,
+    feature: "inventory",
     subItems: [
-      { title: "Inventory", url: "/inventory", icon: Package },
-      { title: "Adjustments", url: "/inventory-adjustments", icon: TrendingUp }
-    ]
+      {
+        title: "Inventory",
+        url: "/inventory",
+        icon: Package,
+        feature: "inventory",
+      },
+      {
+        title: "Adjustments",
+        url: "/inventory-adjustments",
+        icon: AdjustmentsHorizontal,
+        feature: "inventory_adjustments",
+      },
+    ],
   },
-  { title: "Job Cards", url: "/job-cards", icon: ClipboardList },
-  { title: "Invoices", url: "/invoices", icon: Receipt },
-  { title: "Expenses", url: "/expenses", icon: CreditCard },
-  { 
-    title: "Purchases", 
-    url: "/purchases", 
+  {
+    title: "Financial",
+    icon: DollarSign,
+    feature: "expenses", // At least one financial feature
+    subItems: [
+      {
+        title: "Expenses",
+        url: "/expenses",
+        icon: Receipt,
+        feature: "expenses",
+      },
+      {
+        title: "Accounts",
+        url: "/accounts",
+        icon: Calculator,
+        feature: "accounting",
+      },
+    ],
+  },
+  {
+    title: "Purchases",
     icon: ShoppingCart,
+    feature: "purchases",
     subItems: [
-      { title: "Purchases", url: "/purchases", icon: ShoppingCart },
-      { title: "Suppliers", url: "/suppliers", icon: Building }
-    ]
+      {
+        title: "Purchases",
+        url: "/purchases",
+        icon: ShoppingCart,
+        feature: "purchases",
+      },
+      {
+        title: "Suppliers",
+        url: "/suppliers",
+        icon: Building,
+        feature: "suppliers",
+      },
+    ],
   },
-  { title: "Accounts", url: "/accounts", icon: Calculator },
-  { title: "POS", url: "/pos", icon: CreditCard },
-  { title: "Reports", url: "/reports", icon: BarChart3 },
-  { title: "Settings", url: "/settings", icon: Settings },
+  {
+    title: "Operations",
+    icon: FileText,
+    feature: "job_cards",
+    subItems: [
+      {
+        title: "Job Cards",
+        url: "/job-cards",
+        icon: FileText,
+        feature: "job_cards",
+      },
+      {
+        title: "POS",
+        url: "/pos",
+        icon: CreditCard,
+        feature: "pos",
+      },
+    ],
+  },
+  {
+    title: "Settings",
+    url: "/settings",
+    icon: Settings,
+    feature: "reports", // Settings always available
+  },
 ];
 
 export function AppSidebar() {
-  const { state } = useSidebar();
   const location = useLocation();
-  const currentPath = location.pathname;
-  const collapsed = state === "collapsed";
   const [openSubmenus, setOpenSubmenus] = useState<string[]>([]);
+  const { hasFeature, getFeatureAccess, usageData } = useFeatureGating();
+  const { subscriptionPlan, isTrialing, daysLeftInTrial } = useSaas();
 
   const toggleSubmenu = (title: string) => {
-    setOpenSubmenus(prev => 
-      prev.includes(title) 
-        ? prev.filter(item => item !== title)
+    setOpenSubmenus((prev) =>
+      prev.includes(title)
+        ? prev.filter((item) => item !== title)
         : [...prev, title]
     );
   };
 
-  const getNavCls = ({ isActive }: { isActive: boolean }) =>
-    isActive
-      ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-      : "hover:bg-sidebar-accent/50";
+  const getUsageBadge = (feature: string) => {
+    const access = getFeatureAccess(feature);
+    
+    if (!access.enabled) {
+      return (
+        <Badge variant="outline" className="text-xs bg-slate-100 text-slate-500 border-slate-300">
+          <Lock className="w-2 h-2 mr-1" />
+          Locked
+        </Badge>
+      );
+    }
+
+    if (access.unlimited) {
+      return (
+        <Badge className="text-xs bg-emerald-100 text-emerald-700 border-emerald-200">
+          <Sparkles className="w-2 h-2 mr-1" />
+          ∞
+        </Badge>
+      );
+    }
+
+    if (access.usage !== undefined && access.limit) {
+      const percentage = (access.usage / access.limit) * 100;
+      const isNearLimit = percentage >= 80;
+      const isAtLimit = percentage >= 100;
+
+      if (isAtLimit || isNearLimit) {
+        return (
+          <Badge 
+            variant="outline" 
+            className={`text-xs ${
+              isAtLimit 
+                ? 'bg-red-50 text-red-700 border-red-200' 
+                : 'bg-amber-50 text-amber-700 border-amber-200'
+            }`}
+          >
+            {access.usage}/{access.limit}
+          </Badge>
+        );
+      }
+    }
+
+    return null;
+  };
+
+  const isMenuItemAvailable = (item: MenuItem) => {
+    // Check if at least one feature is available
+    if (item.subItems) {
+      return item.subItems.some(subItem => hasFeature(subItem.feature));
+    }
+    return hasFeature(item.feature);
+  };
 
   return (
-    <Sidebar className={collapsed ? "w-14" : "w-60"} collapsible="icon">
-      {/* Header */}
-      <div className="p-4 border-b border-sidebar-border">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <Calendar className="w-5 h-5 text-primary-foreground" />
-          </div>
-          {!collapsed && (
-            <span className="text-xl font-bold text-sidebar-foreground">SalonSync</span>
-          )}
-        </div>
-      </div>
-
+    <Sidebar variant="inset">
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
+          <SidebarGroupLabel className="flex items-center justify-between">
+            <span>Menu</span>
+            {(isTrialing && daysLeftInTrial !== null && daysLeftInTrial <= 7) && (
+              <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                <Crown className="w-2 h-2 mr-1" />
+                {daysLeftInTrial}d trial
+              </Badge>
+            )}
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  {item.subItems ? (
-                    <>
+              {menuItems.map((item) => {
+                const isAvailable = isMenuItemAvailable(item);
+                const hasSubItems = item.subItems && item.subItems.length > 0;
+                const isOpen = openSubmenus.includes(item.title);
+                const usageBadge = getUsageBadge(item.feature);
+
+                if (hasSubItems) {
+                  return (
+                    <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         onClick={() => toggleSubmenu(item.title)}
-                        className="w-full justify-between"
+                        className={`${!isAvailable ? 'opacity-50' : ''}`}
                       >
-                        <div className="flex items-center">
-                          <item.icon className="mr-2 h-4 w-4" />
-                          {!collapsed && <span>{item.title}</span>}
+                        <item.icon className="w-4 h-4" />
+                        <span className="flex-1">{item.title}</span>
+                        <div className="flex items-center gap-1">
+                          {usageBadge}
+                          {!isAvailable && <Lock className="w-3 h-3 text-slate-400" />}
+                          {isOpen ? (
+                            <ChevronDown className="w-4 h-4" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4" />
+                          )}
                         </div>
-                        {!collapsed && (
-                          openSubmenus.includes(item.title) 
-                            ? <ChevronDown className="h-4 w-4" />
-                            : <ChevronRight className="h-4 w-4" />
-                        )}
                       </SidebarMenuButton>
-                      {!collapsed && openSubmenus.includes(item.title) && (
+                      {isOpen && (
                         <SidebarMenuSub>
-                          {item.subItems.map((subItem) => (
-                            <SidebarMenuSubItem key={subItem.title}>
-                              <SidebarMenuSubButton asChild>
-                                <NavLink to={subItem.url} className={getNavCls} end>
-                                  <subItem.icon className="mr-2 h-4 w-4" />
-                                  <span>{subItem.title}</span>
-                                </NavLink>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
+                          {item.subItems?.map((subItem) => {
+                            const subItemAvailable = hasFeature(subItem.feature);
+                            const subItemUsageBadge = getUsageBadge(subItem.feature);
+                            
+                            return (
+                              <SidebarMenuSubItem key={subItem.title}>
+                                <SidebarMenuSubButton 
+                                  asChild
+                                  className={`${!subItemAvailable ? 'opacity-50 pointer-events-none' : ''}`}
+                                >
+                                  <NavLink
+                                    to={subItem.url}
+                                    className={({ isActive }) =>
+                                      `flex items-center gap-2 ${
+                                        isActive ? "bg-accent text-accent-foreground" : ""
+                                      }`
+                                    }
+                                  >
+                                    <subItem.icon className="w-4 h-4" />
+                                    <span className="flex-1">{subItem.title}</span>
+                                    <div className="flex items-center gap-1">
+                                      {subItemUsageBadge}
+                                      {!subItemAvailable && <Lock className="w-3 h-3 text-slate-400" />}
+                                    </div>
+                                  </NavLink>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            );
+                          })}
                         </SidebarMenuSub>
                       )}
-                    </>
-                  ) : (
-                    <SidebarMenuButton asChild>
-                      <NavLink to={item.url} className={getNavCls} end>
-                        <item.icon className="mr-2 h-4 w-4" />
-                        {!collapsed && <span>{item.title}</span>}
+                    </SidebarMenuItem>
+                  );
+                }
+
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton 
+                      asChild
+                      className={`${!isAvailable ? 'opacity-50 pointer-events-none' : ''}`}
+                    >
+                      <NavLink
+                        to={item.url!}
+                        className={({ isActive }) =>
+                          `flex items-center gap-2 ${
+                            isActive ? "bg-accent text-accent-foreground" : ""
+                          }`
+                        }
+                      >
+                        <item.icon className="w-4 h-4" />
+                        <span className="flex-1">{item.title}</span>
+                        <div className="flex items-center gap-1">
+                          {usageBadge}
+                          {!isAvailable && <Lock className="w-3 h-3 text-slate-400" />}
+                        </div>
                       </NavLink>
                     </SidebarMenuButton>
-                  )}
-                </SidebarMenuItem>
-              ))}
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-      </SidebarContent>
 
-      {/* Collapsed trigger */}
-      {collapsed && (
-        <div className="p-2">
-          <SidebarTrigger className="w-full" />
-        </div>
-      )}
+        {/* Plan Information */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Subscription</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <div className="px-2 py-3 space-y-2">
+              {subscriptionPlan && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">Current Plan</span>
+                  <Badge 
+                    className={`text-xs ${
+                      subscriptionPlan.slug === 'enterprise' 
+                        ? 'bg-amber-100 text-amber-800 border-amber-200'
+                        : subscriptionPlan.slug === 'professional'
+                        ? 'bg-purple-100 text-purple-800 border-purple-200'
+                        : 'bg-blue-100 text-blue-800 border-blue-200'
+                    }`}
+                  >
+                    {subscriptionPlan.name}
+                  </Badge>
+                </div>
+              )}
+              
+              {isTrialing && daysLeftInTrial !== null && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">Trial</span>
+                  <Badge 
+                    variant="outline" 
+                    className={`text-xs ${
+                      daysLeftInTrial <= 3 
+                        ? 'bg-red-50 text-red-700 border-red-200'
+                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                    }`}
+                  >
+                    {daysLeftInTrial} days left
+                  </Badge>
+                </div>
+              )}
+
+              {/* Quick usage overview */}
+              <div className="space-y-1 pt-2 border-t">
+                {['clients', 'staff', 'services'].map((feature) => {
+                  const access = getFeatureAccess(feature);
+                  if (!access.enabled || access.unlimited) return null;
+                  
+                  const percentage = access.limit ? (access.usage! / access.limit) * 100 : 0;
+                  const isNearLimit = percentage >= 80;
+                  
+                  if (isNearLimit) {
+                    return (
+                      <div key={feature} className="flex items-center justify-between text-xs">
+                        <span className="text-slate-600 capitalize">{feature}</span>
+                        <span className={`${percentage >= 100 ? 'text-red-600' : 'text-amber-600'}`}>
+                          {access.usage}/{access.limit}
+                        </span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })}
+              </div>
+            </div>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
     </Sidebar>
   );
 }

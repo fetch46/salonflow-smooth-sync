@@ -42,6 +42,8 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useFeatureGating } from "@/hooks/useFeatureGating";
+import { CreateButtonGate, FeatureGate, UsageBadge } from "@/components/features/FeatureGate";
 import { format } from "date-fns";
 
 interface Staff {
@@ -105,6 +107,7 @@ export default function Staff() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const { toast } = useToast();
+  const { hasFeature, getFeatureAccess, enforceLimit } = useFeatureGating();
 
   const [formData, setFormData] = useState({
     full_name: "",
@@ -393,12 +396,22 @@ export default function Staff() {
             Refresh
           </Button>
           
+          <CreateButtonGate
+            feature="staff"
+            onClick={() => {
+              resetForm();
+              setIsModalOpen(true);
+            }}
+          >
+            <Button className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 shadow-lg">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Staff Member
+            </Button>
+          </CreateButtonGate>
+
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
             <DialogTrigger asChild>
-              <Button onClick={resetForm} className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 shadow-lg">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Staff Member
-              </Button>
+              <div style={{ display: 'none' }} />
             </DialogTrigger>
             <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
               <DialogHeader className="pb-4 border-b">
@@ -556,13 +569,23 @@ export default function Staff() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium opacity-90">Total Staff</CardTitle>
+            <CardTitle className="text-sm font-medium opacity-90 flex items-center gap-2">
+              Total Staff
+              <UsageBadge feature="staff" className="bg-white/20 text-white border-white/30" />
+            </CardTitle>
             <Users className="h-4 w-4 opacity-80" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{dashboardStats.totalStaff}</div>
             <p className="text-xs opacity-80">
               {dashboardStats.activeStaff} active, {dashboardStats.inactiveStaff} inactive
+              {(() => {
+                const access = getFeatureAccess('staff');
+                if (access.limit && access.usage !== undefined) {
+                  return ` • ${access.limit - access.usage} slots remaining`;
+                }
+                return '';
+              })()}
             </p>
           </CardContent>
         </Card>
@@ -730,8 +753,9 @@ export default function Staff() {
               )}
             </div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {currentStaff.map((member) => {
+            <FeatureGate feature="staff">
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {currentStaff.map((member) => {
                 const performance = getPerformanceData(member.id);
                 return (
                   <Card key={member.id} className="hover:shadow-lg transition-all duration-300 border-slate-200 relative overflow-hidden">
@@ -903,7 +927,8 @@ export default function Staff() {
                   </Card>
                 );
               })}
-            </div>
+              </div>
+            </FeatureGate>
           )}
         </CardContent>
       </Card>
