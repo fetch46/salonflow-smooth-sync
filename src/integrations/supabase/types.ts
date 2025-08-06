@@ -738,6 +738,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           phone: string | null
+          profile_image: string | null
           specialties: string[] | null
           updated_at: string
         }
@@ -748,6 +749,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           phone?: string | null
+          profile_image?: string | null
           specialties?: string[] | null
           updated_at?: string
         }
@@ -758,6 +760,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           phone?: string | null
+          profile_image?: string | null
           specialties?: string[] | null
           updated_at?: string
         }

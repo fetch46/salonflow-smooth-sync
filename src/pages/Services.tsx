@@ -29,6 +29,8 @@ import {
   Star,
   Eye,
   MoreVertical,
+  X,
+  ShoppingCart,
 } from "lucide-react";
 import {
   Dialog,
@@ -91,6 +93,8 @@ export default function Services() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [loading, setLoading] = useState(true);
+  const [availableProducts, setAvailableProducts] = useState<any[]>([]);
+  const [serviceKits, setServiceKits] = useState<any[]>([]);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -104,6 +108,7 @@ export default function Services() {
 
   useEffect(() => {
     fetchServices();
+    fetchAvailableProducts();
   }, []);
 
   const fetchServices = async () => {
@@ -127,21 +132,118 @@ export default function Services() {
     }
   };
 
+  const fetchAvailableProducts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("inventory_items")
+        .select("id, name, type, category, unit, cost_price, selling_price")
+        .eq("is_active", true)
+        .order("name");
+
+      if (error) throw error;
+      setAvailableProducts(data || []);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    }
+  };
+
+  const fetchServiceKits = async (serviceId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("service_kits")
+        .select(`
+          id, good_id, default_quantity,
+          inventory_items!service_kits_good_id_fkey (id, name, type, unit, cost_price)
+        `)
+        .eq("service_id", serviceId);
+
+      if (error) throw error;
+      setServiceKits(data || []);
+    } catch (error) {
+      console.error("Error fetching service kits:", error);
+    }
+  };
+
+  const addKitItem = (productId: string) => {
+    const product = availableProducts.find(p => p.id === productId);
+    if (product && !serviceKits.find(kit => kit.good_id === productId)) {
+      setServiceKits(prev => [
+        ...prev,
+        {
+          id: null, // New item
+          good_id: productId,
+          default_quantity: 1,
+          inventory_items: product
+        }
+      ]);
+    }
+  };
+
+  const updateKitQuantity = (productId: string, quantity: number) => {
+    setServiceKits(prev => 
+      prev.map(kit => 
+        kit.good_id === productId 
+          ? { ...kit, default_quantity: Math.max(0, quantity) }
+          : kit
+      )
+    );
+  };
+
+  const removeKitItem = (productId: string) => {
+    setServiceKits(prev => prev.filter(kit => kit.good_id !== productId));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      let serviceId = editingService?.id;
+
       if (editingService) {
+        // Update existing service
         const { error } = await supabase
           .from("services")
           .update(formData)
           .eq("id", editingService.id);
         if (error) throw error;
-        toast({ title: "Success", description: "Service updated successfully" });
       } else {
-        const { error } = await supabase.from("services").insert([formData]);
+        // Create new service
+        const { data, error } = await supabase
+          .from("services")
+          .insert([formData])
+          .select()
+          .single();
         if (error) throw error;
-        toast({ title: "Success", description: "Service created successfully" });
+        serviceId = data.id;
       }
+
+      // Save service kits
+      if (serviceId) {
+        // Delete existing kits for this service
+        await supabase
+          .from("service_kits")
+          .delete()
+          .eq("service_id", serviceId);
+
+        // Insert new kits
+        if (serviceKits.length > 0) {
+          const kitData = serviceKits.map(kit => ({
+            service_id: serviceId,
+            good_id: kit.good_id,
+            default_quantity: kit.default_quantity
+          }));
+
+          const { error: kitError } = await supabase
+            .from("service_kits")
+            .insert(kitData);
+
+          if (kitError) throw kitError;
+        }
+      }
+
+      toast({ 
+        title: "Success", 
+        description: editingService ? "Service updated successfully" : "Service created successfully" 
+      });
       fetchServices();
       resetForm();
       setIsModalOpen(false);
@@ -165,6 +267,7 @@ export default function Services() {
       is_active: true,
     });
     setEditingService(null);
+    setServiceKits([]);
   };
 
   const handleEdit = (service: Service) => {
@@ -177,6 +280,7 @@ export default function Services() {
       is_active: service.is_active,
     });
     setEditingService(service);
+    fetchServiceKits(service.id);
     setIsModalOpen(true);
   };
 
@@ -305,7 +409,7 @@ export default function Services() {
               Add Service
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingService ? "Edit Service" : "Add New Service"}</DialogTitle>
             </DialogHeader>
@@ -343,7 +447,114 @@ export default function Services() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex justify-end gap-2">
+
+              {/* Service Kit Section */}
+              <div className="space-y-4 border-t pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-base font-semibold">Service Kit - Product Items</Label>
+                    <p className="text-sm text-muted-foreground">Select products and materials needed for this service</p>
+                  </div>
+                  <Badge variant="outline" className="ml-2">
+                    {serviceKits.length} items
+                  </Badge>
+                </div>
+
+                {/* Add Product Selection */}
+                <div>
+                  <Label htmlFor="addProduct">Add Product to Kit</Label>
+                  <Select value="" onValueChange={addKitItem}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a product to add..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableProducts
+                        .filter(product => !serviceKits.find(kit => kit.good_id === product.id))
+                        .map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            <div className="flex items-center justify-between w-full">
+                              <span>{product.name}</span>
+                              <span className="text-xs text-muted-foreground ml-2">
+                                {product.type} • ${product.cost_price?.toFixed(2) || '0.00'}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Current Kit Items */}
+                {serviceKits.length > 0 && (
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Kit Items</Label>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {serviceKits.map((kit) => (
+                        <div key={kit.good_id} className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
+                          <div className="flex-1">
+                            <div className="font-medium text-sm">{kit.inventory_items.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {kit.inventory_items.type} • {kit.inventory_items.unit || 'Each'} • ${kit.inventory_items.cost_price?.toFixed(2) || '0.00'}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              <Label htmlFor={`qty-${kit.good_id}`} className="text-xs">Qty:</Label>
+                              <Input
+                                id={`qty-${kit.good_id}`}
+                                type="number"
+                                min="0"
+                                step="0.1"
+                                value={kit.default_quantity}
+                                onChange={(e) => updateKitQuantity(kit.good_id, parseFloat(e.target.value) || 0)}
+                                className="w-20 h-8 text-xs"
+                              />
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeKitItem(kit.good_id)}
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Kit Summary */}
+                    <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg p-3 border border-pink-200">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Total Kit Cost</p>
+                          <p className="text-xs text-muted-foreground">
+                            Cost of all materials
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-pink-600">
+                            ${serviceKits.reduce((total, kit) => 
+                              total + (kit.default_quantity * (kit.inventory_items.cost_price || 0)), 0
+                            ).toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {serviceKits.length === 0 && (
+                  <div className="text-center py-6 text-muted-foreground border border-dashed rounded-lg">
+                    <ShoppingCart className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No kit items added yet</p>
+                    <p className="text-xs">Select products above to build your service kit</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
                 <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
                 <Button type="submit">{editingService ? "Update" : "Create"}</Button>
               </div>

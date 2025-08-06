@@ -1,5 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Landing from "@/pages/Landing";
+import Login from "@/pages/Login";
+import Register from "@/pages/Register";
 import Dashboard from "@/pages/Dashboard";
 import Booking from "@/pages/Booking";
 import Appointments from "@/pages/Appointments";
@@ -24,6 +26,10 @@ function App() {
       <Routes>
         {/* Landing page */}
         <Route path="/" element={<Landing />} />
+        
+        {/* Authentication routes */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         
         {/* Dashboard routes with layout */}
         <Route 

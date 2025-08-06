@@ -7,7 +7,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { format } from "date-fns";
-import { Mail, Phone, MapPin, Calendar, User, Receipt, ClipboardList } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, User, Receipt, ClipboardList, Edit2, Save, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 interface Client {
   id: string;
@@ -17,8 +22,14 @@ interface Client {
   address: string;
   notes: string;
   is_active: boolean;
+  client_status: string;
+  preferred_technician_id: string;
+  total_spent: number;
+  total_visits: number;
+  last_visit_date: string;
   created_at: string;
   updated_at: string;
+  preferred_technician?: { full_name: string };
 }
 
 interface Invoice {
@@ -57,6 +68,14 @@ export default function ClientProfile() {
   const [jobCards, setJobCards] = useState<JobCard[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    full_name: '',
+    email: '',
+    phone: '',
+    address: '',
+    notes: '',
+  });
 
   useEffect(() => {
     if (id) {
@@ -71,12 +90,24 @@ export default function ClientProfile() {
       // Fetch client details
       const { data: clientData, error: clientError } = await supabase
         .from("clients")
-        .select("*")
+        .select(`
+          *,
+          preferred_technician:preferred_technician_id (full_name)
+        `)
         .eq("id", id)
         .single();
 
       if (clientError) throw clientError;
       setClient(clientData);
+      
+      // Set edit form data
+      setEditForm({
+        full_name: clientData.full_name || '',
+        email: clientData.email || '',
+        phone: clientData.phone || '',
+        address: clientData.address || '',
+        notes: clientData.notes || '',
+      });
 
       // Fetch invoices
       const { data: invoicesData, error: invoicesError } = await supabase
@@ -143,6 +174,49 @@ export default function ClientProfile() {
     );
   };
 
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    // Reset form to original values
+    if (client) {
+      setEditForm({
+        full_name: client.full_name || '',
+        email: client.email || '',
+        phone: client.phone || '',
+        address: client.address || '',
+        notes: client.notes || '',
+      });
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          full_name: editForm.full_name,
+          email: editForm.email,
+          phone: editForm.phone,
+          address: editForm.address,
+          notes: editForm.notes,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast.success('Client updated successfully');
+      setIsEditing(false);
+      fetchClientData(); // Refresh data
+    } catch (error) {
+      console.error('Error updating client:', error);
+      toast.error('Failed to update client');
+    }
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -173,85 +247,159 @@ export default function ClientProfile() {
     <DashboardLayout>
       <div className="flex-1 space-y-6 p-8 pt-6">
         {/* Client Header */}
-        <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center">
-            <User className="w-8 h-8 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">{client.full_name}</h1>
-            <p className="text-muted-foreground">
-              Client since {format(new Date(client.created_at), "MMMM yyyy")}
-            </p>
-          </div>
-          <div className="ml-auto">
-            {getStatusBadge(client.is_active ? "active" : "inactive")}
-          </div>
-        </div>
+        <Card className="mb-6">
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-6">
+              <div className="w-20 h-20 bg-gradient-to-br from-pink-500 to-purple-600 rounded-full flex items-center justify-center">
+                <User className="w-10 h-10 text-white" />
+              </div>
+                             <div className="flex-1">
+                 {isEditing ? (
+                   <Input
+                     value={editForm.full_name}
+                     onChange={(e) => setEditForm({...editForm, full_name: e.target.value})}
+                     className="text-3xl font-bold bg-transparent border-none p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0"
+                     style={{
+                       background: 'linear-gradient(to right, rgb(219 39 119), rgb(147 51 234))',
+                       WebkitBackgroundClip: 'text',
+                       WebkitTextFillColor: 'transparent',
+                       backgroundClip: 'text'
+                     }}
+                   />
+                 ) : (
+                   <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+                     {client.full_name}
+                   </h1>
+                 )}
+                 <p className="text-muted-foreground text-lg">
+                   Client since {format(new Date(client.created_at), "MMMM yyyy")}
+                 </p>
+                 <div className="flex items-center gap-4 mt-2">
+                   {client.last_visit_date && (
+                     <p className="text-sm text-muted-foreground">
+                       Last visit: {format(new Date(client.last_visit_date), "MMM dd, yyyy")}
+                     </p>
+                   )}
+                   {client.preferred_technician && (
+                     <p className="text-sm text-muted-foreground">
+                       Preferred Technician: {client.preferred_technician.full_name}
+                     </p>
+                   )}
+                 </div>
+               </div>
+               <div className="flex flex-col items-end space-y-2">
+                 <div className="flex gap-2">
+                   {isEditing ? (
+                     <>
+                       <Button size="sm" onClick={handleSaveEdit} className="bg-green-600 hover:bg-green-700">
+                         <Save className="w-4 h-4 mr-1" />
+                         Save
+                       </Button>
+                       <Button size="sm" variant="outline" onClick={handleCancelEdit}>
+                         <X className="w-4 h-4 mr-1" />
+                         Cancel
+                       </Button>
+                     </>
+                   ) : (
+                     <Button size="sm" onClick={handleEdit} className="bg-gradient-to-r from-pink-500 to-purple-600">
+                       <Edit2 className="w-4 h-4 mr-1" />
+                       Edit
+                     </Button>
+                   )}
+                 </div>
+                 <div className="flex flex-col space-y-1">
+                   {getStatusBadge(client.is_active ? "active" : "inactive")}
+                   {client.client_status && getStatusBadge(client.client_status)}
+                 </div>
+               </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Client Details Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Invoices</CardTitle>
-              <Receipt className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-green-700">Total Spent</CardTitle>
+              <Receipt className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{invoices.length}</div>
-              <p className="text-xs text-muted-foreground">
-                ${invoices.reduce((sum, inv) => sum + Number(inv.total_amount), 0).toFixed(2)} total
+              <div className="text-2xl font-bold text-green-700">
+                ${(client.total_spent || 0).toFixed(2)}
+              </div>
+              <p className="text-xs text-green-600">
+                From {invoices.length} invoices
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-gradient-to-br from-blue-50 to-sky-50 border-blue-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Job Cards</CardTitle>
-              <ClipboardList className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-blue-700">Total Visits</CardTitle>
+              <Calendar className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{jobCards.length}</div>
-              <p className="text-xs text-muted-foreground">
-                {jobCards.filter(jc => jc.status === 'completed').length} completed
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Appointments</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{appointments.length}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-2xl font-bold text-blue-700">{client.total_visits || 0}</div>
+              <p className="text-xs text-blue-600">
                 {appointments.filter(app => app.status === 'scheduled').length} upcoming
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Contact Info</CardTitle>
-              <Phone className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-purple-700">Job Cards</CardTitle>
+              <ClipboardList className="h-4 w-4 text-purple-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-purple-700">{jobCards.length}</div>
+              <p className="text-xs text-purple-600">
+                {jobCards.filter(jc => jc.status === 'completed').length} completed
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-orange-700">Avg. Per Visit</CardTitle>
+              <Receipt className="h-4 w-4 text-orange-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-700">
+                ${client.total_visits && client.total_spent 
+                  ? (client.total_spent / client.total_visits).toFixed(2) 
+                  : '0.00'
+                }
+              </div>
+              <p className="text-xs text-orange-600">
+                Average spending
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-pink-50 to-rose-50 border-pink-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-pink-700">Contact</CardTitle>
+              <Phone className="h-4 w-4 text-pink-600" />
             </CardHeader>
             <CardContent>
               <div className="space-y-1">
                 {client.email && (
-                  <div className="flex items-center text-sm">
+                  <div className="flex items-center text-xs text-pink-700">
                     <Mail className="w-3 h-3 mr-1" />
-                    {client.email}
+                    <span className="truncate">{client.email}</span>
                   </div>
                 )}
                 {client.phone && (
-                  <div className="flex items-center text-sm">
+                  <div className="flex items-center text-xs text-pink-700">
                     <Phone className="w-3 h-3 mr-1" />
                     {client.phone}
                   </div>
                 )}
                 {client.address && (
-                  <div className="flex items-center text-sm">
+                  <div className="flex items-center text-xs text-pink-700">
                     <MapPin className="w-3 h-3 mr-1" />
-                    {client.address}
+                    <span className="truncate">{client.address}</span>
                   </div>
                 )}
               </div>
@@ -384,36 +532,78 @@ export default function ClientProfile() {
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <label className="text-sm font-medium">Full Name</label>
-                    <p className="text-sm text-muted-foreground">{client.full_name}</p>
+                    <Label className="text-sm font-medium">Full Name</Label>
+                    {isEditing ? (
+                      <Input
+                        value={editForm.full_name}
+                        onChange={(e) => setEditForm({...editForm, full_name: e.target.value})}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground mt-1">{client.full_name}</p>
+                    )}
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Email</label>
-                    <p className="text-sm text-muted-foreground">{client.email || "N/A"}</p>
+                    <Label className="text-sm font-medium">Email</Label>
+                    {isEditing ? (
+                      <Input
+                        type="email"
+                        value={editForm.email}
+                        onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground mt-1">{client.email || "N/A"}</p>
+                    )}
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Phone</label>
-                    <p className="text-sm text-muted-foreground">{client.phone || "N/A"}</p>
+                    <Label className="text-sm font-medium">Phone</Label>
+                    {isEditing ? (
+                      <Input
+                        value={editForm.phone}
+                        onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground mt-1">{client.phone || "N/A"}</p>
+                    )}
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Status</label>
-                    <p className="text-sm text-muted-foreground">{client.is_active ? "Active" : "Inactive"}</p>
+                    <Label className="text-sm font-medium">Status</Label>
+                    <p className="text-sm text-muted-foreground mt-1">{client.is_active ? "Active" : "Inactive"}</p>
                   </div>
                   <div className="md:col-span-2">
-                    <label className="text-sm font-medium">Address</label>
-                    <p className="text-sm text-muted-foreground">{client.address || "N/A"}</p>
+                    <Label className="text-sm font-medium">Address</Label>
+                    {isEditing ? (
+                      <Input
+                        value={editForm.address}
+                        onChange={(e) => setEditForm({...editForm, address: e.target.value})}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground mt-1">{client.address || "N/A"}</p>
+                    )}
                   </div>
                   <div className="md:col-span-2">
-                    <label className="text-sm font-medium">Notes</label>
-                    <p className="text-sm text-muted-foreground">{client.notes || "No notes available"}</p>
+                    <Label className="text-sm font-medium">Notes</Label>
+                    {isEditing ? (
+                      <Textarea
+                        value={editForm.notes}
+                        onChange={(e) => setEditForm({...editForm, notes: e.target.value})}
+                        className="mt-1 min-h-[80px]"
+                        placeholder="Add notes about this client..."
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground mt-1">{client.notes || "No notes available"}</p>
+                    )}
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Created</label>
-                    <p className="text-sm text-muted-foreground">{format(new Date(client.created_at), "MMM dd, yyyy")}</p>
+                    <Label className="text-sm font-medium">Created</Label>
+                    <p className="text-sm text-muted-foreground mt-1">{format(new Date(client.created_at), "MMM dd, yyyy")}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Last Updated</label>
-                    <p className="text-sm text-muted-foreground">{format(new Date(client.updated_at), "MMM dd, yyyy")}</p>
+                    <Label className="text-sm font-medium">Last Updated</Label>
+                    <p className="text-sm text-muted-foreground mt-1">{format(new Date(client.updated_at), "MMM dd, yyyy")}</p>
                   </div>
                 </div>
               </CardContent>

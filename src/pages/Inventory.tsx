@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Package, MapPin, AlertTriangle, Trash2, Edit, X } from "lucide-react";
+import { Plus, Package, Trash2, Edit, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -26,21 +26,7 @@ type InventoryItem = {
   is_active: boolean;
 };
 
-type StorageLocation = {
-  id: string;
-  name: string;
-  description: string;
-  is_active: boolean;
-};
 
-type InventoryLevel = {
-  id: string;
-  item_id: string;
-  location_id: string;
-  quantity: number;
-  inventory_items: InventoryItem;
-  storage_locations: StorageLocation;
-};
 
 type ServiceKit = {
   id: string;
@@ -242,93 +228,26 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, goodsItems, se
   );
 };
 
-// A separate component for the Location Dialog Form
-const LocationFormDialog = ({ isOpen, onClose, onSubmit, editingLocation }) => {
-  const [locationFormData, setLocationFormData] = useState({
-    name: "",
-    description: ""
-  });
 
-  useEffect(() => {
-    if (editingLocation) {
-      setLocationFormData({
-        name: editingLocation.name,
-        description: editingLocation.description || ""
-      });
-    } else {
-      setLocationFormData({ name: "", description: "" });
-    }
-  }, [editingLocation]);
-
-  const handleFormSubmit = (e) => {
-    e.preventDefault();
-    onSubmit(locationFormData);
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{editingLocation ? "Edit Location" : "Add New Location"}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleFormSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="location-name">Name</Label>
-            <Input
-              id="location-name"
-              value={locationFormData.name}
-              onChange={(e) => setLocationFormData({ ...locationFormData, name: e.target.value })}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="location-description">Description</Label>
-            <Textarea
-              id="location-description"
-              value={locationFormData.description}
-              onChange={(e) => setLocationFormData({ ...locationFormData, description: e.target.value })}
-            />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit">
-              {editingLocation ? "Update" : "Create"} Location
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-};
 
 
 // --- Main Component ---
 export default function Inventory() {
   const [items, setItems] = useState<InventoryItem[]>([]);
-  const [locations, setLocations] = useState<StorageLocation[]>([] as StorageLocation[]);
-  const [levels, setLevels] = useState<InventoryLevel[]>([]);
   const [serviceKits, setServiceKits] = useState<ServiceKit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
-  const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
-  const [editingLocation, setEditingLocation] = useState<StorageLocation | null>(null);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [itemsRes, locationsRes, levelsRes, kitsRes] = await Promise.all([
+      const [itemsRes, kitsRes] = await Promise.all([
         supabase.from("inventory_items").select("*").eq("is_active", true).order("name"),
-        supabase.from("storage_locations").select("*").eq("is_active", true).order("name"),
-        supabase.from("inventory_levels").select(`*, inventory_items!inner(*), storage_locations!inner(*)`).eq("inventory_items.is_active", true).eq("storage_locations.is_active", true),
         supabase.from("service_kits").select(`*, good:inventory_items!service_kits_good_id_fkey(*)`)
       ]);
 
       setItems((itemsRes.data || []) as InventoryItem[]);
-      setLocations((locationsRes.data || []) as StorageLocation[]);
-      setLevels((levelsRes.data || []) as InventoryLevel[]);
       setServiceKits((kitsRes.data || []) as ServiceKit[]);
     } catch (error) {
       toast({ title: "Error", description: "Failed to fetch inventory data", variant: "destructive" });
@@ -371,43 +290,15 @@ export default function Inventory() {
     }
   };
 
-  const handleLocationSubmit = async (formData) => {
-    try {
-      if (editingLocation) {
-        const { error } = await supabase.from("storage_locations").update(formData).eq("id", editingLocation.id);
-        if (error) throw error;
-        toast({ title: "Success", description: "Location updated successfully" });
-      } else {
-        const { error } = await supabase.from("storage_locations").insert(formData);
-        if (error) throw error;
-        toast({ title: "Success", description: "Location created successfully" });
-      }
-      setIsLocationDialogOpen(false);
-      setEditingLocation(null);
-      fetchData();
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to save location", variant: "destructive" });
-    }
-  };
-
   const handleEditItem = (item: InventoryItem) => {
     setEditingItem(item);
     setIsItemDialogOpen(true);
   };
 
-  const handleEditLocation = (location: StorageLocation) => {
-    setEditingLocation(location);
-    setIsLocationDialogOpen(true);
-  };
-
-  const getTotalQuantity = (itemId: string) => {
-    return levels.filter(level => level.item_id === itemId).reduce((total, level) => total + level.quantity, 0);
-  };
-
   const isLowStock = (item: InventoryItem) => {
-    if (item.type === 'service') return false;
-    const total = getTotalQuantity(item.id);
-    return total <= item.reorder_point;
+    // Since we removed stock levels, we'll return false for now
+    // This can be updated when inventory adjustments are implemented
+    return false;
   };
 
   const goodsItems = items.filter(item => item.type === 'good');
@@ -441,9 +332,6 @@ export default function Inventory() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold">Inventory Management</h1>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => { setEditingLocation(null); setIsLocationDialogOpen(true); }}>
-            <MapPin className="w-4 h-4 mr-2" /> Add Location
-          </Button>
           <Button onClick={() => { setEditingItem(null); setIsItemDialogOpen(true); }}>
             <Plus className="w-4 h-4 mr-2" /> Add Item
           </Button>
@@ -458,19 +346,11 @@ export default function Inventory() {
         goodsItems={goodsItems}
         serviceKits={serviceKits}
       />
-      <LocationFormDialog
-        isOpen={isLocationDialogOpen}
-        onClose={() => setIsLocationDialogOpen(false)}
-        onSubmit={handleLocationSubmit}
-        editingLocation={editingLocation}
-      />
 
       <Tabs defaultValue="goods" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 md:w-fit">
+        <TabsList className="grid w-full grid-cols-2 md:w-fit">
           <TabsTrigger value="goods">Products</TabsTrigger>
           <TabsTrigger value="services">Services</TabsTrigger>
-          <TabsTrigger value="locations">Locations</TabsTrigger>
-          <TabsTrigger value="levels">Stock Levels</TabsTrigger>
         </TabsList>
 
         <TabsContent value="goods">
@@ -489,7 +369,6 @@ export default function Inventory() {
                       <TableHead>Name</TableHead>
                       <TableHead>SKU</TableHead>
                       <TableHead>Unit</TableHead>
-                      <TableHead>Total Stock</TableHead>
                       <TableHead>Reorder Point</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -497,25 +376,14 @@ export default function Inventory() {
                   </TableHeader>
                   <TableBody>
                     {goodsItems.map((item) => {
-                      const totalQty = getTotalQuantity(item.id);
-                      const lowStock = isLowStock(item);
-                      
                       return (
-                        <TableRow key={item.id} className={lowStock ? 'bg-red-50/50' : ''}>
+                        <TableRow key={item.id}>
                           <TableCell className="font-medium">{item.name}</TableCell>
                           <TableCell>{item.sku}</TableCell>
                           <TableCell>{item.unit}</TableCell>
-                          <TableCell>{totalQty}</TableCell>
                           <TableCell>{item.reorder_point}</TableCell>
                           <TableCell>
-                            {lowStock ? (
-                              <Badge variant="destructive" className="flex items-center gap-1 w-fit">
-                                <AlertTriangle className="w-3 h-3" />
-                                Low Stock
-                              </Badge>
-                            ) : (
-                              <Badge variant="secondary">In Stock</Badge>
-                            )}
+                            <Badge variant="secondary">Active</Badge>
                           </TableCell>
                           <TableCell className="text-right">
                             <Button variant="ghost" size="sm" onClick={() => handleEditItem(item)}>
@@ -582,89 +450,7 @@ export default function Inventory() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="locations">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-primary" />
-                Storage Locations
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? <TableSkeleton /> : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {locations.map((location) => (
-                      <TableRow key={location.id}>
-                        <TableCell className="font-medium">{location.name}</TableCell>
-                        <TableCell>{location.description}</TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" onClick={() => handleEditLocation(location)}>
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
-        <TabsContent value="levels">
-          <Card>
-            <CardHeader>
-              <CardTitle>Stock Levels by Location</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? <TableSkeleton /> : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Unit</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {levels.map((level) => {
-                      const lowStock = level.quantity <= level.inventory_items.reorder_point;
-                      
-                      return (
-                        <TableRow key={level.id} className={lowStock ? 'bg-red-50/50' : ''}>
-                          <TableCell className="font-medium">{level.inventory_items.name}</TableCell>
-                          <TableCell>{level.storage_locations.name}</TableCell>
-                          <TableCell>{level.quantity}</TableCell>
-                          <TableCell>{level.inventory_items.unit}</TableCell>
-                          <TableCell>
-                            {lowStock ? (
-                              <Badge variant="destructive" className="flex items-center gap-1 w-fit">
-                                <AlertTriangle className="w-3 h-3" />
-                                Low Stock
-                              </Badge>
-                            ) : (
-                              <Badge variant="secondary">Normal</Badge>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
     </div>
   );
