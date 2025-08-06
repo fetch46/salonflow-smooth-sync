@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,84 +50,6 @@ const OrganizationSetup = () => {
     industry: '',
   });
 
-  // Mock plans for testing
-  const mockPlans = useMemo(() => [
-    {
-      id: 'mock-starter',
-      name: 'Starter',
-      slug: 'starter',
-      description: 'Perfect for small salons just getting started',
-      price_monthly: 2900,
-      price_yearly: 29000,
-      max_users: 5,
-      max_locations: 1,
-      features: {
-        appointments: true,
-        clients: true,
-        staff: true,
-        services: true,
-        basic_reports: true,
-        inventory: false
-      },
-      is_active: true,
-      sort_order: 1,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    },
-    {
-      id: 'mock-professional',
-      name: 'Professional',
-      slug: 'professional',
-      description: 'For growing salons with multiple staff members',
-      price_monthly: 5900,
-      price_yearly: 59000,
-      max_users: 25,
-      max_locations: 3,
-      features: {
-        appointments: true,
-        clients: true,
-        staff: true,
-        services: true,
-        inventory: true,
-        basic_reports: true,
-        advanced_reports: true,
-        pos: true,
-        accounting: true
-      },
-      is_active: true,
-      sort_order: 2,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    },
-    {
-      id: 'mock-enterprise',
-      name: 'Enterprise',
-      slug: 'enterprise',
-      description: 'For large salon chains with advanced needs',
-      price_monthly: 9900,
-      price_yearly: 99000,
-      max_users: 100,
-      max_locations: 10,
-      features: {
-        appointments: true,
-        clients: true,
-        staff: true,
-        services: true,
-        inventory: true,
-        basic_reports: true,
-        advanced_reports: true,
-        pos: true,
-        accounting: true,
-        api_access: true,
-        white_label: true
-      },
-      is_active: true,
-      sort_order: 3,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-  ], []);
-
   const fetchPlans = useCallback(async () => {
     try {
       console.log('Fetching subscription plans...');
@@ -141,13 +63,14 @@ const OrganizationSetup = () => {
 
       if (error) throw error;
       
-      let plansToUse = data || [];
+      const plansToUse = data || [];
       
-      // If no plans found in database, use mock plans as fallback
       if (plansToUse.length === 0) {
-        console.warn('No plans found in database, using mock data');
-        plansToUse = mockPlans;
-        toast.error('Using demo plans - please run the subscription plans migration');
+        console.warn('No subscription plans found in database');
+        toast.error('No subscription plans available. Please contact support.');
+        setPlans([]);
+        setSelectedPlan('');
+        return;
       }
       
       setPlans(plansToUse);
@@ -160,39 +83,24 @@ const OrganizationSetup = () => {
         setSelectedPlan(professionalPlan.id);
         console.log('Selected professional plan:', professionalPlan.id);
       } else {
-        console.log('Professional plan not found, available plans:', plansToUse.map(p => p.slug));
+        // Select the first available plan if professional is not found
+        const firstPlan = plansToUse[0];
+        if (firstPlan) {
+          setSelectedPlan(firstPlan.id);
+          console.log('Selected first available plan:', firstPlan.slug);
+        }
       }
     } catch (error) {
       console.error('Error fetching plans:', error);
-      console.warn('Database query failed, using mock plans as fallback');
-      setPlans(mockPlans);
-      setSelectedPlan(mockPlans.find(p => p.slug === 'professional')?.id || mockPlans[0]?.id);
-      toast.error('Failed to load subscription plans from database, showing demo plans');
+      toast.error('Failed to load subscription plans. Please try again or contact support.');
+      setPlans([]);
+      setSelectedPlan('');
     }
-  }, [mockPlans]);
+  }, []);
 
   useEffect(() => {
     fetchPlans();
-    
-    // Set up auto-fallback to mock plans if database plans don't load
-    const fallbackTimer = setTimeout(() => {
-      setPlans(currentPlans => {
-        if (currentPlans.length === 0) {
-          console.log('Auto-loading mock plans after 5 seconds');
-          toast.info('📦 Loaded demo plans automatically - you can complete setup normally');
-          // Also select the professional plan
-          const professionalPlan = mockPlans.find(p => p.slug === 'professional');
-          if (professionalPlan) {
-            setSelectedPlan(professionalPlan.id);
-          }
-          return mockPlans;
-        }
-        return currentPlans;
-      });
-    }, 5000); // 5 second delay for auto-fallback
-    
-    return () => clearTimeout(fallbackTimer);
-  }, [fetchPlans, mockPlans]);
+  }, [fetchPlans]);
 
   const generateSlug = (name: string) => {
     return name
@@ -381,76 +289,8 @@ const OrganizationSetup = () => {
     } catch (error: any) {
       console.error('Error creating organization:', error);
       
-      // Try fallback method if the RPC function doesn't exist
-      if (error?.message?.includes('function create_organization_with_user does not exist')) {
-        console.log('Attempting fallback organization creation method...');
-        
-        try {
-          // Fallback: Direct database inserts (may fail due to RLS)
-          const { data: orgData, error: orgError } = await supabase
-            .from('organizations')
-            .insert({
-              name: formData.organizationName,
-              slug: formData.organizationSlug,
-              settings: {
-                description: formData.description,
-                website: formData.website,
-                industry: formData.industry,
-              }
-            })
-            .select()
-            .single();
-
-          if (orgError) throw orgError;
-
-          // Add user to organization
-          const { error: userError } = await supabase
-            .from('organization_users')
-            .insert({
-              organization_id: orgData.id,
-              user_id: user!.id,
-              role: 'owner',
-              is_active: true
-            });
-
-          if (userError) throw userError;
-
-          // Create subscription if plan selected
-          if (selectedPlan) {
-            const trialStart = new Date();
-            const trialEnd = new Date();
-            trialEnd.setDate(trialEnd.getDate() + 14);
-
-            const { error: subError } = await supabase
-              .from('organization_subscriptions')
-              .insert({
-                organization_id: orgData.id,
-                plan_id: selectedPlan,
-                status: 'trial',
-                interval: billingInterval,
-                trial_start: trialStart.toISOString(),
-                trial_end: trialEnd.toISOString()
-              });
-
-            if (subError) {
-              console.warn('Failed to create subscription:', subError);
-              // Don't fail for this
-            }
-          }
-
-          toast.success('Organization created successfully using fallback method!');
-          await refreshOrganizationData();
-          navigate('/dashboard');
-          return;
-
-        } catch (fallbackError) {
-          console.error('Fallback method also failed:', fallbackError);
-          toast.error('Both primary and fallback creation methods failed. Please check database setup.');
-        }
-      } else {
-        // Show the specific error message that was already set above
-        console.error('Organization creation failed with specific error already handled');
-      }
+      // Show the specific error message that was already set above
+      console.error('Organization creation failed with specific error already handled');
     } finally {
       setLoading(false);
     }
@@ -486,22 +326,9 @@ const OrganizationSetup = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
       <div className="w-full max-w-4xl space-y-8">
         {/* Debug Info */}
-        <div className="bg-yellow-100 p-4 rounded-lg text-sm space-y-2">
+        <div className="bg-blue-50 p-4 rounded-lg text-sm space-y-2">
           <div><strong>Debug:</strong> Plans: {plans.length}, User: {user?.email || 'No user'}, Selected: {selectedPlan || 'None'}</div>
           <div className="flex gap-2">
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="sm"
-              onClick={() => {
-                console.log('Loading mock plans manually');
-                setPlans(mockPlans);
-                setSelectedPlan(mockPlans.find(p => p.slug === 'professional')?.id || mockPlans[0]?.id);
-                toast.success('Mock plans loaded');
-              }}
-            >
-              Load Mock Plans
-            </Button>
             <Button 
               type="button" 
               variant="outline" 
@@ -650,43 +477,29 @@ const OrganizationSetup = () => {
                     <div className="h-4 bg-slate-200 rounded w-3/4 mx-auto mb-3"></div>
                     <div className="h-3 bg-slate-200 rounded w-1/2 mx-auto"></div>
                   </div>
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                    <p className="text-amber-800 font-medium">Subscription plans are not loading</p>
-                    <p className="text-sm text-amber-700 mt-1">
-                      This usually means the database hasn't been set up yet.
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p className="text-red-800 font-medium">No subscription plans available</p>
+                    <p className="text-sm text-red-700 mt-1">
+                      Please contact support to set up subscription plans.
                     </p>
                   </div>
                   <div className="space-y-2">
                     <Button 
                       type="button" 
-                      className="bg-blue-600 hover:bg-blue-700 text-white" 
-                      onClick={() => {
-                        console.log('Loading mock plans for immediate setup');
-                        setPlans(mockPlans);
-                        setSelectedPlan(mockPlans.find(p => p.slug === 'professional')?.id || mockPlans[0]?.id);
-                        toast.success('✅ Loaded demo plans - you can now complete setup!');
-                      }}
+                      variant="outline" 
+                      size="sm"
+                      onClick={fetchPlans}
                     >
-                      📦 Load Demo Plans & Continue Setup
+                      🔄 Retry Loading Plans
                     </Button>
-                    <div className="flex gap-2 justify-center">
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        size="sm"
-                        onClick={fetchPlans}
-                      >
-                        🔄 Retry Loading Plans
-                      </Button>
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => window.open('/debug/plans', '_blank')}
-                      >
-                        🔧 Debug Plans
-                      </Button>
-                    </div>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => window.open('/debug/plans', '_blank')}
+                    >
+                      🔧 Debug Plans
+                    </Button>
                   </div>
                 </div>
               )}

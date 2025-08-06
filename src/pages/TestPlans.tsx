@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,84 +14,6 @@ export default function TestPlans() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useSaas();
-
-  // Same mock plans as in OrganizationSetup
-  const mockPlans = useMemo(() => [
-    {
-      id: 'mock-starter',
-      name: 'Starter',
-      slug: 'starter',
-      description: 'Perfect for small salons just getting started',
-      price_monthly: 2900,
-      price_yearly: 29000,
-      max_users: 5,
-      max_locations: 1,
-      features: {
-        appointments: true,
-        clients: true,
-        staff: true,
-        services: true,
-        basic_reports: true,
-        inventory: false
-      },
-      is_active: true,
-      sort_order: 1,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    },
-    {
-      id: 'mock-professional',
-      name: 'Professional',
-      slug: 'professional',
-      description: 'For growing salons with multiple staff members',
-      price_monthly: 5900,
-      price_yearly: 59000,
-      max_users: 25,
-      max_locations: 3,
-      features: {
-        appointments: true,
-        clients: true,
-        staff: true,
-        services: true,
-        inventory: true,
-        basic_reports: true,
-        advanced_reports: true,
-        pos: true,
-        accounting: true
-      },
-      is_active: true,
-      sort_order: 2,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    },
-    {
-      id: 'mock-enterprise',
-      name: 'Enterprise',
-      slug: 'enterprise',
-      description: 'For large salon chains with advanced needs',
-      price_monthly: 9900,
-      price_yearly: 99000,
-      max_users: 100,
-      max_locations: 10,
-      features: {
-        appointments: true,
-        clients: true,
-        staff: true,
-        services: true,
-        inventory: true,
-        basic_reports: true,
-        advanced_reports: true,
-        pos: true,
-        accounting: true,
-        api_access: true,
-        white_label: true
-      },
-      is_active: true,
-      sort_order: 3,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-  ], []);
 
   const fetchPlans = useCallback(async () => {
     try {
@@ -112,9 +34,8 @@ export default function TestPlans() {
       setPlans(data || []);
       
       if (!data || data.length === 0) {
-        console.warn('TestPlans: No plans found, using mock data');
-        setPlans(mockPlans);
-        toast.error('No plans in database, showing mock data');
+        console.warn('TestPlans: No plans found in database');
+        toast.error('No subscription plans available in database');
       } else {
         toast.success(`Loaded ${data.length} plans from database`);
       }
@@ -122,12 +43,12 @@ export default function TestPlans() {
     } catch (err: any) {
       console.error('TestPlans: Error fetching plans:', err);
       setError(err.message);
-      setPlans(mockPlans);
-      toast.error('Database error, using mock data');
+      setPlans([]);
+      toast.error('Failed to load subscription plans from database');
     } finally {
       setLoading(false);
     }
-  }, [mockPlans]);
+  }, []);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -177,15 +98,6 @@ export default function TestPlans() {
             <div className="flex gap-2">
               <Button onClick={fetchPlans} disabled={loading}>
                 {loading ? 'Loading...' : 'Fetch from Database'}
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setPlans(mockPlans);
-                  toast.success('Loaded mock plans');
-                }}
-              >
-                Load Mock Plans
               </Button>
               <Button 
                 variant="outline" 
