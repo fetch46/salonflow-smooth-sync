@@ -42,6 +42,7 @@ import {
   MessageSquare
 } from "lucide-react";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
+import { useSaas } from "@/contexts/SaasContext";
 
 // Mock data - in a real app, this would come from your backend
 const generateMockData = () => {
@@ -81,8 +82,19 @@ const Dashboard = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [timeRange, setTimeRange] = useState("today");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const { user, organization, subscriptionPlan } = useSaas();
   
   const mockData = useMemo(() => generateMockData(), []);
+
+  // Add debugging
+  useEffect(() => {
+    console.log('Dashboard mounted');
+    console.log('User:', user);
+    console.log('Organization:', organization);
+    console.log('Subscription Plan:', subscriptionPlan);
+  }, [user, organization, subscriptionPlan]);
 
   const todayStats = [
     {
@@ -334,8 +346,32 @@ const Dashboard = () => {
     setLoading(false);
   };
 
+  // Error boundary
+  if (error) {
+    return (
+      <div className="flex-1 space-y-6 p-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen">
+        <div className="text-center space-y-4">
+          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto" />
+          <h2 className="text-xl font-semibold text-red-700">Dashboard Error</h2>
+          <p className="text-red-600">{error}</p>
+          <Button onClick={() => setError(null)}>Try Again</Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 space-y-6 p-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen">
+      {/* Debug Info */}
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+        <h3 className="font-semibold text-yellow-800 mb-2">Debug Info:</h3>
+        <div className="text-sm text-yellow-700 space-y-1">
+          <div>User: {user?.email || 'Not logged in'}</div>
+          <div>Organization: {organization?.name || 'None'}</div>
+          <div>Plan: {subscriptionPlan?.name || 'None'}</div>
+        </div>
+      </div>
+
       {/* Modern Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
         <div className="space-y-1">
