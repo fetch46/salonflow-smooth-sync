@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           appointment_date: string
           appointment_time: string
+          client_id: string | null
           created_at: string
           customer_email: string | null
           customer_name: string
@@ -26,14 +27,17 @@ export type Database = {
           id: string
           notes: string | null
           price: number | null
+          service_id: string | null
           service_name: string
           staff_id: string | null
           status: string | null
+          total_amount: number | null
           updated_at: string
         }
         Insert: {
           appointment_date: string
           appointment_time: string
+          client_id?: string | null
           created_at?: string
           customer_email?: string | null
           customer_name: string
@@ -42,14 +46,17 @@ export type Database = {
           id?: string
           notes?: string | null
           price?: number | null
+          service_id?: string | null
           service_name: string
           staff_id?: string | null
           status?: string | null
+          total_amount?: number | null
           updated_at?: string
         }
         Update: {
           appointment_date?: string
           appointment_time?: string
+          client_id?: string | null
           created_at?: string
           customer_email?: string | null
           customer_name?: string
@@ -58,12 +65,28 @@ export type Database = {
           id?: string
           notes?: string | null
           price?: number | null
+          service_id?: string | null
           service_name?: string
           staff_id?: string | null
           status?: string | null
+          total_amount?: number | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "appointments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "appointments_staff_id_fkey"
             columns: ["staff_id"]
@@ -76,38 +99,61 @@ export type Database = {
       clients: {
         Row: {
           address: string | null
+          client_status: string | null
           created_at: string
           email: string | null
           full_name: string
           id: string
           is_active: boolean | null
+          last_visit_date: string | null
           notes: string | null
           phone: string | null
+          preferred_technician_id: string | null
+          total_spent: number | null
+          total_visits: number | null
           updated_at: string
         }
         Insert: {
           address?: string | null
+          client_status?: string | null
           created_at?: string
           email?: string | null
           full_name: string
           id?: string
           is_active?: boolean | null
+          last_visit_date?: string | null
           notes?: string | null
           phone?: string | null
+          preferred_technician_id?: string | null
+          total_spent?: number | null
+          total_visits?: number | null
           updated_at?: string
         }
         Update: {
           address?: string | null
+          client_status?: string | null
           created_at?: string
           email?: string | null
           full_name?: string
           id?: string
           is_active?: boolean | null
+          last_visit_date?: string | null
           notes?: string | null
           phone?: string | null
+          preferred_technician_id?: string | null
+          total_spent?: number | null
+          total_visits?: number | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clients_preferred_technician_id_fkey"
+            columns: ["preferred_technician_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       expenses: {
         Row: {
@@ -159,36 +205,45 @@ export type Database = {
       }
       inventory_items: {
         Row: {
+          category: string | null
+          cost_price: number | null
           created_at: string
           description: string | null
           id: string
           is_active: boolean | null
           name: string
           reorder_point: number | null
+          selling_price: number | null
           sku: string | null
           type: string
           unit: string | null
           updated_at: string
         }
         Insert: {
+          category?: string | null
+          cost_price?: number | null
           created_at?: string
           description?: string | null
           id?: string
           is_active?: boolean | null
           name: string
           reorder_point?: number | null
+          selling_price?: number | null
           sku?: string | null
           type: string
           unit?: string | null
           updated_at?: string
         }
         Update: {
+          category?: string | null
+          cost_price?: number | null
           created_at?: string
           description?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
           reorder_point?: number | null
+          selling_price?: number | null
           sku?: string | null
           type?: string
           unit?: string | null
@@ -332,6 +387,54 @@ export type Database = {
           },
         ]
       }
+      job_card_products: {
+        Row: {
+          created_at: string
+          id: string
+          inventory_item_id: string
+          job_card_id: string
+          quantity_used: number
+          total_cost: number
+          unit_cost: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inventory_item_id: string
+          job_card_id: string
+          quantity_used?: number
+          total_cost?: number
+          unit_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inventory_item_id?: string
+          job_card_id?: string
+          quantity_used?: number
+          total_cost?: number
+          unit_cost?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_card_products_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_card_products_job_card_id_fkey"
+            columns: ["job_card_id"]
+            isOneToOne: false
+            referencedRelation: "job_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_cards: {
         Row: {
           appointment_id: string | null
@@ -354,7 +457,7 @@ export type Database = {
           created_at?: string
           end_time?: string | null
           id?: string
-          job_number: string
+          job_number?: string
           notes?: string | null
           service_ids?: string[] | null
           staff_id?: string | null
@@ -549,6 +652,7 @@ export type Database = {
       service_kits: {
         Row: {
           created_at: string
+          default_quantity: number | null
           good_id: string
           id: string
           quantity: number
@@ -557,6 +661,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          default_quantity?: number | null
           good_id: string
           id?: string
           quantity?: number
@@ -565,6 +670,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          default_quantity?: number | null
           good_id?: string
           id?: string
           quantity?: number
@@ -689,7 +795,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_job_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       booking_status: "pending" | "confirmed" | "completed" | "cancelled"
