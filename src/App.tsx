@@ -15,6 +15,10 @@ import JobCards from "@/pages/JobCards";
 import CreateJobCard from "@/pages/CreateJobCard";
 import Expenses from "@/pages/Expenses";
 import Purchases from "@/pages/Purchases";
+import Suppliers from "@/pages/Suppliers";
+import Accounts from "@/pages/Accounts";
+import POS from "@/pages/POS";
+import InventoryAdjustments from "@/pages/InventoryAdjustments";
 import ClientProfile from "@/pages/ClientProfile";
 import ServiceView from "@/pages/ServiceView";
 import { Toaster } from "@/components/ui/sonner";
@@ -137,6 +141,46 @@ function App() {
           element={
             <DashboardLayout>
               <Purchases />
+            </DashboardLayout>
+          } 
+        />
+
+        {/* Suppliers page with layout */}
+        <Route 
+          path="/suppliers" 
+          element={
+            <DashboardLayout>
+              <Suppliers />
+            </DashboardLayout>
+          } 
+        />
+
+        {/* Accounts page with layout */}
+        <Route 
+          path="/accounts" 
+          element={
+            <DashboardLayout>
+              <Accounts />
+            </DashboardLayout>
+          } 
+        />
+
+        {/* POS page with layout */}
+        <Route 
+          path="/pos" 
+          element={
+            <DashboardLayout>
+              <POS />
+            </DashboardLayout>
+          } 
+        />
+
+        {/* Inventory Adjustments page with layout */}
+        <Route 
+          path="/inventory-adjustments" 
+          element={
+            <DashboardLayout>
+              <InventoryAdjustments />
             </DashboardLayout>
           } 
         />

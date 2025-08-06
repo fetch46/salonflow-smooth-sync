@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
+import { useState } from "react";
 import {
   Calendar,
   Users,
@@ -10,7 +11,13 @@ import {
   Home,
   UserCheck,
   Receipt,
-  Scissors
+  Scissors,
+  ChevronDown,
+  ChevronRight,
+  Building,
+  ShoppingCart,
+  Calculator,
+  TrendingUp
 } from "lucide-react";
 
 import {
@@ -22,6 +29,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -32,11 +42,29 @@ const menuItems = [
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Staff", url: "/staff", icon: UserCheck },
   { title: "Services", url: "/services", icon: Scissors },
-  { title: "Inventory", url: "/inventory", icon: Package },
+  { 
+    title: "Inventory", 
+    url: "/inventory", 
+    icon: Package,
+    subItems: [
+      { title: "Inventory", url: "/inventory", icon: Package },
+      { title: "Adjustments", url: "/inventory-adjustments", icon: TrendingUp }
+    ]
+  },
   { title: "Job Cards", url: "/job-cards", icon: ClipboardList },
   { title: "Invoices", url: "/invoices", icon: Receipt },
   { title: "Expenses", url: "/expenses", icon: CreditCard },
-  { title: "Purchases", url: "/purchases", icon: Package },
+  { 
+    title: "Purchases", 
+    url: "/purchases", 
+    icon: ShoppingCart,
+    subItems: [
+      { title: "Purchases", url: "/purchases", icon: ShoppingCart },
+      { title: "Suppliers", url: "/suppliers", icon: Building }
+    ]
+  },
+  { title: "Accounts", url: "/accounts", icon: Calculator },
+  { title: "POS", url: "/pos", icon: CreditCard },
   { title: "Reports", url: "/reports", icon: BarChart3 },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
@@ -46,6 +74,15 @@ export function AppSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
   const collapsed = state === "collapsed";
+  const [openSubmenus, setOpenSubmenus] = useState<string[]>([]);
+
+  const toggleSubmenu = (title: string) => {
+    setOpenSubmenus(prev => 
+      prev.includes(title) 
+        ? prev.filter(item => item !== title)
+        : [...prev, title]
+    );
+  };
 
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     isActive
@@ -73,12 +110,45 @@ export function AppSidebar() {
             <SidebarMenu>
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} className={getNavCls} end>
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
+                  {item.subItems ? (
+                    <>
+                      <SidebarMenuButton
+                        onClick={() => toggleSubmenu(item.title)}
+                        className="w-full justify-between"
+                      >
+                        <div className="flex items-center">
+                          <item.icon className="mr-2 h-4 w-4" />
+                          {!collapsed && <span>{item.title}</span>}
+                        </div>
+                        {!collapsed && (
+                          openSubmenus.includes(item.title) 
+                            ? <ChevronDown className="h-4 w-4" />
+                            : <ChevronRight className="h-4 w-4" />
+                        )}
+                      </SidebarMenuButton>
+                      {!collapsed && openSubmenus.includes(item.title) && (
+                        <SidebarMenuSub>
+                          {item.subItems.map((subItem) => (
+                            <SidebarMenuSubItem key={subItem.title}>
+                              <SidebarMenuSubButton asChild>
+                                <NavLink to={subItem.url} className={getNavCls} end>
+                                  <subItem.icon className="mr-2 h-4 w-4" />
+                                  <span>{subItem.title}</span>
+                                </NavLink>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      )}
+                    </>
+                  ) : (
+                    <SidebarMenuButton asChild>
+                      <NavLink to={item.url} className={getNavCls} end>
+                        <item.icon className="mr-2 h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  )}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>

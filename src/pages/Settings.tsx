@@ -1,0 +1,667 @@
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Building, Users, CreditCard, MessageSquare, MapPin, Plus, Edit2, Trash2, Crown, Shield, User } from "lucide-react";
+import { toast } from "sonner";
+
+export default function Settings() {
+  const [activeTab, setActiveTab] = useState("company");
+
+  // Company Settings State
+  const [companyData, setCompanyData] = useState({
+    name: "SalonSync Demo",
+    address: "123 Beauty Street",
+    city: "New York",
+    state: "NY",
+    zip: "10001",
+    country: "US",
+    phone: "+1 (555) 123-4567",
+    email: "info@salonsync.demo",
+    website: "www.salonsync.demo",
+    tax_id: "123-45-6789",
+    logo_url: "",
+    timezone: "America/New_York",
+    currency: "USD",
+    language: "en",
+  });
+
+  // Users & Roles State
+  const [users] = useState([
+    { id: "1", name: "Admin User", email: "admin@salon.com", role: "Administrator", status: "Active", last_login: "2024-01-15" },
+    { id: "2", name: "Sarah Johnson", email: "sarah@salon.com", role: "Manager", status: "Active", last_login: "2024-01-14" },
+    { id: "3", name: "Mike Davis", email: "mike@salon.com", role: "Staff", status: "Active", last_login: "2024-01-13" },
+  ]);
+
+  const [roles] = useState([
+    { id: "1", name: "Administrator", description: "Full access to all features", permissions: ["all"], users_count: 1 },
+    { id: "2", name: "Manager", description: "Manage operations and staff", permissions: ["manage_staff", "view_reports", "manage_inventory"], users_count: 1 },
+    { id: "3", name: "Staff", description: "Basic staff access", permissions: ["manage_appointments", "view_clients"], users_count: 3 },
+    { id: "4", name: "Receptionist", description: "Front desk operations", permissions: ["manage_appointments", "manage_clients"], users_count: 2 },
+  ]);
+
+  // Subscription State
+  const [subscription] = useState({
+    plan: "Professional",
+    status: "Active",
+    billing_cycle: "Monthly",
+    amount: 49.99,
+    next_billing: "2024-02-15",
+    features: ["Unlimited Users", "Advanced Reports", "Email Support", "Mobile App", "API Access"],
+  });
+
+  // Communications State
+  const [communicationSettings, setCommunicationSettings] = useState({
+    email_notifications: true,
+    sms_notifications: true,
+    appointment_reminders: true,
+    promotional_emails: false,
+    staff_notifications: true,
+    email_signature: "Best regards,\nSalonSync Team",
+    sms_provider: "twilio",
+    smtp_server: "smtp.gmail.com",
+    smtp_port: "587",
+    smtp_username: "",
+    smtp_password: "",
+  });
+
+  // Locations State
+  const [locations] = useState([
+    { id: "1", name: "Main Location", address: "123 Beauty Street, New York, NY 10001", phone: "+1 (555) 123-4567", manager: "Sarah Johnson", status: "Active" },
+    { id: "2", name: "Downtown Branch", address: "456 Style Avenue, New York, NY 10002", phone: "+1 (555) 234-5678", manager: "Mike Davis", status: "Active" },
+  ]);
+
+  const handleCompanySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Here you would save to Supabase
+    toast.success("Company settings updated successfully");
+  };
+
+  const handleCommunicationSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Here you would save to Supabase
+    toast.success("Communication settings updated successfully");
+  };
+
+  const getRoleIcon = (roleName: string) => {
+    switch (roleName) {
+      case "Administrator": return <Crown className="w-4 h-4 text-yellow-500" />;
+      case "Manager": return <Shield className="w-4 h-4 text-blue-500" />;
+      default: return <User className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    return (
+      <Badge variant={status === "Active" ? "default" : "secondary"}>
+        {status}
+      </Badge>
+    );
+  };
+
+  return (
+    <div className="flex-1 space-y-6 p-8 pt-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+          Settings
+        </h1>
+        <p className="text-muted-foreground">
+          Manage your salon's configuration and preferences
+        </p>
+      </div>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="company" className="flex items-center gap-2">
+            <Building className="w-4 h-4" />
+            Company
+          </TabsTrigger>
+          <TabsTrigger value="users" className="flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            Users & Roles
+          </TabsTrigger>
+          <TabsTrigger value="subscription" className="flex items-center gap-2">
+            <CreditCard className="w-4 h-4" />
+            Subscription
+          </TabsTrigger>
+          <TabsTrigger value="communications" className="flex items-center gap-2">
+            <MessageSquare className="w-4 h-4" />
+            Communications
+          </TabsTrigger>
+          <TabsTrigger value="locations" className="flex items-center gap-2">
+            <MapPin className="w-4 h-4" />
+            Locations
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Company Settings */}
+        <TabsContent value="company">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building className="h-5 w-5 text-pink-600" />
+                Company Information
+              </CardTitle>
+              <CardDescription>
+                Update your business details and preferences
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleCompanySubmit} className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="company_name">Company Name *</Label>
+                    <Input
+                      id="company_name"
+                      value={companyData.name}
+                      onChange={(e) => setCompanyData({ ...companyData, name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={companyData.email}
+                      onChange={(e) => setCompanyData({ ...companyData, email: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input
+                      id="phone"
+                      value={companyData.phone}
+                      onChange={(e) => setCompanyData({ ...companyData, phone: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="website">Website</Label>
+                    <Input
+                      id="website"
+                      value={companyData.website}
+                      onChange={(e) => setCompanyData({ ...companyData, website: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="address">Address</Label>
+                  <Input
+                    id="address"
+                    value={companyData.address}
+                    onChange={(e) => setCompanyData({ ...companyData, address: e.target.value })}
+                  />
+                </div>
+
+                <div className="grid grid-cols-4 gap-4">
+                  <div>
+                    <Label htmlFor="city">City</Label>
+                    <Input
+                      id="city"
+                      value={companyData.city}
+                      onChange={(e) => setCompanyData({ ...companyData, city: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="state">State</Label>
+                    <Input
+                      id="state"
+                      value={companyData.state}
+                      onChange={(e) => setCompanyData({ ...companyData, state: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="zip">ZIP Code</Label>
+                    <Input
+                      id="zip"
+                      value={companyData.zip}
+                      onChange={(e) => setCompanyData({ ...companyData, zip: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="country">Country</Label>
+                    <Select value={companyData.country} onValueChange={(value) => setCompanyData({ ...companyData, country: value })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="US">United States</SelectItem>
+                        <SelectItem value="CA">Canada</SelectItem>
+                        <SelectItem value="UK">United Kingdom</SelectItem>
+                        <SelectItem value="AU">Australia</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="tax_id">Tax ID</Label>
+                    <Input
+                      id="tax_id"
+                      value={companyData.tax_id}
+                      onChange={(e) => setCompanyData({ ...companyData, tax_id: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="timezone">Timezone</Label>
+                    <Select value={companyData.timezone} onValueChange={(value) => setCompanyData({ ...companyData, timezone: value })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="America/New_York">Eastern Time</SelectItem>
+                        <SelectItem value="America/Chicago">Central Time</SelectItem>
+                        <SelectItem value="America/Denver">Mountain Time</SelectItem>
+                        <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="currency">Currency</Label>
+                    <Select value={companyData.currency} onValueChange={(value) => setCompanyData({ ...companyData, currency: value })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="USD">USD ($)</SelectItem>
+                        <SelectItem value="CAD">CAD ($)</SelectItem>
+                        <SelectItem value="EUR">EUR (€)</SelectItem>
+                        <SelectItem value="GBP">GBP (£)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="logo_url">Logo URL</Label>
+                  <Input
+                    id="logo_url"
+                    value={companyData.logo_url}
+                    onChange={(e) => setCompanyData({ ...companyData, logo_url: e.target.value })}
+                    placeholder="https://example.com/logo.png"
+                  />
+                </div>
+
+                <div className="flex justify-end">
+                  <Button type="submit" className="bg-gradient-to-r from-pink-500 to-purple-600">
+                    Save Company Settings
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Users & Roles */}
+        <TabsContent value="users" className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Users */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-pink-600" />
+                    Users
+                  </span>
+                  <Button size="sm" className="bg-gradient-to-r from-pink-500 to-purple-600">
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add User
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {users.map((user) => (
+                    <div key={user.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                          {user.name.split(' ').map(n => n[0]).join('')}
+                        </div>
+                        <div>
+                          <div className="font-medium">{user.name}</div>
+                          <div className="text-sm text-muted-foreground">{user.email}</div>
+                          <div className="flex items-center gap-2 mt-1">
+                            {getRoleIcon(user.role)}
+                            <span className="text-sm">{user.role}</span>
+                            {getStatusBadge(user.status)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm">
+                          <Edit2 className="w-3 h-3" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-destructive">
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Roles */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-pink-600" />
+                    Roles
+                  </span>
+                  <Button size="sm" className="bg-gradient-to-r from-pink-500 to-purple-600">
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Role
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {roles.map((role) => (
+                    <div key={role.id} className="p-3 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          {getRoleIcon(role.name)}
+                          <span className="font-medium">{role.name}</span>
+                          <Badge variant="outline">{role.users_count} users</Badge>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm">
+                            <Edit2 className="w-3 h-3" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="text-destructive">
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">{role.description}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {role.permissions.map((permission, index) => (
+                          <Badge key={index} variant="secondary" className="text-xs">
+                            {permission.replace('_', ' ')}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Subscription */}
+        <TabsContent value="subscription">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-pink-600" />
+                Subscription Management
+              </CardTitle>
+              <CardDescription>
+                Manage your subscription plan and billing
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Current Plan */}
+              <div className="p-6 border rounded-lg bg-gradient-to-r from-pink-50 to-purple-50">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-xl font-semibold">{subscription.plan} Plan</h3>
+                    <p className="text-muted-foreground">
+                      ${subscription.amount} / {subscription.billing_cycle.toLowerCase()}
+                    </p>
+                  </div>
+                  <Badge className="bg-green-100 text-green-800">
+                    {subscription.status}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Next billing date:</span>
+                    <div className="font-medium">{subscription.next_billing}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Billing cycle:</span>
+                    <div className="font-medium">{subscription.billing_cycle}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Features */}
+              <div>
+                <h4 className="font-semibold mb-3">Current Plan Features</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {subscription.features.map((feature, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-sm">{feature}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <Button className="bg-gradient-to-r from-pink-500 to-purple-600">
+                  Upgrade Plan
+                </Button>
+                <Button variant="outline">
+                  View Billing History
+                </Button>
+                <Button variant="outline">
+                  Update Payment Method
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Communications */}
+        <TabsContent value="communications">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-pink-600" />
+                Communication Settings
+              </CardTitle>
+              <CardDescription>
+                Configure notifications and communication preferences
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleCommunicationSubmit} className="space-y-6">
+                {/* Notification Preferences */}
+                <div>
+                  <h4 className="font-semibold mb-4">Notification Preferences</h4>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="email_notifications">Email Notifications</Label>
+                        <p className="text-sm text-muted-foreground">Receive notifications via email</p>
+                      </div>
+                      <Switch
+                        id="email_notifications"
+                        checked={communicationSettings.email_notifications}
+                        onCheckedChange={(checked) => 
+                          setCommunicationSettings({ ...communicationSettings, email_notifications: checked })
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="sms_notifications">SMS Notifications</Label>
+                        <p className="text-sm text-muted-foreground">Receive notifications via SMS</p>
+                      </div>
+                      <Switch
+                        id="sms_notifications"
+                        checked={communicationSettings.sms_notifications}
+                        onCheckedChange={(checked) => 
+                          setCommunicationSettings({ ...communicationSettings, sms_notifications: checked })
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="appointment_reminders">Appointment Reminders</Label>
+                        <p className="text-sm text-muted-foreground">Send automatic appointment reminders</p>
+                      </div>
+                      <Switch
+                        id="appointment_reminders"
+                        checked={communicationSettings.appointment_reminders}
+                        onCheckedChange={(checked) => 
+                          setCommunicationSettings({ ...communicationSettings, appointment_reminders: checked })
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="staff_notifications">Staff Notifications</Label>
+                        <p className="text-sm text-muted-foreground">Notify staff about schedule changes</p>
+                      </div>
+                      <Switch
+                        id="staff_notifications"
+                        checked={communicationSettings.staff_notifications}
+                        onCheckedChange={(checked) => 
+                          setCommunicationSettings({ ...communicationSettings, staff_notifications: checked })
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Email Settings */}
+                <div>
+                  <h4 className="font-semibold mb-4">Email Settings</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="smtp_server">SMTP Server</Label>
+                      <Input
+                        id="smtp_server"
+                        value={communicationSettings.smtp_server}
+                        onChange={(e) => setCommunicationSettings({ ...communicationSettings, smtp_server: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="smtp_port">SMTP Port</Label>
+                      <Input
+                        id="smtp_port"
+                        value={communicationSettings.smtp_port}
+                        onChange={(e) => setCommunicationSettings({ ...communicationSettings, smtp_port: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="smtp_username">SMTP Username</Label>
+                      <Input
+                        id="smtp_username"
+                        value={communicationSettings.smtp_username}
+                        onChange={(e) => setCommunicationSettings({ ...communicationSettings, smtp_username: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="smtp_password">SMTP Password</Label>
+                      <Input
+                        id="smtp_password"
+                        type="password"
+                        value={communicationSettings.smtp_password}
+                        onChange={(e) => setCommunicationSettings({ ...communicationSettings, smtp_password: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Email Signature */}
+                <div>
+                  <Label htmlFor="email_signature">Email Signature</Label>
+                  <Textarea
+                    id="email_signature"
+                    value={communicationSettings.email_signature}
+                    onChange={(e) => setCommunicationSettings({ ...communicationSettings, email_signature: e.target.value })}
+                    rows={4}
+                  />
+                </div>
+
+                <div className="flex justify-end">
+                  <Button type="submit" className="bg-gradient-to-r from-pink-500 to-purple-600">
+                    Save Communication Settings
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Locations */}
+        <TabsContent value="locations">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-pink-600" />
+                  Business Locations
+                </span>
+                <Button className="bg-gradient-to-r from-pink-500 to-purple-600">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Location
+                </Button>
+              </CardTitle>
+              <CardDescription>
+                Manage your business locations and branches
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Location Name</TableHead>
+                    <TableHead>Address</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Manager</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {locations.map((location) => (
+                    <TableRow key={location.id}>
+                      <TableCell className="font-medium">{location.name}</TableCell>
+                      <TableCell>{location.address}</TableCell>
+                      <TableCell>{location.phone}</TableCell>
+                      <TableCell>{location.manager}</TableCell>
+                      <TableCell>{getStatusBadge(location.status)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="sm">
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="text-destructive">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
