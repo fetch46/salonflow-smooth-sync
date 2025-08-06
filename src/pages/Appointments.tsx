@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { CalendarDays, Clock, Phone, Mail, User, Edit2, Trash2, Plus } from "lucide-react";
+import { CalendarDays, Clock, Phone, Mail, User, Edit2, Trash2, Plus, MoreHorizontal, Eye, FilePlus } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface Appointment {
   id: string;
@@ -101,7 +102,6 @@ export default function Appointments() {
   const handleSelectChange = (name: string, value: string) => {
     setForm(prev => ({ ...prev, [name]: value }));
     
-    // Auto-fill service details when service is selected
     if (name === "service_name") {
       const selectedService = services.find(s => s.name === value);
       if (selectedService) {
@@ -196,6 +196,18 @@ export default function Appointments() {
       }
     }
   };
+  
+  const handleView = (appointment: Appointment) => {
+    // Implement logic to view appointment details, perhaps in a read-only modal
+    console.log("Viewing appointment:", appointment);
+    toast("View Appointment functionality goes here.");
+  };
+
+  const handleCreateJobcard = (appointment: Appointment) => {
+    // Implement logic to create a jobcard from the appointment
+    console.log("Creating jobcard for appointment:", appointment);
+    toast("Create Jobcard functionality goes here.");
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -222,7 +234,6 @@ export default function Appointments() {
 
   return (
     <div className="p-6 mx-auto space-y-6">
-      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Appointments</h1>
@@ -240,7 +251,6 @@ export default function Appointments() {
         </Button>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -276,7 +286,6 @@ export default function Appointments() {
         </Card>
       </div>
 
-      {/* Appointments List */}
       <Card>
         <CardHeader>
           <CardTitle>All Appointments</CardTitle>
@@ -365,22 +374,31 @@ export default function Appointments() {
                         )}
                       </div>
 
-                      <div className="flex gap-2 ml-4">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(appointment)}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDelete(appointment.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleView(appointment)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Appointment
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleCreateJobcard(appointment)}>
+                            <FilePlus className="mr-2 h-4 w-4" />
+                            Create Jobcard
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEdit(appointment)}>
+                            <Edit2 className="mr-2 h-4 w-4" />
+                            Edit Appointment
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDelete(appointment.id)}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Appointment
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 );
@@ -390,7 +408,6 @@ export default function Appointments() {
         </CardContent>
       </Card>
 
-      {/* Appointment Form Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
