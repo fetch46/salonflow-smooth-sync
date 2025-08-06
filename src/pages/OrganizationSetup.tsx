@@ -52,6 +52,25 @@ const OrganizationSetup = () => {
 
   useEffect(() => {
     fetchPlans();
+    
+    // Set up auto-fallback to mock plans if database plans don't load
+    const fallbackTimer = setTimeout(() => {
+      setPlans(currentPlans => {
+        if (currentPlans.length === 0) {
+          console.log('Auto-loading mock plans after 5 seconds');
+          toast.info('📦 Loaded demo plans automatically - you can complete setup normally');
+          // Also select the professional plan
+          const professionalPlan = mockPlans.find(p => p.slug === 'professional');
+          if (professionalPlan) {
+            setSelectedPlan(professionalPlan.id);
+          }
+          return mockPlans;
+        }
+        return currentPlans;
+      });
+    }, 5000); // 5 second delay for auto-fallback
+    
+    return () => clearTimeout(fallbackTimer);
   }, []);
 
   // Mock plans for testing
@@ -200,6 +219,63 @@ const OrganizationSetup = () => {
     }).format(price / 100);
   };
 
+  const testDatabaseConnection = async () => {
+    console.log('🔍 Testing database connection...');
+    
+    try {
+      // Test 1: Check if user is authenticated
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      console.log('✅ User authenticated:', currentUser?.email);
+      
+      // Test 2: Check if we can read subscription plans
+      const { data: plans, error: plansError } = await supabase
+        .from('subscription_plans')
+        .select('count')
+        .limit(1);
+      
+      if (plansError) {
+        console.error('❌ Cannot read subscription_plans:', plansError);
+      } else {
+        console.log('✅ Can read subscription_plans');
+      }
+      
+      // Test 3: Check if RPC function exists
+      try {
+        const { error: rpcError } = await supabase.rpc('create_organization_with_user', {
+          org_name: 'test-connection',
+          org_slug: 'test-connection-slug',
+          org_settings: {},
+          plan_id: null
+        });
+        
+        // We expect this to fail with a validation error, not a "function doesn't exist" error
+        if (rpcError?.message?.includes('function create_organization_with_user does not exist')) {
+          console.error('❌ RPC function create_organization_with_user does not exist');
+          toast.error('Database setup incomplete - missing organization creation function');
+        } else {
+          console.log('✅ RPC function exists (even if call failed due to validation)');
+        }
+      } catch (rpcError) {
+        console.error('❌ RPC test failed:', rpcError);
+      }
+      
+      // Test 4: Check if we can read organizations (for RLS)
+      const { data: orgs, error: orgsError } = await supabase
+        .from('organizations')
+        .select('count')
+        .limit(1);
+      
+      if (orgsError) {
+        console.error('❌ Cannot read organizations:', orgsError);
+      } else {
+        console.log('✅ Can read organizations');
+      }
+      
+    } catch (error) {
+      console.error('❌ Database connection test failed:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -217,6 +293,11 @@ const OrganizationSetup = () => {
 
     try {
       console.log('Creating organization using safe function...');
+      console.log('Form data:', {
+        org_name: formData.organizationName,
+        org_slug: formData.organizationSlug,
+        plan_id: selectedPlan
+      });
       
       // Use the new safe function to create organization with proper RLS handling
       const { data: orgId, error: orgError } = await supabase.rpc('create_organization_with_user', {
@@ -232,7 +313,26 @@ const OrganizationSetup = () => {
 
       if (orgError) {
         console.error('RPC error:', orgError);
+        
+        // Provide specific error messages
+        if (orgError.message?.includes('function create_organization_with_user does not exist')) {
+          toast.error('Database setup incomplete. Please run the latest migrations.');
+          console.error('Missing function: create_organization_with_user');
+        } else if (orgError.message?.includes('duplicate key')) {
+          toast.error('Organization name already exists. Please choose a different name.');
+        } else if (orgError.message?.includes('permission denied')) {
+          toast.error('Permission denied. Please check your account settings.');
+        } else {
+          toast.error(`Database error: ${orgError.message}`);
+        }
+        
         throw orgError;
+      }
+
+      if (!orgId) {
+        console.error('No organization ID returned from function');
+        toast.error('Organization creation failed - no ID returned');
+        throw new Error('No organization ID returned');
       }
 
       console.log('Organization created with ID:', orgId);
@@ -278,9 +378,79 @@ const OrganizationSetup = () => {
       await refreshOrganizationData();
       navigate('/dashboard');
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating organization:', error);
-      toast.error('Failed to create organization. Please try again.');
+      
+      // Try fallback method if the RPC function doesn't exist
+      if (error?.message?.includes('function create_organization_with_user does not exist')) {
+        console.log('Attempting fallback organization creation method...');
+        
+        try {
+          // Fallback: Direct database inserts (may fail due to RLS)
+          const { data: orgData, error: orgError } = await supabase
+            .from('organizations')
+            .insert({
+              name: formData.organizationName,
+              slug: formData.organizationSlug,
+              settings: {
+                description: formData.description,
+                website: formData.website,
+                industry: formData.industry,
+              }
+            })
+            .select()
+            .single();
+
+          if (orgError) throw orgError;
+
+          // Add user to organization
+          const { error: userError } = await supabase
+            .from('organization_users')
+            .insert({
+              organization_id: orgData.id,
+              user_id: user!.id,
+              role: 'owner',
+              is_active: true
+            });
+
+          if (userError) throw userError;
+
+          // Create subscription if plan selected
+          if (selectedPlan) {
+            const trialStart = new Date();
+            const trialEnd = new Date();
+            trialEnd.setDate(trialEnd.getDate() + 14);
+
+            const { error: subError } = await supabase
+              .from('organization_subscriptions')
+              .insert({
+                organization_id: orgData.id,
+                plan_id: selectedPlan,
+                status: 'trial',
+                interval: billingInterval,
+                trial_start: trialStart.toISOString(),
+                trial_end: trialEnd.toISOString()
+              });
+
+            if (subError) {
+              console.warn('Failed to create subscription:', subError);
+              // Don't fail for this
+            }
+          }
+
+          toast.success('Organization created successfully using fallback method!');
+          await refreshOrganizationData();
+          navigate('/dashboard');
+          return;
+
+        } catch (fallbackError) {
+          console.error('Fallback method also failed:', fallbackError);
+          toast.error('Both primary and fallback creation methods failed. Please check database setup.');
+        }
+      } else {
+        // Show the specific error message that was already set above
+        console.error('Organization creation failed with specific error already handled');
+      }
     } finally {
       setLoading(false);
     }
@@ -342,6 +512,15 @@ const OrganizationSetup = () => {
               }}
             >
               Refetch Plans
+            </Button>
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm"
+              onClick={testDatabaseConnection}
+              className="text-blue-600"
+            >
+              🔍 Test DB
             </Button>
           </div>
         </div>
@@ -466,24 +645,49 @@ const OrganizationSetup = () => {
             </CardHeader>
             <CardContent>
               {plans.length === 0 && (
-                <div className="text-center py-8">
-                  <p className="text-slate-600">Loading subscription plans...</p>
-                  <p className="text-sm text-slate-500 mt-2">
-                    If this persists, check the console for errors or visit /debug/plans
-                  </p>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    className="mt-4" 
-                    onClick={() => {
-                      console.log('Using mock plans for testing');
-                      setPlans(mockPlans);
-                      setSelectedPlan(mockPlans.find(p => p.slug === 'professional')?.id || mockPlans[0]?.id);
-                      toast.success('Loaded demo plans for testing');
-                    }}
-                  >
-                    Use Demo Plans for Testing
-                  </Button>
+                <div className="text-center py-8 space-y-4">
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-slate-200 rounded w-3/4 mx-auto mb-3"></div>
+                    <div className="h-3 bg-slate-200 rounded w-1/2 mx-auto"></div>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <p className="text-amber-800 font-medium">Subscription plans are not loading</p>
+                    <p className="text-sm text-amber-700 mt-1">
+                      This usually means the database hasn't been set up yet.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Button 
+                      type="button" 
+                      className="bg-blue-600 hover:bg-blue-700 text-white" 
+                      onClick={() => {
+                        console.log('Loading mock plans for immediate setup');
+                        setPlans(mockPlans);
+                        setSelectedPlan(mockPlans.find(p => p.slug === 'professional')?.id || mockPlans[0]?.id);
+                        toast.success('✅ Loaded demo plans - you can now complete setup!');
+                      }}
+                    >
+                      📦 Load Demo Plans & Continue Setup
+                    </Button>
+                    <div className="flex gap-2 justify-center">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={fetchPlans}
+                      >
+                        🔄 Retry Loading Plans
+                      </Button>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => window.open('/debug/plans', '_blank')}
+                      >
+                        🔧 Debug Plans
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
               
