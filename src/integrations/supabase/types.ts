@@ -1066,6 +1066,21 @@ export type Database = {
         }
         Returns: boolean
       }
+      create_organization_with_user: {
+        Args: {
+          org_name: string
+          org_slug: string
+          org_settings?: Json
+          plan_id?: string
+        }
+        Returns: string
+      }
+      setup_new_organization: {
+        Args: {
+          org_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       organization_status: organization_status
