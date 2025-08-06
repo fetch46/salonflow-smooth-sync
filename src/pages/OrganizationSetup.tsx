@@ -52,46 +52,62 @@ const OrganizationSetup = () => {
 
   const fetchPlans = useCallback(async () => {
     try {
-      console.log('Fetching subscription plans...');
+      console.log('🔍 Fetching subscription plans...');
+      
+      // First check if user is authenticated
+      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+      if (userError || !currentUser) {
+        console.error('❌ User not authenticated:', userError);
+        toast.error('Please log in to continue');
+        return;
+      }
+      
+      console.log('✅ User authenticated:', currentUser.email);
+      
       const { data, error } = await supabase
         .from('subscription_plans')
         .select('*')
         .eq('is_active', true)
         .order('sort_order');
 
-      console.log('Plans query result:', { data, error });
+      console.log('📋 Plans query result:', { data, error });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Database error:', error);
+        toast.error(`Database error: ${error.message}`);
+        setPlans([]);
+        setSelectedPlan('');
+        return;
+      }
       
       const plansToUse = data || [];
       
       if (plansToUse.length === 0) {
-        console.warn('No subscription plans found in database');
+        console.warn('⚠️ No subscription plans found in database');
         toast.error('No subscription plans available. Please contact support.');
         setPlans([]);
         setSelectedPlan('');
         return;
       }
       
+      console.log('✅ Plans loaded successfully:', plansToUse.length, 'plans');
       setPlans(plansToUse);
-      
-      console.log('Plans set in state:', plansToUse);
       
       // Select the professional plan by default
       const professionalPlan = plansToUse.find(plan => plan.slug === 'professional');
       if (professionalPlan) {
         setSelectedPlan(professionalPlan.id);
-        console.log('Selected professional plan:', professionalPlan.id);
+        console.log('✅ Selected professional plan:', professionalPlan.id);
       } else {
         // Select the first available plan if professional is not found
         const firstPlan = plansToUse[0];
         if (firstPlan) {
           setSelectedPlan(firstPlan.id);
-          console.log('Selected first available plan:', firstPlan.slug);
+          console.log('✅ Selected first available plan:', firstPlan.slug);
         }
       }
     } catch (error) {
-      console.error('Error fetching plans:', error);
+      console.error('❌ Unexpected error fetching plans:', error);
       toast.error('Failed to load subscription plans. Please try again or contact support.');
       setPlans([]);
       setSelectedPlan('');
