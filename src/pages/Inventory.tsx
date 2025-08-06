@@ -87,18 +87,18 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, goodsItems, se
     }
   }, [editingItem, serviceKits]);
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     onSubmit(formData, kitItems);
   };
 
   const addKitItem = () => setKitItems(prev => [...prev, { good_id: "", quantity: 1 }]);
-  const updateKitItem = (index, field, value) => {
+  const updateKitItem = (index: number, field: string, value: string | number) => {
     const newKitItems = [...kitItems];
     newKitItems[index] = { ...newKitItems[index], [field]: value };
     setKitItems(newKitItems);
   };
-  const removeKitItem = (index) => setKitItems(kitItems.filter((_, i) => i !== index));
+  const removeKitItem = (index: number) => setKitItems(kitItems.filter((_, i) => i !== index));
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -170,7 +170,10 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, goodsItems, se
                   id="reorder-point"
                   type="number"
                   value={formData.reorder_point}
-                  onChange={(e) => setFormData({ ...formData, reorder_point: parseInt(e.target.value) || 0 })}
+                  onChange={(e) => {
+                  const value = parseInt(e.target.value);
+                  setFormData({ ...formData, reorder_point: isNaN(value) ? 0 : Math.max(0, value) });
+                }}
                 />
               </div>
             </div>
@@ -211,7 +214,10 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, goodsItems, se
                       <Input
                         type="number"
                         value={kit.quantity}
-                        onChange={(e) => updateKitItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value);
+                          updateKitItem(index, 'quantity', isNaN(value) ? 1 : Math.max(1, value));
+                        }}
                         min="1"
                       />
                     </div>
@@ -260,7 +266,7 @@ const LocationFormDialog = ({ isOpen, onClose, onSubmit, editingLocation }) => {
     }
   }, [editingLocation]);
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     onSubmit(locationFormData);
   };

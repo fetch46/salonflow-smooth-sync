@@ -193,10 +193,14 @@ export default function Customers() {
   };
 
   const filteredCustomers = customers.filter(
-    (customer) =>
-      customer.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.phone?.includes(searchTerm)
+    (customer) => {
+      const searchTermLower = searchTerm.toLowerCase();
+      return (
+        customer.full_name.toLowerCase().includes(searchTermLower) ||
+        (customer.email && customer.email.toLowerCase().includes(searchTermLower)) ||
+        (customer.phone && customer.phone.includes(searchTerm))
+      );
+    }
   );
 
   const totalCustomers = customers.length;
