@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { JobCardForm } from "@/components/forms/JobCardForm";
+import { EnhancedJobCardForm } from "@/components/forms/EnhancedJobCardForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -31,11 +31,7 @@ export default function CreateJobCard() {
           <CardTitle>Job Card Information</CardTitle>
         </CardHeader>
         <CardContent>
-          <JobCardForm
-            onSuccess={() => {
-              navigate('/job-cards');
-            }}
-          />
+          <EnhancedJobCardForm onSuccess={() => navigate("/job-cards")} />
         </CardContent>
       </Card>
     </div>

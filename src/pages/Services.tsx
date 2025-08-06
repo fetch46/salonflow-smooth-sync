@@ -415,9 +415,7 @@ export default function Services() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={() =>
-                              alert(`Viewing details for ${service.name}`)
-                            }
+                            onClick={() => window.location.href = `/services/${service.id}`}
                           >
                             <Eye className="mr-2 h-4 w-4" />
                             View

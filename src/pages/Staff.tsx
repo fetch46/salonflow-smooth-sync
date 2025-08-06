@@ -287,7 +287,17 @@ export default function Staff() {
           <Card key={member.id} className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-3">
               <div className="flex justify-between items-start">
-                <CardTitle className="text-lg">{member.full_name}</CardTitle>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary/70 rounded-full flex items-center justify-center text-primary-foreground font-semibold text-lg">
+                    {member.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">{member.full_name}</CardTitle>
+                    <Badge variant={member.is_active ? "default" : "secondary"} className="mt-1">
+                      {member.is_active ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+                </div>
                 <div className="flex gap-1">
                   <Button
                     variant="ghost"
@@ -305,9 +315,6 @@ export default function Staff() {
                   </Button>
                 </div>
               </div>
-              <Badge variant={member.is_active ? "default" : "secondary"}>
-                {member.is_active ? "Active" : "Inactive"}
-              </Badge>
             </CardHeader>
             <CardContent className="space-y-2">
               {member.email && (

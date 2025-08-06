@@ -14,6 +14,7 @@ import CreateJobCard from "@/pages/CreateJobCard";
 import Expenses from "@/pages/Expenses";
 import Purchases from "@/pages/Purchases";
 import ClientProfile from "@/pages/ClientProfile";
+import ServiceView from "@/pages/ServiceView";
 import { Toaster } from "@/components/ui/sonner";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
@@ -140,6 +141,16 @@ function App() {
           element={
             <DashboardLayout>
               <ClientProfile />
+            </DashboardLayout>
+          } 
+        />
+
+        {/* Service View page with layout */}
+        <Route 
+          path="/services/:id" 
+          element={
+            <DashboardLayout>
+              <ServiceView />
             </DashboardLayout>
           } 
         />
