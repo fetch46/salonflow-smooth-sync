@@ -173,7 +173,7 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
     }));
   };
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: Record<string, unknown>) => {
     setLoading(true);
     try {
       // Create job card with auto-generated job number

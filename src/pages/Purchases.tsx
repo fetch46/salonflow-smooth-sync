@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Plus, Search, ShoppingCart, Package, TrendingUp, Truck } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -51,7 +51,7 @@ export default function Purchases() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
-  const [purchaseItems, setPurchaseItems] = useState<any[]>([]);
+  const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const [selectedPurchaseItems, setSelectedPurchaseItems] = useState<PurchaseItem[]>([]);
   const { toast } = useToast();
 

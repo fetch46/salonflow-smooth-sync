@@ -115,7 +115,7 @@ export function JobCardForm({ clientId, appointmentId, onSuccess }: JobCardFormP
     }
   };
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: Record<string, unknown>) => {
     setLoading(true);
     try {
       const jobCardData = {
