@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
 import { 
   Plus, 
   Search, 
@@ -57,7 +58,15 @@ import {
   UserCheck,
   Timer,
   TrendingDown,
-  X
+  X,
+  Calculator,
+  ClipboardList,
+  Percent,
+  Globe,
+  Smartphone,
+  Hash,
+  QrCode,
+  Share2
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval } from "date-fns";
 import { toast } from "sonner";
@@ -87,6 +96,7 @@ interface Invoice {
   jobcard_id: string | null;
   created_at: string;
   updated_at: string;
+  commission_total?: number;
 }
 
 interface InvoiceItem {
@@ -100,7 +110,10 @@ interface InvoiceItem {
   discount_percentage: number;
   staff_id: string | null;
   commission_percentage: number;
+  commission_amount: number;
   total_price: number;
+  staff_name?: string;
+  service_name?: string;
 }
 
 interface Customer {
@@ -114,11 +127,26 @@ interface Service {
   id: string;
   name: string;
   price: number;
+  commission_rate: number;
 }
 
 interface Staff {
   id: string;
   full_name: string;
+  commission_rate: number;
+}
+
+interface Jobcard {
+  id: string;
+  jobcard_number: string;
+  customer_id: string;
+  customer_name: string;
+  staff_id: string;
+  service_id: string;
+  service_name: string;
+  total_amount: number;
+  status: string;
+  created_at: string;
 }
 
 const INVOICE_STATUSES = [
@@ -238,7 +266,7 @@ export default function Invoices() {
     try {
       const { data, error } = await supabase
         .from("services")
-        .select("id, name, price")
+        .select("id, name, price, commission_rate")
         .eq("is_active", true)
         .order("name");
 
@@ -253,7 +281,7 @@ export default function Invoices() {
     try {
       const { data, error } = await supabase
         .from("staff")
-        .select("id, full_name")
+        .select("id, full_name, commission_rate")
         .eq("is_active", true)
         .order("full_name");
 
