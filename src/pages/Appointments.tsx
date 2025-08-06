@@ -102,6 +102,7 @@ export default function Appointments() {
   const handleSelectChange = (name: string, value: string) => {
     setForm(prev => ({ ...prev, [name]: value }));
     
+    // Auto-fill service details when service is selected
     if (name === "service_name") {
       const selectedService = services.find(s => s.name === value);
       if (selectedService) {
