@@ -53,11 +53,8 @@ export const useSaas = () => {
   return context;
 };
 
-interface SaasProviderProps {
-  children: React.ReactNode;
-}
-
-export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
+export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Core state
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [organization, setOrganization] = useState<Organization | null>(null);
@@ -67,6 +64,115 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [userRoles, setUserRoles] = useState<Record<string, user_role>>({});
 
+  // Define all functions first before useEffect
+  const loadSubscriptionData = useCallback(async (organizationId: string) => {
+    try {
+      const { data: subData, error: subError } = await supabase
+        .from('organization_subscriptions')
+        .select(`
+          *,
+          subscription_plans (*)
+        `)
+        .eq('organization_id', organizationId)
+        .single();
+
+      if (subError && subError.code !== 'PGRST116') { // Not found error is OK
+        throw subError;
+      }
+
+      if (subData) {
+        setSubscription(subData);
+        setSubscriptionPlan(subData.subscription_plans as SubscriptionPlan);
+      } else {
+        setSubscription(null);
+        setSubscriptionPlan(null);
+      }
+    } catch (error) {
+      console.error('Error loading subscription data:', error);
+    }
+  }, []);
+
+  const setActiveOrganization = useCallback(async (org: Organization, role: user_role) => {
+    try {
+      setOrganization(org);
+      setOrganizationRole(role);
+      localStorage.setItem('activeOrganizationId', org.id);
+
+      // Load subscription data
+      await loadSubscriptionData(org.id);
+    } catch (error) {
+      console.error('Error setting active organization:', error);
+    }
+  }, [loadSubscriptionData]);
+
+  const loadUserOrganizations = useCallback(async (userId: string) => {
+    try {
+      setLoading(true);
+
+      // Get user's organizations and roles
+      const { data: orgUsers, error: orgUsersError } = await supabase
+        .from('organization_users')
+        .select(`
+          role,
+          is_active,
+          organization_id,
+          organizations (*)
+        `)
+        .eq('user_id', userId)
+        .eq('is_active', true);
+
+      if (orgUsersError) throw orgUsersError;
+
+      if (orgUsers && orgUsers.length > 0) {
+        const orgs = orgUsers.map(ou => ou.organizations as Organization);
+        const roles: Record<string, user_role> = {};
+        
+        orgUsers.forEach(ou => {
+          if (ou.organizations) {
+            roles[ou.organization_id] = ou.role;
+          }
+        });
+
+        setOrganizations(orgs);
+        setUserRoles(roles);
+
+        // Set active organization (prioritize saved preference)
+        const savedOrgId = localStorage.getItem('activeOrganizationId');
+        const activeOrg = savedOrgId 
+          ? orgs.find(org => org.id === savedOrgId) || orgs[0]
+          : orgs[0];
+
+        if (activeOrg) {
+          await setActiveOrganization(activeOrg, roles[activeOrg.id]);
+        }
+      } else {
+        // User has no organizations - they need to create one or be invited
+        setOrganizations([]);
+        setUserRoles({});
+      }
+    } catch (error) {
+      console.error('Error loading user organizations:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [setActiveOrganization]);
+
+  const switchOrganization = useCallback(async (organizationId: string) => {
+    const newOrg = organizations.find(org => org.id === organizationId);
+    const newRole = userRoles[organizationId];
+    
+    if (newOrg && newRole) {
+      await setActiveOrganization(newOrg, newRole);
+    }
+  }, [organizations, userRoles, setActiveOrganization]);
+
+  const refreshOrganizationData = useCallback(async () => {
+    if (user) {
+      await loadUserOrganizations(user.id);
+    }
+  }, [user, loadUserOrganizations]);
+
+  // Set up auth listener
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -100,186 +206,96 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
     return () => authSubscription.unsubscribe();
   }, [loadUserOrganizations]);
 
-  const loadUserOrganizations = useCallback(async (userId: string) => {
-    try {
-      setLoading(true);
+  // Create context value inside the provider to ensure proper initialization order
+  const contextValue: SaasContextType = React.useMemo(() => {
+    // Computed properties
+    const isOrganizationOwner = organizationRole === 'owner';
+    const isOrganizationAdmin = organizationRole === 'owner' || organizationRole === 'admin';
+    const canManageUsers = ['owner', 'admin'].includes(organizationRole || '');
+    const canManageSettings = ['owner', 'admin'].includes(organizationRole || '');
 
-      // Get user's organizations and roles
-      const { data: orgUsers, error: orgUsersError } = await supabase
-        .from('organization_users')
-        .select(`
-          role,
-          is_active,
-          organization_id,
-          organizations (*)
-        `)
-        .eq('user_id', userId)
-        .eq('is_active', true);
+    const subscriptionStatus = subscription?.status || null;
+    const isTrialing = subscriptionStatus === 'trial';
+    const isSubscriptionActive = ['trial', 'active'].includes(subscriptionStatus || '');
 
-      if (orgUsersError) throw orgUsersError;
+    const daysLeftInTrial = subscription?.trial_end 
+      ? Math.max(0, Math.ceil((new Date(subscription.trial_end).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
+      : null;
 
-      if (orgUsers && orgUsers.length > 0) {
-        const orgs = orgUsers.map(ou => ou.organizations as Organization).filter(Boolean);
-        const roles = orgUsers.reduce((acc, ou) => {
-          acc[ou.organization_id] = ou.role;
-          return acc;
-        }, {} as Record<string, user_role>);
-
-        setOrganizations(orgs);
-        setUserRoles(roles);
-
-        // Set the first organization as active (or get from localStorage)
-        const savedOrgId = localStorage.getItem('activeOrganizationId');
-        const activeOrg = savedOrgId 
-          ? orgs.find(org => org.id === savedOrgId) || orgs[0]
-          : orgs[0];
-
-        if (activeOrg) {
-          await setActiveOrganization(activeOrg, roles[activeOrg.id]);
-        }
-      } else {
-        // User has no organizations - they need to create one or be invited
-        setOrganizations([]);
-        setUserRoles({});
-      }
-    } catch (error) {
-      console.error('Error loading user organizations:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const setActiveOrganization = async (org: Organization, role: user_role) => {
-    try {
-      setOrganization(org);
-      setOrganizationRole(role);
-      localStorage.setItem('activeOrganizationId', org.id);
-
-      // Load subscription data
-      await loadSubscriptionData(org.id);
-    } catch (error) {
-      console.error('Error setting active organization:', error);
-    }
-  };
-
-  const loadSubscriptionData = async (organizationId: string) => {
-    try {
-      const { data: subData, error: subError } = await supabase
-        .from('organization_subscriptions')
-        .select(`
-          *,
-          subscription_plans (*)
-        `)
-        .eq('organization_id', organizationId)
-        .single();
-
-      if (subError && subError.code !== 'PGRST116') { // Not found error is OK
-        throw subError;
+    // Feature checking
+    const hasFeature = (feature: string): boolean => {
+      if (!subscriptionPlan || !isSubscriptionActive) {
+        // During trial or if no subscription, allow basic features
+        const basicFeatures = ['appointments', 'clients', 'staff', 'services', 'reports'];
+        return basicFeatures.includes(feature);
       }
 
-      if (subData) {
-        setSubscription(subData);
-        setSubscriptionPlan(subData.subscription_plans as SubscriptionPlan);
-      } else {
-        setSubscription(null);
-        setSubscriptionPlan(null);
-      }
-    } catch (error) {
-      console.error('Error loading subscription data:', error);
-    }
-  };
+      const features = subscriptionPlan.features as Record<string, boolean>;
+      return features[feature] === true;
+    };
 
-  const switchOrganization = async (organizationId: string) => {
-    const newOrg = organizations.find(org => org.id === organizationId);
-    const newRole = userRoles[organizationId];
-    
-    if (newOrg && newRole) {
-      await setActiveOrganization(newOrg, newRole);
-    }
-  };
+    const canAddUsers = (): boolean => {
+      if (!subscriptionPlan || !organization) return false;
+      
+      // Get current user count for the organization
+      const currentUserCount = organizations.length; // This would need to be fetched properly
+      return !subscriptionPlan.max_users || currentUserCount < subscriptionPlan.max_users;
+    };
 
-  const refreshOrganizationData = async () => {
-    if (user) {
-      await loadUserOrganizations(user.id);
-    }
-  };
+    const canAddLocations = (): boolean => {
+      if (!subscriptionPlan || !organization) return false;
+      
+      // Get current location count for the organization
+      const currentLocationCount = 1; // This would need to be fetched properly
+      return !subscriptionPlan.max_locations || currentLocationCount < subscriptionPlan.max_locations;
+    };
 
-  // Computed properties
-  const isOrganizationOwner = organizationRole === 'owner';
-  const isOrganizationAdmin = organizationRole === 'owner' || organizationRole === 'admin';
-  const canManageUsers = ['owner', 'admin'].includes(organizationRole || '');
-  const canManageSettings = ['owner', 'admin'].includes(organizationRole || '');
-
-  const subscriptionStatus = subscription?.status || null;
-  const isTrialing = subscriptionStatus === 'trial';
-  const isSubscriptionActive = ['trial', 'active'].includes(subscriptionStatus || '');
-
-  const daysLeftInTrial = subscription?.trial_end 
-    ? Math.max(0, Math.ceil((new Date(subscription.trial_end).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
-    : null;
-
-  // Feature checking
-  const hasFeature = (feature: string): boolean => {
-    if (!subscriptionPlan || !isSubscriptionActive) {
-      // During trial or if no subscription, allow basic features
-      const basicFeatures = ['appointments', 'clients', 'staff', 'services', 'reports'];
-      return basicFeatures.includes(feature);
-    }
-
-    const features = subscriptionPlan.features as Record<string, boolean>;
-    return features[feature] === true;
-  };
-
-  const canAddUsers = (): boolean => {
-    if (!subscriptionPlan || !organization) return false;
-    
-    // Get current user count for the organization
-    const currentUserCount = organizations.length; // This would need to be fetched properly
-    return !subscriptionPlan.max_users || currentUserCount < subscriptionPlan.max_users;
-  };
-
-  const canAddLocations = (): boolean => {
-    if (!subscriptionPlan || !organization) return false;
-    
-    // Get current location count for the organization
-    const currentLocationCount = 1; // This would need to be fetched properly
-    return !subscriptionPlan.max_locations || currentLocationCount < subscriptionPlan.max_locations;
-  };
-
-  const value: SaasContextType = {
-    // User and Auth
+    return {
+      // User and Auth
+      user,
+      loading,
+      
+      // Organization
+      organization,
+      organizationRole,
+      isOrganizationOwner,
+      isOrganizationAdmin,
+      canManageUsers,
+      canManageSettings,
+      
+      // Subscription
+      subscription,
+      subscriptionPlan,
+      subscriptionStatus,
+      isTrialing,
+      isSubscriptionActive,
+      daysLeftInTrial,
+      
+      // Feature Flags
+      hasFeature,
+      canAddUsers,
+      canAddLocations,
+      
+      // Actions
+      switchOrganization,
+      refreshOrganizationData,
+      
+      // Organization Management
+      organizations,
+      userRoles,
+    };
+  }, [
     user,
     loading,
-    
-    // Organization
     organization,
     organizationRole,
-    isOrganizationOwner,
-    isOrganizationAdmin,
-    canManageUsers,
-    canManageSettings,
-    
-    // Subscription
     subscription,
     subscriptionPlan,
-    subscriptionStatus,
-    isTrialing,
-    isSubscriptionActive,
-    daysLeftInTrial,
-    
-    // Feature Flags
-    hasFeature,
-    canAddUsers,
-    canAddLocations,
-    
-    // Actions
-    switchOrganization,
-    refreshOrganizationData,
-    
-    // Organization Management
     organizations,
     userRoles,
-  };
+    switchOrganization,
+    refreshOrganizationData
+  ]);
 
-  return <SaasContext.Provider value={value}>{children}</SaasContext.Provider>;
+  return <SaasContext.Provider value={contextValue}>{children}</SaasContext.Provider>;
 };
