@@ -30,6 +30,14 @@ import CreateJobCard from "@/pages/CreateJobCard";
 import SuperAdmin from "@/pages/SuperAdmin";
 import TestPlans from "@/pages/TestPlans";
 import TestDashboard from "@/pages/TestDashboard";
+import ServiceView from "@/pages/ServiceView";
+import Booking from "@/pages/Booking";
+import Invoices from "@/pages/Invoices";
+import NotFound from "@/pages/NotFound";
+import Landing from "@/pages/Landing";
+import Reports from "@/pages/Reports";
+import Profile from "@/pages/Profile";
+import Help from "@/pages/Help";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // SAAS-specific wrapper component to handle routing logic
@@ -62,6 +70,7 @@ const AppRoutes = () => {
   if (!user) {
     return (
       <Routes>
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
@@ -108,6 +117,7 @@ const AppRoutes = () => {
         {/* Staff & Services */}
         <Route path="staff" element={<Staff />} />
         <Route path="services" element={<Services />} />
+        <Route path="services/:id" element={<ServiceView />} />
         
         {/* Inventory Management */}
         <Route path="inventory" element={<Inventory />} />
@@ -123,13 +133,21 @@ const AppRoutes = () => {
         <Route path="job-cards" element={<JobCards />} />
         <Route path="job-cards/new" element={<CreateJobCard />} />
         <Route path="pos" element={<POS />} />
+        <Route path="booking" element={<Booking />} />
+        <Route path="invoices" element={<Invoices />} />
         
-        {/* Settings */}
+        {/* Settings & Support */}
         <Route path="settings" element={<Settings />} />
+        <Route path="profile" element={<Profile />} />
+        <Route path="reports" element={<Reports />} />
+        <Route path="help" element={<Help />} />
       </Route>
 
-      {/* Catch all - redirect to dashboard */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      {/* 404 Not Found */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
     </Routes>
   );
 };
