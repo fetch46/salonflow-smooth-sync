@@ -8,7 +8,7 @@ export type Json =
 
 // SAAS Enums
 export type subscription_status = 'trial' | 'active' | 'past_due' | 'canceled' | 'incomplete'
-export type user_role = 'owner' | 'admin' | 'manager' | 'staff' | 'viewer'
+export type user_role = 'owner' | 'admin' | 'manager' | 'staff' | 'viewer' | 'super_admin'
 export type plan_interval = 'month' | 'year'
 export type organization_status = 'active' | 'suspended' | 'deleted'
 
@@ -297,6 +297,38 @@ export type Database = {
           quantity_adjusted?: number
           reason?: string | null
           updated_at?: string
+        }
+      }
+      super_admins: {
+        Row: {
+          created_at: string
+          granted_at: string
+          granted_by: string | null
+          id: string
+          is_active: boolean
+          permissions: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean
+          permissions?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean
+          permissions?: Json
+          updated_at?: string
+          user_id?: string
         }
       }
       storage_locations: {
@@ -1013,6 +1045,24 @@ export type Database = {
       user_has_role: {
         Args: {
           required_role: user_role
+        }
+        Returns: boolean
+      }
+      is_super_admin: {
+        Args: {
+          user_uuid?: string
+        }
+        Returns: boolean
+      }
+      grant_super_admin: {
+        Args: {
+          target_user_id: string
+        }
+        Returns: boolean
+      }
+      revoke_super_admin: {
+        Args: {
+          target_user_id: string
         }
         Returns: boolean
       }

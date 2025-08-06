@@ -21,6 +21,10 @@ interface SaasContextType {
   canManageUsers: boolean;
   canManageSettings: boolean;
   
+  // Super Admin
+  isSuperAdmin: boolean;
+  canManageSystem: boolean;
+  
   // Subscription
   subscription: OrganizationSubscription | null;
   subscriptionPlan: SubscriptionPlan | null;
@@ -63,12 +67,30 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlan | null>(null);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [userRoles, setUserRoles] = useState<Record<string, user_role>>({});
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   // Define functions before useEffect
+  const checkSuperAdminStatus = useCallback(async (userId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('is_super_admin', { user_uuid: userId });
+      if (error) {
+        console.error('Error checking super admin status:', error);
+        setIsSuperAdmin(false);
+      } else {
+        setIsSuperAdmin(data || false);
+      }
+    } catch (error) {
+      console.error('Error checking super admin status:', error);
+      setIsSuperAdmin(false);
+    }
+  }, []);
 
   const loadUserOrganizations = useCallback(async (userId: string) => {
     try {
       setLoading(true);
+
+      // Check super admin status first
+      await checkSuperAdminStatus(userId);
 
       // Get user's organizations and roles
       const { data: orgUsers, error: orgUsersError } = await supabase
@@ -217,6 +239,7 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setSubscriptionPlan(null);
           setOrganizations([]);
           setUserRoles({});
+          setIsSuperAdmin(false);
           setLoading(false);
         }
       }
@@ -232,6 +255,9 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const isOrganizationAdmin = organizationRole === 'owner' || organizationRole === 'admin';
     const canManageUsers = ['owner', 'admin'].includes(organizationRole || '');
     const canManageSettings = ['owner', 'admin'].includes(organizationRole || '');
+    
+    // Super admin properties
+    const canManageSystem = isSuperAdmin;
 
     const subscriptionStatus = subscription?.status || null;
     const isTrialing = subscriptionStatus === 'trial';
@@ -282,6 +308,10 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
       canManageUsers,
       canManageSettings,
       
+      // Super Admin
+      isSuperAdmin,
+      canManageSystem,
+      
       // Subscription
       subscription,
       subscriptionPlan,
@@ -312,6 +342,7 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
     subscriptionPlan,
     organizations,
     userRoles,
+    isSuperAdmin,
     switchOrganization,
     refreshOrganizationData
   ]);
