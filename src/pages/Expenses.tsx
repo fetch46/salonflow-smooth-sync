@@ -53,9 +53,9 @@ export default function Expenses() {
 
   useEffect(() => {
     fetchExpenses();
-  }, []);
+  }, [fetchExpenses]);
 
-  const fetchExpenses = async () => {
+  const fetchExpenses = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -75,7 +75,7 @@ export default function Expenses() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   const generateExpenseNumber = () => {
     const timestamp = Date.now().toString().slice(-6);

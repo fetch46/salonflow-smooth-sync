@@ -31,6 +31,7 @@ import SuperAdmin from "@/pages/SuperAdmin";
 import PlansDebug from "@/components/debug/PlansDebug";
 import TestPlans from "@/pages/TestPlans";
 import DatabaseTest from "@/components/debug/DatabaseTest";
+import LoadingDebug from "@/components/debug/LoadingDebug";
 
 // SAAS-specific wrapper component to handle routing logic
 const AppRoutes = () => {
@@ -42,6 +43,20 @@ const AppRoutes = () => {
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto"></div>
           <p className="text-slate-600 font-medium">Loading your workspace...</p>
+          <div className="text-sm text-slate-500">
+            <p>If this takes too long, try:</p>
+            <div className="mt-2 space-y-1">
+              <a href="/debug/loading" className="text-violet-600 hover:underline block">
+                Debug Loading State
+              </a>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="text-violet-600 hover:underline block"
+              >
+                Reload Page
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -65,6 +80,7 @@ const AppRoutes = () => {
         <Route path="/super-admin" element={<SuperAdmin />} />
         <Route path="/debug/plans" element={<PlansDebug />} />
         <Route path="/debug/database" element={<DatabaseTest />} />
+        <Route path="/debug/loading" element={<LoadingDebug />} />
         <Route path="/test/plans" element={<TestPlans />} />
         <Route path="/setup" element={<OrganizationSetup />} />
         <Route path="*" element={<Navigate to="/setup" replace />} />
@@ -79,6 +95,7 @@ const AppRoutes = () => {
       <Route path="/super-admin" element={<SuperAdmin />} />
       <Route path="/debug/plans" element={<PlansDebug />} />
       <Route path="/debug/database" element={<DatabaseTest />} />
+      <Route path="/debug/loading" element={<LoadingDebug />} />
       <Route path="/test/plans" element={<TestPlans />} />
       
       {/* Redirect auth pages if already logged in */}

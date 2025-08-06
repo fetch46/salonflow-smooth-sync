@@ -48,9 +48,9 @@ export default function ServiceView() {
     if (id) {
       fetchServiceData();
     }
-  }, [id]);
+  }, [id, fetchServiceData]);
 
-  const fetchServiceData = async () => {
+  const fetchServiceData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -83,7 +83,7 @@ export default function ServiceView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES" }).format(price);

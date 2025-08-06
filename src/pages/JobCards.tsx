@@ -147,9 +147,9 @@ export default function JobCards() {
 
   useEffect(() => {
     fetchJobCards();
-  }, []);
+  }, [fetchJobCards]);
 
-  const fetchJobCards = async () => {
+  const fetchJobCards = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -169,7 +169,7 @@ export default function JobCards() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const refreshData = async () => {
     try {

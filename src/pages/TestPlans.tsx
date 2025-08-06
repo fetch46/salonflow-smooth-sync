@@ -16,7 +16,7 @@ export default function TestPlans() {
   const { user } = useSaas();
 
   // Same mock plans as in OrganizationSetup
-  const mockPlans = [
+  const mockPlans = useMemo(() => [
     {
       id: 'mock-starter',
       name: 'Starter',
@@ -91,9 +91,9 @@ export default function TestPlans() {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
-  ];
+  ], []);
 
-  const fetchPlans = async () => {
+  const fetchPlans = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -127,7 +127,7 @@ export default function TestPlans() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [mockPlans]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -139,7 +139,7 @@ export default function TestPlans() {
 
   useEffect(() => {
     fetchPlans();
-  }, []);
+  }, [fetchPlans]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">

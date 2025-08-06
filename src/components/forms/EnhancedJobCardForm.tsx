@@ -84,9 +84,9 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
     if (appointmentId) {
       fetchAppointmentData();
     }
-  }, [appointmentId]);
+  }, [appointmentId, fetchAppointmentData, fetchInitialData]);
 
-  const fetchInitialData = async () => {
+  const fetchInitialData = useCallback(async () => {
     try {
       const [staffRes, clientsRes, servicesRes] = await Promise.all([
         supabase.from("staff").select("id, full_name").eq("is_active", true),
@@ -100,9 +100,9 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
     } catch (error) {
       console.error("Error fetching initial data:", error);
     }
-  };
+  }, []);
 
-  const fetchAppointmentData = async () => {
+  const fetchAppointmentData = useCallback(async () => {
     try {
       const { data: appointmentData, error } = await supabase
         .from("appointments")
@@ -137,9 +137,9 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
     } catch (error) {
       console.error("Error fetching appointment:", error);
     }
-  };
+  }, [appointmentId, setValue, fetchServiceKits]);
 
-  const fetchServiceKits = async (serviceId: string) => {
+  const fetchServiceKits = useCallback(async (serviceId: string) => {
     try {
       const { data: kitsData, error } = await supabase
         .from("service_kits")
@@ -164,7 +164,7 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
     } catch (error) {
       console.error("Error fetching service kits:", error);
     }
-  };
+  }, []);
 
   const updateProductQuantity = (itemId: string, quantity: number) => {
     setProductQuantities(prev => ({

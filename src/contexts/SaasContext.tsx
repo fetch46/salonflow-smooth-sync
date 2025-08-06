@@ -87,12 +87,19 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadUserOrganizations = useCallback(async (userId: string) => {
     try {
+      console.log('Loading user organizations for:', userId);
       setLoading(true);
 
       // Check super admin status first
-      await checkSuperAdminStatus(userId);
+      try {
+        await checkSuperAdminStatus(userId);
+      } catch (error) {
+        console.error('Error checking super admin status:', error);
+        // Continue anyway, don't let this block the flow
+      }
 
       // Get user's organizations and roles
+      console.log('Fetching organization users...');
       const { data: orgUsers, error: orgUsersError } = await supabase
         .from('organization_users')
         .select(`
@@ -104,10 +111,15 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('user_id', userId)
         .eq('is_active', true);
 
-      if (orgUsersError) throw orgUsersError;
+      if (orgUsersError) {
+        console.error('Error fetching organization users:', orgUsersError);
+        throw orgUsersError;
+      }
+
+      console.log('Organization users found:', orgUsers?.length || 0);
 
       if (orgUsers && orgUsers.length > 0) {
-        const orgs = orgUsers.map(ou => ou.organizations as Organization);
+        const orgs = orgUsers.map(ou => ou.organizations as Organization).filter(Boolean);
         const roles: Record<string, user_role> = {};
         
         orgUsers.forEach(ou => {
@@ -126,6 +138,7 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
           : orgs[0];
 
         if (activeOrg) {
+          console.log('Setting active organization:', activeOrg.name);
           // Set active organization directly to avoid circular dependency
           setOrganization(activeOrg);
           setOrganizationRole(roles[activeOrg.id]);
@@ -133,6 +146,7 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           // Load subscription data
           try {
+            console.log('Loading subscription data...');
             const { data: subData, error: subError } = await supabase
               .from('organization_subscriptions')
               .select(`
@@ -143,6 +157,7 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
               .single();
 
             if (subError && subError.code !== 'PGRST116') { // Not found error is OK
+              console.error('Error loading subscription:', subError);
               throw subError;
             }
 
@@ -155,19 +170,29 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           } catch (error) {
             console.error('Error loading subscription data:', error);
+            // Don't throw, just log the error
           }
         }
       } else {
+        console.log('No organizations found for user');
         // User has no organizations - they need to create one or be invited
         setOrganizations([]);
         setUserRoles({});
       }
     } catch (error) {
       console.error('Error loading user organizations:', error);
+      // Set empty state to prevent infinite loading
+      setOrganizations([]);
+      setUserRoles({});
+      setOrganization(null);
+      setOrganizationRole(null);
+      setSubscription(null);
+      setSubscriptionPlan(null);
     } finally {
+      console.log('Finished loading user organizations');
       setLoading(false);
     }
-  }, []);
+  }, [checkSuperAdminStatus]);
 
   const switchOrganization = useCallback(async (organizationId: string) => {
     const newOrg = organizations.find(org => org.id === organizationId);
@@ -215,8 +240,11 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Set up auth listener
   useEffect(() => {
+    console.log('Setting up auth listener...');
+    
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session:', session?.user?.email || 'No user');
       setUser(session?.user ?? null);
       if (session?.user) {
         loadUserOrganizations(session.user.id);
@@ -228,6 +256,7 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listen for auth changes
     const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state change:', event, session?.user?.email || 'No user');
         setUser(session?.user ?? null);
         if (session?.user) {
           await loadUserOrganizations(session.user.id);
@@ -245,8 +274,19 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    return () => authSubscription.unsubscribe();
-  }, [loadUserOrganizations]);
+    // Add a timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      if (loading) {
+        console.warn('Loading timeout reached, forcing loading to false');
+        setLoading(false);
+      }
+    }, 10000); // 10 second timeout
+
+    return () => {
+      authSubscription.unsubscribe();
+      clearTimeout(timeoutId);
+    };
+  }, [loadUserOrganizations, loading]);
 
   // Create context value inside the provider to ensure proper initialization order
   const contextValue: SaasContextType = React.useMemo(() => {
