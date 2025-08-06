@@ -302,9 +302,42 @@ const OrganizationSetup = () => {
 
   const selectedPlanData = plans.find(plan => plan.id === selectedPlan);
 
+  console.log('OrganizationSetup render - Plans:', plans.length, 'Selected:', selectedPlan, 'User:', !!user);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
       <div className="w-full max-w-4xl space-y-8">
+        {/* Debug Info */}
+        <div className="bg-yellow-100 p-4 rounded-lg text-sm space-y-2">
+          <div><strong>Debug:</strong> Plans: {plans.length}, User: {user?.email || 'No user'}, Selected: {selectedPlan || 'None'}</div>
+          <div className="flex gap-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                console.log('Loading mock plans manually');
+                setPlans(mockPlans);
+                setSelectedPlan(mockPlans.find(p => p.slug === 'professional')?.id || mockPlans[0]?.id);
+                toast.success('Mock plans loaded');
+              }}
+            >
+              Load Mock Plans
+            </Button>
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                console.log('Fetching plans manually');
+                fetchPlans();
+              }}
+            >
+              Refetch Plans
+            </Button>
+          </div>
+        </div>
+        
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="p-3 bg-gradient-to-br from-violet-600 to-purple-600 rounded-xl shadow-lg w-fit mx-auto">
