@@ -64,46 +64,7 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [userRoles, setUserRoles] = useState<Record<string, user_role>>({});
 
-  // Define all functions first before useEffect
-  const loadSubscriptionData = useCallback(async (organizationId: string) => {
-    try {
-      const { data: subData, error: subError } = await supabase
-        .from('organization_subscriptions')
-        .select(`
-          *,
-          subscription_plans (*)
-        `)
-        .eq('organization_id', organizationId)
-        .single();
-
-      if (subError && subError.code !== 'PGRST116') { // Not found error is OK
-        throw subError;
-      }
-
-      if (subData) {
-        setSubscription(subData);
-        setSubscriptionPlan(subData.subscription_plans as SubscriptionPlan);
-      } else {
-        setSubscription(null);
-        setSubscriptionPlan(null);
-      }
-    } catch (error) {
-      console.error('Error loading subscription data:', error);
-    }
-  }, []);
-
-  const setActiveOrganization = useCallback(async (org: Organization, role: user_role) => {
-    try {
-      setOrganization(org);
-      setOrganizationRole(role);
-      localStorage.setItem('activeOrganizationId', org.id);
-
-      // Load subscription data
-      await loadSubscriptionData(org.id);
-    } catch (error) {
-      console.error('Error setting active organization:', error);
-    }
-  }, [loadSubscriptionData]);
+  // Define functions before useEffect
 
   const loadUserOrganizations = useCallback(async (userId: string) => {
     try {
@@ -143,7 +104,36 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
           : orgs[0];
 
         if (activeOrg) {
-          await setActiveOrganization(activeOrg, roles[activeOrg.id]);
+          // Set active organization directly to avoid circular dependency
+          setOrganization(activeOrg);
+          setOrganizationRole(roles[activeOrg.id]);
+          localStorage.setItem('activeOrganizationId', activeOrg.id);
+          
+          // Load subscription data
+          try {
+            const { data: subData, error: subError } = await supabase
+              .from('organization_subscriptions')
+              .select(`
+                *,
+                subscription_plans (*)
+              `)
+              .eq('organization_id', activeOrg.id)
+              .single();
+
+            if (subError && subError.code !== 'PGRST116') { // Not found error is OK
+              throw subError;
+            }
+
+            if (subData) {
+              setSubscription(subData);
+              setSubscriptionPlan(subData.subscription_plans as SubscriptionPlan);
+            } else {
+              setSubscription(null);
+              setSubscriptionPlan(null);
+            }
+          } catch (error) {
+            console.error('Error loading subscription data:', error);
+          }
         }
       } else {
         // User has no organizations - they need to create one or be invited
@@ -155,16 +145,45 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  }, [setActiveOrganization]);
+  }, []);
 
   const switchOrganization = useCallback(async (organizationId: string) => {
     const newOrg = organizations.find(org => org.id === organizationId);
     const newRole = userRoles[organizationId];
     
     if (newOrg && newRole) {
-      await setActiveOrganization(newOrg, newRole);
+      // Set active organization directly to avoid circular dependency
+      setOrganization(newOrg);
+      setOrganizationRole(newRole);
+      localStorage.setItem('activeOrganizationId', newOrg.id);
+      
+      // Load subscription data
+      try {
+        const { data: subData, error: subError } = await supabase
+          .from('organization_subscriptions')
+          .select(`
+            *,
+            subscription_plans (*)
+          `)
+          .eq('organization_id', newOrg.id)
+          .single();
+
+        if (subError && subError.code !== 'PGRST116') { // Not found error is OK
+          throw subError;
+        }
+
+        if (subData) {
+          setSubscription(subData);
+          setSubscriptionPlan(subData.subscription_plans as SubscriptionPlan);
+        } else {
+          setSubscription(null);
+          setSubscriptionPlan(null);
+        }
+      } catch (error) {
+        console.error('Error loading subscription data:', error);
+      }
     }
-  }, [organizations, userRoles, setActiveOrganization]);
+  }, [organizations, userRoles]);
 
   const refreshOrganizationData = useCallback(async () => {
     if (user) {
