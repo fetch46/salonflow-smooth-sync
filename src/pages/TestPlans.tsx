@@ -71,46 +71,7 @@ export default function TestPlans() {
           <p className="text-slate-600">Testing subscription plan loading and rendering</p>
         </div>
 
-        {/* Debug Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Debug Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <strong>User:</strong> {user?.email || 'No user logged in'}
-              </div>
-              <div>
-                <strong>Plans Count:</strong> {plans.length}
-              </div>
-              <div>
-                <strong>Loading:</strong> {loading ? 'Yes' : 'No'}
-              </div>
-            </div>
-            
-            {error && (
-              <div className="bg-red-50 text-red-800 p-3 rounded">
-                <strong>Error:</strong> {error}
-              </div>
-            )}
 
-            <div className="flex gap-2">
-              <Button onClick={fetchPlans} disabled={loading}>
-                {loading ? 'Loading...' : 'Fetch from Database'}
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setPlans([]);
-                  toast.info('Cleared plans');
-                }}
-              >
-                Clear Plans
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Plans Display */}
         <div>

@@ -28,12 +28,8 @@ import Settings from "@/pages/Settings";
 import JobCards from "@/pages/JobCards";
 import CreateJobCard from "@/pages/CreateJobCard";
 import SuperAdmin from "@/pages/SuperAdmin";
-import PlansDebug from "@/components/debug/PlansDebug";
 import TestPlans from "@/pages/TestPlans";
-import DatabaseTest from "@/components/debug/DatabaseTest";
-import LoadingDebug from "@/components/debug/LoadingDebug";
 import TestDashboard from "@/pages/TestDashboard";
-import DebugPlans from "@/pages/DebugPlans";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // SAAS-specific wrapper component to handle routing logic
@@ -49,9 +45,6 @@ const AppRoutes = () => {
           <div className="text-sm text-slate-500">
             <p>If this takes too long, try:</p>
             <div className="mt-2 space-y-1">
-              <a href="/debug/loading" className="text-violet-600 hover:underline block">
-                Debug Loading State
-              </a>
               <button 
                 onClick={() => window.location.reload()} 
                 className="text-violet-600 hover:underline block"
@@ -81,10 +74,6 @@ const AppRoutes = () => {
     return (
       <Routes>
         <Route path="/super-admin" element={<SuperAdmin />} />
-        <Route path="/debug/plans" element={<PlansDebug />} />
-        <Route path="/debug/plans-new" element={<DebugPlans />} />
-        <Route path="/debug/database" element={<DatabaseTest />} />
-        <Route path="/debug/loading" element={<LoadingDebug />} />
         <Route path="/test/plans" element={<TestPlans />} />
         <Route path="/test/dashboard" element={<TestDashboard />} />
         <Route path="/setup" element={<OrganizationSetup />} />
@@ -98,10 +87,6 @@ const AppRoutes = () => {
     <Routes>
       {/* System-wide routes available to authenticated users */}
       <Route path="/super-admin" element={<SuperAdmin />} />
-      <Route path="/debug/plans" element={<PlansDebug />} />
-      <Route path="/debug/plans-new" element={<DebugPlans />} />
-      <Route path="/debug/database" element={<DatabaseTest />} />
-      <Route path="/debug/loading" element={<LoadingDebug />} />
       <Route path="/test/plans" element={<TestPlans />} />
       <Route path="/test/dashboard" element={<TestDashboard />} />
       

@@ -52,17 +52,12 @@ const OrganizationSetup = () => {
 
   const fetchPlans = useCallback(async () => {
     try {
-      console.log('🔍 Fetching subscription plans...');
-      
       // First check if user is authenticated
       const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
       if (userError || !currentUser) {
-        console.error('❌ User not authenticated:', userError);
         toast.error('Please log in to continue');
         return;
       }
-      
-      console.log('✅ User authenticated:', currentUser.email);
       
       const { data, error } = await supabase
         .from('subscription_plans')
@@ -70,10 +65,7 @@ const OrganizationSetup = () => {
         .eq('is_active', true)
         .order('sort_order');
 
-      console.log('📋 Plans query result:', { data, error });
-
       if (error) {
-        console.error('❌ Database error:', error);
         toast.error(`Database error: ${error.message}`);
         setPlans([]);
         setSelectedPlan('');
@@ -83,31 +75,27 @@ const OrganizationSetup = () => {
       const plansToUse = data || [];
       
       if (plansToUse.length === 0) {
-        console.warn('⚠️ No subscription plans found in database');
         toast.error('No subscription plans available. Please contact support.');
         setPlans([]);
         setSelectedPlan('');
         return;
       }
       
-      console.log('✅ Plans loaded successfully:', plansToUse.length, 'plans');
       setPlans(plansToUse);
       
       // Select the professional plan by default
       const professionalPlan = plansToUse.find(plan => plan.slug === 'professional');
       if (professionalPlan) {
         setSelectedPlan(professionalPlan.id);
-        console.log('✅ Selected professional plan:', professionalPlan.id);
       } else {
         // Select the first available plan if professional is not found
         const firstPlan = plansToUse[0];
         if (firstPlan) {
           setSelectedPlan(firstPlan.id);
-          console.log('✅ Selected first available plan:', firstPlan.slug);
         }
       }
     } catch (error) {
-      console.error('❌ Unexpected error fetching plans:', error);
+      console.error('Error fetching plans:', error);
       toast.error('Failed to load subscription plans. Please try again or contact support.');
       setPlans([]);
       setSelectedPlan('');
@@ -143,62 +131,7 @@ const OrganizationSetup = () => {
     }).format(price / 100);
   };
 
-  const testDatabaseConnection = async () => {
-    console.log('🔍 Testing database connection...');
-    
-    try {
-      // Test 1: Check if user is authenticated
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      console.log('✅ User authenticated:', currentUser?.email);
-      
-      // Test 2: Check if we can read subscription plans
-      const { data: plans, error: plansError } = await supabase
-        .from('subscription_plans')
-        .select('count')
-        .limit(1);
-      
-      if (plansError) {
-        console.error('❌ Cannot read subscription_plans:', plansError);
-      } else {
-        console.log('✅ Can read subscription_plans');
-      }
-      
-      // Test 3: Check if RPC function exists
-      try {
-        const { error: rpcError } = await supabase.rpc('create_organization_with_user', {
-          org_name: 'test-connection',
-          org_slug: 'test-connection-slug',
-          org_settings: {},
-          plan_id: null
-        });
-        
-        // We expect this to fail with a validation error, not a "function doesn't exist" error
-        if (rpcError?.message?.includes('function create_organization_with_user does not exist')) {
-          console.error('❌ RPC function create_organization_with_user does not exist');
-          toast.error('Database setup incomplete - missing organization creation function');
-        } else {
-          console.log('✅ RPC function exists (even if call failed due to validation)');
-        }
-      } catch (rpcError) {
-        console.error('❌ RPC test failed:', rpcError);
-      }
-      
-      // Test 4: Check if we can read organizations (for RLS)
-      const { data: orgs, error: orgsError } = await supabase
-        .from('organizations')
-        .select('count')
-        .limit(1);
-      
-      if (orgsError) {
-        console.error('❌ Cannot read organizations:', orgsError);
-      } else {
-        console.log('✅ Can read organizations');
-      }
-      
-    } catch (error) {
-      console.error('❌ Database connection test failed:', error);
-    }
-  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -336,37 +269,10 @@ const OrganizationSetup = () => {
 
   const selectedPlanData = plans.find(plan => plan.id === selectedPlan);
 
-  console.log('OrganizationSetup render - Plans:', plans.length, 'Selected:', selectedPlan, 'User:', !!user);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
       <div className="w-full max-w-4xl space-y-8">
-        {/* Debug Info */}
-        <div className="bg-blue-50 p-4 rounded-lg text-sm space-y-2">
-          <div><strong>Debug:</strong> Plans: {plans.length}, User: {user?.email || 'No user'}, Selected: {selectedPlan || 'None'}</div>
-          <div className="flex gap-2">
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="sm"
-              onClick={() => {
-                console.log('Fetching plans manually');
-                fetchPlans();
-              }}
-            >
-              Refetch Plans
-            </Button>
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="sm"
-              onClick={testDatabaseConnection}
-              className="text-blue-600"
-            >
-              🔍 Test DB
-            </Button>
-          </div>
-        </div>
+
         
         {/* Header */}
         <div className="text-center space-y-4">
@@ -499,32 +405,11 @@ const OrganizationSetup = () => {
                       Please contact support to set up subscription plans.
                     </p>
                   </div>
-                  <div className="space-y-2">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm"
-                      onClick={fetchPlans}
-                    >
-                      🔄 Retry Loading Plans
-                    </Button>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => window.open('/debug/plans', '_blank')}
-                    >
-                      🔧 Debug Plans
-                    </Button>
-                  </div>
+
                 </div>
               )}
               
-              {plans.length > 0 && (
-                <div className="mb-4 text-sm text-slate-600">
-                  Found {plans.length} plan(s): {plans.map(p => p.name).join(', ')}
-                </div>
-              )}
+
               
               <RadioGroup value={selectedPlan} onValueChange={setSelectedPlan}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
