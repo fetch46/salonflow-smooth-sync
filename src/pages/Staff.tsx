@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Edit2, Trash2, Phone, Mail, Star } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, Phone, Mail, Star, Upload, User } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,6 +15,7 @@ interface Staff {
   full_name: string;
   email?: string;
   phone?: string;
+  profile_image?: string;
   specialties?: string[];
   is_active: boolean;
   created_at: string;
@@ -48,6 +49,7 @@ export default function Staff() {
     full_name: "",
     email: "",
     phone: "",
+    profile_image: "",
     specialties: [] as string[],
     is_active: true,
   });
@@ -124,6 +126,7 @@ export default function Staff() {
       full_name: "",
       email: "",
       phone: "",
+      profile_image: "",
       specialties: [],
       is_active: true,
     });
@@ -135,6 +138,7 @@ export default function Staff() {
       full_name: staffMember.full_name,
       email: staffMember.email || "",
       phone: staffMember.phone || "",
+      profile_image: staffMember.profile_image || "",
       specialties: staffMember.specialties || [],
       is_active: staffMember.is_active,
     });
@@ -239,6 +243,18 @@ export default function Staff() {
                 />
               </div>
               <div>
+                <Label htmlFor="profile_image">Profile Image URL</Label>
+                <Input
+                  id="profile_image"
+                  placeholder="https://example.com/profile.jpg"
+                  value={formData.profile_image}
+                  onChange={(e) => setFormData({ ...formData, profile_image: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Enter a URL to an image or upload to a service like Imgur, Cloudinary, etc.
+                </p>
+              </div>
+              <div>
                 <Label>Specialties</Label>
                 <div className="grid grid-cols-2 gap-2 mt-2">
                   {SPECIALTY_OPTIONS.map((specialty) => (
@@ -288,8 +304,25 @@ export default function Staff() {
             <CardHeader className="pb-3">
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary/70 rounded-full flex items-center justify-center text-primary-foreground font-semibold text-lg">
-                    {member.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                  <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
+                    {member.profile_image ? (
+                      <img
+                        src={member.profile_image}
+                        alt={member.full_name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Fallback to initials if image fails to load
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling!.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
+                    <div 
+                      className={`w-full h-full flex items-center justify-center text-primary-foreground font-semibold text-lg ${member.profile_image ? 'hidden' : 'flex'}`}
+                      style={{ display: member.profile_image ? 'none' : 'flex' }}
+                    >
+                      {member.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    </div>
                   </div>
                   <div>
                     <CardTitle className="text-lg">{member.full_name}</CardTitle>
