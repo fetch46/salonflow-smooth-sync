@@ -26,6 +26,7 @@ import POS from "@/pages/POS";
 import InventoryAdjustments from "@/pages/InventoryAdjustments";
 import Settings from "@/pages/Settings";
 import JobCards from "@/pages/JobCards";
+import CreateJobCard from "@/pages/CreateJobCard";
 
 // SAAS-specific wrapper component to handle routing logic
 const AppRoutes = () => {
@@ -97,6 +98,7 @@ const AppRoutes = () => {
         
         {/* Operations */}
         <Route path="job-cards" element={<JobCards />} />
+        <Route path="job-cards/new" element={<CreateJobCard />} />
         <Route path="pos" element={<POS />} />
         
         {/* Settings */}
