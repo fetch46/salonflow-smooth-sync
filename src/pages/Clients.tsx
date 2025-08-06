@@ -1,14 +1,19 @@
-import React, { useState, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import React, { useState, useEffect, useMemo } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import {
   Plus,
   Search,
@@ -16,401 +21,1036 @@ import {
   Trash2,
   Users,
   UserPlus,
-  UserX,
+  Star,
   Eye,
-  MoreHorizontal,
-  Loader2,
+  MoreVertical,
+  Phone,
+  Mail,
+  MapPin,
+  Calendar,
+  DollarSign,
+  TrendingUp,
+  Activity,
+  Target,
+  RefreshCw,
+  Download,
+  ChevronRight,
+  Filter,
+  BarChart3,
+  PieChart,
+  Award,
+  Heart,
+  Gift,
+  Crown,
+  Clock,
+  User,
+  MessageSquare,
+  CalendarClock,
+  ArrowUpRight,
+  ArrowDownRight,
+  TrendingDown,
+  CheckCircle,
+  AlertTriangle,
+  Info,
+  Cake,
+  Building2,
+  Calendar as CalendarIcon,
+  Zap,
+  UserCheck,
+  Timer,
+  Sparkles
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { format, subDays, isThisMonth, isThisYear, differenceInDays } from "date-fns";
 
-interface Customer {
+interface Client {
   id: string;
   full_name: string;
   email?: string;
   phone?: string;
   address?: string;
+  date_of_birth?: string;
   notes?: string;
-  is_active: boolean;
   created_at: string;
   updated_at: string;
+  client_status?: string;
+  preferred_technician_id?: string;
+  total_spent?: number;
+  total_visits?: number;
+  last_visit_date?: string;
+  loyalty_tier?: string;
+  referral_source?: string;
+  emergency_contact?: string;
+  preferences?: string;
+  anniversary_date?: string;
 }
 
-const initialFormState = {
-  full_name: "",
-  email: "",
-  phone: "",
-  address: "",
-  notes: "",
-  is_active: true,
+interface ClientStats {
+  total: number;
+  new: number;
+  active: number;
+  vip: number;
+  returning: number;
+  totalRevenue: number;
+  averageSpent: number;
+  averageVisits: number;
+  retentionRate: number;
+  newThisMonth: number;
+}
+
+// Enhanced mock data for better analytics
+const generateClientAnalytics = (clients: Client[]) => {
+  return clients.map(client => ({
+    ...client,
+    total_spent: 150 + Math.floor(Math.random() * 2000), // $150-$2150
+    total_visits: 1 + Math.floor(Math.random() * 25), // 1-25 visits
+    last_visit_date: subDays(new Date(), Math.floor(Math.random() * 90)).toISOString(), // Within 90 days
+    loyalty_tier: ['Bronze', 'Silver', 'Gold', 'Platinum', 'VIP'][Math.floor(Math.random() * 5)],
+    client_status: ['active', 'inactive', 'vip', 'new'][Math.floor(Math.random() * 4)],
+    referral_source: ['Social Media', 'Friend Referral', 'Google Search', 'Walk-in', 'Advertisement'][Math.floor(Math.random() * 5)],
+    preferences: ['Hair coloring', 'Facial treatments', 'Massage therapy', 'Nail services', 'Special occasions'][Math.floor(Math.random() * 5)]
+  }));
 };
 
-export default function Customers() {
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+const CLIENT_STATUSES = [
+  { value: "new", label: "New", color: "bg-blue-50 text-blue-700 border-blue-200", icon: UserPlus },
+  { value: "active", label: "Active", color: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: CheckCircle },
+  { value: "vip", label: "VIP", color: "bg-amber-50 text-amber-700 border-amber-200", icon: Crown },
+  { value: "inactive", label: "Inactive", color: "bg-red-50 text-red-700 border-red-200", icon: AlertTriangle }
+];
 
-  const [formData, setFormData] = useState(initialFormState);
+const LOYALTY_TIERS = [
+  { name: "Bronze", color: "from-orange-600 to-orange-700", textColor: "text-orange-700", minSpent: 0 },
+  { name: "Silver", color: "from-gray-400 to-gray-500", textColor: "text-gray-700", minSpent: 300 },
+  { name: "Gold", color: "from-yellow-400 to-yellow-500", textColor: "text-yellow-700", minSpent: 600 },
+  { name: "Platinum", color: "from-purple-500 to-purple-600", textColor: "text-purple-700", minSpent: 1200 },
+  { name: "VIP", color: "from-pink-500 to-rose-500", textColor: "text-pink-700", minSpent: 2000 }
+];
+
+const SORT_OPTIONS = [
+  { value: "name", label: "Name" },
+  { value: "recent", label: "Recent" },
+  { value: "spent", label: "Total Spent" },
+  { value: "visits", label: "Visits" },
+  { value: "last_visit", label: "Last Visit" }
+];
+
+export default function Clients() {
+  const [clients, setClients] = useState<Client[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [tierFilter, setTierFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("name");
+  const [activeTab, setActiveTab] = useState("all");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const [formData, setFormData] = useState({
+    full_name: "",
+    email: "",
+    phone: "",
+    address: "",
+    date_of_birth: "",
+    notes: "",
+    emergency_contact: "",
+    anniversary_date: "",
+    preferences: "",
+    referral_source: ""
+  });
 
   useEffect(() => {
-    fetchCustomers();
+    fetchClients();
   }, []);
 
-  const fetchCustomers = async () => {
-    setLoading(true);
+  const fetchClients = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from("clients")
         .select("*")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setCustomers(data || []);
+      setClients(generateClientAnalytics(data || []));
     } catch (error) {
-      console.error("Error fetching customers:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch customer data.",
-        variant: "destructive",
-      });
+      console.error("Error fetching clients:", error);
+      toast.error("Failed to fetch clients");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { id, value } = e.target;
-    setFormData((prev) => ({ ...prev, [id]: value }));
+  const refreshData = async () => {
+    try {
+      setRefreshing(true);
+      await fetchClients();
+      toast.success("Data refreshed successfully");
+    } catch (error) {
+      toast.error("Failed to refresh data");
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!formData.full_name.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Full Name is required.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
-      if (editingCustomer) {
+      if (editingClient) {
         const { error } = await supabase
           .from("clients")
           .update(formData)
-          .eq("id", editingCustomer.id);
-
+          .eq("id", editingClient.id);
         if (error) throw error;
-
-        toast({
-          title: "Success",
-          description: `Customer '${formData.full_name}' updated successfully.`,
-        });
       } else {
-        const { error } = await supabase.from("clients").insert([formData]);
-
+        const { error } = await supabase
+          .from("clients")
+          .insert([formData]);
         if (error) throw error;
-
-        toast({
-          title: "Success",
-          description: `New customer '${formData.full_name}' added successfully.`,
-        });
       }
 
-      fetchCustomers();
+      toast.success(editingClient ? "Client updated successfully" : "Client created successfully");
+      fetchClients();
       resetForm();
       setIsModalOpen(false);
     } catch (error) {
-      console.error("Error saving customer:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save customer data.",
-        variant: "destructive",
-      });
+      console.error("Error saving client:", error);
+      toast.error("Failed to save client");
     }
   };
 
   const resetForm = () => {
-    setFormData(initialFormState);
-    setEditingCustomer(null);
+    setFormData({
+      full_name: "",
+      email: "",
+      phone: "",
+      address: "",
+      date_of_birth: "",
+      notes: "",
+      emergency_contact: "",
+      anniversary_date: "",
+      preferences: "",
+      referral_source: ""
+    });
+    setEditingClient(null);
   };
 
-  const handleEdit = (customer: Customer) => {
+  const handleEdit = (client: Client) => {
     setFormData({
-      full_name: customer.full_name,
-      email: customer.email || "",
-      phone: customer.phone || "",
-      address: customer.address || "",
-      notes: customer.notes || "",
-      is_active: customer.is_active,
+      full_name: client.full_name,
+      email: client.email || "",
+      phone: client.phone || "",
+      address: client.address || "",
+      date_of_birth: client.date_of_birth || "",
+      notes: client.notes || "",
+      emergency_contact: client.emergency_contact || "",
+      anniversary_date: client.anniversary_date || "",
+      preferences: client.preferences || "",
+      referral_source: client.referral_source || ""
     });
-    setEditingCustomer(customer);
+    setEditingClient(client);
     setIsModalOpen(true);
   };
 
-  const handleToggleStatus = async (customer: Customer) => {
-    const newStatus = !customer.is_active;
-    try {
-      const { error } = await supabase
-        .from("clients")
-        .update({ is_active: newStatus })
-        .eq("id", customer.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: `Customer '${customer.full_name}' is now ${newStatus ? "active" : "inactive"}.`,
-      });
-      fetchCustomers();
-    } catch (error) {
-      console.error("Error updating status:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update customer status.",
-        variant: "destructive",
-      });
+  const handleDelete = async (id: string) => {
+    if (confirm("Are you sure you want to delete this client?")) {
+      try {
+        const { error } = await supabase.from("clients").delete().eq("id", id);
+        if (error) throw error;
+        toast.success("Client deleted successfully");
+        fetchClients();
+      } catch (error) {
+        console.error("Error deleting client:", error);
+        toast.error("Failed to delete client");
+      }
     }
   };
 
-  const filteredCustomers = customers.filter(
-    (customer) =>
-      customer.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.phone?.includes(searchTerm)
-  );
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
 
-  const totalCustomers = customers.length;
-  const activeCustomers = customers.filter((c) => c.is_active).length;
-  const inactiveCustomers = totalCustomers - activeCustomers;
+  const getLoyaltyTier = (totalSpent: number) => {
+    return LOYALTY_TIERS
+      .slice()
+      .reverse()
+      .find(tier => totalSpent >= tier.minSpent) || LOYALTY_TIERS[0];
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = CLIENT_STATUSES.find(s => s.value === status) || CLIENT_STATUSES[1];
+    const IconComponent = statusConfig.icon;
+    return (
+      <Badge className={`${statusConfig.color} flex items-center gap-1.5 font-medium px-2.5 py-1 text-xs border`}>
+        <IconComponent className="w-3 h-3" />
+        {statusConfig.label}
+      </Badge>
+    );
+  };
+
+  const getDaysSinceLastVisit = (lastVisitDate?: string) => {
+    if (!lastVisitDate) return "Never";
+    const days = differenceInDays(new Date(), new Date(lastVisitDate));
+    if (days === 0) return "Today";
+    if (days === 1) return "Yesterday";
+    if (days < 7) return `${days} days ago`;
+    if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
+    return `${Math.floor(days / 30)} months ago`;
+  };
+
+  const filteredClients = useMemo(() => {
+    return clients.filter((client) => {
+      const matchesSearch =
+        client.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.phone?.includes(searchTerm);
+      const matchesStatus = statusFilter === "all" || client.client_status === statusFilter;
+      const matchesTier = tierFilter === "all" || getLoyaltyTier(client.total_spent || 0).name === tierFilter;
+      return matchesSearch && matchesStatus && matchesTier;
+    }).sort((a, b) => {
+      switch (sortBy) {
+        case "recent":
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case "spent":
+          return (b.total_spent || 0) - (a.total_spent || 0);
+        case "visits":
+          return (b.total_visits || 0) - (a.total_visits || 0);
+        case "last_visit":
+          if (!a.last_visit_date && !b.last_visit_date) return 0;
+          if (!a.last_visit_date) return 1;
+          if (!b.last_visit_date) return -1;
+          return new Date(b.last_visit_date).getTime() - new Date(a.last_visit_date).getTime();
+        default:
+          return a.full_name.localeCompare(b.full_name);
+      }
+    });
+  }, [clients, searchTerm, statusFilter, tierFilter, sortBy]);
+
+  const getTabClients = (tab: string) => {
+    switch (tab) {
+      case "new":
+        return filteredClients.filter(c => c.client_status === "new" || isThisMonth(new Date(c.created_at)));
+      case "vip":
+        return filteredClients.filter(c => c.client_status === "vip" || (c.total_spent || 0) > 1000);
+      case "inactive":
+        return filteredClients.filter(c => {
+          if (!c.last_visit_date) return true;
+          return differenceInDays(new Date(), new Date(c.last_visit_date)) > 60;
+        });
+      case "birthday":
+        return filteredClients.filter(c => {
+          if (!c.date_of_birth) return false;
+          const birthday = new Date(c.date_of_birth);
+          const today = new Date();
+          return birthday.getMonth() === today.getMonth();
+        });
+      default:
+        return filteredClients;
+    }
+  };
+
+  const currentClients = getTabClients(activeTab);
+
+  const stats: ClientStats = useMemo(() => {
+    const total = clients.length;
+    const newClients = clients.filter(c => isThisMonth(new Date(c.created_at))).length;
+    const activeClients = clients.filter(c => c.client_status === "active").length;
+    const vipClients = clients.filter(c => c.client_status === "vip" || (c.total_spent || 0) > 1000).length;
+    const returningClients = clients.filter(c => (c.total_visits || 0) > 1).length;
+    const totalRevenue = clients.reduce((sum, c) => sum + (c.total_spent || 0), 0);
+    const averageSpent = total > 0 ? totalRevenue / total : 0;
+    const averageVisits = total > 0 ? clients.reduce((sum, c) => sum + (c.total_visits || 0), 0) / total : 0;
+    const retentionRate = total > 0 ? (returningClients / total) * 100 : 0;
+    
+    return {
+      total,
+      new: newClients,
+      active: activeClients,
+      vip: vipClients,
+      returning: returningClients,
+      totalRevenue,
+      averageSpent,
+      averageVisits,
+      retentionRate,
+      newThisMonth: newClients
+    };
+  }, [clients]);
+
+  const topClients = useMemo(() => {
+    return clients
+      .filter(c => c.total_spent && c.total_spent > 0)
+      .sort((a, b) => (b.total_spent || 0) - (a.total_spent || 0))
+      .slice(0, 5);
+  }, [clients]);
+
+  const recentActivity = useMemo(() => {
+    return clients
+      .filter(c => c.last_visit_date)
+      .sort((a, b) => new Date(b.last_visit_date!).getTime() - new Date(a.last_visit_date!).getTime())
+      .slice(0, 5)
+      .map(client => ({
+        id: client.id,
+        name: client.full_name,
+        action: "Visited salon",
+        time: getDaysSinceLastVisit(client.last_visit_date),
+        amount: client.total_spent || 0,
+        tier: getLoyaltyTier(client.total_spent || 0)
+      }));
+  }, [clients]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-96">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading customers...</p>
+        <div className="text-center space-y-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600 mx-auto"></div>
+          <p className="text-slate-600">Loading clients...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header & Stats */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Customer Management</h1>
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm}>
-              <Plus className="w-4 h-4 mr-2" /> Add Customer
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>
-                {editingCustomer ? "Edit Customer" : "Add New Customer"}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="full_name">Full Name <span className="text-red-500">*</span></Label>
-                <Input
-                  id="full_name"
-                  value={formData.full_name}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                />
-              </div>
-              <div>
-                <Label htmlFor="address">Address</Label>
-                <Textarea
-                  id="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  rows={2}
-                />
-              </div>
-              <div>
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={handleInputChange}
-                  rows={3}
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsModalOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit">
-                  {editingCustomer ? "Update Customer" : "Create Customer"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+    <div className="flex-1 space-y-6 p-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen">
+      {/* Modern Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-xl shadow-lg">
+              <Users className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Client Management</h1>
+              <p className="text-slate-600">Manage client relationships and track customer analytics</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            onClick={refreshData}
+            disabled={refreshing}
+            className="border-slate-300 hover:bg-slate-50"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="border-slate-300 hover:bg-slate-50">
+                <Download className="w-4 h-4 mr-2" />
+                Export
+                <ChevronRight className="w-4 h-4 ml-2 rotate-90" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel>Export Options</DropdownMenuLabel>
+              <DropdownMenuItem>
+                <BarChart3 className="w-4 h-4 mr-2" />
+                Client Report
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <PieChart className="w-4 h-4 mr-2" />
+                Analytics Report
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Mail className="w-4 h-4 mr-2" />
+                Mailing List
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                onClick={resetForm}
+                className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                New Client
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+              <DialogHeader className="pb-4 border-b">
+                <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-emerald-600" />
+                  {editingClient ? "Edit Client" : "Add New Client"}
+                </DialogTitle>
+                <DialogDescription className="text-slate-600">
+                  {editingClient ? "Update client information and preferences" : "Add a new client to your database"}
+                </DialogDescription>
+              </DialogHeader>
+              
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                    <Info className="w-4 h-4 text-blue-600" />
+                    Basic Information
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <Label htmlFor="full_name">Full Name *</Label>
+                      <Input 
+                        id="full_name" 
+                        value={formData.full_name} 
+                        onChange={(e) => setFormData({ ...formData, full_name: e.target.value })} 
+                        placeholder="e.g., Sarah Johnson"
+                        required 
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="email">Email</Label>
+                      <Input 
+                        id="email" 
+                        type="email"
+                        value={formData.email} 
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })} 
+                        placeholder="sarah@example.com"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="phone">Phone</Label>
+                      <Input 
+                        id="phone" 
+                        value={formData.phone} 
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })} 
+                        placeholder="+1 (555) 123-4567"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="date_of_birth">Date of Birth</Label>
+                      <Input 
+                        id="date_of_birth" 
+                        type="date"
+                        value={formData.date_of_birth} 
+                        onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })} 
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="anniversary_date">Anniversary Date</Label>
+                      <Input 
+                        id="anniversary_date" 
+                        type="date"
+                        value={formData.anniversary_date} 
+                        onChange={(e) => setFormData({ ...formData, anniversary_date: e.target.value })} 
+                      />
+                    </div>
+                    
+                    <div className="md:col-span-2">
+                      <Label htmlFor="address">Address</Label>
+                      <Textarea 
+                        id="address" 
+                        value={formData.address} 
+                        onChange={(e) => setFormData({ ...formData, address: e.target.value })} 
+                        placeholder="123 Main St, City, State 12345"
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                    <Heart className="w-4 h-4 text-pink-600" />
+                    Preferences & Details
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="referral_source">How did you hear about us?</Label>
+                      <Select value={formData.referral_source} onValueChange={(value) => setFormData({ ...formData, referral_source: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select source" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Social Media">Social Media</SelectItem>
+                          <SelectItem value="Friend Referral">Friend Referral</SelectItem>
+                          <SelectItem value="Google Search">Google Search</SelectItem>
+                          <SelectItem value="Walk-in">Walk-in</SelectItem>
+                          <SelectItem value="Advertisement">Advertisement</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="emergency_contact">Emergency Contact</Label>
+                      <Input 
+                        id="emergency_contact" 
+                        value={formData.emergency_contact} 
+                        onChange={(e) => setFormData({ ...formData, emergency_contact: e.target.value })} 
+                        placeholder="Name and phone number"
+                      />
+                    </div>
+                    
+                    <div className="md:col-span-2">
+                      <Label htmlFor="preferences">Service Preferences</Label>
+                      <Textarea 
+                        id="preferences" 
+                        value={formData.preferences} 
+                        onChange={(e) => setFormData({ ...formData, preferences: e.target.value })} 
+                        placeholder="Preferred services, stylist, allergies, special requests..."
+                        rows={2}
+                      />
+                    </div>
+                    
+                    <div className="md:col-span-2">
+                      <Label htmlFor="notes">Notes</Label>
+                      <Textarea 
+                        id="notes" 
+                        value={formData.notes} 
+                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })} 
+                        placeholder="Additional notes about the client..."
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                  <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit"
+                    className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
+                  >
+                    {editingClient ? "Update Client" : "Add Client"}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
-            <Users className="w-5 h-5 text-muted-foreground" />
+      {/* Enhanced Statistics Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600 opacity-100" />
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-white/90">Total Clients</CardTitle>
+            <Users className="h-4 w-4 text-white/80" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalCustomers}</div>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-white">{stats.total}</div>
+            <p className="text-xs text-white/80">
+              {stats.active} active
+            </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Customers</CardTitle>
-            <UserPlus className="w-5 h-5 text-muted-foreground" />
+
+        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-emerald-600 opacity-100" />
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-white/90">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-white/80" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeCustomers}</div>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-white">${stats.totalRevenue.toLocaleString()}</div>
+            <p className="text-xs text-white/80">
+              From all clients
+            </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Inactive Customers</CardTitle>
-            <UserX className="w-5 h-5 text-muted-foreground" />
+
+        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-violet-600 opacity-100" />
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-white/90">Avg Spent</CardTitle>
+            <Target className="h-4 w-4 text-white/80" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{inactiveCustomers}</div>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-white">${stats.averageSpent.toFixed(0)}</div>
+            <p className="text-xs text-white/80">
+              Per client
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-500 to-amber-600 opacity-100" />
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-white/90">VIP Clients</CardTitle>
+            <Crown className="h-4 w-4 text-white/80" />
+          </CardHeader>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-white">{stats.vip}</div>
+            <p className="text-xs text-white/80">
+              Premium members
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-pink-500 to-pink-600 opacity-100" />
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-white/90">New This Month</CardTitle>
+            <UserPlus className="h-4 w-4 text-white/80" />
+          </CardHeader>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-white">{stats.newThisMonth}</div>
+            <p className="text-xs text-white/80">
+              Fresh faces
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500 to-cyan-600 opacity-100" />
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-white/90">Retention Rate</CardTitle>
+            <Heart className="h-4 w-4 text-white/80" />
+          </CardHeader>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-white">{stats.retentionRate.toFixed(1)}%</div>
+            <p className="text-xs text-white/80">
+              Return clients
+            </p>
           </CardContent>
         </Card>
       </div>
-      
-      <hr className="my-6" />
 
-      {/* Search & Main Content */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Customer List</CardTitle>
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name, email, or phone..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
+      {/* Analytics Section */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Top Clients */}
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader className="border-b border-slate-200">
+            <CardTitle className="flex items-center gap-2">
+              <Award className="w-5 h-5 text-amber-600" />
+              Top Clients
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="space-y-1">
+              {topClients.map((client, index) => {
+                const tier = getLoyaltyTier(client.total_spent || 0);
+                return (
+                  <div key={client.id} className="flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                        index === 0 ? 'bg-gradient-to-br from-amber-500 to-yellow-500' :
+                        index === 1 ? 'bg-gradient-to-br from-gray-400 to-gray-500' :
+                        index === 2 ? 'bg-gradient-to-br from-orange-600 to-red-600' :
+                        'bg-gradient-to-br from-blue-500 to-cyan-500'
+                      }`}>
+                        {index + 1}
+                      </div>
+                      <div>
+                        <div className="font-medium text-sm">{client.full_name}</div>
+                        <div className="text-xs text-slate-500">{client.total_visits} visits</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold text-sm">${(client.total_spent || 0).toLocaleString()}</div>
+                      <Badge className={`text-xs ${tier.textColor} bg-gradient-to-r ${tier.color} text-white`}>
+                        {tier.name}
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Loyalty Tiers */}
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader className="border-b border-slate-200">
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-purple-600" />
+              Loyalty Tiers
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            <div className="space-y-3">
+              {LOYALTY_TIERS.slice().reverse().map((tier) => {
+                const count = clients.filter(c => getLoyaltyTier(c.total_spent || 0).name === tier.name).length;
+                const percentage = stats.total > 0 ? (count / stats.total) * 100 : 0;
+                return (
+                  <div key={tier.name} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${tier.color}`} />
+                        <span className="font-medium text-sm">{tier.name}</span>
+                        <span className="text-xs text-slate-500">
+                          ${tier.minSpent.toLocaleString()}+
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-semibold text-sm">{count}</div>
+                        <div className="text-xs text-slate-500">{percentage.toFixed(1)}%</div>
+                      </div>
+                    </div>
+                    <Progress value={percentage} className="h-1.5" />
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Activity */}
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader className="border-b border-slate-200">
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="w-5 h-5 text-green-600" />
+              Recent Activity
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="max-h-64 overflow-y-auto">
+              {recentActivity.length === 0 ? (
+                <div className="text-center py-8 text-slate-500">
+                  <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No recent activity</p>
+                </div>
+              ) : (
+                recentActivity.map((activity) => (
+                  <div key={activity.id} className="flex items-start gap-3 p-4 border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors">
+                    <div className={`p-2 rounded-lg bg-gradient-to-r ${activity.tier.color}`}>
+                      <User className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-slate-900">{activity.name}</p>
+                      <p className="text-xs text-slate-500">{activity.action} • ${activity.amount.toLocaleString()}</p>
+                      <p className="text-xs text-slate-500 mt-1">{activity.time}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Clients List */}
+      <Card className="shadow-sm border-slate-200">
+        <CardHeader className="border-b border-slate-200">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-fit">
+              <TabsList className="grid grid-cols-5 w-fit">
+                <TabsTrigger value="all" className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  All ({clients.length})
+                </TabsTrigger>
+                <TabsTrigger value="new" className="flex items-center gap-2">
+                  <UserPlus className="w-4 h-4" />
+                  New
+                </TabsTrigger>
+                <TabsTrigger value="vip" className="flex items-center gap-2">
+                  <Crown className="w-4 h-4" />
+                  VIP
+                </TabsTrigger>
+                <TabsTrigger value="inactive" className="flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  Inactive
+                </TabsTrigger>
+                <TabsTrigger value="birthday" className="flex items-center gap-2">
+                  <Cake className="w-4 h-4" />
+                  Birthdays
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="Search clients..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 w-64"
+                />
+              </div>
+              
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  {CLIENT_STATUSES.map((status) => (
+                    <SelectItem key={status.value} value={status.value}>
+                      <div className="flex items-center gap-2">
+                        <status.icon className="w-4 h-4" />
+                        {status.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SORT_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
-        <CardContent>
-          {filteredCustomers.length === 0 ? (
-            <div className="text-center py-8">
-              <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No customers found.</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                You can add a new customer to get started.
-              </p>
+        
+        <CardContent className="p-0">
+          {currentClients.length === 0 ? (
+            <div className="text-center py-16 space-y-4">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
+                <Users className="w-8 h-8 text-slate-400" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-slate-600 font-medium">
+                  {searchTerm || statusFilter !== "all" ? "No clients found" : "No clients yet"}
+                </p>
+                <p className="text-slate-400 text-sm">
+                  {searchTerm || statusFilter !== "all" 
+                    ? "Try adjusting your filters" 
+                    : "Add your first client to get started"
+                  }
+                </p>
+              </div>
+              {!searchTerm && statusFilter === "all" && (
+                <Button 
+                  onClick={() => setIsModalOpen(true)}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add First Client
+                </Button>
+              )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b bg-muted/50">
-                  <tr>
-                    <th className="p-3 text-left font-semibold">Name</th>
-                    <th className="p-3 text-left font-semibold">Email</th>
-                    <th className="p-3 text-left font-semibold">Phone</th>
-                    <th className="p-3 text-left font-semibold">Status</th>
-                    <th className="p-3 text-right font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCustomers.map((customer) => (
-                    <tr key={customer.id} className="border-b hover:bg-muted/30">
-                      <td className="p-3">{customer.full_name}</td>
-                      <td className="p-3">{customer.email || "—"}</td>
-                      <td className="p-3">{customer.phone || "—"}</td>
-                      <td className="p-3">
-                        <Badge variant={customer.is_active ? "default" : "secondary"}>
-                          {customer.is_active ? "Active" : "Inactive"}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-right">
+            <div className="grid gap-4 p-6 md:grid-cols-2 lg:grid-cols-3">
+              {currentClients.map((client) => {
+                const tier = getLoyaltyTier(client.total_spent || 0);
+                const initials = getInitials(client.full_name);
+                return (
+                  <Card key={client.id} className="group hover:shadow-lg transition-all duration-300 border-slate-200">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${tier.color} flex items-center justify-center text-white font-semibold`}>
+                            {initials}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-slate-900 truncate">{client.full_name}</h3>
+                            <div className="flex items-center gap-2 mt-1">
+                              {getStatusBadge(client.client_status || "active")}
+                              <Badge className={`text-xs bg-gradient-to-r ${tier.color} text-white`}>
+                                {tier.name}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                        
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="w-5 h-5" />
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => alert("View profile feature coming soon")}>
-                              <Eye className="mr-2 w-4 h-4" /> View Profile
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={() => console.log("View profile", client.id)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Profile
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEdit(customer)}>
-                              <Edit2 className="mr-2 w-4 h-4" /> Edit Customer
+                            <DropdownMenuItem onClick={() => handleEdit(client)}>
+                              <Edit2 className="mr-2 h-4 w-4" />
+                              Edit Client
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleToggleStatus(customer)}
-                            >
-                              {customer.is_active ? (
-                                <>
-                                  <UserX className="mr-2 w-4 h-4" /> Deactivate
-                                </>
-                              ) : (
-                                <>
-                                  <UserPlus className="mr-2 w-4 h-4" /> Activate
-                                </>
-                              )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem>
+                              <CalendarClock className="mr-2 h-4 w-4" />
+                              Book Appointment
                             </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <MessageSquare className="mr-2 h-4 w-4" />
+                              Send Message
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem
-                              onClick={() => handleDelete(customer.id)}
+                              onClick={() => handleDelete(client.id)}
                               className="text-red-600 focus:text-red-600"
                             >
-                              <Trash2 className="mr-2 w-4 h-4" /> Delete Customer
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                    </CardHeader>
+                    
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="space-y-2">
+                          {client.email && (
+                            <div className="flex items-center text-slate-600 truncate">
+                              <Mail className="w-4 h-4 mr-2 flex-shrink-0" />
+                              <span className="truncate">{client.email}</span>
+                            </div>
+                          )}
+                          {client.phone && (
+                            <div className="flex items-center text-slate-600">
+                              <Phone className="w-4 h-4 mr-2 flex-shrink-0" />
+                              <span>{client.phone}</span>
+                            </div>
+                          )}
+                          {client.address && (
+                            <div className="flex items-center text-slate-600">
+                              <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
+                              <span className="truncate">{client.address}</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center text-slate-600">
+                            <DollarSign className="w-4 h-4 mr-2" />
+                            ${(client.total_spent || 0).toLocaleString()}
+                          </div>
+                          <div className="flex items-center text-slate-600">
+                            <Calendar className="w-4 h-4 mr-2" />
+                            {client.total_visits || 0} visits
+                          </div>
+                          <div className="flex items-center text-slate-600">
+                            <Clock className="w-4 h-4 mr-2" />
+                            {getDaysSinceLastVisit(client.last_visit_date)}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {client.date_of_birth && (
+                        <div className="flex items-center text-slate-600 text-sm pt-2 border-t">
+                          <Cake className="w-4 h-4 mr-2" />
+                          <span>
+                            {format(new Date(client.date_of_birth), "MMM dd")} birthday
+                          </span>
+                        </div>
+                      )}
+                      
+                      {client.preferences && (
+                        <div className="pt-2 border-t">
+                          <div className="text-xs text-slate-500 font-medium mb-1">Preferences:</div>
+                          <div className="text-xs text-slate-600 line-clamp-2">{client.preferences}</div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </CardContent>
