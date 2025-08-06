@@ -27,6 +27,7 @@ import InventoryAdjustments from "@/pages/InventoryAdjustments";
 import Settings from "@/pages/Settings";
 import JobCards from "@/pages/JobCards";
 import CreateJobCard from "@/pages/CreateJobCard";
+import SuperAdmin from "@/pages/SuperAdmin";
 
 // SAAS-specific wrapper component to handle routing logic
 const AppRoutes = () => {
@@ -58,6 +59,7 @@ const AppRoutes = () => {
   if (!organization && organizations.length === 0) {
     return (
       <Routes>
+        <Route path="/super-admin" element={<SuperAdmin />} />
         <Route path="/setup" element={<OrganizationSetup />} />
         <Route path="*" element={<Navigate to="/setup" replace />} />
       </Routes>
@@ -67,6 +69,9 @@ const AppRoutes = () => {
   // Authenticated with organization - show main app
   return (
     <Routes>
+      {/* System-wide routes available to authenticated users */}
+      <Route path="/super-admin" element={<SuperAdmin />} />
+      
       {/* Redirect auth pages if already logged in */}
       <Route path="/login" element={<Navigate to="/dashboard" replace />} />
       <Route path="/register" element={<Navigate to="/dashboard" replace />} />

@@ -169,11 +169,19 @@ const menuItems: MenuItem[] = [
   },
 ];
 
+// Super Admin menu item (separate from main menu since it's system-wide)
+const superAdminMenuItem: MenuItem = {
+  title: "Super Admin",
+  url: "/super-admin",
+  icon: Crown,
+  feature: "system", // This will always be false for regular features, we'll handle it separately
+};
+
 export function AppSidebar() {
   const location = useLocation();
   const [openSubmenus, setOpenSubmenus] = useState<string[]>([]);
   const { hasFeature, getFeatureAccess, usageData } = useFeatureGating();
-  const { subscriptionPlan, isTrialing, daysLeftInTrial } = useSaas();
+  const { subscriptionPlan, isTrialing, daysLeftInTrial, isSuperAdmin } = useSaas();
 
   const toggleSubmenu = (title: string) => {
     setOpenSubmenus((prev) =>
@@ -341,6 +349,36 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Super Admin Section */}
+        {isSuperAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-violet-700">System Admin</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={location.pathname === superAdminMenuItem.url}
+                    className="hover:bg-violet-50 data-[active=true]:bg-violet-100 data-[active=true]:text-violet-900"
+                  >
+                    <a href={superAdminMenuItem.url} className="flex items-center gap-2">
+                      <superAdminMenuItem.icon className="h-4 w-4" />
+                      <span>{superAdminMenuItem.title}</span>
+                      <Badge 
+                        variant="outline" 
+                        className="ml-auto bg-violet-50 text-violet-700 border-violet-200"
+                      >
+                        <Crown className="w-2 h-2 mr-1" />
+                        Admin
+                      </Badge>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* Plan Information */}
         <SidebarGroup>
