@@ -28,6 +28,7 @@ import Settings from "@/pages/Settings";
 import JobCards from "@/pages/JobCards";
 import CreateJobCard from "@/pages/CreateJobCard";
 import SuperAdmin from "@/pages/SuperAdmin";
+import PlansDebug from "@/components/debug/PlansDebug";
 
 // SAAS-specific wrapper component to handle routing logic
 const AppRoutes = () => {
@@ -60,6 +61,7 @@ const AppRoutes = () => {
     return (
       <Routes>
         <Route path="/super-admin" element={<SuperAdmin />} />
+        <Route path="/debug/plans" element={<PlansDebug />} />
         <Route path="/setup" element={<OrganizationSetup />} />
         <Route path="*" element={<Navigate to="/setup" replace />} />
       </Routes>
@@ -71,6 +73,7 @@ const AppRoutes = () => {
     <Routes>
       {/* System-wide routes available to authenticated users */}
       <Route path="/super-admin" element={<SuperAdmin />} />
+      <Route path="/debug/plans" element={<PlansDebug />} />
       
       {/* Redirect auth pages if already logged in */}
       <Route path="/login" element={<Navigate to="/dashboard" replace />} />
