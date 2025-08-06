@@ -54,25 +54,124 @@ const OrganizationSetup = () => {
     fetchPlans();
   }, []);
 
+  // Mock plans for testing
+  const mockPlans = [
+    {
+      id: 'mock-starter',
+      name: 'Starter',
+      slug: 'starter',
+      description: 'Perfect for small salons just getting started',
+      price_monthly: 2900,
+      price_yearly: 29000,
+      max_users: 5,
+      max_locations: 1,
+      features: {
+        appointments: true,
+        clients: true,
+        staff: true,
+        services: true,
+        basic_reports: true,
+        inventory: false
+      },
+      is_active: true,
+      sort_order: 1,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    },
+    {
+      id: 'mock-professional',
+      name: 'Professional',
+      slug: 'professional',
+      description: 'For growing salons with multiple staff members',
+      price_monthly: 5900,
+      price_yearly: 59000,
+      max_users: 25,
+      max_locations: 3,
+      features: {
+        appointments: true,
+        clients: true,
+        staff: true,
+        services: true,
+        inventory: true,
+        basic_reports: true,
+        advanced_reports: true,
+        pos: true,
+        accounting: true
+      },
+      is_active: true,
+      sort_order: 2,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    },
+    {
+      id: 'mock-enterprise',
+      name: 'Enterprise',
+      slug: 'enterprise',
+      description: 'For large salon chains with advanced needs',
+      price_monthly: 9900,
+      price_yearly: 99000,
+      max_users: 100,
+      max_locations: 10,
+      features: {
+        appointments: true,
+        clients: true,
+        staff: true,
+        services: true,
+        inventory: true,
+        basic_reports: true,
+        advanced_reports: true,
+        pos: true,
+        accounting: true,
+        api_access: true,
+        white_label: true
+      },
+      is_active: true,
+      sort_order: 3,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  ];
+
   const fetchPlans = async () => {
     try {
+      console.log('Fetching subscription plans...');
       const { data, error } = await supabase
         .from('subscription_plans')
         .select('*')
         .eq('is_active', true)
         .order('sort_order');
 
+      console.log('Plans query result:', { data, error });
+
       if (error) throw error;
-      setPlans(data || []);
+      
+      let plansToUse = data || [];
+      
+      // If no plans found in database, use mock plans as fallback
+      if (plansToUse.length === 0) {
+        console.warn('No plans found in database, using mock data');
+        plansToUse = mockPlans;
+        toast.error('Using demo plans - please run the subscription plans migration');
+      }
+      
+      setPlans(plansToUse);
+      
+      console.log('Plans set in state:', plansToUse);
       
       // Select the professional plan by default
-      const professionalPlan = data?.find(plan => plan.slug === 'professional');
+      const professionalPlan = plansToUse.find(plan => plan.slug === 'professional');
       if (professionalPlan) {
         setSelectedPlan(professionalPlan.id);
+        console.log('Selected professional plan:', professionalPlan.id);
+      } else {
+        console.log('Professional plan not found, available plans:', plansToUse.map(p => p.slug));
       }
     } catch (error) {
       console.error('Error fetching plans:', error);
-      toast.error('Failed to load subscription plans');
+      console.warn('Database query failed, using mock plans as fallback');
+      setPlans(mockPlans);
+      setSelectedPlan(mockPlans.find(p => p.slug === 'professional')?.id || mockPlans[0]?.id);
+      toast.error('Failed to load subscription plans from database, showing demo plans');
     }
   };
 
@@ -325,6 +424,34 @@ const OrganizationSetup = () => {
               </div>
             </CardHeader>
             <CardContent>
+              {plans.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-slate-600">Loading subscription plans...</p>
+                  <p className="text-sm text-slate-500 mt-2">
+                    If this persists, check the console for errors or visit /debug/plans
+                  </p>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="mt-4" 
+                    onClick={() => {
+                      console.log('Using mock plans for testing');
+                      setPlans(mockPlans);
+                      setSelectedPlan(mockPlans.find(p => p.slug === 'professional')?.id || mockPlans[0]?.id);
+                      toast.success('Loaded demo plans for testing');
+                    }}
+                  >
+                    Use Demo Plans for Testing
+                  </Button>
+                </div>
+              )}
+              
+              {plans.length > 0 && (
+                <div className="mb-4 text-sm text-slate-600">
+                  Found {plans.length} plan(s): {plans.map(p => p.name).join(', ')}
+                </div>
+              )}
+              
               <RadioGroup value={selectedPlan} onValueChange={setSelectedPlan}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {plans.map((plan) => {
