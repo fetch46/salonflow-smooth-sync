@@ -67,39 +67,6 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [userRoles, setUserRoles] = useState<Record<string, user_role>>({});
 
-  useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        loadUserOrganizations(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    });
-
-    // Listen for auth changes
-    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await loadUserOrganizations(session.user.id);
-        } else {
-          // Clear all state when user logs out
-          setOrganization(null);
-          setOrganizationRole(null);
-          setSubscription(null);
-          setSubscriptionPlan(null);
-          setOrganizations([]);
-          setUserRoles({});
-          setLoading(false);
-        }
-      }
-    );
-
-    return () => authSubscription.unsubscribe();
-  }, [loadUserOrganizations]);
-
   const loadUserOrganizations = useCallback(async (userId: string) => {
     try {
       setLoading(true);
@@ -147,9 +114,42 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setActiveOrganization]);
 
-  const setActiveOrganization = async (org: Organization, role: user_role) => {
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        loadUserOrganizations(session.user.id);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    // Listen for auth changes
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          await loadUserOrganizations(session.user.id);
+        } else {
+          // Clear all state when user logs out
+          setOrganization(null);
+          setOrganizationRole(null);
+          setSubscription(null);
+          setSubscriptionPlan(null);
+          setOrganizations([]);
+          setUserRoles({});
+          setLoading(false);
+        }
+      }
+    );
+
+    return () => authSubscription.unsubscribe();
+  }, [loadUserOrganizations]);
+
+  const setActiveOrganization = useCallback(async (org: Organization, role: user_role) => {
     try {
       setOrganization(org);
       setOrganizationRole(role);
@@ -160,9 +160,9 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Error setting active organization:', error);
     }
-  };
+  }, [loadSubscriptionData]);
 
-  const loadSubscriptionData = async (organizationId: string) => {
+  const loadSubscriptionData = useCallback(async (organizationId: string) => {
     try {
       const { data: subData, error: subError } = await supabase
         .from('organization_subscriptions')
@@ -187,7 +187,7 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Error loading subscription data:', error);
     }
-  };
+  }, []);
 
   const switchOrganization = async (organizationId: string) => {
     const newOrg = organizations.find(org => org.id === organizationId);
