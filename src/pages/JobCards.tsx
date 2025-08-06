@@ -203,7 +203,7 @@ export default function JobCards() {
 
   const handleStatusUpdate = async (id: string, newStatus: string) => {
     try {
-      const updateData: any = { status: newStatus };
+      const updateData: { status: string; start_time?: string; end_time?: string } = { status: newStatus };
       
       if (newStatus === 'in_progress' && !jobCards.find(jc => jc.id === id)?.start_time) {
         updateData.start_time = new Date().toISOString();

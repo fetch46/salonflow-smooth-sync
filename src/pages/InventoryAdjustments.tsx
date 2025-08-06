@@ -91,7 +91,7 @@ export default function InventoryAdjustments() {
   const [isItemsModalOpen, setIsItemsModalOpen] = useState(false);
   const [editingAdjustment, setEditingAdjustment] = useState<Adjustment | null>(null);
   const [selectedAdjustment, setSelectedAdjustment] = useState<Adjustment | null>(null);
-  const [selectedItems, setSelectedItems] = useState<any[]>([]);
+  const [selectedItems, setSelectedItems] = useState<AdjustmentItem[]>([]);
 
   const [formData, setFormData] = useState({
     adjustment_number: "",

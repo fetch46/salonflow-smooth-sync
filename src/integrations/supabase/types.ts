@@ -59,6 +59,41 @@ export type Database = {
           updated_at?: string
         }
       }
+      account_transactions: {
+        Row: {
+          account_id: string
+          created_at: string
+          credit_amount: number
+          debit_amount: number
+          description: string
+          id: string
+          reference_id: string | null
+          reference_type: string | null
+          transaction_date: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          credit_amount?: number
+          debit_amount?: number
+          description: string
+          id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          transaction_date: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          credit_amount?: number
+          debit_amount?: number
+          description?: string
+          id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          transaction_date?: string
+        }
+      }
       appointments: {
         Row: {
           appointment_date: string
@@ -264,6 +299,32 @@ export type Database = {
           updated_at?: string
         }
       }
+      storage_locations: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string
+        }
+      }
       inventory_items: {
         Row: {
           category: string | null
@@ -317,6 +378,32 @@ export type Database = {
           updated_at?: string
         }
       }
+      inventory_levels: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          location_id: string
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          location_id: string
+          quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          location_id?: string
+          quantity?: number
+          updated_at?: string
+        }
+      }
       job_cards: {
         Row: {
           client_id: string | null
@@ -355,6 +442,38 @@ export type Database = {
           start_time?: string | null
           status?: string
           total_amount?: number
+          updated_at?: string
+        }
+      }
+      job_card_products: {
+        Row: {
+          created_at: string
+          id: string
+          inventory_item_id: string
+          job_card_id: string
+          quantity_used: number
+          total_cost: number
+          unit_cost: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inventory_item_id: string
+          job_card_id: string
+          quantity_used: number
+          total_cost: number
+          unit_cost: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inventory_item_id?: string
+          job_card_id?: string
+          quantity_used?: number
+          total_cost?: number
+          unit_cost?: number
           updated_at?: string
         }
       }
@@ -519,6 +638,41 @@ export type Database = {
           status?: string | null
           supplier_id?: string | null
           total_amount?: number
+          updated_at?: string
+        }
+      }
+      purchase_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          purchase_id: string
+          quantity: number
+          received_quantity: number
+          total_cost: number
+          unit_cost: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          purchase_id: string
+          quantity?: number
+          received_quantity?: number
+          total_cost?: number
+          unit_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          purchase_id?: string
+          quantity?: number
+          received_quantity?: number
+          total_cost?: number
+          unit_cost?: number
           updated_at?: string
         }
       }

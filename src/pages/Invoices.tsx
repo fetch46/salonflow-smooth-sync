@@ -213,7 +213,7 @@ export default function Invoices() {
     commission_percentage: 0,
   });
 
-  const [selectedItems, setSelectedItems] = useState<any[]>([]);
+  const [selectedItems, setSelectedItems] = useState<InvoiceItem[]>([]);
 
   useEffect(() => {
     fetchInvoices();
@@ -482,20 +482,22 @@ export default function Invoices() {
       case "today":
         startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         break;
-      case "this_week":
+      case "this_week": {
         const dayOfWeek = now.getDay();
         startDate = new Date(now.getTime() - dayOfWeek * 24 * 60 * 60 * 1000);
         startDate.setHours(0, 0, 0, 0);
         break;
+      }
       case "this_month":
         startDate = startOfMonth(now);
         endDate = endOfMonth(now);
         break;
-      case "last_month":
+      case "last_month": {
         const lastMonth = subMonths(now, 1);
         startDate = startOfMonth(lastMonth);
         endDate = endOfMonth(lastMonth);
         break;
+      }
       case "last_3_months":
         startDate = subMonths(now, 3);
         break;

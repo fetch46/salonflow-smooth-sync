@@ -16,7 +16,7 @@ import {
   Calculator,
   TrendingUp,
   CreditCard,
-  AdjustmentsHorizontal,
+  Sliders,
   Crown,
   Lock,
   Sparkles,
@@ -99,7 +99,7 @@ const menuItems: MenuItem[] = [
       {
         title: "Adjustments",
         url: "/inventory-adjustments",
-        icon: AdjustmentsHorizontal,
+        icon: Sliders,
         feature: "inventory_adjustments",
       },
     ],

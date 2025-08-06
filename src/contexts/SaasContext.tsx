@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Database, user_role, subscription_status } from '@/integrations/supabase/types';
@@ -98,9 +98,9 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
     );
 
     return () => authSubscription.unsubscribe();
-  }, []);
+  }, [loadUserOrganizations]);
 
-  const loadUserOrganizations = async (userId: string) => {
+  const loadUserOrganizations = useCallback(async (userId: string) => {
     try {
       setLoading(true);
 
@@ -147,7 +147,7 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const setActiveOrganization = async (org: Organization, role: user_role) => {
     try {
