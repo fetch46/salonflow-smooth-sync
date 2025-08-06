@@ -1,14 +1,48 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Edit2, Trash2, Phone, Mail, Star, Upload, User } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
+import { 
+  Plus, 
+  Search, 
+  Edit2, 
+  Trash2, 
+  Phone, 
+  Mail, 
+  Star, 
+  User, 
+  Users,
+  UserCheck,
+  Clock,
+  TrendingUp,
+  Award,
+  Calendar,
+  MapPin,
+  Filter,
+  RefreshCw,
+  MoreHorizontal,
+  Eye,
+  MessageSquare,
+  Settings,
+  Activity,
+  Zap,
+  Crown,
+  CheckCircle,
+  AlertTriangle,
+  Camera
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
 
 interface Staff {
   id: string;
@@ -18,6 +52,8 @@ interface Staff {
   profile_image?: string;
   specialties?: string[];
   is_active: boolean;
+  commission_rate?: number;
+  hire_date?: string;
   created_at: string;
   updated_at: string;
 }
@@ -34,15 +70,40 @@ const SPECIALTY_OPTIONS = [
   "Eyebrow Threading",
   "Makeup",
   "Massage Therapy",
-  "Waxing"
+  "Waxing",
+  "Brazilian Blowout",
+  "Keratin Treatment",
+  "Extensions",
+  "Balayage",
+  "Highlights",
+  "Lowlights"
 ];
+
+const STAFF_FILTERS = [
+  { label: "All Staff", value: "all" },
+  { label: "Active", value: "active" },
+  { label: "Inactive", value: "inactive" },
+  { label: "New Hires", value: "new" }
+];
+
+// Mock performance data (in a real app, this would come from analytics/bookings)
+const MOCK_PERFORMANCE = {
+  "staff1": { appointments: 45, revenue: 2350, rating: 4.8, completionRate: 96 },
+  "staff2": { appointments: 38, revenue: 1890, rating: 4.6, completionRate: 94 },
+  "staff3": { appointments: 52, revenue: 2780, rating: 4.9, completionRate: 98 },
+  "staff4": { appointments: 31, revenue: 1650, rating: 4.5, completionRate: 92 },
+};
 
 export default function Staff() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [specialtyFilter, setSpecialtyFilter] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState("all");
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -51,6 +112,8 @@ export default function Staff() {
     phone: "",
     profile_image: "",
     specialties: [] as string[],
+    commission_rate: 15,
+    hire_date: "",
     is_active: true,
   });
 
@@ -60,6 +123,7 @@ export default function Staff() {
 
   const fetchStaff = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from("staff")
         .select("*")
@@ -76,6 +140,25 @@ export default function Staff() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const refreshData = async () => {
+    try {
+      setRefreshing(true);
+      await fetchStaff();
+      toast({
+        title: "Success",
+        description: "Staff data refreshed successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to refresh data",
+        variant: "destructive",
+      });
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -128,6 +211,8 @@ export default function Staff() {
       phone: "",
       profile_image: "",
       specialties: [],
+      commission_rate: 15,
+      hire_date: "",
       is_active: true,
     });
     setEditingStaff(null);
@@ -140,6 +225,8 @@ export default function Staff() {
       phone: staffMember.phone || "",
       profile_image: staffMember.profile_image || "",
       specialties: staffMember.specialties || [],
+      commission_rate: staffMember.commission_rate || 15,
+      hire_date: staffMember.hire_date || "",
       is_active: staffMember.is_active,
     });
     setEditingStaff(staffMember);
@@ -181,212 +268,645 @@ export default function Staff() {
     }));
   };
 
-  const filteredStaff = staff.filter(member =>
-    member.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    member.phone?.includes(searchTerm) ||
-    member.specialties?.some(specialty => 
-      specialty.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
+  const filteredStaff = useMemo(() => {
+    return staff.filter(member => {
+      const matchesSearch = 
+        member.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        member.phone?.includes(searchTerm) ||
+        member.specialties?.some(specialty => 
+          specialty.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+      const matchesStatus = 
+        filterStatus === "all" ||
+        (filterStatus === "active" && member.is_active) ||
+        (filterStatus === "inactive" && !member.is_active) ||
+        (filterStatus === "new" && member.hire_date && 
+          new Date(member.hire_date) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
+
+      const matchesSpecialty = 
+        specialtyFilter === "all" ||
+        member.specialties?.includes(specialtyFilter);
+
+      return matchesSearch && matchesStatus && matchesSpecialty;
+    });
+  }, [staff, searchTerm, filterStatus, specialtyFilter]);
+
+  // Dashboard statistics
+  const dashboardStats = useMemo(() => {
+    const totalStaff = staff.length;
+    const activeStaff = staff.filter(s => s.is_active).length;
+    const inactiveStaff = totalStaff - activeStaff;
+    const newHires = staff.filter(s => 
+      s.hire_date && new Date(s.hire_date) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    ).length;
+    
+    const avgCommissionRate = staff.length > 0 
+      ? staff.reduce((sum, s) => sum + (s.commission_rate || 0), 0) / staff.length 
+      : 0;
+
+    const specialtyDistribution = staff.reduce((acc, member) => {
+      member.specialties?.forEach(specialty => {
+        acc[specialty] = (acc[specialty] || 0) + 1;
+      });
+      return acc;
+    }, {} as Record<string, number>);
+
+    const topSpecialties = Object.entries(specialtyDistribution)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 3);
+
+    return {
+      totalStaff,
+      activeStaff,
+      inactiveStaff,
+      newHires,
+      avgCommissionRate,
+      topSpecialties
+    };
+  }, [staff]);
+
+  const getTabStaff = (tab: string) => {
+    switch (tab) {
+      case "active":
+        return filteredStaff.filter(s => s.is_active);
+      case "inactive":
+        return filteredStaff.filter(s => !s.is_active);
+      case "new":
+        return filteredStaff.filter(s => 
+          s.hire_date && new Date(s.hire_date) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        );
+      default:
+        return filteredStaff;
+    }
+  };
+
+  const currentStaff = getTabStaff(activeTab);
+
+  const getPerformanceData = (staffId: string) => {
+    return MOCK_PERFORMANCE[staffId as keyof typeof MOCK_PERFORMANCE] || {
+      appointments: 0,
+      revenue: 0,
+      rating: 0,
+      completionRate: 0
+    };
+  };
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="text-center">Loading staff...</div>
+      <div className="flex-1 space-y-6 p-6 bg-slate-50/30 min-h-screen">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center space-y-3">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600 mx-auto"></div>
+            <p className="text-slate-600">Loading staff...</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Staff Management</h1>
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Staff Member
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>
-                {editingStaff ? "Edit Staff Member" : "Add New Staff Member"}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="full_name">Full Name *</Label>
-                <Input
-                  id="full_name"
-                  value={formData.full_name}
-                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="profile_image">Profile Image URL</Label>
-                <Input
-                  id="profile_image"
-                  placeholder="https://example.com/profile.jpg"
-                  value={formData.profile_image}
-                  onChange={(e) => setFormData({ ...formData, profile_image: e.target.value })}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Enter a URL to an image or upload to a service like Imgur, Cloudinary, etc.
-                </p>
-              </div>
-              <div>
-                <Label>Specialties</Label>
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  {SPECIALTY_OPTIONS.map((specialty) => (
-                    <div key={specialty} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={specialty}
-                        checked={formData.specialties.includes(specialty)}
-                        onCheckedChange={(checked) => 
-                          handleSpecialtyChange(specialty, checked as boolean)
-                        }
-                      />
-                      <Label htmlFor={specialty} className="text-sm">
-                        {specialty}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">
-                  {editingStaff ? "Update" : "Create"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="mb-6">
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search staff..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
+    <div className="flex-1 space-y-6 p-6 bg-slate-50/30 min-h-screen">
+      {/* Modern Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-xl shadow-lg">
+              <Users className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Staff Management</h1>
+              <p className="text-slate-600">Manage your team members and track performance</p>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredStaff.map((member) => (
-          <Card key={member.id} className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
-                    {member.profile_image ? (
-                      <img
-                        src={member.profile_image}
-                        alt={member.full_name}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          // Fallback to initials if image fails to load
-                          e.currentTarget.style.display = 'none';
-                          e.currentTarget.nextElementSibling!.style.display = 'flex';
-                        }}
+        
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            onClick={refreshData}
+            disabled={refreshing}
+            className="border-slate-300 hover:bg-slate-50"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          
+          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={resetForm} className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 shadow-lg">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Staff Member
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+              <DialogHeader className="pb-4 border-b">
+                <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <User className="w-5 h-5 text-blue-600" />
+                  {editingStaff ? "Edit Staff Member" : "Add New Staff Member"}
+                </DialogTitle>
+                <DialogDescription className="text-slate-600">
+                  {editingStaff ? "Update staff member information and specialties" : "Add a new team member to your salon"}
+                </DialogDescription>
+              </DialogHeader>
+              
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Personal Information */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                    <User className="w-4 h-4 text-blue-600" />
+                    Personal Information
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="full_name">Full Name *</Label>
+                      <Input
+                        id="full_name"
+                        value={formData.full_name}
+                        onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                        placeholder="Enter full name"
+                        required
                       />
-                    ) : null}
-                    <div 
-                      className={`w-full h-full flex items-center justify-center text-primary-foreground font-semibold text-lg ${member.profile_image ? 'hidden' : 'flex'}`}
-                      style={{ display: member.profile_image ? 'none' : 'flex' }}
-                    >
-                      {member.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email Address</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        placeholder="staff@example.com"
+                      />
                     </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-lg">{member.full_name}</CardTitle>
-                    <Badge variant={member.is_active ? "default" : "secondary"} className="mt-1">
-                      {member.is_active ? "Active" : "Inactive"}
-                    </Badge>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input
+                        id="phone"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        placeholder="+1 (555) 123-4567"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="hire_date">Hire Date</Label>
+                      <Input
+                        id="hire_date"
+                        type="date"
+                        value={formData.hire_date}
+                        onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })}
+                      />
+                    </div>
                   </div>
                 </div>
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEdit(member)}
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(member.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {member.email && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Mail className="w-4 h-4" />
-                  <span>{member.email}</span>
-                </div>
-              )}
-              {member.phone && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Phone className="w-4 h-4" />
-                  <span>{member.phone}</span>
-                </div>
-              )}
-              {member.specialties && member.specialties.length > 0 && (
-                <div className="mt-3 pt-3 border-t">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Star className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Specialties</span>
+
+                <Separator />
+
+                {/* Professional Details */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                    <Award className="w-4 h-4 text-purple-600" />
+                    Professional Details
+                  </h3>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="commission_rate">Commission Rate (%)</Label>
+                    <Input
+                      id="commission_rate"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.5"
+                      value={formData.commission_rate}
+                      onChange={(e) => setFormData({ ...formData, commission_rate: parseFloat(e.target.value) || 0 })}
+                      placeholder="15"
+                    />
                   </div>
-                  <div className="flex flex-wrap gap-1">
-                    {member.specialties.map((specialty) => (
-                      <Badge key={specialty} variant="outline" className="text-xs">
-                        {specialty}
-                      </Badge>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="profile_image">Profile Image URL</Label>
+                    <Input
+                      id="profile_image"
+                      placeholder="https://example.com/profile.jpg"
+                      value={formData.profile_image}
+                      onChange={(e) => setFormData({ ...formData, profile_image: e.target.value })}
+                    />
+                    <p className="text-xs text-slate-500">
+                      Enter a URL to an image or upload to a service like Imgur, Cloudinary, etc.
+                    </p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Specialties */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                    <Star className="w-4 h-4 text-amber-600" />
+                    Specialties
+                  </h3>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {SPECIALTY_OPTIONS.map((specialty) => (
+                      <div key={specialty} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={specialty}
+                          checked={formData.specialties.includes(specialty)}
+                          onCheckedChange={(checked) => 
+                            handleSpecialtyChange(specialty, checked as boolean)
+                          }
+                        />
+                        <Label htmlFor={specialty} className="text-sm">
+                          {specialty}
+                        </Label>
+                      </div>
                     ))}
                   </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+
+                <Separator />
+
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setIsModalOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                  >
+                    {editingStaff ? "Update Staff Member" : "Add Staff Member"}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      {filteredStaff.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No staff members found</p>
-        </div>
+      {/* Dashboard Statistics */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium opacity-90">Total Staff</CardTitle>
+            <Users className="h-4 w-4 opacity-80" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{dashboardStats.totalStaff}</div>
+            <p className="text-xs opacity-80">
+              {dashboardStats.activeStaff} active, {dashboardStats.inactiveStaff} inactive
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-0 shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium opacity-90">Active Staff</CardTitle>
+            <UserCheck className="h-4 w-4 opacity-80" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{dashboardStats.activeStaff}</div>
+            <p className="text-xs opacity-80">
+              {((dashboardStats.activeStaff / dashboardStats.totalStaff) * 100).toFixed(1)}% of total team
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white border-0 shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium opacity-90">New Hires</CardTitle>
+            <Clock className="h-4 w-4 opacity-80" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{dashboardStats.newHires}</div>
+            <p className="text-xs opacity-80">
+              Joined in last 30 days
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium opacity-90">Avg Commission</CardTitle>
+            <TrendingUp className="h-4 w-4 opacity-80" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{dashboardStats.avgCommissionRate.toFixed(1)}%</div>
+            <p className="text-xs opacity-80">
+              Average team rate
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Top Specialties */}
+      {dashboardStats.topSpecialties.length > 0 && (
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Award className="w-4 h-4 text-amber-500" />
+              Top Specialties
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {dashboardStats.topSpecialties.map(([specialty, count], index) => (
+                <div key={specialty} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${
+                      index === 0 ? 'bg-amber-500' : 
+                      index === 1 ? 'bg-slate-400' : 'bg-orange-500'
+                    }`} />
+                    <span className="font-medium text-sm">{specialty}</span>
+                  </div>
+                  <Badge variant="secondary">{count} staff</Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
+
+      {/* Filters & Search */}
+      <Card className="shadow-sm border-slate-200">
+        <CardHeader className="pb-4 border-b border-slate-200">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-fit">
+              <TabsList className="grid grid-cols-4 w-fit">
+                <TabsTrigger value="all" className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  All ({dashboardStats.totalStaff})
+                </TabsTrigger>
+                <TabsTrigger value="active" className="flex items-center gap-2">
+                  <UserCheck className="w-4 h-4" />
+                  Active ({dashboardStats.activeStaff})
+                </TabsTrigger>
+                <TabsTrigger value="inactive" className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  Inactive ({dashboardStats.inactiveStaff})
+                </TabsTrigger>
+                <TabsTrigger value="new" className="flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  New ({dashboardStats.newHires})
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="Search staff..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 w-64"
+                />
+              </div>
+              
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STAFF_FILTERS.map((filter) => (
+                    <SelectItem key={filter.value} value={filter.value}>
+                      {filter.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Select value={specialtyFilter} onValueChange={setSpecialtyFilter}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Specialty" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Specialties</SelectItem>
+                  {SPECIALTY_OPTIONS.map((specialty) => (
+                    <SelectItem key={specialty} value={specialty}>
+                      {specialty}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+        
+        <CardContent className="p-6">
+          {currentStaff.length === 0 ? (
+            <div className="text-center py-16 space-y-4">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
+                <Users className="w-8 h-8 text-slate-400" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-slate-600 font-medium">
+                  {searchTerm || filterStatus !== "all" || specialtyFilter !== "all" 
+                    ? "No staff members found" 
+                    : "No staff members yet"}
+                </p>
+                <p className="text-slate-400 text-sm">
+                  {searchTerm || filterStatus !== "all" || specialtyFilter !== "all"
+                    ? "Try adjusting your filters"
+                    : "Add your first team member to get started"}
+                </p>
+              </div>
+              {!searchTerm && filterStatus === "all" && specialtyFilter === "all" && (
+                <Button 
+                  onClick={() => setIsModalOpen(true)}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add First Staff Member
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {currentStaff.map((member) => {
+                const performance = getPerformanceData(member.id);
+                return (
+                  <Card key={member.id} className="hover:shadow-lg transition-all duration-300 border-slate-200 relative overflow-hidden">
+                    {/* Performance Indicator */}
+                    <div className={`absolute top-0 left-0 w-full h-1 ${
+                      performance.rating >= 4.8 ? 'bg-gradient-to-r from-emerald-500 to-green-500' :
+                      performance.rating >= 4.5 ? 'bg-gradient-to-r from-blue-500 to-cyan-500' :
+                      performance.rating >= 4.0 ? 'bg-gradient-to-r from-amber-500 to-orange-500' :
+                      'bg-gradient-to-r from-slate-400 to-slate-500'
+                    }`} />
+                    
+                    <CardHeader className="pb-4">
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-center gap-3">
+                          {/* Enhanced Profile Avatar */}
+                          <div className="relative">
+                            <div className="w-14 h-14 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center border-2 border-white shadow-lg">
+                              {member.profile_image ? (
+                                <img
+                                  src={member.profile_image}
+                                  alt={member.full_name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    e.currentTarget.nextElementSibling!.style.display = 'flex';
+                                  }}
+                                />
+                              ) : null}
+                              <div 
+                                className={`w-full h-full flex items-center justify-center text-white font-bold text-lg ${member.profile_image ? 'hidden' : 'flex'}`}
+                                style={{ display: member.profile_image ? 'none' : 'flex' }}
+                              >
+                                {member.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                              </div>
+                            </div>
+                            {performance.rating >= 4.8 && (
+                              <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
+                                <Crown className="w-3 h-3 text-white" />
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div>
+                            <CardTitle className="text-lg font-bold text-slate-900">{member.full_name}</CardTitle>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant={member.is_active ? "default" : "secondary"} className="text-xs">
+                                {member.is_active ? "Active" : "Inactive"}
+                              </Badge>
+                              {member.commission_rate && (
+                                <Badge variant="outline" className="text-xs">
+                                  {member.commission_rate}% comm.
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={() => handleEdit(member)}>
+                              <Edit2 className="w-4 h-4 mr-2" />
+                              Edit Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Eye className="w-4 h-4 mr-2" />
+                              View Profile
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Calendar className="w-4 h-4 mr-2" />
+                              View Schedule
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <MessageSquare className="w-4 h-4 mr-2" />
+                              Send Message
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleDelete(member.id)}
+                              className="text-red-600 focus:text-red-600"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </CardHeader>
+                    
+                    <CardContent className="space-y-4">
+                      {/* Contact Information */}
+                      <div className="space-y-2">
+                        {member.email && (
+                          <div className="flex items-center gap-2 text-sm text-slate-600">
+                            <Mail className="w-4 h-4 text-slate-400" />
+                            <span className="truncate">{member.email}</span>
+                          </div>
+                        )}
+                        {member.phone && (
+                          <div className="flex items-center gap-2 text-sm text-slate-600">
+                            <Phone className="w-4 h-4 text-slate-400" />
+                            <span>{member.phone}</span>
+                          </div>
+                        )}
+                        {member.hire_date && (
+                          <div className="flex items-center gap-2 text-sm text-slate-600">
+                            <Calendar className="w-4 h-4 text-slate-400" />
+                            <span>Hired {format(new Date(member.hire_date), "MMM dd, yyyy")}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Performance Metrics */}
+                      {performance.appointments > 0 && (
+                        <div className="pt-3 border-t border-slate-100">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-slate-700">This Month</span>
+                            <div className="flex items-center gap-1">
+                              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                              <span className="text-sm font-medium">{performance.rating}</span>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                              <p className="text-slate-500">Appointments</p>
+                              <p className="font-semibold text-slate-900">{performance.appointments}</p>
+                            </div>
+                            <div>
+                              <p className="text-slate-500">Revenue</p>
+                              <p className="font-semibold text-slate-900">${performance.revenue.toLocaleString()}</p>
+                            </div>
+                          </div>
+                          <div className="mt-2">
+                            <div className="flex justify-between items-center text-xs mb-1">
+                              <span className="text-slate-500">Completion Rate</span>
+                              <span className="font-medium">{performance.completionRate}%</span>
+                            </div>
+                            <Progress value={performance.completionRate} className="h-1.5" />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Specialties */}
+                      {member.specialties && member.specialties.length > 0 && (
+                        <div className="pt-3 border-t border-slate-100">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Star className="w-4 h-4 text-amber-500" />
+                            <span className="text-sm font-medium text-slate-700">Specialties</span>
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {member.specialties.slice(0, 3).map((specialty) => (
+                              <Badge key={specialty} variant="outline" className="text-xs">
+                                {specialty}
+                              </Badge>
+                            ))}
+                            {member.specialties.length > 3 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{member.specialties.length - 3} more
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
