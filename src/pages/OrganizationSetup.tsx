@@ -52,6 +52,25 @@ const OrganizationSetup = () => {
 
   useEffect(() => {
     fetchPlans();
+    
+    // Set up auto-fallback to mock plans if database plans don't load
+    const fallbackTimer = setTimeout(() => {
+      setPlans(currentPlans => {
+        if (currentPlans.length === 0) {
+          console.log('Auto-loading mock plans after 5 seconds');
+          toast.info('📦 Loaded demo plans automatically - you can complete setup normally');
+          // Also select the professional plan
+          const professionalPlan = mockPlans.find(p => p.slug === 'professional');
+          if (professionalPlan) {
+            setSelectedPlan(professionalPlan.id);
+          }
+          return mockPlans;
+        }
+        return currentPlans;
+      });
+    }, 5000); // 5 second delay for auto-fallback
+    
+    return () => clearTimeout(fallbackTimer);
   }, []);
 
   // Mock plans for testing
@@ -466,24 +485,49 @@ const OrganizationSetup = () => {
             </CardHeader>
             <CardContent>
               {plans.length === 0 && (
-                <div className="text-center py-8">
-                  <p className="text-slate-600">Loading subscription plans...</p>
-                  <p className="text-sm text-slate-500 mt-2">
-                    If this persists, check the console for errors or visit /debug/plans
-                  </p>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    className="mt-4" 
-                    onClick={() => {
-                      console.log('Using mock plans for testing');
-                      setPlans(mockPlans);
-                      setSelectedPlan(mockPlans.find(p => p.slug === 'professional')?.id || mockPlans[0]?.id);
-                      toast.success('Loaded demo plans for testing');
-                    }}
-                  >
-                    Use Demo Plans for Testing
-                  </Button>
+                <div className="text-center py-8 space-y-4">
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-slate-200 rounded w-3/4 mx-auto mb-3"></div>
+                    <div className="h-3 bg-slate-200 rounded w-1/2 mx-auto"></div>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <p className="text-amber-800 font-medium">Subscription plans are not loading</p>
+                    <p className="text-sm text-amber-700 mt-1">
+                      This usually means the database hasn't been set up yet.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Button 
+                      type="button" 
+                      className="bg-blue-600 hover:bg-blue-700 text-white" 
+                      onClick={() => {
+                        console.log('Loading mock plans for immediate setup');
+                        setPlans(mockPlans);
+                        setSelectedPlan(mockPlans.find(p => p.slug === 'professional')?.id || mockPlans[0]?.id);
+                        toast.success('✅ Loaded demo plans - you can now complete setup!');
+                      }}
+                    >
+                      📦 Load Demo Plans & Continue Setup
+                    </Button>
+                    <div className="flex gap-2 justify-center">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={fetchPlans}
+                      >
+                        🔄 Retry Loading Plans
+                      </Button>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => window.open('/debug/plans', '_blank')}
+                      >
+                        🔧 Debug Plans
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
               
