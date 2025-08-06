@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { 
   Plus, 
   Search, 
@@ -41,23 +42,22 @@ import {
   ChevronDown,
   BarChart3,
   ArrowUpRight,
-  ArrowDownRight,
   Target,
-  CalendarDays,
   Banknote,
   FileCheck,
-  Timer,
   Settings,
   Star,
   Zap,
-  TrendingDown,
   CreditCard,
   PieChart,
   Activity,
   Wallet,
-  ShoppingBag,
+  Phone,
   Building2,
-  Phone
+  UserCheck,
+  Timer,
+  TrendingDown,
+  X
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval } from "date-fns";
 import { toast } from "sonner";
@@ -68,7 +68,6 @@ import {
   deleteInvoiceWithFallback,
   getInvoiceItemsWithFallback 
 } from "@/utils/mockDatabase";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 
 interface Invoice {
   id: string;
@@ -123,12 +122,12 @@ interface Staff {
 }
 
 const INVOICE_STATUSES = [
-  { value: "draft", label: "Draft", color: "bg-slate-100 text-slate-700 border-slate-300", icon: FileText, dotColor: "bg-slate-400" },
-  { value: "sent", label: "Sent", color: "bg-blue-100 text-blue-700 border-blue-300", icon: Send, dotColor: "bg-blue-500" },
-  { value: "paid", label: "Paid", color: "bg-green-100 text-green-700 border-green-300", icon: CheckCircle, dotColor: "bg-green-500" },
-  { value: "overdue", label: "Overdue", color: "bg-red-100 text-red-700 border-red-300", icon: AlertTriangle, dotColor: "bg-red-500" },
-  { value: "cancelled", label: "Cancelled", color: "bg-gray-100 text-gray-700 border-gray-300", icon: Trash2, dotColor: "bg-gray-400" },
-  { value: "partial", label: "Partially Paid", color: "bg-orange-100 text-orange-700 border-orange-300", icon: Timer, dotColor: "bg-orange-500" }
+  { value: "draft", label: "Draft", color: "bg-slate-100 text-slate-800 border-slate-200", icon: FileText, dotColor: "bg-slate-400" },
+  { value: "sent", label: "Sent", color: "bg-blue-50 text-blue-700 border-blue-200", icon: Send, dotColor: "bg-blue-500" },
+  { value: "paid", label: "Paid", color: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: CheckCircle, dotColor: "bg-emerald-500" },
+  { value: "overdue", label: "Overdue", color: "bg-red-50 text-red-700 border-red-200", icon: AlertTriangle, dotColor: "bg-red-500" },
+  { value: "cancelled", label: "Cancelled", color: "bg-gray-50 text-gray-700 border-gray-200", icon: X, dotColor: "bg-gray-400" },
+  { value: "partial", label: "Partially Paid", color: "bg-amber-50 text-amber-700 border-amber-200", icon: Timer, dotColor: "bg-amber-500" }
 ];
 
 const PAYMENT_METHODS = [
@@ -138,14 +137,14 @@ const PAYMENT_METHODS = [
   { value: "mobile_payment", label: "Mobile Payment", icon: MessageSquare }
 ];
 
-const DATE_PRESETS = [
+const DATE_FILTERS = [
+  { label: "All Time", value: "all_time" },
   { label: "Today", value: "today" },
   { label: "This Week", value: "this_week" },
   { label: "This Month", value: "this_month" },
   { label: "Last Month", value: "last_month" },
   { label: "Last 3 Months", value: "last_3_months" },
-  { label: "This Year", value: "this_year" },
-  { label: "All Time", value: "all_time" }
+  { label: "This Year", value: "this_year" }
 ];
 
 export default function Invoices() {
@@ -155,8 +154,7 @@ export default function Invoices() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [dateFilter, setDateFilter] = useState("");
-  const [datePreset, setDatePreset] = useState("all_time");
+  const [dateFilter, setDateFilter] = useState("all_time");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -164,8 +162,7 @@ export default function Invoices() {
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
-  const [activeTab, setActiveTab] = useState("overview");
-  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  const [activeTab, setActiveTab] = useState("all");
 
   const [formData, setFormData] = useState({
     customer_id: "",
@@ -316,9 +313,8 @@ export default function Invoices() {
 
   const calculateTotals = () => {
     const subtotal = selectedItems.reduce((sum, item) => sum + item.total_price, 0);
-    const taxAmount = subtotal * 0.085; // 8.5% tax
+    const taxAmount = subtotal * 0.085;
     const total = subtotal + taxAmount;
-
     return { subtotal, taxAmount, total };
   };
 
@@ -349,8 +345,7 @@ export default function Invoices() {
         jobcard_id: formData.jobcard_id || null,
       };
 
-      const invoice = await createInvoiceWithFallback(supabase, invoiceData, selectedItems);
-
+      await createInvoiceWithFallback(supabase, invoiceData, selectedItems);
       toast.success("Invoice created successfully");
       setIsCreateModalOpen(false);
       resetForm();
@@ -440,8 +435,8 @@ export default function Invoices() {
     const statusConfig = INVOICE_STATUSES.find(s => s.value === status) || INVOICE_STATUSES[0];
     const IconComponent = statusConfig.icon;
     return (
-      <Badge className={`${statusConfig.color} flex items-center gap-1.5 font-medium px-3 py-1.5 text-xs`}>
-        <div className={`w-2 h-2 rounded-full ${statusConfig.dotColor}`} />
+      <Badge className={`${statusConfig.color} flex items-center gap-1.5 font-medium px-2.5 py-1 text-xs border`}>
+        <div className={`w-1.5 h-1.5 rounded-full ${statusConfig.dotColor}`} />
         <IconComponent className="w-3 h-3" />
         {statusConfig.label}
       </Badge>
@@ -492,137 +487,262 @@ export default function Invoices() {
     const matchesSearch = invoice.invoice_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          invoice.customer_name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || invoice.status === statusFilter;
-    const matchesDate = !dateFilter || format(new Date(invoice.created_at), "yyyy-MM-dd") === dateFilter;
-    
-    return matchesSearch && matchesStatus && matchesDate;
+    return matchesSearch && matchesStatus;
   });
 
-  const dateFilteredInvoices = filterInvoicesByDate(filteredInvoices, datePreset);
+  const dateFilteredInvoices = filterInvoicesByDate(filteredInvoices, dateFilter);
 
-  // Enhanced Statistics
+  // Statistics
   const totalInvoices = dateFilteredInvoices.length;
   const paidInvoices = dateFilteredInvoices.filter(i => i.status === "paid").length;
   const pendingInvoices = dateFilteredInvoices.filter(i => i.status === "sent").length;
   const overdueInvoices = dateFilteredInvoices.filter(i => i.status === "overdue").length;
   const draftInvoices = dateFilteredInvoices.filter(i => i.status === "draft").length;
-  const partialInvoices = dateFilteredInvoices.filter(i => i.status === "partial").length;
   const totalRevenue = dateFilteredInvoices.filter(i => i.status === "paid").reduce((sum, i) => sum + i.total_amount, 0);
   const pendingRevenue = dateFilteredInvoices.filter(i => i.status === "sent" || i.status === "overdue").reduce((sum, i) => sum + i.total_amount, 0);
   const averageInvoiceValue = totalInvoices > 0 ? (totalRevenue / totalInvoices) : 0;
-  const paymentRate = totalInvoices > 0 ? (paidInvoices / totalInvoices) * 100 : 0;
-  const collectionRate = totalInvoices > 0 ? ((paidInvoices + partialInvoices) / totalInvoices) * 100 : 0;
+  const collectionRate = totalInvoices > 0 ? (paidInvoices / totalInvoices) * 100 : 0;
+
+  // Get invoices for each tab
+  const getTabInvoices = (tab: string) => {
+    switch (tab) {
+      case "paid":
+        return dateFilteredInvoices.filter(i => i.status === "paid");
+      case "pending":
+        return dateFilteredInvoices.filter(i => i.status === "sent" || i.status === "overdue");
+      case "draft":
+        return dateFilteredInvoices.filter(i => i.status === "draft");
+      default:
+        return dateFilteredInvoices;
+    }
+  };
+
+  const currentInvoices = getTabInvoices(activeTab);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
+    <div className="flex-1 space-y-6 p-6 bg-slate-50/30 min-h-screen">
       {/* Modern Header */}
-      <div className="bg-white border-b border-slate-200/80 shadow-sm">
-        <div className="p-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div className="space-y-1">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600 rounded-2xl shadow-lg">
-                  <Receipt className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 via-violet-900 to-indigo-900 bg-clip-text text-transparent">
-                    Invoice Management
-                  </h1>
-                  <p className="text-slate-600 font-medium">
-                    Create, track and manage all your invoices in one place
-                  </p>
-                </div>
-              </div>
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-xl shadow-lg">
+              <Receipt className="h-6 w-6 text-white" />
             </div>
-            
-            <div className="flex items-center gap-3">
-              <Button 
-                variant="outline" 
-                onClick={refreshData}
-                disabled={refreshing}
-                className="border-slate-300 hover:bg-slate-50"
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                Refresh
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Invoice Management</h1>
+              <p className="text-slate-600">Create, track and manage all your invoices</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            onClick={refreshData}
+            disabled={refreshing}
+            className="border-slate-300 hover:bg-slate-50"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="border-slate-300 hover:bg-slate-50">
+                <Download className="w-4 h-4 mr-2" />
+                Export
+                <ChevronDown className="w-4 h-4 ml-2" />
               </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel>Export Options</DropdownMenuLabel>
+              <DropdownMenuItem>
+                <FileText className="w-4 h-4 mr-2" />
+                Export to PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <FileCheck className="w-4 h-4 mr-2" />
+                Export to Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <BarChart3 className="w-4 h-4 mr-2" />
+                Export Report
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={resetForm} className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-lg">
+                <Plus className="w-4 h-4 mr-2" />
+                New Invoice
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[950px] max-h-[90vh] overflow-y-auto">
+              <DialogHeader className="pb-4 border-b">
+                <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <Receipt className="w-5 h-5 text-violet-600" />
+                  Create New Invoice
+                </DialogTitle>
+                <DialogDescription className="text-slate-600">
+                  Create a professional invoice with itemized services and automatic calculations
+                </DialogDescription>
+              </DialogHeader>
               
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="border-slate-300 hover:bg-slate-50">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export
-                    <ChevronDown className="w-4 h-4 ml-2" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuLabel>Export Options</DropdownMenuLabel>
-                  <DropdownMenuItem>
-                    <FileText className="w-4 h-4 mr-2" />
-                    Export to PDF
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <FileCheck className="w-4 h-4 mr-2" />
-                    Export to Excel
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <BarChart3 className="w-4 h-4 mr-2" />
-                    Export Report
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              
-              <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={resetForm} className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-lg">
-                    <Plus className="w-4 h-4 mr-2" />
-                    New Invoice
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[950px] max-h-[90vh] overflow-y-auto">
-                  <DialogHeader className="pb-4 border-b">
-                    <DialogTitle className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                      <Zap className="w-6 h-6 text-violet-600" />
-                      Create New Invoice
-                    </DialogTitle>
-                    <DialogDescription className="text-slate-600">
-                      Create a professional invoice with itemized services and automatic calculations
-                    </DialogDescription>
-                  </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Customer Information */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                    <Users className="w-4 h-4 text-blue-600" />
+                    Customer Information
+                  </h3>
                   
-                  <form onSubmit={handleSubmit} className="space-y-8">
-                    {/* Customer Information Section */}
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="p-1.5 bg-blue-100 rounded-lg">
-                          <Users className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-slate-800">Customer Information</h3>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="customer_id" className="text-sm font-medium text-slate-700">Existing Customer</Label>
-                          <Select 
-                            value={formData.customer_id} 
-                            onValueChange={(value) => {
-                              const customer = customers.find(c => c.id === value);
-                              setFormData({
-                                ...formData,
-                                customer_id: value,
-                                customer_name: customer?.full_name || "",
-                                customer_email: customer?.email || "",
-                                customer_phone: customer?.phone || "",
-                              });
-                            }}
-                          >
-                            <SelectTrigger className="border-slate-300 focus:border-violet-500">
-                              <SelectValue placeholder="Select existing customer" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="customer_id">Existing Customer</Label>
+                      <Select 
+                        value={formData.customer_id} 
+                        onValueChange={(value) => {
+                          const customer = customers.find(c => c.id === value);
+                          setFormData({
+                            ...formData,
+                            customer_id: value,
+                            customer_name: customer?.full_name || "",
+                            customer_email: customer?.email || "",
+                            customer_phone: customer?.phone || "",
+                          });
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select existing customer" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {customers.map((customer) => (
+                            <SelectItem key={customer.id} value={customer.id}>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{customer.full_name}</span>
+                                {customer.email && <span className="text-xs text-muted-foreground">{customer.email}</span>}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="customer_name">Customer Name *</Label>
+                      <Input
+                        id="customer_name"
+                        value={formData.customer_name}
+                        onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
+                        placeholder="Enter customer name"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="customer_email">Email Address</Label>
+                      <Input
+                        id="customer_email"
+                        type="email"
+                        value={formData.customer_email}
+                        onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })}
+                        placeholder="customer@example.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="customer_phone">Phone Number</Label>
+                      <Input
+                        id="customer_phone"
+                        value={formData.customer_phone}
+                        onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
+                        placeholder="+1 (555) 123-4567"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Invoice Details */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                    <Receipt className="w-4 h-4 text-purple-600" />
+                    Invoice Details
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="due_date">Due Date</Label>
+                      <Input
+                        id="due_date"
+                        type="date"
+                        value={formData.due_date}
+                        onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="payment_method">Preferred Payment Method</Label>
+                      <Select value={formData.payment_method} onValueChange={(value) => setFormData({ ...formData, payment_method: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select payment method" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PAYMENT_METHODS.map((method) => {
+                            const IconComponent = method.icon;
+                            return (
+                              <SelectItem key={method.value} value={method.value}>
+                                <div className="flex items-center gap-2">
+                                  <IconComponent className="w-4 h-4" />
+                                  {method.label}
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Items Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-green-600" />
+                    Invoice Items
+                  </h3>
+                  
+                  {/* Add Item Form */}
+                  <Card className="bg-slate-50 border-slate-200">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Add Item</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 lg:grid-cols-7 gap-3">
+                        <div className="lg:col-span-1">
+                          <Label className="text-sm">Service</Label>
+                          <Select value={newItem.service_id} onValueChange={(value) => {
+                            const service = services.find(s => s.id === value);
+                            setNewItem({ 
+                              ...newItem, 
+                              service_id: value,
+                              description: service?.name || "",
+                              unit_price: service?.price.toString() || ""
+                            });
+                          }}>
+                            <SelectTrigger className="h-9">
+                              <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                              {customers.map((customer) => (
-                                <SelectItem key={customer.id} value={customer.id}>
+                              {services.map((service) => (
+                                <SelectItem key={service.id} value={service.id}>
                                   <div className="flex flex-col">
-                                    <span className="font-medium">{customer.full_name}</span>
-                                    {customer.email && <span className="text-xs text-muted-foreground">{customer.email}</span>}
+                                    <span className="font-medium">{service.name}</span>
+                                    <span className="text-xs text-muted-foreground">${service.price}</span>
                                   </div>
                                 </SelectItem>
                               ))}
@@ -630,436 +750,277 @@ export default function Invoices() {
                           </Select>
                         </div>
                         
-                        <div className="space-y-2">
-                          <Label htmlFor="customer_name" className="text-sm font-medium text-slate-700">Customer Name *</Label>
+                        <div className="lg:col-span-2">
+                          <Label className="text-sm">Description *</Label>
                           <Input
-                            id="customer_name"
-                            value={formData.customer_name}
-                            onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-                            className="border-slate-300 focus:border-violet-500"
-                            placeholder="Enter customer name"
-                            required
+                            value={newItem.description}
+                            onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                            placeholder="Service description"
+                            className="h-9"
                           />
                         </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="customer_email" className="text-sm font-medium text-slate-700">Email Address</Label>
+                        
+                        <div className="lg:col-span-1">
+                          <Label className="text-sm">Qty *</Label>
                           <Input
-                            id="customer_email"
-                            type="email"
-                            value={formData.customer_email}
-                            onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })}
-                            className="border-slate-300 focus:border-violet-500"
-                            placeholder="customer@example.com"
+                            type="number"
+                            value={newItem.quantity}
+                            onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })}
+                            min="1"
+                            className="h-9"
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="customer_phone" className="text-sm font-medium text-slate-700">Phone Number</Label>
+                        
+                        <div className="lg:col-span-1">
+                          <Label className="text-sm">Price *</Label>
                           <Input
-                            id="customer_phone"
-                            value={formData.customer_phone}
-                            onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
-                            className="border-slate-300 focus:border-violet-500"
-                            placeholder="+1 (555) 123-4567"
+                            type="number"
+                            step="0.01"
+                            value={newItem.unit_price}
+                            onChange={(e) => setNewItem({ ...newItem, unit_price: e.target.value })}
+                            placeholder="0.00"
+                            className="h-9"
                           />
                         </div>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    {/* Invoice Details Section */}
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="p-1.5 bg-purple-100 rounded-lg">
-                          <Receipt className="w-4 h-4 text-purple-600" />
+                        
+                        <div className="lg:col-span-1">
+                          <Label className="text-sm">Discount %</Label>
+                          <Input
+                            type="number"
+                            value={newItem.discount_percentage}
+                            onChange={(e) => setNewItem({ ...newItem, discount_percentage: parseFloat(e.target.value) || 0 })}
+                            min="0"
+                            max="100"
+                            placeholder="0"
+                            className="h-9"
+                          />
                         </div>
-                        <h3 className="text-lg font-semibold text-slate-800">Invoice Details</h3>
+                        
+                        <div className="lg:col-span-1 flex items-end">
+                          <Button 
+                            type="button" 
+                            onClick={addItemToInvoice}
+                            size="sm"
+                            className="w-full h-9 bg-violet-600 hover:bg-violet-700"
+                          >
+                            <Plus className="w-4 h-4 mr-1" />
+                            Add
+                          </Button>
+                        </div>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="due_date" className="text-sm font-medium text-slate-700">Due Date</Label>
-                          <Input
-                            id="due_date"
-                            type="date"
-                            value={formData.due_date}
-                            onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-                            className="border-slate-300 focus:border-violet-500"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="payment_method" className="text-sm font-medium text-slate-700">Preferred Payment Method</Label>
-                          <Select value={formData.payment_method} onValueChange={(value) => setFormData({ ...formData, payment_method: value })}>
-                            <SelectTrigger className="border-slate-300 focus:border-violet-500">
-                              <SelectValue placeholder="Select payment method" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {PAYMENT_METHODS.map((method) => {
-                                const IconComponent = method.icon;
-                                return (
-                                  <SelectItem key={method.value} value={method.value}>
-                                    <div className="flex items-center gap-2">
-                                      <IconComponent className="w-4 h-4" />
-                                      {method.label}
-                                    </div>
-                                  </SelectItem>
-                                );
-                              })}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                      <div className="mt-4">
+                        <Label className="text-sm">Assigned Staff</Label>
+                        <Select value={newItem.staff_id} onValueChange={(value) => setNewItem({ ...newItem, staff_id: value })}>
+                          <SelectTrigger className="max-w-xs h-9">
+                            <SelectValue placeholder="Select staff member" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {staff.map((member) => (
+                              <SelectItem key={member.id} value={member.id}>
+                                {member.full_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                    </div>
+                    </CardContent>
+                  </Card>
 
-                    <Separator />
+                  {/* Items List */}
+                  {selectedItems.length > 0 && (
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm">Invoice Items ({selectedItems.length})</CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Description</TableHead>
+                              <TableHead>Qty</TableHead>
+                              <TableHead>Price</TableHead>
+                              <TableHead>Discount</TableHead>
+                              <TableHead>Total</TableHead>
+                              <TableHead className="w-12"></TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {selectedItems.map((item, index) => (
+                              <TableRow key={index}>
+                                <TableCell className="font-medium">{item.description}</TableCell>
+                                <TableCell>{item.quantity}</TableCell>
+                                <TableCell>${parseFloat(item.unit_price).toFixed(2)}</TableCell>
+                                <TableCell>{item.discount_percentage}%</TableCell>
+                                <TableCell className="font-semibold">${item.total_price.toFixed(2)}</TableCell>
+                                <TableCell>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeItemFromInvoice(index)}
+                                    className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+                  )}
 
-                    {/* Items Section */}
-                    <div className="space-y-6">
-                      <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-green-100 rounded-lg">
-                          <FileText className="w-4 h-4 text-green-600" />
+                  {/* Totals Summary */}
+                  {selectedItems.length > 0 && (
+                    <Card className="bg-violet-50 border-violet-200">
+                      <CardContent className="p-4">
+                        <div className="flex justify-end">
+                          <div className="w-64 space-y-2">
+                            {(() => {
+                              const totals = calculateTotals();
+                              return (
+                                <>
+                                  <div className="flex justify-between text-sm">
+                                    <span>Subtotal:</span>
+                                    <span className="font-semibold">${totals.subtotal.toFixed(2)}</span>
+                                  </div>
+                                  <div className="flex justify-between text-sm">
+                                    <span>Tax (8.5%):</span>
+                                    <span className="font-semibold">${totals.taxAmount.toFixed(2)}</span>
+                                  </div>
+                                  <Separator />
+                                  <div className="flex justify-between text-lg font-bold">
+                                    <span>Total:</span>
+                                    <span className="text-violet-600">${totals.total.toFixed(2)}</span>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
                         </div>
-                        <h3 className="text-lg font-semibold text-slate-800">Invoice Items</h3>
-                      </div>
-                      
-                      {/* Add Item Form */}
-                      <Card className="bg-gradient-to-r from-slate-50 to-violet-50 border-slate-200">
-                        <CardHeader className="pb-4">
-                          <CardTitle className="text-base text-slate-700">Add Item</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
-                            <div className="lg:col-span-1">
-                              <Label className="text-sm font-medium text-slate-700">Service</Label>
-                              <Select value={newItem.service_id} onValueChange={(value) => {
-                                const service = services.find(s => s.id === value);
-                                setNewItem({ 
-                                  ...newItem, 
-                                  service_id: value,
-                                  description: service?.name || "",
-                                  unit_price: service?.price.toString() || ""
-                                });
-                              }}>
-                                <SelectTrigger className="border-slate-300 focus:border-violet-500">
-                                  <SelectValue placeholder="Select" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {services.map((service) => (
-                                    <SelectItem key={service.id} value={service.id}>
-                                      <div className="flex flex-col">
-                                        <span className="font-medium">{service.name}</span>
-                                        <span className="text-xs text-muted-foreground">${service.price}</span>
-                                      </div>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            
-                            <div className="lg:col-span-2">
-                              <Label className="text-sm font-medium text-slate-700">Description *</Label>
-                              <Input
-                                value={newItem.description}
-                                onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
-                                className="border-slate-300 focus:border-violet-500"
-                                placeholder="Service description"
-                              />
-                            </div>
-                            
-                            <div className="lg:col-span-1">
-                              <Label className="text-sm font-medium text-slate-700">Qty *</Label>
-                              <Input
-                                type="number"
-                                value={newItem.quantity}
-                                onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })}
-                                className="border-slate-300 focus:border-violet-500"
-                                min="1"
-                              />
-                            </div>
-                            
-                            <div className="lg:col-span-1">
-                              <Label className="text-sm font-medium text-slate-700">Price *</Label>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={newItem.unit_price}
-                                onChange={(e) => setNewItem({ ...newItem, unit_price: e.target.value })}
-                                className="border-slate-300 focus:border-violet-500"
-                                placeholder="0.00"
-                              />
-                            </div>
-                            
-                            <div className="lg:col-span-1">
-                              <Label className="text-sm font-medium text-slate-700">Discount %</Label>
-                              <Input
-                                type="number"
-                                value={newItem.discount_percentage}
-                                onChange={(e) => setNewItem({ ...newItem, discount_percentage: parseFloat(e.target.value) || 0 })}
-                                className="border-slate-300 focus:border-violet-500"
-                                min="0"
-                                max="100"
-                                placeholder="0"
-                              />
-                            </div>
-                            
-                            <div className="lg:col-span-1 flex items-end">
-                              <Button 
-                                type="button" 
-                                onClick={addItemToInvoice}
-                                className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600"
-                              >
-                                <Plus className="w-4 h-4 mr-1" />
-                                Add
-                              </Button>
-                            </div>
-                          </div>
-                          
-                          <div className="mt-4">
-                            <Label className="text-sm font-medium text-slate-700">Assigned Staff</Label>
-                            <Select value={newItem.staff_id} onValueChange={(value) => setNewItem({ ...newItem, staff_id: value })}>
-                              <SelectTrigger className="border-slate-300 focus:border-violet-500 max-w-xs">
-                                <SelectValue placeholder="Select staff member" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {staff.map((member) => (
-                                  <SelectItem key={member.id} value={member.id}>
-                                    {member.full_name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </CardContent>
-                      </Card>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
 
-                      {/* Items List */}
-                      {selectedItems.length > 0 && (
-                        <Card className="border-slate-200">
-                          <CardHeader>
-                            <CardTitle className="text-base text-slate-700">Invoice Items ({selectedItems.length})</CardTitle>
-                          </CardHeader>
-                          <CardContent className="p-0">
-                            <Table>
-                              <TableHeader>
-                                <TableRow className="border-slate-200">
-                                  <TableHead className="font-semibold text-slate-700">Description</TableHead>
-                                  <TableHead className="font-semibold text-slate-700">Qty</TableHead>
-                                  <TableHead className="font-semibold text-slate-700">Price</TableHead>
-                                  <TableHead className="font-semibold text-slate-700">Discount</TableHead>
-                                  <TableHead className="font-semibold text-slate-700">Staff</TableHead>
-                                  <TableHead className="font-semibold text-slate-700">Total</TableHead>
-                                  <TableHead className="font-semibold text-slate-700 w-16"></TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {selectedItems.map((item, index) => (
-                                  <TableRow key={index} className="border-slate-100">
-                                    <TableCell className="font-medium">{item.description}</TableCell>
-                                    <TableCell>{item.quantity}</TableCell>
-                                    <TableCell>${item.unit_price.toFixed(2)}</TableCell>
-                                    <TableCell>{item.discount_percentage}%</TableCell>
-                                    <TableCell>{item.staff_name || "—"}</TableCell>
-                                    <TableCell className="font-semibold">${item.total_price.toFixed(2)}</TableCell>
-                                    <TableCell>
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => removeItemFromInvoice(index)}
-                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </Button>
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </CardContent>
-                        </Card>
-                      )}
+                <Separator />
 
-                      {/* Totals Summary */}
-                      {selectedItems.length > 0 && (
-                        <Card className="bg-gradient-to-br from-violet-50 to-indigo-50 border-violet-200">
-                          <CardContent className="p-6">
-                            <div className="flex justify-end">
-                              <div className="w-80 space-y-3">
-                                {(() => {
-                                  const totals = calculateTotals();
-                                  return (
-                                    <>
-                                      <div className="flex justify-between text-slate-600">
-                                        <span>Subtotal:</span>
-                                        <span className="font-semibold">${totals.subtotal.toFixed(2)}</span>
-                                      </div>
-                                      <div className="flex justify-between text-slate-600">
-                                        <span>Tax (8.5%):</span>
-                                        <span className="font-semibold">${totals.taxAmount.toFixed(2)}</span>
-                                      </div>
-                                      <Separator />
-                                      <div className="flex justify-between text-lg font-bold text-slate-800">
-                                        <span>Total Amount:</span>
-                                        <span className="text-violet-600">${totals.total.toFixed(2)}</span>
-                                      </div>
-                                    </>
-                                  );
-                                })()}
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-                    </div>
+                {/* Notes */}
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Additional Notes</Label>
+                  <Textarea
+                    id="notes"
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    rows={3}
+                    placeholder="Add any additional notes or special instructions..."
+                  />
+                </div>
 
-                    <Separator />
-
-                    {/* Notes Section */}
-                    <div className="space-y-3">
-                      <Label htmlFor="notes" className="text-sm font-medium text-slate-700">Additional Notes</Label>
-                      <Textarea
-                        id="notes"
-                        value={formData.notes}
-                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                        className="border-slate-300 focus:border-violet-500 resize-none"
-                        rows={3}
-                        placeholder="Add any additional notes or special instructions..."
-                      />
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex justify-end gap-3 pt-4 border-t">
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={() => setIsCreateModalOpen(false)}
-                        className="border-slate-300 text-slate-600 hover:bg-slate-50"
-                      >
-                        Cancel
-                      </Button>
-                      <Button 
-                        type="submit" 
-                        className="bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500 hover:from-violet-600 hover:via-purple-600 hover:to-indigo-600 shadow-lg"
-                      >
-                        Create Invoice
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setIsCreateModalOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+                  >
+                    Create Invoice
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="p-6 space-y-8">
-        {/* Modern Statistics Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="bg-gradient-to-br from-violet-500 via-purple-600 to-indigo-600 text-white border-0 shadow-xl overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
-              <CardTitle className="text-sm font-medium opacity-90">Total Invoices</CardTitle>
-              <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm">
-                <FileText className="h-5 w-5" />
-              </div>
-            </CardHeader>
-            <CardContent className="relative z-10">
-              <div className="text-3xl font-bold mb-2">{totalInvoices}</div>
-              <div className="flex items-center gap-2 text-xs opacity-90">
-                <Badge variant="secondary" className="bg-white/20 text-white border-0 text-xs">
-                  {draftInvoices} drafts
-                </Badge>
-                <span>All time</span>
-              </div>
-            </CardContent>
-          </Card>
+      {/* Statistics Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium opacity-90">Total Invoices</CardTitle>
+            <Receipt className="h-4 w-4 opacity-80" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalInvoices}</div>
+            <p className="text-xs opacity-80">
+              {draftInvoices} drafts, {paidInvoices} paid
+            </p>
+          </CardContent>
+        </Card>
 
-          <Card className="bg-gradient-to-br from-emerald-500 via-green-600 to-teal-600 text-white border-0 shadow-xl overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
-              <CardTitle className="text-sm font-medium opacity-90">Paid Revenue</CardTitle>
-              <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm">
-                <DollarSign className="h-5 w-5" />
-              </div>
-            </CardHeader>
-            <CardContent className="relative z-10">
-              <div className="text-3xl font-bold mb-2">${totalRevenue.toLocaleString()}</div>
-              <div className="flex items-center gap-2 text-xs opacity-90">
-                <div className="flex items-center gap-1">
-                  <ArrowUpRight className="w-3 h-3" />
-                  <span>{paidInvoices} paid</span>
-                </div>
-              </div>
-              <Progress value={paymentRate} className="mt-2 h-1.5 bg-white/20" />
-            </CardContent>
-          </Card>
+        <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-0 shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium opacity-90">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 opacity-80" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${totalRevenue.toLocaleString()}</div>
+            <p className="text-xs opacity-80">
+              From {paidInvoices} paid invoices
+            </p>
+          </CardContent>
+        </Card>
 
-          <Card className="bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 text-white border-0 shadow-xl overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
-              <CardTitle className="text-sm font-medium opacity-90">Pending Amount</CardTitle>
-              <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm">
-                <Clock className="h-5 w-5" />
-              </div>
-            </CardHeader>
-            <CardContent className="relative z-10">
-              <div className="text-3xl font-bold mb-2">${pendingRevenue.toLocaleString()}</div>
-              <div className="flex items-center gap-2 text-xs opacity-90">
-                <Badge variant="secondary" className="bg-red-600/80 text-white border-0 text-xs">
-                  {overdueInvoices} overdue
-                </Badge>
-                <span>Need attention</span>
-              </div>
-            </CardContent>
-          </Card>
+        <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white border-0 shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium opacity-90">Pending Amount</CardTitle>
+            <Clock className="h-4 w-4 opacity-80" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${pendingRevenue.toLocaleString()}</div>
+            <p className="text-xs opacity-80">
+              {pendingInvoices + overdueInvoices} pending
+            </p>
+          </CardContent>
+        </Card>
 
-          <Card className="bg-gradient-to-br from-indigo-500 via-blue-600 to-cyan-600 text-white border-0 shadow-xl overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
-              <CardTitle className="text-sm font-medium opacity-90">Collection Rate</CardTitle>
-              <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm">
-                <Target className="h-5 w-5" />
-              </div>
-            </CardHeader>
-            <CardContent className="relative z-10">
-              <div className="text-3xl font-bold mb-2">{collectionRate.toFixed(1)}%</div>
-              <div className="flex items-center gap-2 text-xs opacity-90">
-                <Badge variant="secondary" className="bg-white/20 text-white border-0 text-xs">
-                  Avg: ${averageInvoiceValue.toFixed(0)}
-                </Badge>
-                <span>Success rate</span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="bg-gradient-to-br from-violet-500 to-violet-600 text-white border-0 shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium opacity-90">Collection Rate</CardTitle>
+            <Target className="h-4 w-4 opacity-80" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{collectionRate.toFixed(1)}%</div>
+            <p className="text-xs opacity-80">
+              Avg: ${averageInvoiceValue.toFixed(0)}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-        {/* Enhanced Tabs Section */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      {/* Filters & Tabs */}
+      <Card className="shadow-sm border-slate-200">
+        <CardHeader className="pb-4 border-b border-slate-200">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <TabsList className="grid grid-cols-4 w-fit bg-white shadow-sm border border-slate-200 p-1">
-              <TabsTrigger value="overview" className="data-[state=active]:bg-violet-50 data-[state=active]:text-violet-700 flex items-center gap-2">
-                <BarChart3 className="w-4 h-4" />
-                Overview
-              </TabsTrigger>
-              <TabsTrigger value="invoices" className="data-[state=active]:bg-violet-50 data-[state=active]:text-violet-700 flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                All Invoices
-              </TabsTrigger>
-              <TabsTrigger value="pending" className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4" />
-                Pending
-              </TabsTrigger>
-              <TabsTrigger value="analytics" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" />
-                Analytics
-              </TabsTrigger>
-            </TabsList>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-fit">
+              <TabsList className="grid grid-cols-4 w-fit">
+                <TabsTrigger value="all" className="flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  All ({totalInvoices})
+                </TabsTrigger>
+                <TabsTrigger value="paid" className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  Paid ({paidInvoices})
+                </TabsTrigger>
+                <TabsTrigger value="pending" className="flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  Pending ({pendingInvoices + overdueInvoices})
+                </TabsTrigger>
+                <TabsTrigger value="draft" className="flex items-center gap-2">
+                  <Edit2 className="w-4 h-4" />
+                  Draft ({draftInvoices})
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
 
-            {/* Filters */}
             <div className="flex items-center gap-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -1067,12 +1028,12 @@ export default function Invoices() {
                   placeholder="Search invoices..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 w-64 border-slate-300 focus:border-violet-500 bg-white"
+                  className="pl-9 w-64"
                 />
               </div>
               
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-40 border-slate-300 focus:border-violet-500 bg-white">
+                <SelectTrigger className="w-36">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1088,741 +1049,379 @@ export default function Invoices() {
                 </SelectContent>
               </Select>
               
-              <Select value={datePreset} onValueChange={setDatePreset}>
-                <SelectTrigger className="w-40 border-slate-300 focus:border-violet-500 bg-white">
+              <Select value={dateFilter} onValueChange={setDateFilter}>
+                <SelectTrigger className="w-36">
                   <SelectValue placeholder="Date Range" />
                 </SelectTrigger>
                 <SelectContent>
-                  {DATE_PRESETS.map((preset) => (
-                    <SelectItem key={preset.value} value={preset.value}>
-                      {preset.label}
+                  {DATE_FILTERS.map((filter) => (
+                    <SelectItem key={filter.value} value={filter.value}>
+                      {filter.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-
-              <div className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-300 rounded-lg">
-                <Button
-                  variant={viewMode === "table" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("table")}
-                  className="h-8 px-2"
-                >
-                  <FileText className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant={viewMode === "grid" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("grid")}
-                  className="h-8 px-2"
-                >
-                  <BarChart3 className="w-4 h-4" />
-                </Button>
-              </div>
             </div>
           </div>
-
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid gap-6 lg:grid-cols-3">
-              {/* Recent Activity */}
-              <Card className="lg:col-span-2 shadow-lg border-slate-200">
-                <CardHeader className="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-violet-50">
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-violet-600" />
-                    Recent Invoice Activity
-                  </CardTitle>
-                  <CardDescription>Latest updates and invoice activities</CardDescription>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    {dateFilteredInvoices.slice(0, 5).map((invoice) => (
-                      <div key={invoice.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2.5 bg-white rounded-xl shadow-sm">
-                            <Receipt className="w-4 h-4 text-violet-600" />
-                          </div>
-                          <div>
-                            <div className="font-semibold text-slate-900">{invoice.invoice_number}</div>
-                            <div className="text-sm text-slate-600">{invoice.customer_name}</div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-semibold text-slate-900">${invoice.total_amount.toFixed(2)}</div>
-                          {getStatusBadge(invoice.status)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Quick Stats */}
-              <Card className="shadow-lg border-slate-200">
-                <CardHeader className="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50">
-                  <CardTitle className="flex items-center gap-2">
-                    <Wallet className="h-5 w-5 text-blue-600" />
-                    Financial Summary
-                  </CardTitle>
-                  <CardDescription className="text-blue-700">
-                    Key financial insights
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="space-y-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-600">Today's Revenue</span>
-                        <span className="font-semibold text-slate-900">
-                          ${dateFilteredInvoices
-                            .filter(i => format(new Date(i.created_at), "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd") && i.status === "paid")
-                            .reduce((sum, i) => sum + i.total_amount, 0)
-                            .toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-600">This Month</span>
-                        <span className="font-semibold text-slate-900">
-                          ${filterInvoicesByDate(dateFilteredInvoices, "this_month")
-                            .filter(i => i.status === "paid")
-                            .reduce((sum, i) => sum + i.total_amount, 0)
-                            .toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-600">Outstanding</span>
-                        <span className="font-semibold text-red-600">
-                          ${pendingRevenue.toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-600">Avg. Value</span>
-                        <span className="font-semibold text-slate-900">
-                          ${averageInvoiceValue.toFixed(0)}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <Separator />
-                    
-                    {/* Payment Rate Progress */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-slate-700">Payment Rate</span>
-                        <span className="text-sm font-semibold text-violet-600">{paymentRate.toFixed(1)}%</span>
-                      </div>
-                      <Progress value={paymentRate} className="h-2" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="invoices" className="space-y-6">
-            {/* Main Invoices Display */}
-            <Card className="shadow-lg border-slate-200">
-              <CardHeader className="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-violet-50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-violet-100 rounded-xl">
-                      <Receipt className="h-5 w-5 text-violet-600" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-slate-800">All Invoices</CardTitle>
-                      <CardDescription className="text-slate-600">
-                        Manage and track all your invoices ({dateFilteredInvoices.length} shown)
-                      </CardDescription>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="p-0">
-                {loading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="text-center space-y-3">
-                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-violet-500 mx-auto"></div>
-                      <p className="text-slate-600 font-medium">Loading invoices...</p>
-                    </div>
-                  </div>
-                ) : dateFilteredInvoices.length === 0 ? (
-                  <div className="text-center py-16 space-y-4">
-                    <div className="w-16 h-16 bg-gradient-to-br from-violet-100 to-indigo-100 rounded-2xl flex items-center justify-center mx-auto">
-                      <FileText className="w-8 h-8 text-violet-500" />
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-slate-600 font-medium text-lg">
-                        {searchTerm || statusFilter !== "all" || dateFilter ? "No invoices found" : "No invoices yet"}
-                      </p>
-                      <p className="text-slate-400">
-                        {searchTerm || statusFilter !== "all" || dateFilter 
-                          ? "Try adjusting your filters" 
-                          : "Create your first invoice to get started"
-                        }
-                      </p>
-                    </div>
-                    {!searchTerm && statusFilter === "all" && !dateFilter && (
-                      <Button 
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600"
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create First Invoice
-                      </Button>
-                    )}
-                  </div>
-                ) : viewMode === "grid" ? (
-                  <div className="p-6">
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                      {dateFilteredInvoices.map((invoice) => (
-                        <Card key={invoice.id} className="hover:shadow-lg transition-all duration-200 border-slate-200 group">
-                          <CardHeader className="pb-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className="p-2 bg-violet-50 rounded-lg">
-                                  <Receipt className="w-4 h-4 text-violet-600" />
-                                </div>
-                                <div>
-                                  <div className="font-semibold text-slate-800">{invoice.invoice_number}</div>
-                                  <div className="text-sm text-slate-500">{invoice.customer_name}</div>
-                                </div>
-                              </div>
-                              {getStatusBadge(invoice.status)}
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-slate-600">Amount</span>
-                                <span className="font-bold text-lg text-violet-600">${invoice.total_amount.toFixed(2)}</span>
-                              </div>
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="text-slate-500">Created</span>
-                                <span className="text-slate-700">{format(new Date(invoice.created_at), "MMM dd, yyyy")}</span>
-                              </div>
-                              {invoice.due_date && (
-                                <div className="flex items-center justify-between text-sm">
-                                  <span className="text-slate-500">Due</span>
-                                  <span className="text-slate-700">{format(new Date(invoice.due_date), "MMM dd, yyyy")}</span>
-                                </div>
-                              )}
-                              <div className="flex items-center gap-2 pt-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedInvoice(invoice);
-                                    fetchInvoiceItems(invoice.id);
-                                    setIsViewModalOpen(true);
-                                  }}
-                                  className="flex-1 text-violet-600 border-violet-200 hover:bg-violet-50"
-                                >
-                                  <Eye className="w-4 h-4 mr-2" />
-                                  View
-                                </Button>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" size="sm" className="px-2 border-slate-200 hover:bg-slate-50">
-                                      <MoreHorizontal className="w-4 h-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-48">
-                                    <DropdownMenuItem onClick={() => duplicateInvoice(invoice)}>
-                                      <Copy className="w-4 h-4 mr-2" />
-                                      Duplicate
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem>
-                                      <Download className="w-4 h-4 mr-2" />
-                                      Download PDF
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem>
-                                      <MessageSquare className="w-4 h-4 mr-2" />
-                                      Send WhatsApp
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem 
-                                      onClick={() => handleDeleteInvoice(invoice.id)}
-                                      className="text-red-600 focus:text-red-600"
-                                    >
-                                      <Trash2 className="w-4 h-4 mr-2" />
-                                      Delete
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-slate-200 bg-slate-50">
-                        <TableHead className="font-semibold text-slate-700">Invoice</TableHead>
-                        <TableHead className="font-semibold text-slate-700">Customer</TableHead>
-                        <TableHead className="font-semibold text-slate-700">Amount</TableHead>
-                        <TableHead className="font-semibold text-slate-700">Status</TableHead>
-                        <TableHead className="font-semibold text-slate-700">Date</TableHead>
-                        <TableHead className="font-semibold text-slate-700">Due Date</TableHead>
-                        <TableHead className="font-semibold text-slate-700 text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {dateFilteredInvoices.map((invoice) => (
-                        <TableRow key={invoice.id} className="border-slate-100 hover:bg-slate-50/50 transition-colors">
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <div className="p-2 bg-violet-50 rounded-md">
-                                <FileText className="w-4 h-4 text-violet-600" />
-                              </div>
-                              <div>
-                                <div className="font-semibold text-slate-800">{invoice.invoice_number}</div>
-                                {invoice.jobcard_id && (
-                                  <div className="text-xs text-slate-500">Job: {invoice.jobcard_id}</div>
-                                )}
-                              </div>
-                            </div>
-                          </TableCell>
-                          
-                          <TableCell>
-                            <div className="space-y-1">
-                              <div className="font-medium text-slate-800">{invoice.customer_name}</div>
-                              {invoice.customer_email && (
-                                <div className="text-sm text-slate-500">{invoice.customer_email}</div>
-                              )}
-                            </div>
-                          </TableCell>
-                          
-                          <TableCell>
-                            <div className="font-semibold text-slate-800">${invoice.total_amount.toFixed(2)}</div>
-                            <div className="text-xs text-slate-500">
-                              Tax: ${invoice.tax_amount.toFixed(2)}
-                            </div>
-                          </TableCell>
-                          
-                          <TableCell>{getStatusBadge(invoice.status)}</TableCell>
-                          
-                          <TableCell>
-                            <div className="text-slate-700">{format(new Date(invoice.created_at), "MMM dd, yyyy")}</div>
-                            <div className="text-xs text-slate-500">{format(new Date(invoice.created_at), "h:mm a")}</div>
-                          </TableCell>
-                          
-                          <TableCell>
-                            {invoice.due_date ? (
-                              <div className="text-slate-700">{format(new Date(invoice.due_date), "MMM dd, yyyy")}</div>
-                            ) : (
-                              <span className="text-slate-400">—</span>
-                            )}
-                          </TableCell>
-                          
-                          <TableCell className="text-right">
-                            <div className="flex justify-end items-center gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedInvoice(invoice);
-                                  fetchInvoiceItems(invoice.id);
-                                  setIsViewModalOpen(true);
-                                }}
-                                className="text-slate-600 hover:text-violet-600 hover:bg-violet-50"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-800 hover:bg-slate-100">
-                                    <MoreHorizontal className="w-4 h-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48">
-                                  <DropdownMenuItem onClick={() => duplicateInvoice(invoice)}>
-                                    <Copy className="w-4 h-4 mr-2" />
-                                    Duplicate
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    <Download className="w-4 h-4 mr-2" />
-                                    Download PDF
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    <Mail className="w-4 h-4 mr-2" />
-                                    Send Email
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    <MessageSquare className="w-4 h-4 mr-2" />
-                                    Send WhatsApp
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
-                                    onClick={() => handleDeleteInvoice(invoice.id)}
-                                    className="text-red-600 focus:text-red-600"
-                                  >
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                              
-                              <Select value={invoice.status} onValueChange={(value) => handleStatusUpdate(invoice.id, value)}>
-                                <SelectTrigger className="w-24 h-8 border-slate-300">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {INVOICE_STATUSES.map((status) => (
-                                    <SelectItem key={status.value} value={status.value}>
-                                      <div className="flex items-center gap-2">
-                                        <status.icon className="w-3 h-3" />
-                                        {status.label}
-                                      </div>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="pending" className="space-y-6">
-            <Card className="shadow-lg border-slate-200">
-              <CardHeader className="border-b border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50">
-                <CardTitle className="flex items-center gap-2 text-amber-800">
-                  <AlertTriangle className="h-5 w-5" />
-                  Pending & Overdue Invoices
-                </CardTitle>
-                <CardDescription className="text-amber-700">
-                  {pendingInvoices + overdueInvoices} invoices requiring your attention
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="grid gap-4">
-                  {dateFilteredInvoices
-                    .filter(i => i.status === "sent" || i.status === "overdue")
-                    .map((invoice) => (
-                      <div key={invoice.id} className="flex items-center justify-between p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2.5 bg-amber-100 rounded-xl">
-                            <AlertTriangle className="w-5 h-5 text-amber-600" />
-                          </div>
-                          <div>
-                            <div className="font-semibold text-slate-900">{invoice.invoice_number}</div>
-                            <div className="text-sm text-slate-600">{invoice.customer_name}</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <div className="font-semibold text-slate-900">${invoice.total_amount.toFixed(2)}</div>
-                            {invoice.due_date && (
-                              <div className="text-xs text-slate-500">
-                                Due: {format(new Date(invoice.due_date), "MMM dd, yyyy")}
-                              </div>
-                            )}
-                          </div>
-                          {getStatusBadge(invoice.status)}
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              setSelectedInvoice(invoice);
-                              fetchInvoiceItems(invoice.id);
-                              setIsViewModalOpen(true);
-                            }}
-                            className="bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600"
-                          >
-                            <Eye className="w-4 h-4 mr-2" />
-                            View
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  {dateFilteredInvoices.filter(i => i.status === "sent" || i.status === "overdue").length === 0 && (
-                    <div className="text-center py-12 space-y-4">
-                      <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-emerald-100 rounded-2xl flex items-center justify-center mx-auto">
-                        <CheckCircle className="w-8 h-8 text-green-500" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-slate-800 text-lg">All caught up!</p>
-                        <p className="text-slate-500">No pending or overdue invoices</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="analytics" className="space-y-6">
-            <div className="grid gap-6 lg:grid-cols-2">
-              <Card className="shadow-lg border-slate-200">
-                <CardHeader className="border-b border-violet-200 bg-gradient-to-r from-violet-50 to-purple-50">
-                  <CardTitle className="flex items-center gap-2 text-violet-800">
-                    <PieChart className="h-5 w-5" />
-                    Revenue Overview
-                  </CardTitle>
-                  <CardDescription className="text-violet-700">
-                    Monthly revenue and payment analysis
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="space-y-6">
-                    <div className="h-64 flex items-center justify-center bg-gradient-to-br from-violet-50 to-indigo-50 rounded-xl border border-violet-200">
-                      <div className="text-center">
-                        <PieChart className="w-12 h-12 text-violet-400 mx-auto mb-3" />
-                        <p className="text-violet-600 font-medium">Revenue Chart</p>
-                        <p className="text-sm text-violet-500">Interactive charts coming soon</p>
-                      </div>
-                    </div>
-                    
-                    {/* Revenue Summary */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-4 bg-green-50 rounded-xl border border-green-200">
-                        <div className="text-2xl font-bold text-green-700">${totalRevenue.toLocaleString()}</div>
-                        <div className="text-sm text-green-600">Total Revenue</div>
-                      </div>
-                      <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
-                        <div className="text-2xl font-bold text-amber-700">${pendingRevenue.toLocaleString()}</div>
-                        <div className="text-sm text-amber-600">Pending Revenue</div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-lg border-slate-200">
-                <CardHeader className="border-b border-indigo-200 bg-gradient-to-r from-indigo-50 to-blue-50">
-                  <CardTitle className="flex items-center gap-2 text-indigo-800">
-                    <BarChart3 className="h-5 w-5" />
-                    Payment Analytics
-                  </CardTitle>
-                  <CardDescription className="text-indigo-700">
-                    Payment methods and collection insights
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="space-y-6">
-                    <div className="h-64 flex items-center justify-center bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border border-indigo-200">
-                      <div className="text-center">
-                        <BarChart3 className="w-12 h-12 text-indigo-400 mx-auto mb-3" />
-                        <p className="text-indigo-600 font-medium">Payment Analytics</p>
-                        <p className="text-sm text-indigo-500">Detailed analytics coming soon</p>
-                      </div>
-                    </div>
-                    
-                    {/* Payment Rate Summary */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
-                        <div className="text-2xl font-bold text-blue-700">{paymentRate.toFixed(1)}%</div>
-                        <div className="text-sm text-blue-600">Payment Rate</div>
-                      </div>
-                      <div className="p-4 bg-purple-50 rounded-xl border border-purple-200">
-                        <div className="text-2xl font-bold text-purple-700">${averageInvoiceValue.toFixed(0)}</div>
-                        <div className="text-sm text-purple-600">Avg Invoice Value</div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        {/* Enhanced View Invoice Modal */}
-        <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
-          <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
-            <DialogHeader className="pb-6 border-b border-slate-200">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <DialogTitle className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                    <Receipt className="w-6 h-6 text-violet-600" />
-                    {selectedInvoice?.invoice_number}
-                  </DialogTitle>
-                  <DialogDescription className="text-slate-600">
-                    Complete invoice details and line items
-                  </DialogDescription>
-                </div>
-                {selectedInvoice && (
-                  <div className="text-right space-y-1">
-                    {getStatusBadge(selectedInvoice.status)}
-                    <div className="text-sm text-slate-500">
-                      Created {format(new Date(selectedInvoice.created_at), "MMM dd, yyyy")}
-                    </div>
-                  </div>
-                )}
+        </CardHeader>
+        
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center space-y-3">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600 mx-auto"></div>
+                <p className="text-slate-600">Loading invoices...</p>
               </div>
-            </DialogHeader>
-            
-            {selectedInvoice && (
-              <div className="space-y-6">
-                {/* Invoice Header */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium text-blue-700 flex items-center gap-2">
-                        <Users className="w-4 h-4" />
-                        Bill To
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <div className="font-semibold text-slate-800">{selectedInvoice.customer_name}</div>
-                      {selectedInvoice.customer_email && (
-                        <div className="text-sm text-slate-600 flex items-center gap-2">
-                          <Mail className="w-3 h-3" />
-                          {selectedInvoice.customer_email}
+            </div>
+          ) : currentInvoices.length === 0 ? (
+            <div className="text-center py-16 space-y-4">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
+                <Receipt className="w-8 h-8 text-slate-400" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-slate-600 font-medium">
+                  {searchTerm || statusFilter !== "all" ? "No invoices found" : "No invoices yet"}
+                </p>
+                <p className="text-slate-400 text-sm">
+                  {searchTerm || statusFilter !== "all" 
+                    ? "Try adjusting your filters" 
+                    : "Create your first invoice to get started"
+                  }
+                </p>
+              </div>
+              {!searchTerm && statusFilter === "all" && (
+                <Button 
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="bg-violet-600 hover:bg-violet-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create First Invoice
+                </Button>
+              )}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="border-slate-200">
+                  <TableHead>Invoice</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Due Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {currentInvoices.map((invoice) => (
+                  <TableRow key={invoice.id} className="border-slate-100 hover:bg-slate-50/50">
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-violet-50 rounded-md">
+                          <Receipt className="w-4 h-4 text-violet-600" />
                         </div>
-                      )}
-                      {selectedInvoice.customer_phone && (
-                        <div className="text-sm text-slate-600 flex items-center gap-2">
-                          <Phone className="w-3 h-3" />
-                          {selectedInvoice.customer_phone}
+                        <div>
+                          <div className="font-semibold">{invoice.invoice_number}</div>
+                          {invoice.jobcard_id && (
+                            <div className="text-xs text-slate-500">Job: {invoice.jobcard_id}</div>
+                          )}
                         </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-gradient-to-br from-violet-50 to-purple-50 border-violet-200">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium text-violet-700 flex items-center gap-2">
-                        <Receipt className="w-4 h-4" />
-                        Invoice Details
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Date:</span>
-                        <span className="font-medium text-slate-800">
-                          {format(new Date(selectedInvoice.created_at), "MMM dd, yyyy")}
-                        </span>
                       </div>
-                      {selectedInvoice.due_date && (
-                        <div className="flex justify-between">
-                          <span className="text-slate-600">Due:</span>
-                          <span className="font-medium text-slate-800">
-                            {format(new Date(selectedInvoice.due_date), "MMM dd, yyyy")}
-                          </span>
-                        </div>
+                    </TableCell>
+                    
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="font-medium">{invoice.customer_name}</div>
+                        {invoice.customer_email && (
+                          <div className="text-sm text-slate-500">{invoice.customer_email}</div>
+                        )}
+                      </div>
+                    </TableCell>
+                    
+                    <TableCell>
+                      <div className="font-semibold">${invoice.total_amount.toFixed(2)}</div>
+                      <div className="text-xs text-slate-500">
+                        Tax: ${invoice.tax_amount.toFixed(2)}
+                      </div>
+                    </TableCell>
+                    
+                    <TableCell>{getStatusBadge(invoice.status)}</TableCell>
+                    
+                    <TableCell>
+                      <div className="text-slate-700">{format(new Date(invoice.created_at), "MMM dd, yyyy")}</div>
+                      <div className="text-xs text-slate-500">{format(new Date(invoice.created_at), "h:mm a")}</div>
+                    </TableCell>
+                    
+                    <TableCell>
+                      {invoice.due_date ? (
+                        <div className="text-slate-700">{format(new Date(invoice.due_date), "MMM dd, yyyy")}</div>
+                      ) : (
+                        <span className="text-slate-400">—</span>
                       )}
-                      {selectedInvoice.payment_method && (
-                        <div className="flex justify-between">
-                          <span className="text-slate-600">Payment:</span>
-                          <span className="font-medium text-slate-800">{selectedInvoice.payment_method}</span>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
+                    </TableCell>
+                    
+                    <TableCell className="text-right">
+                      <div className="flex justify-end items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedInvoice(invoice);
+                            fetchInvoiceItems(invoice.id);
+                            setIsViewModalOpen(true);
+                          }}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={() => duplicateInvoice(invoice)}>
+                              <Copy className="w-4 h-4 mr-2" />
+                              Duplicate
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Download className="w-4 h-4 mr-2" />
+                              Download PDF
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Mail className="w-4 h-4 mr-2" />
+                              Send Email
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <MessageSquare className="w-4 h-4 mr-2" />
+                              Send WhatsApp
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteInvoice(invoice.id)}
+                              className="text-red-600 focus:text-red-600"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        
+                        <Select value={invoice.status} onValueChange={(value) => handleStatusUpdate(invoice.id, value)}>
+                          <SelectTrigger className="w-24 h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {INVOICE_STATUSES.map((status) => (
+                              <SelectItem key={status.value} value={status.value}>
+                                <div className="flex items-center gap-2">
+                                  <status.icon className="w-3 h-3" />
+                                  {status.label}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
-                {/* Invoice Items */}
-                <Card className="border-slate-200">
-                  <CardHeader>
-                    <CardTitle className="text-base text-slate-800 flex items-center gap-2">
-                      <FileText className="w-4 h-4" />
-                      Invoice Items
+      {/* View Invoice Modal */}
+      <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
+        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="pb-4 border-b">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                  <Receipt className="w-5 h-5 text-violet-600" />
+                  {selectedInvoice?.invoice_number}
+                </DialogTitle>
+                <DialogDescription>
+                  Complete invoice details and line items
+                </DialogDescription>
+              </div>
+              {selectedInvoice && (
+                <div className="text-right space-y-1">
+                  {getStatusBadge(selectedInvoice.status)}
+                  <div className="text-sm text-slate-500">
+                    Created {format(new Date(selectedInvoice.created_at), "MMM dd, yyyy")}
+                  </div>
+                </div>
+              )}
+            </div>
+          </DialogHeader>
+          
+          {selectedInvoice && (
+            <div className="space-y-6">
+              {/* Invoice Header */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="bg-blue-50 border-blue-200">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm text-blue-700 flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      Bill To
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-0">
-                    {invoiceItems.length === 0 ? (
-                      <div className="text-center py-8 space-y-2">
-                        <FileText className="w-8 h-8 text-slate-300 mx-auto" />
-                        <p className="text-slate-500">No items found for this invoice</p>
+                  <CardContent className="space-y-2">
+                    <div className="font-semibold">{selectedInvoice.customer_name}</div>
+                    {selectedInvoice.customer_email && (
+                      <div className="text-sm text-slate-600 flex items-center gap-2">
+                        <Mail className="w-3 h-3" />
+                        {selectedInvoice.customer_email}
                       </div>
-                    ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="border-slate-200">
-                            <TableHead className="font-semibold text-slate-700">Description</TableHead>
-                            <TableHead className="font-semibold text-slate-700">Qty</TableHead>
-                            <TableHead className="font-semibold text-slate-700">Price</TableHead>
-                            <TableHead className="font-semibold text-slate-700">Total</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {invoiceItems.map((item) => (
-                            <TableRow key={item.id} className="border-slate-100">
-                              <TableCell className="font-medium">{item.description}</TableCell>
-                              <TableCell>{item.quantity}</TableCell>
-                              <TableCell>${item.unit_price.toFixed(2)}</TableCell>
-                              <TableCell className="font-semibold">${item.total_price.toFixed(2)}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                    )}
+                    {selectedInvoice.customer_phone && (
+                      <div className="text-sm text-slate-600 flex items-center gap-2">
+                        <Phone className="w-3 h-3" />
+                        {selectedInvoice.customer_phone}
+                      </div>
                     )}
                   </CardContent>
                 </Card>
 
-                {/* Invoice Totals */}
-                <Card className="bg-gradient-to-br from-slate-50 to-violet-50 border-slate-200">
-                  <CardContent className="p-6">
-                    <div className="flex justify-end">
-                      <div className="w-80 space-y-3">
-                        <div className="flex justify-between text-slate-600">
-                          <span>Subtotal:</span>
-                          <span className="font-semibold">${selectedInvoice.subtotal.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between text-slate-600">
-                          <span>Tax (8.5%):</span>
-                          <span className="font-semibold">${selectedInvoice.tax_amount.toFixed(2)}</span>
-                        </div>
-                        {selectedInvoice.discount_amount > 0 && (
-                          <div className="flex justify-between text-red-600">
-                            <span>Discount:</span>
-                            <span className="font-semibold">-${selectedInvoice.discount_amount.toFixed(2)}</span>
-                          </div>
-                        )}
-                        <Separator />
-                        <div className="flex justify-between text-xl font-bold text-slate-800">
-                          <span>Total Amount:</span>
-                          <span className="text-violet-600">${selectedInvoice.total_amount.toFixed(2)}</span>
-                        </div>
-                      </div>
+                <Card className="bg-violet-50 border-violet-200">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm text-violet-700 flex items-center gap-2">
+                      <Receipt className="w-4 h-4" />
+                      Invoice Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Date:</span>
+                      <span className="font-medium">
+                        {format(new Date(selectedInvoice.created_at), "MMM dd, yyyy")}
+                      </span>
                     </div>
+                    {selectedInvoice.due_date && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Due:</span>
+                        <span className="font-medium">
+                          {format(new Date(selectedInvoice.due_date), "MMM dd, yyyy")}
+                        </span>
+                      </div>
+                    )}
+                    {selectedInvoice.payment_method && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Payment:</span>
+                        <span className="font-medium">{selectedInvoice.payment_method}</span>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
-
-                {/* Notes */}
-                {selectedInvoice.notes && (
-                  <Card className="border-slate-200">
-                    <CardHeader>
-                      <CardTitle className="text-base text-slate-800">Notes</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-slate-600 whitespace-pre-wrap">{selectedInvoice.notes}</p>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Action Buttons */}
-                <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
-                  <Button variant="outline" className="border-slate-300 text-slate-600 hover:bg-slate-50">
-                    <Printer className="w-4 h-4 mr-2" />
-                    Print
-                  </Button>
-                  <Button variant="outline" className="border-violet-300 text-violet-600 hover:bg-violet-50">
-                    <Download className="w-4 h-4 mr-2" />
-                    Download PDF
-                  </Button>
-                  <Button variant="outline" className="border-green-300 text-green-600 hover:bg-green-50">
-                    <MessageSquare className="w-4 h-4 mr-2" />
-                    Send WhatsApp
-                  </Button>
-                  <Button className="bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600">
-                    <Edit2 className="w-4 h-4 mr-2" />
-                    Edit Invoice
-                  </Button>
-                </div>
               </div>
-            )}
-          </DialogContent>
-        </Dialog>
-      </div>
+
+              {/* Invoice Items */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    Invoice Items
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {invoiceItems.length === 0 ? (
+                    <div className="text-center py-8 space-y-2">
+                      <FileText className="w-8 h-8 text-slate-300 mx-auto" />
+                      <p className="text-slate-500">No items found for this invoice</p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Description</TableHead>
+                          <TableHead>Qty</TableHead>
+                          <TableHead>Price</TableHead>
+                          <TableHead>Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {invoiceItems.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">{item.description}</TableCell>
+                            <TableCell>{item.quantity}</TableCell>
+                            <TableCell>${item.unit_price.toFixed(2)}</TableCell>
+                            <TableCell className="font-semibold">${item.total_price.toFixed(2)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Invoice Totals */}
+              <Card className="bg-slate-50">
+                <CardContent className="p-4">
+                  <div className="flex justify-end">
+                    <div className="w-64 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Subtotal:</span>
+                        <span className="font-semibold">${selectedInvoice.subtotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Tax (8.5%):</span>
+                        <span className="font-semibold">${selectedInvoice.tax_amount.toFixed(2)}</span>
+                      </div>
+                      {selectedInvoice.discount_amount > 0 && (
+                        <div className="flex justify-between text-sm text-red-600">
+                          <span>Discount:</span>
+                          <span className="font-semibold">-${selectedInvoice.discount_amount.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <Separator />
+                      <div className="flex justify-between text-lg font-bold">
+                        <span>Total:</span>
+                        <span className="text-violet-600">${selectedInvoice.total_amount.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Notes */}
+              {selectedInvoice.notes && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Notes</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-slate-600 whitespace-pre-wrap">{selectedInvoice.notes}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button variant="outline">
+                  <Printer className="w-4 h-4 mr-2" />
+                  Print
+                </Button>
+                <Button variant="outline">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download PDF
+                </Button>
+                <Button variant="outline">
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Send WhatsApp
+                </Button>
+                <Button className="bg-violet-600 hover:bg-violet-700">
+                  <Edit2 className="w-4 h-4 mr-2" />
+                  Edit Invoice
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
