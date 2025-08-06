@@ -216,53 +216,61 @@ const OrganizationSetup = () => {
     setLoading(true);
 
     try {
-      // Create organization
-      const { data: org, error: orgError } = await supabase
-        .from('organizations')
-        .insert([{
-          name: formData.organizationName,
-          slug: formData.organizationSlug,
-          settings: {
-            description: formData.description,
-            website: formData.website,
-            industry: formData.industry,
-          }
-        }])
-        .select()
-        .single();
+      console.log('Creating organization using safe function...');
+      
+      // Use the new safe function to create organization with proper RLS handling
+      const { data: orgId, error: orgError } = await supabase.rpc('create_organization_with_user', {
+        org_name: formData.organizationName,
+        org_slug: formData.organizationSlug,
+        org_settings: {
+          description: formData.description,
+          website: formData.website,
+          industry: formData.industry,
+        },
+        plan_id: selectedPlan
+      });
 
-      if (orgError) throw orgError;
+      if (orgError) {
+        console.error('RPC error:', orgError);
+        throw orgError;
+      }
 
-      // Add user as owner
-      const { error: userError } = await supabase
-        .from('organization_users')
-        .insert([{
-          organization_id: org.id,
-          user_id: user.id,
-          role: 'owner',
-          is_active: true,
-          joined_at: new Date().toISOString(),
-        }]);
+      console.log('Organization created with ID:', orgId);
 
-      if (userError) throw userError;
+      // Set up trial dates on the subscription (the function creates basic subscription)
+      if (selectedPlan) {
+        const trialStart = new Date();
+        const trialEnd = new Date();
+        trialEnd.setDate(trialEnd.getDate() + 14); // 14-day trial
 
-      // Create trial subscription
-      const trialStart = new Date();
-      const trialEnd = new Date();
-      trialEnd.setDate(trialEnd.getDate() + 14); // 14-day trial
+        const { error: trialError } = await supabase
+          .from('organization_subscriptions')
+          .update({
+            trial_start: trialStart.toISOString(),
+            trial_end: trialEnd.toISOString(),
+            interval: billingInterval
+          })
+          .eq('organization_id', orgId);
 
-      const { error: subError } = await supabase
-        .from('organization_subscriptions')
-        .insert([{
-          organization_id: org.id,
-          plan_id: selectedPlan,
-          status: 'trial',
-          interval: billingInterval,
-          trial_start: trialStart.toISOString(),
-          trial_end: trialEnd.toISOString(),
-        }]);
+        if (trialError) {
+          console.warn('Failed to set trial dates:', trialError);
+          // Don't fail the whole process for this
+        }
+      }
 
-      if (subError) throw subError;
+      // Set up initial organization data
+      try {
+        const { error: setupError } = await supabase.rpc('setup_new_organization', {
+          org_id: orgId
+        });
+        
+        if (setupError) {
+          console.warn('Failed to set up initial data:', setupError);
+          // Don't fail for this either - user can add data later
+        }
+      } catch (setupErr) {
+        console.warn('Setup function not available or failed:', setupErr);
+      }
 
       toast.success('Organization created successfully! Welcome to your 14-day trial.');
       
