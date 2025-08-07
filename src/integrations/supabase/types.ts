@@ -1193,6 +1193,10 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: boolean
       }
+      is_super_admin: {
+        Args: { uid: string }
+        Returns: boolean
+      }
       revoke_super_admin: {
         Args: { target_user_id: string }
         Returns: boolean
