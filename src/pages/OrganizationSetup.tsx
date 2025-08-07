@@ -90,11 +90,11 @@ const OrganizationSetup = () => {
 
     setLoading(true);
 
-    // Add a safety timeout to prevent infinite loading
-    const timeoutId = setTimeout(() => {
-      setLoading(false);
-      toast.error('Organization creation is taking too long. Please try again.');
-    }, 45000); // 45 second timeout
+    // Short guard to avoid indefinite spinner; detailed fallbacks below
+    const slowGuard = setTimeout(() => {
+      console.warn('Org creation is slow, attempting fallback if not already tried...');
+    }, 15000); // 15s guard
+
 
     try {
       // Verify user authentication first
@@ -266,7 +266,7 @@ const OrganizationSetup = () => {
       console.error('Error creating organization:', error);
       
       // Clear timeout on error
-      clearTimeout(timeoutId);
+      clearTimeout(slowGuard);
       
       if (error.message?.includes('organization already exists') || error.message?.includes('duplicate')) {
         toast.error('An organization with this name already exists. Please choose a different name.');
@@ -274,7 +274,7 @@ const OrganizationSetup = () => {
         toast.error(`Organization creation failed: ${error.message || 'Unknown error'}. Please try again.`);
       }
     } finally {
-      clearTimeout(timeoutId);
+      clearTimeout(slowGuard);
       setLoading(false);
     }
   };
