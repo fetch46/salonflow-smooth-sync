@@ -58,7 +58,7 @@ interface Staff {
   full_name: string;
   email?: string;
   phone?: string;
-  specialties?: string;
+  specialties?: string[];
   profile_image?: string;
   commission_rate?: number;
 }
@@ -812,7 +812,7 @@ function StepServicesStaff({
 
   const filteredStaff = staff.filter(member =>
     member.full_name.toLowerCase().includes(staffSearch.toLowerCase()) ||
-    member.specialties?.toLowerCase().includes(staffSearch.toLowerCase())
+    member.specialties?.join(' ').toLowerCase().includes(staffSearch.toLowerCase())
   );
 
   const toggleService = (service: Service) => {

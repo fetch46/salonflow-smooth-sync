@@ -127,13 +127,11 @@ interface Service {
   id: string;
   name: string;
   price: number;
-  commission_rate: number;
 }
 
 interface Staff {
   id: string;
   full_name: string;
-  commission_rate: number;
 }
 
 interface Jobcard {
@@ -266,7 +264,7 @@ export default function Invoices() {
     try {
       const { data, error } = await supabase
         .from("services")
-        .select("id, name, price, commission_rate")
+        .select("id, name, price")
         .eq("is_active", true)
         .order("name");
 
@@ -281,7 +279,7 @@ export default function Invoices() {
     try {
       const { data, error } = await supabase
         .from("staff")
-        .select("id, full_name, commission_rate")
+        .select("id, full_name")
         .eq("is_active", true)
         .order("full_name");
 
