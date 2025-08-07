@@ -211,11 +211,11 @@ export default function InventoryAdjustments() {
       const itemsData = selectedItems.map(item => ({
         adjustment_id: adjustmentId,
         item_id: item.item_id,
-        current_quantity: parseFloat(item.current_quantity) || 0,
-        adjusted_quantity: parseFloat(item.adjusted_quantity) || 0,
-        difference: (parseFloat(item.adjusted_quantity) || 0) - (parseFloat(item.current_quantity) || 0),
-        unit_cost: parseFloat(item.unit_cost) || 0,
-        total_cost: ((parseFloat(item.adjusted_quantity) || 0) - (parseFloat(item.current_quantity) || 0)) * (parseFloat(item.unit_cost) || 0),
+        current_quantity: item.current_quantity,
+        adjusted_quantity: item.adjusted_quantity,
+        difference: (parseFloat(String(item.adjusted_quantity)) || 0) - (parseFloat(String(item.current_quantity)) || 0),
+        unit_cost: item.unit_cost,
+        total_cost: ((parseFloat(String(item.adjusted_quantity)) || 0) - (parseFloat(String(item.current_quantity)) || 0)) * (parseFloat(String(item.unit_cost)) || 0),
         notes: item.notes || null,
       }));
 
@@ -332,6 +332,11 @@ export default function InventoryAdjustments() {
       item_unit: item.unit,
       difference: (parseFloat(newItem.adjusted_quantity) || 0) - (parseFloat(newItem.current_quantity) || 0),
       total_cost: ((parseFloat(newItem.adjusted_quantity) || 0) - (parseFloat(newItem.current_quantity) || 0)) * (parseFloat(newItem.unit_cost) || 0),
+      current_quantity: parseFloat(newItem.current_quantity) || 0,
+      adjusted_quantity: parseFloat(newItem.adjusted_quantity) || 0,
+      unit_cost: parseFloat(newItem.unit_cost) || 0,
+      id: '',
+      adjustment_id: '',
     };
 
     setSelectedItems([...selectedItems, adjustmentItem]);
@@ -597,16 +602,16 @@ export default function InventoryAdjustments() {
                         <TableRow key={index}>
                           <TableCell>
                             <div>
-                              <div className="font-medium">{item.item_name}</div>
-                              <div className="text-sm text-muted-foreground">{item.item_sku}</div>
+                              <div className="font-medium">{(item as any).item_name}</div>
+                              <div className="text-sm text-muted-foreground">{(item as any).item_sku}</div>
                             </div>
                           </TableCell>
-                          <TableCell>{item.current_quantity} {item.item_unit}</TableCell>
-                          <TableCell>{item.adjusted_quantity} {item.item_unit}</TableCell>
+                          <TableCell>{item.current_quantity} {(item as any).item_unit}</TableCell>
+                          <TableCell>{item.adjusted_quantity} {(item as any).item_unit}</TableCell>
                           <TableCell>
                             <div className={`flex items-center gap-1 ${item.difference > 0 ? 'text-green-600' : item.difference < 0 ? 'text-red-600' : ''}`}>
                               {item.difference > 0 ? <TrendingUp className="w-3 h-3" /> : item.difference < 0 ? <TrendingDown className="w-3 h-3" /> : null}
-                              {item.difference} {item.item_unit}
+                              {item.difference} {(item as any).item_unit}
                             </div>
                           </TableCell>
                           <TableCell>${item.unit_cost}</TableCell>

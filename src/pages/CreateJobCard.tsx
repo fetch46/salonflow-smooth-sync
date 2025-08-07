@@ -196,33 +196,6 @@ export default function CreateJobCard() {
     }
   ];
 
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
-
-  useEffect(() => {
-    if (appointmentId) {
-      loadAppointmentData(appointmentId);
-    }
-  }, [appointmentId, appointments, loadAppointmentData]);
-
-  useEffect(() => {
-    // Calculate totals when services change
-    const serviceCost = selectedServices.reduce((sum, service) => sum + service.price, 0);
-    const duration = selectedServices.reduce((sum, service) => sum + service.duration_minutes, 0);
-    
-    setTotalCost(serviceCost);
-    setTotalDuration(duration);
-    setJobCardData(prev => ({ ...prev, service_charge: serviceCost }));
-  }, [selectedServices]);
-
-  useEffect(() => {
-    // Load service kits when services change
-    if (selectedServices.length > 0) {
-      loadServiceKits();
-    }
-  }, [selectedServices, loadServiceKits]);
-
   const fetchInitialData = async () => {
     setLoading(true);
     try {
@@ -253,8 +226,8 @@ export default function CreateJobCard() {
       const client = clients.find(c => c.id === appointment.client_id);
       if (client) setSelectedClient(client);
       
-      const staff = staff.find(s => s.id === appointment.staff_id);
-      if (staff) setSelectedStaff(staff);
+      const staffMember = staff.find(s => s.id === appointment.staff_id);
+      if (staffMember) setSelectedStaff(staffMember);
       
       const service = services.find(s => s.id === appointment.service_id);
       if (service) setSelectedServices([service]);
@@ -267,7 +240,8 @@ export default function CreateJobCard() {
         services: service ? [service.id] : []
       }));
     }
-  }, [appointments, clients, services]);
+  }, [appointments, clients, services, staff]);
+
 
   const loadServiceKits = useCallback(async () => {
     if (selectedServices.length === 0) return;
@@ -296,6 +270,28 @@ export default function CreateJobCard() {
       toast.error("Failed to load service materials");
     }
   }, [selectedServices]);
+
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  useEffect(() => {
+    // Calculate totals when services change
+    const serviceCost = selectedServices.reduce((sum, service) => sum + service.price, 0);
+    const duration = selectedServices.reduce((sum, service) => sum + service.duration_minutes, 0);
+    
+    setTotalCost(serviceCost);
+    setTotalDuration(duration);
+    setJobCardData(prev => ({ ...prev, service_charge: serviceCost }));
+  }, [selectedServices]);
+
+  useEffect(() => {
+    // Load service kits when services change
+    if (selectedServices.length > 0) {
+      loadServiceKits();
+    }
+  }, [selectedServices, loadServiceKits]);
+
 
   const updateProductQuantity = (productId: string, quantity: number) => {
     setJobCardData(prev => ({
@@ -552,7 +548,7 @@ export default function CreateJobCard() {
               selectedClient={selectedClient}
               selectedStaff={selectedStaff}
               selectedServices={selectedServices}
-              onDataChange={setJobCardData}
+              onDataChange={(data) => setJobCardData(prev => ({ ...prev, ...data, services: prev.services }))}
               onNext={nextStep}
               onPrev={prevStep}
             />
@@ -566,7 +562,7 @@ export default function CreateJobCard() {
               selectedServices={selectedServices}
               totalCost={totalCost}
               productCosts={productCosts}
-              onDataChange={setJobCardData}
+              onDataChange={(data) => setJobCardData(prev => ({ ...prev, ...data, services: prev.services }))}
               onPrev={prevStep}
               onSubmit={handleSubmit}
               saving={saving}

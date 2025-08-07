@@ -880,7 +880,7 @@ export default function Invoices() {
                               <TableRow key={index}>
                                 <TableCell className="font-medium">{item.description}</TableCell>
                                 <TableCell>{item.quantity}</TableCell>
-                                <TableCell>${parseFloat(item.unit_price).toFixed(2)}</TableCell>
+                                <TableCell>${parseFloat(String(item.unit_price)).toFixed(2)}</TableCell>
                                 <TableCell>{item.discount_percentage}%</TableCell>
                                 <TableCell className="font-semibold">${item.total_price.toFixed(2)}</TableCell>
                                 <TableCell>
