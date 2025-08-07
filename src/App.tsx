@@ -91,6 +91,19 @@ const AppRoutes = () => {
         <Route path="/setup" element={<OrganizationSetup />} />
         <Route path="/login" element={<Navigate to="/setup" replace />} />
         <Route path="/register" element={<Navigate to="/setup" replace />} />
+        {/* Allow navigating to /dashboard immediately after org creation to avoid redirect loop */}
+        <Route
+          path="/dashboard"
+          element={
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+              <div className="text-center space-y-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto"></div>
+                <p className="text-slate-600 font-medium">Finalizing your workspace...</p>
+                <p className="text-sm text-slate-500">If you are not redirected automatically in a moment, reload the page.</p>
+              </div>
+            </div>
+          }
+        />
         <Route path="*" element={<Navigate to="/setup" replace />} />
       </Routes>
     );
