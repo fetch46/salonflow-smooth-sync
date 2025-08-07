@@ -129,17 +129,24 @@ const Register = () => {
     setError("");
 
     try {
-      // Create user account
+      // Create user account with proper redirect URL
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
+          emailRedirectTo: `${window.location.origin}/setup`,
           data: {
             first_name: formData.firstName,
             last_name: formData.lastName,
             phone: formData.phone,
             business_name: formData.businessName,
             business_type: formData.businessType,
+            business_description: formData.businessDescription,
+            address: formData.address,
+            city: formData.city,
+            state: formData.state,
+            zip_code: formData.zipCode,
+            country: formData.country,
             role: 'owner'
           }
         }
@@ -151,33 +158,35 @@ const Register = () => {
         return;
       }
 
-      // Create business record
       if (authData.user) {
-        const { error: businessError } = await supabase
-          .from('businesses')
-          .insert({
-            id: authData.user.id,
-            name: formData.businessName,
-            type: formData.businessType,
-            description: formData.businessDescription,
-            address: formData.address,
-            city: formData.city,
-            state: formData.state,
-            zip_code: formData.zipCode,
-            country: formData.country,
-            owner_id: authData.user.id,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+        // Store business info in localStorage to use in organization setup
+        const businessInfo = {
+          businessName: formData.businessName,
+          businessType: formData.businessType,
+          businessDescription: formData.businessDescription,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode,
+          country: formData.country
+        };
+        localStorage.setItem('pendingBusinessInfo', JSON.stringify(businessInfo));
+        
+        if (authData.user.email_confirmed_at) {
+          // User is immediately confirmed, redirect to organization setup
+          toast.success("Registration successful! Let's set up your organization.");
+          navigate("/setup");
+        } else {
+          // User needs email confirmation
+          toast.success("Registration successful! Please check your email to verify your account, then you'll be redirected to complete setup.");
+          navigate("/login", { 
+            state: { 
+              message: "Please check your email to verify your account, then sign in to complete setup.",
+              email: formData.email 
+            } 
           });
-
-        if (businessError) {
-          console.error('Business creation error:', businessError);
-          // Continue even if business record fails - user account is created
         }
       }
-
-      toast.success("Registration successful! Please check your email for verification.");
-      navigate("/login");
     } catch (err) {
       setError("An unexpected error occurred");
       toast.error("An unexpected error occurred");

@@ -74,6 +74,7 @@ const AppRoutes = () => {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/setup" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
@@ -88,6 +89,8 @@ const AppRoutes = () => {
         <Route path="/test/dashboard" element={<TestDashboard />} />
         <Route path="/debug/database" element={<DebugDatabase />} />
         <Route path="/setup" element={<OrganizationSetup />} />
+        <Route path="/login" element={<Navigate to="/setup" replace />} />
+        <Route path="/register" element={<Navigate to="/setup" replace />} />
         <Route path="*" element={<Navigate to="/setup" replace />} />
       </Routes>
     );

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { cleanupAuthState } from "@/utils/authUtils";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -17,6 +18,18 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Get any state passed from registration
+  const registrationMessage = location.state?.message;
+  const registrationEmail = location.state?.email;
+
+  // Set email from registration if provided
+  useEffect(() => {
+    if (registrationEmail) {
+      setEmail(registrationEmail);
+    }
+  }, [registrationEmail]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,6 +37,16 @@ const Login = () => {
     setError("");
 
     try {
+      // Clean up any existing auth state first
+      cleanupAuthState();
+      
+      // Attempt to sign out any existing session
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (err) {
+        // Continue even if this fails
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -32,9 +55,10 @@ const Login = () => {
       if (error) {
         setError(error.message);
         toast.error("Login failed: " + error.message);
-      } else {
+      } else if (data.user) {
         toast.success("Login successful!");
-        navigate("/dashboard");
+        // Force a page reload to ensure clean state
+        window.location.href = '/';
       }
     } catch (err) {
       setError("An unexpected error occurred");
@@ -46,10 +70,13 @@ const Login = () => {
 
   const handleGoogleLogin = async () => {
     try {
+      // Clean up auth state before OAuth
+      cleanupAuthState();
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`
+          redirectTo: `${window.location.origin}/setup`
         }
       });
       
@@ -100,6 +127,12 @@ const Login = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {registrationMessage && (
+              <Alert>
+                <AlertDescription>{registrationMessage}</AlertDescription>
+              </Alert>
+            )}
+            
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>

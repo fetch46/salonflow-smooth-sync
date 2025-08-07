@@ -175,6 +175,27 @@ const OrganizationSetup = () => {
     industry: '',
   });
 
+  // Load business info from localStorage if available
+  useEffect(() => {
+    const pendingInfo = localStorage.getItem('pendingBusinessInfo');
+    if (pendingInfo) {
+      try {
+        const businessInfo = JSON.parse(pendingInfo);
+        setFormData(prev => ({
+          ...prev,
+          organizationName: businessInfo.businessName || '',
+          organizationSlug: generateSlug(businessInfo.businessName || ''),
+          description: businessInfo.businessDescription || '',
+          industry: businessInfo.businessType || ''
+        }));
+        // Clear the pending info since we've used it
+        localStorage.removeItem('pendingBusinessInfo');
+      } catch (error) {
+        console.error('Error parsing pending business info:', error);
+      }
+    }
+  }, []);
+
   const fetchPlans = useCallback(async () => {
     try {
       // First check if user is authenticated
@@ -275,11 +296,9 @@ const OrganizationSetup = () => {
 
     // Add a safety timeout to prevent infinite loading
     const timeoutId = setTimeout(() => {
-      if (loading) {
-        console.warn('Organization creation loading timeout - forcing loading to false');
-        setLoading(false);
-      }
-    }, 30000); // 30 second timeout
+      setLoading(false);
+      toast.error('Organization creation is taking too long. Please try again.');
+    }, 45000); // 45 second timeout
 
     try {
       // Verify user authentication first
@@ -499,17 +518,29 @@ const OrganizationSetup = () => {
         console.warn('Setup function not available or failed:', setupErr);
       }
 
-      toast.success('Organization created successfully! Welcome to your 14-day trial.');
+      // Refresh organization data and navigate
+      toast.success('Organization created successfully! Welcome to your salon management system.');
       
-      // Refresh organization data silently, then navigate
+      // Clear any pending data and refresh
+      localStorage.removeItem('pendingBusinessInfo');
       await refreshOrganizationDataSilently();
-      navigate('/dashboard');
+      
+      // Use setTimeout to ensure state updates have processed
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1000);
 
     } catch (error: any) {
       console.error('Error creating organization:', error);
       
-      // Show the specific error message that was already set above
-      console.error('Organization creation failed with specific error already handled');
+      // Clear timeout on error
+      clearTimeout(timeoutId);
+      
+      if (error.message?.includes('organization already exists') || error.message?.includes('duplicate')) {
+        toast.error('An organization with this name already exists. Please choose a different name.');
+      } else {
+        toast.error(`Organization creation failed: ${error.message || 'Unknown error'}. Please try again.`);
+      }
     } finally {
       clearTimeout(timeoutId);
       setLoading(false);
