@@ -41,6 +41,7 @@ interface SaasContextType {
   // Actions
   switchOrganization: (organizationId: string) => Promise<void>;
   refreshOrganizationData: () => Promise<void>;
+  refreshOrganizationDataSilently: () => Promise<void>;
   
   // Organization Management
   organizations: Organization[];
@@ -89,6 +90,8 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Loading user organizations for:', userId);
       setLoading(true);
+
+
 
       // Check super admin status first
       try {
@@ -238,6 +241,101 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user, loadUserOrganizations]);
 
+  const refreshOrganizationDataSilently = useCallback(async () => {
+    if (user) {
+      // Don't set loading state, just refresh the data
+      try {
+        console.log('Silently refreshing organization data...');
+        
+        // Check super admin status first
+        try {
+          await checkSuperAdminStatus(user.id);
+        } catch (error) {
+          console.error('Error checking super admin status:', error);
+        }
+
+        // Get user's organizations and roles
+        const { data: orgUsers, error: orgUsersError } = await supabase
+          .from('organization_users')
+          .select(`
+            role,
+            is_active,
+            organization_id,
+            organizations (*)
+          `)
+          .eq('user_id', user.id)
+          .eq('is_active', true);
+
+        if (orgUsersError) {
+          console.error('Error fetching organization users:', orgUsersError);
+          return;
+        }
+
+        if (orgUsers && orgUsers.length > 0) {
+          const orgs = orgUsers.map(ou => ou.organizations as Organization).filter(Boolean);
+          const roles: Record<string, user_role> = {};
+          
+          orgUsers.forEach(ou => {
+            if (ou.organizations) {
+              roles[ou.organization_id] = ou.role;
+            }
+          });
+
+          setOrganizations(orgs);
+          setUserRoles(roles);
+
+          // Set active organization
+          const savedOrgId = localStorage.getItem('activeOrganizationId');
+          const activeOrg = savedOrgId 
+            ? orgs.find(org => org.id === savedOrgId) || orgs[0]
+            : orgs[0];
+
+          if (activeOrg) {
+            setOrganization(activeOrg);
+            setOrganizationRole(roles[activeOrg.id]);
+            localStorage.setItem('activeOrganizationId', activeOrg.id);
+            
+            // Load subscription data
+            try {
+              const { data: subData, error: subError } = await supabase
+                .from('organization_subscriptions')
+                .select(`
+                  *,
+                  subscription_plans (*)
+                `)
+                .eq('organization_id', activeOrg.id)
+                .single();
+
+              if (subError && subError.code !== 'PGRST116') {
+                console.error('Error loading subscription:', subError);
+                return;
+              }
+
+              if (subData) {
+                setSubscription(subData);
+                setSubscriptionPlan(subData.subscription_plans as SubscriptionPlan);
+              } else {
+                setSubscription(null);
+                setSubscriptionPlan(null);
+              }
+            } catch (error) {
+              console.error('Error loading subscription data:', error);
+            }
+          }
+        } else {
+          setOrganizations([]);
+          setUserRoles({});
+          setOrganization(null);
+          setOrganizationRole(null);
+          setSubscription(null);
+          setSubscriptionPlan(null);
+        }
+      } catch (error) {
+        console.error('Error silently refreshing organization data:', error);
+      }
+    }
+  }, [user, checkSuperAdminStatus]);
+
   // Set up auth listener
   useEffect(() => {
     console.log('Setting up auth listener...');
@@ -365,9 +463,10 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
       canAddUsers,
       canAddLocations,
       
-      // Actions
-      switchOrganization,
-      refreshOrganizationData,
+          // Actions
+    switchOrganization,
+    refreshOrganizationData,
+    refreshOrganizationDataSilently,
       
       // Organization Management
       organizations,
