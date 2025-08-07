@@ -37,6 +37,12 @@ const OrganizationSetup = () => {
     industry: '',
   });
 
+  // Subscription plans
+  const [plans, setPlans] = useState<any[]>([]);
+  const [plansLoading, setPlansLoading] = useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [plansError, setPlansError] = useState<string | null>(null);
+
   // Load business info from localStorage if available
   useEffect(() => {
     const pendingInfo = localStorage.getItem('pendingBusinessInfo');
@@ -56,6 +62,34 @@ const OrganizationSetup = () => {
         console.error('Error parsing pending business info:', error);
       }
     }
+  }, []);
+
+  // Load active subscription plans
+  useEffect(() => {
+    async function loadPlans() {
+      try {
+        setPlansLoading(true);
+        setPlansError(null);
+        const { data, error } = await supabase
+          .from('subscription_plans')
+          .select('*')
+          .eq('is_active', true)
+          .order('sort_order');
+        if (error) throw error;
+        setPlans(data || []);
+        if (!data || data.length === 0) {
+          toast.error('No subscription plans available. Please seed plans.');
+        }
+      } catch (err: any) {
+        console.error('Failed to load subscription plans:', err);
+        setPlans([]);
+        setPlansError(err.message);
+        toast.error('Failed to load subscription plans');
+      } finally {
+        setPlansLoading(false);
+      }
+    }
+    loadPlans();
   }, []);
 
   const generateSlug = (name: string) => {
@@ -87,7 +121,10 @@ const OrganizationSetup = () => {
       toast.error('Organization name is required');
       return;
     }
-
+    if (!selectedPlanId) {
+      toast.error('Please select a subscription plan');
+      return;
+    }
     setLoading(true);
 
     // Short guard to avoid indefinite spinner; detailed fallbacks below
@@ -120,6 +157,7 @@ const OrganizationSetup = () => {
           website: formData.website,
           industry: formData.industry,
         },
+        plan_id: selectedPlanId,
       };
 
       // Use the new safe function to create organization with proper RLS handling
@@ -181,6 +219,20 @@ const OrganizationSetup = () => {
               await supabase.from('organizations').delete().eq('id', org.id);
               toast.error(`Failed to add user to organization: ${userError.message}`);
               throw userError;
+            }
+
+            // Create subscription record for selected plan
+            const { error: subInsertError } = await supabase
+              .from('organization_subscriptions')
+              .insert({
+                organization_id: org.id,
+                plan_id: selectedPlanId,
+                status: 'trial',
+                interval: 'month'
+              });
+
+            if (subInsertError) {
+              console.warn('Failed to create subscription record:', subInsertError);
             }
 
             console.log('Organization created successfully using fallback method!');
@@ -398,12 +450,57 @@ const OrganizationSetup = () => {
             </CardContent>
           </Card>
 
+          {/* Plan Selection */}
+          <Card className="shadow-lg border-slate-200">
+            <CardHeader>
+              <CardTitle>Choose a Subscription Plan</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {plansLoading ? (
+                <div className="text-slate-600">Loading plans...</div>
+              ) : plansError ? (
+                <div className="text-red-600">{plansError}</div>
+              ) : plans.length === 0 ? (
+                <div className="text-slate-600">No plans available. Please contact support.</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {plans.map((plan) => {
+                    const selected = selectedPlanId === plan.id;
+                    return (
+                      <div
+                        key={plan.id}
+                        className={`border rounded-lg p-4 cursor-pointer transition ${selected ? 'border-violet-600 ring-2 ring-violet-200' : 'border-slate-200 hover:border-slate-300'}`}
+                        onClick={() => setSelectedPlanId(plan.id)}
+                        role="button"
+                        aria-pressed={selected}
+                      >
+                        <div className="flex items-baseline justify-between mb-2">
+                          <h3 className="font-semibold text-slate-900">{plan.name}</h3>
+                          {selected && <span className="text-xs text-violet-700">Selected</span>}
+                        </div>
+                        <p className="text-sm text-slate-600 mb-3">{plan.description}</p>
+                        <div className="text-2xl font-bold text-slate-900 mb-1">
+                          {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format((plan.price_monthly || 0) / 100)}
+                          <span className="text-base font-normal text-slate-600">/mo</span>
+                        </div>
+                        <div className="text-sm text-slate-600">
+                          <div>Max users: <span className="font-medium text-slate-900">{plan.max_users ?? 'Unlimited'}</span></div>
+                          <div>Max locations: <span className="font-medium text-slate-900">{plan.max_locations ?? 'Unlimited'}</span></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Submit Button */}
           <div className="flex justify-center">
             <Button
               type="submit"
               size="lg"
-              disabled={loading}
+              disabled={loading || !selectedPlanId}
               className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg px-8"
             >
               {loading ? (
