@@ -30,6 +30,7 @@ import CreateJobCard from "@/pages/CreateJobCard";
 import SuperAdmin from "@/pages/SuperAdmin";
 import TestPlans from "@/pages/TestPlans";
 import TestDashboard from "@/pages/TestDashboard";
+import DebugDatabase from "@/pages/DebugDatabase";
 import ServiceView from "@/pages/ServiceView";
 import Booking from "@/pages/Booking";
 import Invoices from "@/pages/Invoices";
@@ -85,6 +86,7 @@ const AppRoutes = () => {
         <Route path="/super-admin" element={<SuperAdmin />} />
         <Route path="/test/plans" element={<TestPlans />} />
         <Route path="/test/dashboard" element={<TestDashboard />} />
+        <Route path="/debug/database" element={<DebugDatabase />} />
         <Route path="/setup" element={<OrganizationSetup />} />
         <Route path="*" element={<Navigate to="/setup" replace />} />
       </Routes>
@@ -98,6 +100,7 @@ const AppRoutes = () => {
       <Route path="/super-admin" element={<SuperAdmin />} />
       <Route path="/test/plans" element={<TestPlans />} />
       <Route path="/test/dashboard" element={<TestDashboard />} />
+      <Route path="/debug/database" element={<DebugDatabase />} />
       
       {/* Redirect auth pages if already logged in */}
       <Route path="/login" element={<Navigate to="/dashboard" replace />} />
