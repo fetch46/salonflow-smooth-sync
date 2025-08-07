@@ -42,7 +42,10 @@ const OrganizationSetup = () => {
   const [plansLoading, setPlansLoading] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [plansError, setPlansError] = useState<string | null>(null);
-
+  const [demoActive, setDemoActive] = useState(false);
+  const isValidUUID = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+  const selectedPlan = plans.find((p) => p.id === selectedPlanId);
+  const isDemoPlan = !!selectedPlan?.isDemo;
   // Load business info from localStorage if available
   useEffect(() => {
     const pendingInfo = localStorage.getItem('pendingBusinessInfo');
@@ -64,34 +67,79 @@ const OrganizationSetup = () => {
     }
   }, []);
 
-  // Load active subscription plans
+  // SEO: title, meta description, canonical
   useEffect(() => {
-    async function loadPlans() {
-      try {
-        setPlansLoading(true);
-        setPlansError(null);
-        const { data, error } = await supabase
-          .from('subscription_plans')
-          .select('*')
-          .eq('is_active', true)
-          .order('sort_order');
-        if (error) throw error;
-        setPlans(data || []);
-        if (!data || data.length === 0) {
-          toast.error('No subscription plans available. Please seed plans.');
-        }
-      } catch (err: any) {
-        console.error('Failed to load subscription plans:', err);
-        setPlans([]);
-        setPlansError(err.message);
-        toast.error('Failed to load subscription plans');
-      } finally {
-        setPlansLoading(false);
-      }
+    document.title = 'Setup Organization | Choose Subscription Plan';
+    let meta = document.querySelector('meta[name="description"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.setAttribute('name', 'description');
+      document.head.appendChild(meta);
     }
-    loadPlans();
+    meta.setAttribute('content', 'Create your organization and choose a subscription plan for salon management.');
+    let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+    if (!canonical) {
+      canonical = document.createElement('link');
+      canonical.setAttribute('rel', 'canonical');
+      document.head.appendChild(canonical);
+    }
+    canonical.setAttribute('href', window.location.origin + '/setup');
   }, []);
 
+  const generateUUID = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? (crypto as any).randomUUID()
+    : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0,
+          v = c === 'x' ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      })
+  );
+
+  const loadMockPlans = () => {
+    const demo = [
+      { id: generateUUID(), name: 'Starter', slug: 'demo-starter', description: 'Perfect for small salons', price_monthly: 2900, price_yearly: 29000, max_users: 5, max_locations: 1, is_active: true, sort_order: 1, isDemo: true },
+      { id: generateUUID(), name: 'Professional', slug: 'demo-professional', description: 'For growing salons', price_monthly: 5900, price_yearly: 59000, max_users: 25, max_locations: 3, is_active: true, sort_order: 2, isDemo: true },
+      { id: generateUUID(), name: 'Enterprise', slug: 'demo-enterprise', description: 'For large salon chains', price_monthly: 9900, price_yearly: 99000, max_users: 100, max_locations: 10, is_active: true, sort_order: 3, isDemo: true },
+    ];
+    setPlans(demo);
+    setSelectedPlanId(demo[1].id);
+    setPlansError(null);
+    setDemoActive(true);
+    toast.success('Loaded demo plans');
+  };
+
+  const fetchPlans = async () => {
+    try {
+      setPlansLoading(true);
+      setPlansError(null);
+      const { data, error } = await supabase
+        .from('subscription_plans')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order');
+      if (error) throw error;
+      const items = data || [];
+      setPlans(items);
+      setDemoActive(false);
+      if (items.length === 0) {
+        toast.error('No subscription plans available. You can load demo plans below.');
+      } else {
+        const preferred = items.find((p: any) => p.slug === 'professional') || items[0];
+        setSelectedPlanId(preferred.id);
+      }
+    } catch (err: any) {
+      console.error('Failed to load subscription plans:', err);
+      setPlans([]);
+      setPlansError(err.message);
+      toast.error('Failed to load subscription plans');
+    } finally {
+      setPlansLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPlans();
+  }, []);
   const generateSlug = (name: string) => {
     return name
       .toLowerCase()
@@ -127,11 +175,7 @@ const OrganizationSetup = () => {
     }
     setLoading(true);
 
-    // Short guard to avoid indefinite spinner; detailed fallbacks below
-    const slowGuard = setTimeout(() => {
-      console.warn('Org creation is slow, attempting fallback if not already tried...');
-    }, 15000); // 15s guard
-
+    // Proceed to create organization
 
     try {
       // Verify user authentication first
@@ -157,7 +201,7 @@ const OrganizationSetup = () => {
           website: formData.website,
           industry: formData.industry,
         },
-        plan_id: selectedPlanId,
+        plan_id: isDemoPlan ? null : selectedPlanId,
       };
 
       // Use the new safe function to create organization with proper RLS handling
@@ -221,18 +265,20 @@ const OrganizationSetup = () => {
               throw userError;
             }
 
-            // Create subscription record for selected plan
-            const { error: subInsertError } = await supabase
-              .from('organization_subscriptions')
-              .insert({
-                organization_id: org.id,
-                plan_id: selectedPlanId,
-                status: 'trial',
-                interval: 'month'
-              });
+            // Create subscription record for selected plan (only for real plans)
+            if (!isDemoPlan && selectedPlanId && isValidUUID(selectedPlanId)) {
+              const { error: subInsertError } = await supabase
+                .from('organization_subscriptions')
+                .insert({
+                  organization_id: org.id,
+                  plan_id: selectedPlanId,
+                  status: 'trial',
+                  interval: 'month'
+                });
 
-            if (subInsertError) {
-              console.warn('Failed to create subscription record:', subInsertError);
+              if (subInsertError) {
+                console.warn('Failed to create subscription record:', subInsertError);
+              }
             }
 
             console.log('Organization created successfully using fallback method!');
@@ -317,16 +363,12 @@ const OrganizationSetup = () => {
     } catch (error: any) {
       console.error('Error creating organization:', error);
       
-      // Clear timeout on error
-      clearTimeout(slowGuard);
-      
       if (error.message?.includes('organization already exists') || error.message?.includes('duplicate')) {
         toast.error('An organization with this name already exists. Please choose a different name.');
       } else {
         toast.error(`Organization creation failed: ${error.message || 'Unknown error'}. Please try again.`);
       }
     } finally {
-      clearTimeout(slowGuard);
       setLoading(false);
     }
   };
@@ -360,7 +402,22 @@ const OrganizationSetup = () => {
             </div>
           </div>
         )}
-        
+        {/* Debug summary */}
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm text-amber-900">
+              Debug: Plans: {plans.length}, User: {user?.email || 'none'}, Selected: {selectedPlanId || 'none'} {demoActive ? '(demo)' : ''}
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={fetchPlans} disabled={plansLoading}>
+                {plansLoading ? 'Refreshing...' : 'Reload Plans'}
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={loadMockPlans}>
+                Load Demo Plans
+              </Button>
+            </div>
+          </div>
+        </div>
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="p-3 bg-gradient-to-br from-violet-600 to-purple-600 rounded-xl shadow-lg w-fit mx-auto">
@@ -460,9 +517,12 @@ const OrganizationSetup = () => {
                 <div className="text-slate-600">Loading plans...</div>
               ) : plansError ? (
                 <div className="text-red-600">{plansError}</div>
-              ) : plans.length === 0 ? (
-                <div className="text-slate-600">No plans available. Please contact support.</div>
-              ) : (
+                ) : plans.length === 0 ? (
+                  <div className="text-slate-600 space-y-3">
+                    <p>No plans available. You can load demo plans to continue:</p>
+                    <Button type="button" variant="outline" onClick={loadMockPlans}>Load Demo Plans</Button>
+                  </div>
+                ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {plans.map((plan) => {
                     const selected = selectedPlanId === plan.id;
