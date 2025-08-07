@@ -119,9 +119,9 @@ export function JobCardForm({ clientId, appointmentId, onSuccess }: JobCardFormP
     setLoading(true);
     try {
       const jobCardData = {
-        client_id: data.clientId,
-        staff_id: data.staffId,
-        appointment_id: appointmentId,
+        client_id: data.clientId as string,
+        staff_id: data.staffId as string,
+        appointment_id: appointmentId || '',
         job_number: `JOB-${Date.now()}`,
         start_time: new Date(`${data.date}T${data.time}`).toISOString(),
         status: 'completed',
@@ -142,7 +142,7 @@ export function JobCardForm({ clientId, appointmentId, onSuccess }: JobCardFormP
         })
       };
 
-      const { error } = await supabase.from("job_cards").insert([jobCardData]);
+      const { error } = await supabase.from("job_cards").insert(jobCardData);
       
       if (error) throw error;
       

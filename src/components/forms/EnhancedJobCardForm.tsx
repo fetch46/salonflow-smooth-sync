@@ -179,9 +179,9 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
     try {
       // Create job card with auto-generated job number
       const jobCardData = {
-        client_id: appointment?.client_id,
-        staff_id: data.staffId,
-        appointment_id: appointmentId,
+        client_id: (appointment?.client_id || data.client_id) as string,
+        staff_id: data.staffId as string,
+        appointment_id: appointmentId || '',
         start_time: new Date(`${data.date}T${data.time}`).toISOString(),
         end_time: data.endTime ? new Date(`${data.date}T${data.endTime}`).toISOString() : null,
         status: 'completed',
@@ -202,7 +202,7 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
 
       const { data: jobCard, error: jobCardError } = await supabase
         .from("job_cards")
-        .insert([jobCardData])
+        .insert(jobCardData)
         .select()
         .single();
       

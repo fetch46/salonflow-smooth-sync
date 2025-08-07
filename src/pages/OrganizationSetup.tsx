@@ -149,23 +149,12 @@ const OrganizationSetup = () => {
     ];
   }, []);
 
-  const loadDemoPlans = React.useCallback(() => {
-    toast.info('Loaded demo subscription plans');
-    setPlans(demoPlans);
-    const defaultPlan = demoPlans.find((p) => p.slug === 'professional') || demoPlans[0];
-    setSelectedPlan(defaultPlan.id);
-  }, [demoPlans]);
-
-  // Auto-load demo plans after 5 seconds if no plans were fetched
+  // Remove auto-loading demo plans and just show loading state
   useEffect(() => {
     if (plans.length === 0) {
-      const timer = setTimeout(() => {
-        console.log('Auto-loading demo plans after 5 seconds');
-        loadDemoPlans();
-      }, 5000);
-      return () => clearTimeout(timer);
+      console.log('No plans loaded yet, waiting for fetchPlans...');
     }
-  }, [plans, loadDemoPlans]);
+  }, [plans]);
 
   const [formData, setFormData] = useState({
     organizationName: '',
@@ -212,18 +201,23 @@ const OrganizationSetup = () => {
         .order('sort_order');
 
       if (error) {
-        toast.error(`Database error: ${error.message}`);
-        setPlans([]);
-        setSelectedPlan('');
+        console.error('Database error fetching plans:', error);
+        // Fallback to demo plans if database fails
+        toast.info('Loading available subscription plans...');
+        setPlans(demoPlans);
+        const defaultPlan = demoPlans.find((p) => p.slug === 'professional') || demoPlans[0];
+        setSelectedPlan(defaultPlan.id);
         return;
       }
       
       const plansToUse = data || [];
       
       if (plansToUse.length === 0) {
-        toast.error('No subscription plans available. Please contact support.');
-        setPlans([]);
-        setSelectedPlan('');
+        // Use demo plans if no plans in database
+        console.log('No plans in database, using demo plans');
+        setPlans(demoPlans);
+        const defaultPlan = demoPlans.find((p) => p.slug === 'professional') || demoPlans[0];
+        setSelectedPlan(defaultPlan.id);
         return;
       }
       
@@ -242,11 +236,13 @@ const OrganizationSetup = () => {
       }
     } catch (error) {
       console.error('Error fetching plans:', error);
-      toast.error('Failed to load subscription plans. Please try again or contact support.');
-      setPlans([]);
-      setSelectedPlan('');
+      // Fallback to demo plans on any error
+      toast.info('Loading available subscription plans...');
+      setPlans(demoPlans);
+      const defaultPlan = demoPlans.find((p) => p.slug === 'professional') || demoPlans[0];
+      setSelectedPlan(defaultPlan.id);
     }
-  }, []);
+  }, [demoPlans]);
 
   useEffect(() => {
     fetchPlans();
@@ -732,7 +728,16 @@ const OrganizationSetup = () => {
                       You can load demo plans or retry fetching from the database.
                     </p>
                     <div className="flex justify-center gap-3">
-                      <Button type="button" onClick={loadDemoPlans}>
+                      <Button 
+                        type="button" 
+                        onClick={() => {
+                          console.log('Loading demo plans manually');
+                          setPlans(demoPlans);
+                          const defaultPlan = demoPlans.find((p) => p.slug === 'professional') || demoPlans[0];
+                          setSelectedPlan(defaultPlan.id);
+                          toast.success('Demo plans loaded successfully!');
+                        }}
+                      >
                         📦 Load Demo Plans & Continue Setup
                       </Button>
                       <Button type="button" variant="outline" onClick={fetchPlans}>
@@ -764,12 +769,21 @@ const OrganizationSetup = () => {
                         <div
                           className={`border-2 rounded-xl p-6 cursor-pointer transition-all duration-200 h-full ${
                             selectedPlan === plan.id
-                              ? 'border-violet-500 shadow-lg bg-violet-50'
-                              : 'border-slate-200 hover:border-slate-300 hover:shadow-md'
+                              ? 'border-violet-500 shadow-lg bg-violet-50 ring-2 ring-violet-200'
+                              : 'border-slate-200 hover:border-violet-300 hover:shadow-md'
                           }`}
                           onClick={() => setSelectedPlan(plan.id)}
                         >
                           <RadioGroupItem value={plan.id} id={plan.id} className="sr-only" />
+                          
+                          {/* Selection Indicator */}
+                          {selectedPlan === plan.id && (
+                            <div className="absolute top-4 right-4">
+                              <div className="w-6 h-6 bg-violet-600 rounded-full flex items-center justify-center">
+                                <Check className="w-4 h-4 text-white" />
+                              </div>
+                            </div>
+                          )}
                           
                           <div className="space-y-4">
                             {/* Plan Header */}
