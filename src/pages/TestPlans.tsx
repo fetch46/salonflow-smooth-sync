@@ -5,9 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useSaas } from '@/contexts/SaasContext';
-import { Database } from '@/integrations/supabase/types';
-
-type SubscriptionPlan = Database['public']['Tables']['subscription_plans']['Row'];
+// type placeholder to avoid build-time dependency on generated types
+type SubscriptionPlan = any;
 
 export default function TestPlans() {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
