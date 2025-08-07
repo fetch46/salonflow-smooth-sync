@@ -20,6 +20,8 @@ import {
   Crown,
   Lock,
   Sparkles,
+  User,
+  HelpCircle,
 } from "lucide-react";
 import {
   Sidebar,
@@ -162,10 +164,35 @@ const menuItems: MenuItem[] = [
     ],
   },
   {
+    title: "Reports",
+    url: "/reports",
+    icon: TrendingUp,
+    feature: "reports",
+  },
+  {
     title: "Settings",
-    url: "/settings",
     icon: Settings,
     feature: "reports", // Settings always available
+    subItems: [
+      {
+        title: "General Settings",
+        url: "/settings",
+        icon: Settings,
+        feature: "reports",
+      },
+      {
+        title: "Profile",
+        url: "/profile",
+        icon: User,
+        feature: "reports",
+      },
+      {
+        title: "Help & Support",
+        url: "/help",
+        icon: HelpCircle,
+        feature: "reports",
+      },
+    ],
   },
 ];
 

@@ -29,12 +29,7 @@ export default function TestDashboard() {
               <Button onClick={() => window.location.reload()}>
                 Reload Page
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => window.location.href = '/debug/loading'}
-              >
-                Debug Loading
-              </Button>
+              
             </div>
           </div>
         </CardContent>
