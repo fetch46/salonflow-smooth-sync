@@ -36,7 +36,7 @@ type SubscriptionPlan = Database['public']['Tables']['subscription_plans']['Row'
 
 const OrganizationSetup = () => {
   const navigate = useNavigate();
-  const { user, refreshOrganizationData } = useSaas();
+  const { user, refreshOrganizationDataSilently } = useSaas();
   const [loading, setLoading] = useState(false);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<string>('');
@@ -263,8 +263,25 @@ const OrganizationSetup = () => {
 
     setLoading(true);
 
+    // Add a safety timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      if (loading) {
+        console.warn('Organization creation loading timeout - forcing loading to false');
+        setLoading(false);
+      }
+    }, 30000); // 30 second timeout
+
     try {
+      // Verify user authentication first
+      const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
+      if (authError || !currentUser) {
+        console.error('Authentication error:', authError);
+        toast.error('Authentication error. Please log in again.');
+        return;
+      }
+      
       console.log('Creating organization using safe function...');
+      console.log('Current user:', currentUser.email);
       console.log('Form data:', {
         org_name: formData.organizationName,
         org_slug: formData.organizationSlug,
@@ -287,10 +304,17 @@ const OrganizationSetup = () => {
       }
 
       // Use the new safe function to create organization with proper RLS handling
+      console.log('Calling create_organization_with_user with params:', rpcParams);
       const { data: orgId, error: orgError } = await supabase.rpc('create_organization_with_user', rpcParams);
 
       if (orgError) {
         console.error('RPC error:', orgError);
+        console.error('RPC error details:', {
+          message: orgError.message,
+          details: orgError.details,
+          hint: orgError.hint,
+          code: orgError.code
+        });
         
         // Try fallback method if RPC fails
         if (!orgError.message?.includes('User must be authenticated')) {
@@ -395,8 +419,8 @@ const OrganizationSetup = () => {
 
             toast.success('Organization created successfully! Welcome to your 14-day trial.');
             
-            // Refresh organization data and navigate to dashboard
-            await refreshOrganizationData();
+            // Refresh organization data silently, then navigate
+            await refreshOrganizationDataSilently();
             navigate('/dashboard');
             return;
 
@@ -467,8 +491,8 @@ const OrganizationSetup = () => {
 
       toast.success('Organization created successfully! Welcome to your 14-day trial.');
       
-      // Refresh organization data and navigate to dashboard
-      await refreshOrganizationData();
+      // Refresh organization data silently, then navigate
+      await refreshOrganizationDataSilently();
       navigate('/dashboard');
 
     } catch (error: any) {
@@ -477,6 +501,7 @@ const OrganizationSetup = () => {
       // Show the specific error message that was already set above
       console.error('Organization creation failed with specific error already handled');
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
