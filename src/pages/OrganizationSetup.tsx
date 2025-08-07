@@ -42,6 +42,121 @@ const OrganizationSetup = () => {
   const [selectedPlan, setSelectedPlan] = useState<string>('');
   const [billingInterval, setBillingInterval] = useState<'month' | 'year'>('month');
 
+  // -----------------------------
+  // Demo plans fallback (client-side only)
+  // -----------------------------
+  const demoPlans: SubscriptionPlan[] = React.useMemo(() => {
+    const now = new Date().toISOString();
+    return [
+      {
+        id: 'starter-demo',
+        name: 'Starter',
+        slug: 'starter',
+        description: 'Perfect for small salons just getting started',
+        price_monthly: 2900,
+        price_yearly: 29000,
+        max_users: 5,
+        max_locations: 1,
+        features: {
+          appointments: true,
+          clients: true,
+          staff: true,
+          services: true,
+          basic_reports: true,
+          inventory: false,
+          job_cards: true,
+          invoices: true,
+        } as any,
+        is_active: true,
+        sort_order: 1,
+        created_at: now,
+        updated_at: now,
+      } as unknown as SubscriptionPlan,
+      {
+        id: 'professional-demo',
+        name: 'Professional',
+        slug: 'professional',
+        description: 'For growing salons with multiple staff members',
+        price_monthly: 5900,
+        price_yearly: 59000,
+        max_users: 25,
+        max_locations: 3,
+        features: {
+          appointments: true,
+          clients: true,
+          staff: true,
+          services: true,
+          inventory: true,
+          basic_reports: true,
+          advanced_reports: true,
+          pos: true,
+          accounting: true,
+          job_cards: true,
+          invoices: true,
+          analytics: true,
+          multi_location: true,
+        } as any,
+        is_active: true,
+        sort_order: 2,
+        created_at: now,
+        updated_at: now,
+      } as unknown as SubscriptionPlan,
+      {
+        id: 'enterprise-demo',
+        name: 'Enterprise',
+        slug: 'enterprise',
+        description: 'For large salon chains with advanced needs',
+        price_monthly: 9900,
+        price_yearly: 99000,
+        max_users: 100,
+        max_locations: 10,
+        features: {
+          appointments: true,
+          clients: true,
+          staff: true,
+          services: true,
+          inventory: true,
+          basic_reports: true,
+          advanced_reports: true,
+          pos: true,
+          accounting: true,
+          job_cards: true,
+          invoices: true,
+          api_access: true,
+          white_label: true,
+          priority_support: true,
+          custom_branding: true,
+          analytics: true,
+          multi_location: true,
+          advanced_permissions: true,
+          data_export: true,
+        } as any,
+        is_active: true,
+        sort_order: 3,
+        created_at: now,
+        updated_at: now,
+      } as unknown as SubscriptionPlan,
+    ];
+  }, []);
+
+  const loadDemoPlans = React.useCallback(() => {
+    toast.info('Loaded demo subscription plans');
+    setPlans(demoPlans);
+    const defaultPlan = demoPlans.find((p) => p.slug === 'professional') || demoPlans[0];
+    setSelectedPlan(defaultPlan.id);
+  }, [demoPlans]);
+
+  // Auto-load demo plans after 5 seconds if no plans were fetched
+  useEffect(() => {
+    if (plans.length === 0) {
+      const timer = setTimeout(() => {
+        console.log('Auto-loading demo plans after 5 seconds');
+        loadDemoPlans();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [plans, loadDemoPlans]);
+
   const [formData, setFormData] = useState({
     organizationName: '',
     organizationSlug: '',
@@ -156,8 +271,9 @@ const OrganizationSetup = () => {
         plan_id: selectedPlan
       });
       
-      // Use the new safe function to create organization with proper RLS handling
-      const { data: orgId, error: orgError } = await supabase.rpc('create_organization_with_user', {
+      const isDemoPlan = selectedPlan.includes('-demo');
+
+      const rpcParams: any = {
         org_name: formData.organizationName,
         org_slug: formData.organizationSlug,
         org_settings: {
@@ -165,8 +281,13 @@ const OrganizationSetup = () => {
           website: formData.website,
           industry: formData.industry,
         },
-        plan_id: selectedPlan
-      });
+      };
+      if (!isDemoPlan) {
+        rpcParams.plan_id = selectedPlan;
+      }
+
+      // Use the new safe function to create organization with proper RLS handling
+      const { data: orgId, error: orgError } = await supabase.rpc('create_organization_with_user', rpcParams);
 
       if (orgError) {
         console.error('RPC error:', orgError);
@@ -195,7 +316,7 @@ const OrganizationSetup = () => {
       console.log('Organization created with ID:', orgId);
 
       // Set up trial dates on the subscription (the function creates basic subscription)
-      if (selectedPlan) {
+      if (!isDemoPlan && selectedPlan) {
         const trialStart = new Date();
         const trialEnd = new Date();
         trialEnd.setDate(trialEnd.getDate() + 14); // 14-day trial
@@ -399,13 +520,20 @@ const OrganizationSetup = () => {
                     <div className="h-4 bg-slate-200 rounded w-3/4 mx-auto mb-3"></div>
                     <div className="h-3 bg-slate-200 rounded w-1/2 mx-auto"></div>
                   </div>
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-4">
                     <p className="text-red-800 font-medium">No subscription plans available</p>
-                    <p className="text-sm text-red-700 mt-1">
-                      Please contact support to set up subscription plans.
+                    <p className="text-sm text-red-700">
+                      You can load demo plans or retry fetching from the database.
                     </p>
+                    <div className="flex justify-center gap-3">
+                      <Button type="button" onClick={loadDemoPlans}>
+                        📦 Load Demo Plans & Continue Setup
+                      </Button>
+                      <Button type="button" variant="outline" onClick={fetchPlans}>
+                        ↻ Retry Fetching Plans
+                      </Button>
+                    </div>
                   </div>
-
                 </div>
               )}
               
