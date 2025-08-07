@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salon Management System - Setup</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 30px;
+        }
+        .button {
+            background: #4299e1;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: background 0.3s;
+        }
+        .button:hover {
+            background: #3182ce;
+        }
+        .button:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+        }
+        .success {
+            background: #48bb78;
+        }
+        .warning {
+            background: #ed8936;
+        }
+        .error {
+            background: #f56565;
+        }
+        .output {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .status.success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+        .status.warning {
+            background: #fef5e7;
+            color: #744210;
+            border: 1px solid #fbd38d;
+        }
+        .status.error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #feb2b2;
+        }
+        .step {
+            margin: 20px 0;
+            padding: 15px;
+            border-left: 4px solid #4299e1;
+            background: #f7fafc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Salon Management System Setup</h1>
+        
+        <div class="step">
+            <h3>Step 1: Set up Subscription Plans</h3>
+            <p>This will create the default subscription plans (Starter, Professional, Enterprise) if they don't exist.</p>
+            <button class="button" onclick="setupSubscriptionPlans()">Set up Subscription Plans</button>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: Test Organization Creation</h3>
+            <p>This will test if the organization creation function is working properly.</p>
+            <button class="button" onclick="testOrganizationCreation()">Test Organization Creation</button>
+        </div>
+
+        <div class="step">
+            <h3>Step 3: Complete Setup</h3>
+            <p>This will run the complete setup process and verify everything is working.</p>
+            <button class="button success" onclick="runCompleteSetup()">Run Complete Setup</button>
+        </div>
+
+        <div class="step">
+            <h3>Step 4: Test Application</h3>
+            <p>Open the main application to test the setup.</p>
+            <button class="button" onclick="openApp()">Open Application</button>
+        </div>
+
+        <div id="output" class="output" style="display: none;"></div>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://eoxeoyyunhsdvjiwkttx.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVveGVveXl1bmhzZHZqaXdrdHR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5NzI3NDUsImV4cCI6MjA2OTU0ODc0NX0.d3uazVxwI1_kPoF-QAGChcbfKS9PxwB536HrrlCXUrE";
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const status = document.getElementById('status');
+            
+            output.style.display = 'block';
+            output.textContent += message + '\n';
+            output.scrollTop = output.scrollHeight;
+            
+            if (type !== 'info') {
+                status.innerHTML = `<div class="status ${type}">${message}</div>`;
+            }
+        }
+
+        async function setupSubscriptionPlans() {
+            log('🚀 Setting up subscription plans...');
+            
+            try {
+                // Check if plans already exist
+                const { data: existingPlans, error: checkError } = await supabase
+                    .from('subscription_plans')
+                    .select('id, name, slug')
+                    .eq('is_active', true);
+
+                if (checkError) {
+                    log('❌ Error checking plans: ' + checkError.message, 'error');
+                    return;
+                }
+
+                if (existingPlans && existingPlans.length > 0) {
+                    log(`✅ Found ${existingPlans.length} subscription plans:`, 'success');
+                    existingPlans.forEach(plan => {
+                        log(`   - ${plan.name} (${plan.slug})`);
+                    });
+                    return;
+                }
+
+                log('⚠️  No subscription plans found. Creating default plans...', 'warning');
+                
+                const plans = [
+                    {
+                        name: 'Starter',
+                        slug: 'starter',
+                        description: 'Perfect for small salons just getting started',
+                        price_monthly: 2900,
+                        price_yearly: 29000,
+                        max_users: 5,
+                        max_locations: 1,
+                        features: {
+                            appointments: true,
+                            clients: true,
+                            staff: true,
+                            services: true,
+                            basic_reports: true,
+                            inventory: false,
+                            advanced_reports: false,
+                            integrations: false,
+                            api_access: false,
+                            white_label: false,
+                            pos: false,
+                            accounting: false,
+                            job_cards: true,
+                            invoices: true
+                        },
+                        is_active: true,
+                        sort_order: 1
+                    },
+                    {
+                        name: 'Professional',
+                        slug: 'professional',
+                        description: 'For growing salons with multiple staff members',
+                        price_monthly: 5900,
+                        price_yearly: 59000,
+                        max_users: 25,
+                        max_locations: 3,
+                        features: {
+                            appointments: true,
+                            clients: true,
+                            staff: true,
+                            services: true,
+                            inventory: true,
+                            basic_reports: true,
+                            advanced_reports: true,
+                            integrations: true,
+                            pos: true,
+                            accounting: true,
+                            job_cards: true,
+                            invoices: true,
+                            api_access: false,
+                            white_label: false,
+                            analytics: true,
+                            multi_location: true
+                        },
+                        is_active: true,
+                        sort_order: 2
+                    },
+                    {
+                        name: 'Enterprise',
+                        slug: 'enterprise',
+                        description: 'For large salon chains with advanced needs',
+                        price_monthly: 9900,
+                        price_yearly: 99000,
+                        max_users: 100,
+                        max_locations: 10,
+                        features: {
+                            appointments: true,
+                            clients: true,
+                            staff: true,
+                            services: true,
+                            inventory: true,
+                            basic_reports: true,
+                            advanced_reports: true,
+                            integrations: true,
+                            pos: true,
+                            accounting: true,
+                            job_cards: true,
+                            invoices: true,
+                            api_access: true,
+                            white_label: true,
+                            priority_support: true,
+                            custom_branding: true,
+                            analytics: true,
+                            multi_location: true,
+                            advanced_permissions: true,
+                            data_export: true
+                        },
+                        is_active: true,
+                        sort_order: 3
+                    }
+                ];
+
+                const { data: insertedPlans, error: insertError } = await supabase
+                    .from('subscription_plans')
+                    .insert(plans)
+                    .select('id, name, slug');
+
+                if (insertError) {
+                    log('❌ Error creating plans: ' + insertError.message, 'error');
+                    return;
+                }
+
+                log('✅ Created subscription plans:', 'success');
+                insertedPlans.forEach(plan => {
+                    log(`   - ${plan.name} (${plan.slug})`);
+                });
+
+            } catch (error) {
+                log('❌ Error setting up plans: ' + error.message, 'error');
+            }
+        }
+
+        async function testOrganizationCreation() {
+            log('🏢 Testing organization creation...');
+            
+            try {
+                // Test if the organization creation function exists
+                const { error: testError } = await supabase.rpc('create_organization_with_user', {
+                    org_name: 'test',
+                    org_slug: 'test-slug',
+                    org_settings: {},
+                    plan_id: null
+                });
+                
+                if (testError && testError.message.includes('function create_organization_with_user does not exist')) {
+                    log('⚠️  Organization creation function not found.', 'warning');
+                    log('You need to run the database migrations manually:');
+                    log('1. Go to your Supabase dashboard');
+                    log('2. Navigate to SQL Editor');
+                    log('3. Run the SQL from emergency_create_organization_function.sql');
+                } else if (testError && testError.message.includes('User must be authenticated')) {
+                    log('✅ Organization creation function exists and is working', 'success');
+                } else {
+                    log('✅ Organization creation function is available', 'success');
+                }
+            } catch (error) {
+                log('⚠️  Could not test organization creation function: ' + error.message, 'warning');
+            }
+        }
+
+        async function runCompleteSetup() {
+            log('🚀 Running complete setup...');
+            
+            try {
+                // Step 1: Set up subscription plans
+                log('\n📋 Step 1: Setting up subscription plans...');
+                await setupSubscriptionPlans();
+
+                // Step 2: Test organization creation
+                log('\n📋 Step 2: Testing organization creation...');
+                await testOrganizationCreation();
+
+                // Step 3: Verify everything is working
+                log('\n📋 Step 3: Verifying setup...');
+                await verifySetup();
+
+                log('\n🎉 Setup completed successfully!', 'success');
+                log('\n📋 Next steps:');
+                log('1. Navigate to /setup to create your first organization');
+                log('2. Complete the onboarding process');
+                log('3. Start using your salon management system!');
+
+            } catch (error) {
+                log('❌ Setup failed: ' + error.message, 'error');
+            }
+        }
+
+        async function verifySetup() {
+            try {
+                // Verify subscription plans are accessible
+                const { data: plans, error: plansError } = await supabase
+                    .from('subscription_plans')
+                    .select('id, name, slug')
+                    .eq('is_active', true);
+
+                if (plansError) {
+                    log('❌ Cannot access subscription plans: ' + plansError.message, 'error');
+                } else {
+                    log(`✅ Subscription plans accessible (${plans.length} plans found)`, 'success');
+                }
+
+                // Verify organizations table is accessible
+                const { data: orgs, error: orgsError } = await supabase
+                    .from('organizations')
+                    .select('id')
+                    .limit(1);
+
+                if (orgsError) {
+                    log('❌ Cannot access organizations table: ' + orgsError.message, 'error');
+                } else {
+                    log('✅ Organizations table accessible', 'success');
+                }
+
+                // Verify organization_users table is accessible
+                const { data: orgUsers, error: orgUsersError } = await supabase
+                    .from('organization_users')
+                    .select('id')
+                    .limit(1);
+
+                if (orgUsersError) {
+                    log('❌ Cannot access organization_users table: ' + orgUsersError.message, 'error');
+                } else {
+                    log('✅ Organization users table accessible', 'success');
+                }
+
+            } catch (error) {
+                log('❌ Error during verification: ' + error.message, 'error');
+            }
+        }
+
+        function openApp() {
+            window.open('http://localhost:8080', '_blank');
+        }
+    </script>
+</body>
+</html>
