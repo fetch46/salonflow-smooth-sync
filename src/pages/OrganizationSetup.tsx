@@ -36,7 +36,17 @@ type SubscriptionPlan = Database['public']['Tables']['subscription_plans']['Row'
 
 const OrganizationSetup = () => {
   const navigate = useNavigate();
-  const { user, refreshOrganizationDataSilently } = useSaas();
+  const { user, refreshOrganizationDataSilently, organization, organizations } = useSaas();
+  
+  // If user already has organizations, redirect to dashboard
+  useEffect(() => {
+    if (organization || organizations.length > 0) {
+      console.log('User already has organization, redirecting to dashboard');
+      navigate('/dashboard');
+      return;
+    }
+  }, [organization, organizations, navigate]);
+  
   const [loading, setLoading] = useState(false);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<string>('');
@@ -534,6 +544,28 @@ const OrganizationSetup = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
       <div className="w-full max-w-4xl space-y-8">
 
+        {/* Emergency Exit for Stuck Users */}
+        {user && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium text-amber-900">Already have an organization?</h3>
+                <p className="text-sm text-amber-800">If you're stuck on this page but already completed setup, click below to go to your dashboard.</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  console.log('Manual navigation to dashboard');
+                  navigate('/dashboard');
+                }}
+                className="bg-white hover:bg-amber-50 border-amber-300"
+              >
+                Go to Dashboard
+              </Button>
+            </div>
+          </div>
+        )}
         
         {/* Header */}
         <div className="text-center space-y-4">
