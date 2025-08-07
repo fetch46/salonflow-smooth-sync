@@ -577,20 +577,23 @@ const OrganizationSetup = () => {
 
         {/* Emergency Exit for Stuck Users */}
         {user && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-medium text-amber-900">Already have an organization?</h3>
-                <p className="text-sm text-amber-800">If you're stuck on this page but already completed setup, click below to go to your dashboard.</p>
+                <h3 className="font-medium text-blue-900">Already have an organization?</h3>
+                <p className="text-sm text-blue-800">If you're stuck on this page but already completed setup, click below to go to your dashboard.</p>
               </div>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => {
                   console.log('Manual navigation to dashboard');
-                  navigate('/dashboard');
+                  // Force refresh organization data before navigating
+                  refreshOrganizationDataSilently().then(() => {
+                    navigate('/dashboard');
+                  });
                 }}
-                className="bg-white hover:bg-amber-50 border-amber-300"
+                className="bg-white hover:bg-blue-50 border-blue-300"
               >
                 Go to Dashboard
               </Button>
