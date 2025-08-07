@@ -292,7 +292,122 @@ const OrganizationSetup = () => {
       if (orgError) {
         console.error('RPC error:', orgError);
         
-        // Provide specific error messages
+        // Try fallback method if RPC fails
+        if (!orgError.message?.includes('User must be authenticated')) {
+          console.log('RPC failed, trying fallback method...');
+          
+          try {
+            // Fallback: Direct database inserts
+            const { data: org, error: insertError } = await supabase
+              .from('organizations')
+              .insert({
+                name: formData.organizationName,
+                slug: formData.organizationSlug,
+                settings: {
+                  description: formData.description,
+                  website: formData.website,
+                  industry: formData.industry,
+                }
+              })
+              .select('id')
+              .single();
+
+            if (insertError) {
+              console.error('Fallback insert error:', insertError);
+              if (insertError.message?.includes('duplicate key')) {
+                toast.error('Organization name already exists. Please choose a different name.');
+              } else {
+                toast.error(`Database error: ${insertError.message}`);
+              }
+              throw insertError;
+            }
+
+            // Add user to organization
+            const { error: userError } = await supabase
+              .from('organization_users')
+              .insert({
+                organization_id: org.id,
+                user_id: user.id,
+                role: 'owner',
+                is_active: true
+              });
+
+            if (userError) {
+              console.error('Fallback user insert error:', userError);
+              // Clean up the organization we just created
+              await supabase.from('organizations').delete().eq('id', org.id);
+              toast.error(`Failed to add user to organization: ${userError.message}`);
+              throw userError;
+            }
+
+            // Create subscription if plan is selected
+            if (!isDemoPlan && selectedPlan) {
+              const { error: subError } = await supabase
+                .from('organization_subscriptions')
+                .insert({
+                  organization_id: org.id,
+                  plan_id: selectedPlan,
+                  status: 'trial',
+                  interval: billingInterval
+                });
+
+              if (subError) {
+                console.warn('Failed to create subscription:', subError);
+                // Don't fail the whole process for this
+              }
+            }
+
+            console.log('Organization created successfully using fallback method!');
+            toast.success('Organization created successfully using fallback method!');
+            
+            // Set up trial dates
+            if (!isDemoPlan && selectedPlan) {
+              const trialStart = new Date();
+              const trialEnd = new Date();
+              trialEnd.setDate(trialEnd.getDate() + 14);
+
+              const { error: trialError } = await supabase
+                .from('organization_subscriptions')
+                .update({
+                  trial_start: trialStart.toISOString(),
+                  trial_end: trialEnd.toISOString(),
+                  interval: billingInterval
+                })
+                .eq('organization_id', org.id);
+
+              if (trialError) {
+                console.warn('Failed to set trial dates:', trialError);
+              }
+            }
+
+            // Set up initial organization data
+            try {
+              const { error: setupError } = await supabase.rpc('setup_new_organization', {
+                org_id: org.id
+              });
+              
+              if (setupError) {
+                console.warn('Failed to set up initial data:', setupError);
+              }
+            } catch (setupErr) {
+              console.warn('Setup function not available or failed:', setupErr);
+            }
+
+            toast.success('Organization created successfully! Welcome to your 14-day trial.');
+            
+            // Refresh organization data and navigate to dashboard
+            await refreshOrganizationData();
+            navigate('/dashboard');
+            return;
+
+          } catch (fallbackError: any) {
+            console.error('Fallback method also failed:', fallbackError);
+            toast.error('Organization creation failed. Please try again or contact support.');
+            throw fallbackError;
+          }
+        }
+        
+        // Provide specific error messages for RPC errors
         if (orgError.message?.includes('function create_organization_with_user does not exist')) {
           toast.error('Database setup incomplete. Please run the latest migrations.');
           console.error('Missing function: create_organization_with_user');
@@ -695,6 +810,116 @@ const OrganizationSetup = () => {
                 </>
               )}
             </Button>
+          </div>
+
+          {/* Debug Section */}
+          <div className="mt-8 border-t border-slate-200 pt-6">
+            <details className="group">
+              <summary className="cursor-pointer text-sm text-slate-500 hover:text-slate-700 font-medium">
+                🔧 Debug & Troubleshooting
+              </summary>
+              <div className="mt-4 space-y-4">
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                  <h4 className="font-medium text-slate-900 mb-3">Database Connection Test</h4>
+                  <div className="space-y-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        console.log('🔍 Testing database connection...');
+                        
+                        // Test user authentication
+                        const { data: { user }, error: authError } = await supabase.auth.getUser();
+                        if (authError) {
+                          console.error('❌ Auth error:', authError);
+                          toast.error('Authentication error. Please log in again.');
+                          return;
+                        }
+                        if (!user) {
+                          console.error('❌ No user authenticated');
+                          toast.error('No user authenticated. Please log in.');
+                          return;
+                        }
+                        console.log('✅ User authenticated:', user.email);
+
+                        // Test subscription plans access
+                        const { data: plans, error: plansError } = await supabase
+                          .from('subscription_plans')
+                          .select('id, name, slug')
+                          .eq('is_active', true);
+                        if (plansError) {
+                          console.error('❌ Cannot read subscription_plans:', plansError);
+                          toast.error('Cannot access subscription plans. Check database permissions.');
+                          return;
+                        }
+                        console.log('✅ Can read subscription_plans:', plans?.length || 0, 'plans');
+
+                        // Test RPC function
+                        const { error: funcError } = await supabase.rpc('create_organization_with_user', {
+                          org_name: 'test',
+                          org_slug: 'test',
+                          org_settings: {},
+                          plan_id: null
+                        });
+                        if (funcError && funcError.message.includes('function create_organization_with_user does not exist')) {
+                          console.error('❌ RPC function does not exist');
+                          toast.error('Database function missing. Run emergency script.');
+                          return;
+                        }
+                        console.log('✅ RPC function exists (even if call failed due to validation)');
+
+                        // Test organizations table access
+                        const { data: orgs, error: orgsError } = await supabase
+                          .from('organizations')
+                          .select('id, name')
+                          .limit(1);
+                        if (orgsError) {
+                          console.error('❌ Cannot read organizations:', orgsError);
+                          toast.error('Cannot access organizations table. Check database permissions.');
+                          return;
+                        }
+                        console.log('✅ Can read organizations:', orgs?.length || 0, 'organizations');
+
+                        toast.success('Database connection test completed. Check console for details.');
+                      }}
+                    >
+                      🔍 Test DB
+                    </Button>
+                    
+                    <div className="text-xs text-slate-600 space-y-1">
+                      <p>• Click to test database connectivity and permissions</p>
+                      <p>• Check browser console (F12) for detailed results</p>
+                      <p>• Visit <a href="/debug/database" className="text-violet-600 hover:underline">Debug Database</a> for comprehensive testing</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <h4 className="font-medium text-amber-900 mb-3">Common Issues & Solutions</h4>
+                  <div className="text-xs text-amber-800 space-y-2">
+                    <p><strong>❌ "Failed to create organization"</strong></p>
+                    <ul className="list-disc list-inside ml-4 space-y-1">
+                      <li>Run the emergency database script in Supabase SQL Editor</li>
+                      <li>Check if user is properly authenticated</li>
+                      <li>Try a different organization name</li>
+                    </ul>
+                    
+                    <p><strong>❌ "Function does not exist"</strong></p>
+                    <ul className="list-disc list-inside ml-4 space-y-1">
+                      <li>Copy and run <code className="bg-amber-100 px-1 rounded">emergency_create_organization_function.sql</code></li>
+                      <li>Verify Supabase project is active</li>
+                    </ul>
+                    
+                    <p><strong>❌ "Permission denied"</strong></p>
+                    <ul className="list-disc list-inside ml-4 space-y-1">
+                      <li>Log out and log back in</li>
+                      <li>Check RLS policies are properly set</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </details>
           </div>
         </form>
       </div>
