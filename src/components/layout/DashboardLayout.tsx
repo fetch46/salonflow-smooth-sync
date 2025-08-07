@@ -11,7 +11,11 @@ import { useSaas } from "@/contexts/SaasContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 
-export default function DashboardLayout() {
+interface DashboardLayoutProps {
+  children?: React.ReactNode;
+}
+
+export default function DashboardLayout({ children }: DashboardLayoutProps = {}) {
   const navigate = useNavigate();
   const { 
     user, 
@@ -220,7 +224,7 @@ export default function DashboardLayout() {
 
           {/* Main Content */}
           <main className="flex-1">
-            <Outlet />
+            {children || <Outlet />}
           </main>
         </div>
       </div>

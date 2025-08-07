@@ -145,10 +145,6 @@ export default function JobCards() {
     }));
   };
 
-  useEffect(() => {
-    fetchJobCards();
-  }, [fetchJobCards]);
-
   const fetchJobCards = useCallback(async () => {
     try {
       setLoading(true);
@@ -162,7 +158,19 @@ export default function JobCards() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setJobCards(enrichJobCards(data || []));
+      
+      const enrichedData = (data || []).map((card: any) => ({
+        ...card,
+        estimated_duration: card.estimated_duration || 0,
+        actual_duration: card.actual_duration || 0,
+        priority: card.priority || 'medium',
+        service_type: card.service_type || 'general',
+        notes: card.notes || '',
+        staff: Array.isArray(card.staff) ? card.staff : card.staff ? [card.staff] : [],
+        client: Array.isArray(card.client) ? card.client : card.client ? [card.client] : []
+      }));
+      
+      setJobCards(enrichedData as any);
     } catch (error) {
       console.error("Error fetching job cards:", error);
       toast.error("Failed to fetch job cards");
@@ -396,9 +404,8 @@ export default function JobCards() {
             </DropdownMenuContent>
           </DropdownMenu>
           
-          <CreateButtonGate feature="job_cards">
+          <CreateButtonGate feature="job_cards" onClick={() => navigate('/job-cards/new')}>
             <Button 
-              onClick={() => navigate('/job-cards/new')} 
               className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg"
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -590,9 +597,8 @@ export default function JobCards() {
                     </p>
                   </div>
                   {!searchTerm && statusFilter === "all" && (
-                    <CreateButtonGate feature="job_cards">
+                    <CreateButtonGate feature="job_cards" onClick={() => navigate('/job-cards/new')}>
                       <Button 
-                        onClick={() => navigate('/job-cards/new')}
                         className="bg-indigo-600 hover:bg-indigo-700"
                       >
                         <Plus className="w-4 h-4 mr-2" />

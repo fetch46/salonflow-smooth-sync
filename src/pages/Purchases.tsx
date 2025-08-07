@@ -72,11 +72,6 @@ export default function Purchases() {
     unit_cost: "",
   });
 
-  useEffect(() => {
-    fetchPurchases();
-    fetchInventoryItems();
-  }, [fetchPurchases, fetchInventoryItems]);
-
   const fetchPurchases = useCallback(async () => {
     try {
       setLoading(true);
@@ -155,12 +150,13 @@ export default function Purchases() {
     setPurchaseItems([
       ...purchaseItems,
       {
+        id: `temp-${Date.now()}`,
         item_id: newItem.item_id,
-        item_name: item.name,
         quantity: parseInt(newItem.quantity),
         unit_cost: parseFloat(newItem.unit_cost),
         total_cost: totalCost,
         received_quantity: 0,
+        inventory_items: { name: item.name }
       }
     ]);
 
@@ -497,7 +493,7 @@ export default function Purchases() {
                       <TableBody>
                         {purchaseItems.map((item, index) => (
                           <TableRow key={index}>
-                            <TableCell>{item.item_name}</TableCell>
+                            <TableCell>{item.inventory_items?.name || 'Unknown Item'}</TableCell>
                             <TableCell>{item.quantity}</TableCell>
                             <TableCell>${item.unit_cost.toFixed(2)}</TableCell>
                             <TableCell>${item.total_cost.toFixed(2)}</TableCell>

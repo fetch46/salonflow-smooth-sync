@@ -48,7 +48,7 @@ export default function ServiceView() {
     if (id) {
       fetchServiceData();
     }
-  }, [id, fetchServiceData]);
+  }, [id]);
 
   const fetchServiceData = useCallback(async () => {
     try {

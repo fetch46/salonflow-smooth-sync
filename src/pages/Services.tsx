@@ -165,7 +165,7 @@ export default function Services() {
   useEffect(() => {
     fetchServices();
     fetchAvailableProducts();
-  }, [fetchServices, fetchAvailableProducts]);
+  }, []);
 
   const fetchServices = useCallback(async () => {
     try {
@@ -223,7 +223,13 @@ export default function Services() {
         .eq("service_id", serviceId);
 
       if (error) throw error;
-      setServiceKits(data || []);
+      
+      const processedData = (data || []).map(kit => ({
+        ...kit,
+        inventory_items: kit.inventory_items as any
+      }));
+      
+      setServiceKits(processedData);
     } catch (error) {
       console.error("Error fetching service kits:", error);
     }
@@ -1136,7 +1142,6 @@ export default function Services() {
                           <Switch
                             checked={service.is_active}
                             onCheckedChange={() => toggleServiceStatus(service.id, service.is_active)}
-                            size="sm"
                           />
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>

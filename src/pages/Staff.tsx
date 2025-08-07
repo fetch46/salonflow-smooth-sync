@@ -122,7 +122,7 @@ export default function Staff() {
 
   useEffect(() => {
     fetchStaff();
-  }, [fetchStaff]);
+  }, []);
 
   const fetchStaff = useCallback(async () => {
     try {
@@ -779,8 +779,10 @@ export default function Staff() {
                                   alt={member.full_name}
                                   className="w-full h-full object-cover"
                                   onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                    e.currentTarget.nextElementSibling!.style.display = 'flex';
+                                    const target = e.currentTarget as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    const sibling = target.nextElementSibling as HTMLElement;
+                                    if (sibling) sibling.style.display = 'flex';
                                   }}
                                 />
                               ) : null}

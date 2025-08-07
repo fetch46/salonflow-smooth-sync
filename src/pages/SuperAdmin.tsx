@@ -95,11 +95,7 @@ export default function SuperAdmin() {
       // Fetch super admins
       const { data: superAdminData } = await supabase
         .from('super_admins')
-        .select(`
-          *,
-          users:auth.users!super_admins_user_id_fkey(email),
-          granted_by_user:auth.users!super_admins_granted_by_fkey(email)
-        `);
+        .select('*');
 
       if (orgsData) {
         const formattedOrgs = orgsData.map(org => ({
@@ -127,11 +123,11 @@ export default function SuperAdmin() {
       }
 
       if (superAdminData) {
-        const formattedAdmins = superAdminData.map(admin => ({
+        const formattedAdmins = superAdminData.map((admin: any) => ({
           id: admin.id,
           user_id: admin.user_id,
-          email: admin.users?.email || '',
-          granted_by_email: admin.granted_by_user?.email || '',
+          email: 'N/A', // Will need separate query to get email
+          granted_by_email: 'N/A', // Will need separate query
           granted_at: admin.granted_at,
           is_active: admin.is_active
         }));

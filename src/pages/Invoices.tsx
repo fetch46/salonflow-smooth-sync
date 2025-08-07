@@ -316,9 +316,18 @@ export default function Invoices() {
     const staffMember = staff.find(s => s.id === newItem.staff_id);
 
     const item = {
-      ...newItem,
+      id: `temp-${Date.now()}`,
+      invoice_id: "",
+      product_id: newItem.service_id,
+      service_id: newItem.service_id,
+      description: newItem.description,
+      quantity: newItem.quantity,
+      discount_percentage: newItem.discount_percentage,
+      staff_id: newItem.staff_id,
+      commission_percentage: newItem.commission_percentage,
       unit_price: parseFloat(newItem.unit_price) || 0,
       total_price: newItem.quantity * (parseFloat(newItem.unit_price) || 0) * (1 - newItem.discount_percentage / 100),
+      commission_amount: (newItem.quantity * (parseFloat(newItem.unit_price) || 0) * (1 - newItem.discount_percentage / 100)) * (newItem.commission_percentage / 100),
       service_name: service?.name || "",
       staff_name: staffMember?.full_name || "",
     };
