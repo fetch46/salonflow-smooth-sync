@@ -71,7 +71,48 @@ export default function TestPlans() {
           <p className="text-slate-600">Testing subscription plan loading and rendering</p>
         </div>
 
-
+        {/* Controls */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Test Controls</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap gap-4">
+              <Button 
+                onClick={fetchPlans} 
+                disabled={loading}
+                variant="outline"
+              >
+                🔄 Fetch from Database
+              </Button>
+              
+              <Button 
+                onClick={() => {
+                  console.log('Current user:', user?.email || 'Not authenticated');
+                  console.log('Plans state:', plans);
+                  console.log('Error state:', error);
+                  toast.info('Check console for debug info');
+                }}
+                variant="outline"
+              >
+                🐛 Debug Info
+              </Button>
+            </div>
+            
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-red-800 font-medium">Error:</p>
+                <p className="text-red-700 text-sm mt-1">{error}</p>
+              </div>
+            )}
+            
+            <div className="text-sm text-slate-600">
+              <p><strong>User:</strong> {user?.email || 'Not authenticated'}</p>
+              <p><strong>Plans Found:</strong> {plans.length}</p>
+              <p><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</p>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Plans Display */}
         <div>

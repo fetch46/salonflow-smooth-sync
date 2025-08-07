@@ -41,6 +41,7 @@ const OrganizationSetup = () => {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<string>('');
   const [billingInterval, setBillingInterval] = useState<'month' | 'year'>('month');
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
   const [formData, setFormData] = useState({
     organizationName: '',
@@ -131,6 +132,173 @@ const OrganizationSetup = () => {
     }).format(price / 100);
   };
 
+  const testDatabaseConnection = async () => {
+    console.log('🔍 Testing database connection...');
+    let debugOutput = '🔍 Database Test Results:\n\n';
+    
+    try {
+      // Test 1: Check authentication
+      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+      if (userError || !currentUser) {
+        debugOutput += '❌ User not authenticated: ' + (userError?.message || 'No user found') + '\n';
+        console.error('❌ User not authenticated:', userError);
+      } else {
+        debugOutput += `✅ User authenticated: ${currentUser.email}\n`;
+        console.log('✅ User authenticated:', currentUser.email);
+      }
+
+      // Test 2: Check subscription plans
+      const { data: testPlans, error: plansError } = await supabase
+        .from('subscription_plans')
+        .select('*')
+        .eq('is_active', true);
+
+      if (plansError) {
+        debugOutput += '❌ Cannot read subscription_plans: ' + plansError.message + '\n';
+        console.error('❌ Cannot read subscription_plans:', plansError);
+      } else {
+        debugOutput += `✅ Can read subscription_plans (${testPlans?.length || 0} plans found)\n`;
+        console.log('✅ Can read subscription_plans:', testPlans?.length);
+      }
+
+      // Test 3: Check RPC function
+      try {
+        const { error: rpcError } = await supabase.rpc('create_organization_with_user', {
+          org_name: 'test',
+          org_slug: 'test-slug',
+          org_settings: {},
+          plan_id: null
+        });
+
+        if (rpcError) {
+          if (rpcError.message.includes('function create_organization_with_user does not exist')) {
+            debugOutput += '❌ RPC function does not exist\n';
+            console.error('❌ RPC function does not exist');
+          } else {
+            debugOutput += '✅ RPC function exists (even if call failed due to validation)\n';
+            console.log('✅ RPC function exists (validation error expected):', rpcError.message);
+          }
+        } else {
+          debugOutput += '✅ RPC function works perfectly\n';
+          console.log('✅ RPC function works perfectly');
+        }
+      } catch (funcErr) {
+        debugOutput += '❌ RPC function test failed: ' + (funcErr as Error).message + '\n';
+        console.error('❌ RPC function test failed:', funcErr);
+      }
+
+      // Test 4: Check organizations table
+      const { data: orgsTest, error: orgsError } = await supabase
+        .from('organizations')
+        .select('id, name')
+        .limit(1);
+
+      if (orgsError) {
+        debugOutput += '❌ Cannot read organizations: ' + orgsError.message + '\n';
+        console.error('❌ Cannot read organizations:', orgsError);
+      } else {
+        debugOutput += '✅ Can read organizations\n';
+        console.log('✅ Can read organizations');
+      }
+
+      debugOutput += '\n' + (debugOutput.includes('❌') ? 
+        '❌ Some tests failed. Please run the emergency database scripts.' : 
+        '✅ All tests passed! Organization creation should work.');
+
+    } catch (error) {
+      debugOutput += '❌ Test failed: ' + (error as Error).message + '\n';
+      console.error('❌ Database test failed:', error);
+    }
+
+    setDebugInfo(debugOutput);
+    console.log('Test completed. Check debug info for details.');
+  };
+
+  const loadMockPlans = () => {
+    console.log('Loading demo plans...');
+    const demoPlans = [
+      {
+        id: 'demo-starter',
+        name: 'Starter',
+        slug: 'starter',
+        description: 'Perfect for small salons just getting started',
+        price_monthly: 2900,
+        price_yearly: 29000,
+        max_users: 5,
+        max_locations: 1,
+        features: {
+          appointments: true,
+          clients: true,
+          staff: true,
+          services: true,
+          basic_reports: true
+        },
+        is_active: true,
+        sort_order: 1,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        id: 'demo-professional',
+        name: 'Professional',
+        slug: 'professional',
+        description: 'For growing salons with multiple staff members',
+        price_monthly: 5900,
+        price_yearly: 59000,
+        max_users: 25,
+        max_locations: 3,
+        features: {
+          appointments: true,
+          clients: true,
+          staff: true,
+          services: true,
+          inventory: true,
+          basic_reports: true,
+          advanced_reports: true,
+          pos: true,
+          accounting: true
+        },
+        is_active: true,
+        sort_order: 2,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        id: 'demo-enterprise',
+        name: 'Enterprise',
+        slug: 'enterprise',
+        description: 'For large salon chains with advanced needs',
+        price_monthly: 9900,
+        price_yearly: 99000,
+        max_users: 100,
+        max_locations: 10,
+        features: {
+          appointments: true,
+          clients: true,
+          staff: true,
+          services: true,
+          inventory: true,
+          basic_reports: true,
+          advanced_reports: true,
+          pos: true,
+          accounting: true,
+          api_access: true,
+          white_label: true,
+          priority_support: true
+        },
+        is_active: true,
+        sort_order: 3,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    ] as SubscriptionPlan[];
+
+    setPlans(demoPlans);
+    setSelectedPlan(demoPlans[1].id); // Select Professional by default
+    toast.success('Demo plans loaded! You can now test organization creation.');
+    console.log('Demo plans loaded:', demoPlans.length);
+  };
+
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -171,16 +339,22 @@ const OrganizationSetup = () => {
       if (orgError) {
         console.error('RPC error:', orgError);
         
-        // Provide specific error messages
+        // Provide specific error messages with troubleshooting guidance
         if (orgError.message?.includes('function create_organization_with_user does not exist')) {
-          toast.error('Database setup incomplete. Please run the latest migrations.');
+          toast.error('Database function missing. Please contact support or run database setup.');
           console.error('Missing function: create_organization_with_user');
+          console.log('💡 TIP: Run the emergency_create_organization_function.sql script in Supabase SQL Editor');
         } else if (orgError.message?.includes('duplicate key')) {
           toast.error('Organization name already exists. Please choose a different name.');
         } else if (orgError.message?.includes('permission denied')) {
-          toast.error('Permission denied. Please check your account settings.');
+          toast.error('Permission denied. Please try logging out and back in.');
+          console.log('💡 TIP: Check if user is properly authenticated and has correct permissions');
+        } else if (orgError.message?.includes('User must be authenticated')) {
+          toast.error('Authentication required. Please log out and back in.');
+          console.log('💡 TIP: User session may have expired');
         } else {
-          toast.error(`Database error: ${orgError.message}`);
+          toast.error(`Setup failed: ${orgError.message}. Click 🔍 Test DB for troubleshooting.`);
+          console.error('💡 TIP: Click the Test DB button above to diagnose the issue');
         }
         
         throw orgError;
@@ -542,6 +716,58 @@ const OrganizationSetup = () => {
                     Start with a free trial of {selectedPlanData.name}. No credit card required. 
                     You can upgrade, downgrade, or cancel anytime during your trial.
                   </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Debug Section */}
+          <Card className="shadow-lg border-slate-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-blue-600" />
+                Database Connection Test
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4 flex-wrap">
+                <Button
+                  type="button"
+                  onClick={testDatabaseConnection}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  🔍 Test DB
+                </Button>
+                <Button
+                  type="button"
+                  onClick={loadMockPlans}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  📋 Load Demo Plans
+                </Button>
+                <Button
+                  type="button"
+                  onClick={fetchPlans}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  🔄 Reload Plans
+                </Button>
+              </div>
+              <p className="text-sm text-slate-600">
+                Test database connectivity, load demo plans for testing, or reload plans from database
+              </p>
+              
+              {debugInfo && (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                  <pre className="text-xs font-mono whitespace-pre-wrap text-slate-700 max-h-64 overflow-y-auto">
+                    {debugInfo}
+                  </pre>
                 </div>
               )}
             </CardContent>
