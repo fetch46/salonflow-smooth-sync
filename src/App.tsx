@@ -148,9 +148,6 @@ const AppRoutes = () => {
     </Routes>
   );
 };
-    </Routes>
-  );
-};
 
 function App() {
   return (
