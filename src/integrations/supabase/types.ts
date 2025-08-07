@@ -203,6 +203,111 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_adjustment_items: {
+        Row: {
+          adjusted_quantity: number
+          adjustment_id: string
+          created_at: string
+          current_quantity: number
+          difference: number
+          id: string
+          item_id: string
+          notes: string | null
+          total_cost: number
+          unit_cost: number
+          updated_at: string
+        }
+        Insert: {
+          adjusted_quantity: number
+          adjustment_id: string
+          created_at?: string
+          current_quantity: number
+          difference: number
+          id?: string
+          item_id: string
+          notes?: string | null
+          total_cost?: number
+          unit_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          adjusted_quantity?: number
+          adjustment_id?: string
+          created_at?: string
+          current_quantity?: number
+          difference?: number
+          id?: string
+          item_id?: string
+          notes?: string | null
+          total_cost?: number
+          unit_cost?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_adjustment_items_adjustment_id_fkey"
+            columns: ["adjustment_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_adjustments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_adjustment_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_adjustments: {
+        Row: {
+          adjustment_date: string
+          adjustment_number: string
+          adjustment_type: string
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          reason: string
+          status: string
+          total_items: number
+          updated_at: string
+        }
+        Insert: {
+          adjustment_date: string
+          adjustment_number: string
+          adjustment_type: string
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          reason: string
+          status?: string
+          total_items?: number
+          updated_at?: string
+        }
+        Update: {
+          adjustment_date?: string
+          adjustment_number?: string
+          adjustment_type?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          reason?: string
+          status?: string
+          total_items?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inventory_items: {
         Row: {
           category: string | null
@@ -972,6 +1077,96 @@ export type Database = {
         }
         Relationships: []
       }
+      super_admins: {
+        Row: {
+          created_at: string
+          granted_at: string
+          granted_by: string | null
+          id: string
+          is_active: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      suppliers: {
+        Row: {
+          address: string | null
+          city: string | null
+          contact_person: string | null
+          country: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          notes: string | null
+          payment_terms: string | null
+          phone: string | null
+          postal_code: string | null
+          state: string | null
+          tax_id: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          contact_person?: string | null
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          notes?: string | null
+          payment_terms?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          state?: string | null
+          tax_id?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          contact_person?: string | null
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          notes?: string | null
+          payment_terms?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          state?: string | null
+          tax_id?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -993,6 +1188,14 @@ export type Database = {
       get_user_organization_count: {
         Args: { user_uuid: string }
         Returns: number
+      }
+      grant_super_admin: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
+      revoke_super_admin: {
+        Args: { target_user_id: string }
+        Returns: boolean
       }
       setup_new_organization: {
         Args: { org_id: string }

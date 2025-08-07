@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -106,9 +107,281 @@ export default function InventoryAdjustments() {
   }[]>([]);
 
   useEffect(() => {
-    // Component disabled - tables don't exist in database
-    toast.info("Inventory Adjustments feature is not yet configured for this database schema");
+    fetchAdjustments();
+    fetchInventoryItems();
   }, []);
+
+  const fetchAdjustments = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("inventory_adjustments")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setAdjustments(data || []);
+    } catch (error) {
+      console.error("Error fetching adjustments:", error);
+      toast.error("Failed to fetch adjustments");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchInventoryItems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("inventory_items")
+        .select("*")
+        .eq("is_active", true)
+        .order("name");
+
+      if (error) throw error;
+      setInventoryItems(data || []);
+    } catch (error) {
+      console.error("Error fetching inventory items:", error);
+    }
+  };
+
+  const fetchAdjustmentItems = async (adjustmentId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("inventory_adjustment_items")
+        .select(`
+          *,
+          inventory_items (name, sku, unit)
+        `)
+        .eq("adjustment_id", adjustmentId);
+
+      if (error) throw error;
+      setAdjustmentItems(data || []);
+    } catch (error) {
+      console.error("Error fetching adjustment items:", error);
+      toast.error("Failed to fetch adjustment items");
+    }
+  };
+
+  const generateAdjustmentNumber = () => {
+    const timestamp = Date.now().toString().slice(-6);
+    return `ADJ-${timestamp}`;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (selectedItems.length === 0) {
+      toast.error("Please add at least one item to the adjustment");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      const adjustmentData = {
+        adjustment_date: formData.adjustment_date,
+        adjustment_type: formData.adjustment_type,
+        reason: formData.reason,
+        notes: formData.notes,
+        adjustment_number: formData.adjustment_number || generateAdjustmentNumber(),
+        total_items: selectedItems.length,
+        status: "pending",
+      };
+
+      let adjustmentId: string;
+
+      if (editingAdjustment) {
+        const { error } = await supabase
+          .from("inventory_adjustments")
+          .update(adjustmentData)
+          .eq("id", editingAdjustment.id);
+
+        if (error) throw error;
+        adjustmentId = editingAdjustment.id;
+      } else {
+        const { data, error } = await supabase
+          .from("inventory_adjustments")
+          .insert([adjustmentData])
+          .select()
+          .single();
+
+        if (error) throw error;
+        adjustmentId = data.id;
+      }
+
+      // Insert adjustment items
+      const itemsData = selectedItems.map(item => ({
+        adjustment_id: adjustmentId,
+        item_id: item.item_id,
+        current_quantity: item.current_quantity,
+        adjusted_quantity: item.adjusted_quantity,
+        difference: item.difference,
+        unit_cost: item.unit_cost,
+        total_cost: item.total_cost,
+        notes: item.notes
+      }));
+
+      if (editingAdjustment) {
+        // Delete existing items and insert new ones
+        await supabase
+          .from("inventory_adjustment_items")
+          .delete()
+          .eq("adjustment_id", adjustmentId);
+      }
+
+      const { error: itemsError } = await supabase
+        .from("inventory_adjustment_items")
+        .insert(itemsData);
+
+      if (itemsError) throw itemsError;
+
+      toast.success(editingAdjustment ? "Adjustment updated successfully" : "Adjustment created successfully");
+      setIsCreateModalOpen(false);
+      setEditingAdjustment(null);
+      setFormData({
+        adjustment_date: new Date().toISOString().split('T')[0],
+        adjustment_type: "",
+        reason: "",
+        notes: "",
+        adjustment_number: ""
+      });
+      setSelectedItems([]);
+      fetchAdjustments();
+    } catch (error) {
+      console.error("Error saving adjustment:", error);
+      toast.error("Failed to save adjustment");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApproveAdjustment = async (adjustment: Adjustment) => {
+    try {
+      const { error } = await supabase
+        .from("inventory_adjustments")
+        .update({ 
+          status: "approved",
+          approved_at: new Date().toISOString(),
+          approved_by: (await supabase.auth.getUser()).data.user?.id
+        })
+        .eq("id", adjustment.id);
+
+      if (error) throw error;
+      
+      // Here you would typically update inventory levels based on the adjustment items
+      // For now, we'll just show a success message
+      toast.success("Adjustment approved successfully");
+      fetchAdjustments();
+    } catch (error) {
+      console.error("Error approving adjustment:", error);
+      toast.error("Failed to approve adjustment");
+    }
+  };
+
+  const handleEdit = (adjustment: Adjustment) => {
+    setEditingAdjustment(adjustment);
+    setFormData({
+      adjustment_date: adjustment.adjustment_date,
+      adjustment_type: adjustment.adjustment_type,
+      reason: adjustment.reason,
+      notes: adjustment.notes || "",
+      adjustment_number: adjustment.adjustment_number
+    });
+    setIsCreateModalOpen(true);
+  };
+
+  const handleDelete = async (adjustmentId: string) => {
+    if (!confirm("Are you sure you want to delete this adjustment?")) return;
+    
+    try {
+      const { error } = await supabase
+        .from("inventory_adjustments")
+        .delete()
+        .eq("id", adjustmentId);
+
+      if (error) throw error;
+      toast.success("Adjustment deleted successfully");
+      fetchAdjustments();
+    } catch (error) {
+      console.error("Error deleting adjustment:", error);
+      toast.error("Failed to delete adjustment");
+    }
+  };
+
+  const addItemToAdjustment = () => {
+    setSelectedItems([...selectedItems, {
+      item_id: "",
+      current_quantity: 0,
+      adjusted_quantity: 0,
+      difference: 0,
+      unit_cost: 0,
+      total_cost: 0,
+      notes: ""
+    }]);
+  };
+
+  const removeItemFromAdjustment = (index: number) => {
+    const updatedItems = selectedItems.filter((_, i) => i !== index);
+    setSelectedItems(updatedItems);
+  };
+
+  const updateSelectedItem = (index: number, field: string, value: any) => {
+    const updatedItems = [...selectedItems];
+    updatedItems[index] = { ...updatedItems[index], [field]: value };
+    
+    // Calculate difference and total cost
+    if (field === 'current_quantity' || field === 'adjusted_quantity') {
+      const current = field === 'current_quantity' ? value : updatedItems[index].current_quantity;
+      const adjusted = field === 'adjusted_quantity' ? value : updatedItems[index].adjusted_quantity;
+      updatedItems[index].difference = adjusted - current;
+      updatedItems[index].total_cost = Math.abs(updatedItems[index].difference) * updatedItems[index].unit_cost;
+    }
+    
+    if (field === 'unit_cost') {
+      updatedItems[index].total_cost = Math.abs(updatedItems[index].difference) * value;
+    }
+    
+    setSelectedItems(updatedItems);
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "pending":
+        return <Badge variant="outline" className="text-yellow-600 border-yellow-600">Pending</Badge>;
+      case "approved":
+        return <Badge variant="outline" className="text-green-600 border-green-600">Approved</Badge>;
+      case "rejected":
+        return <Badge variant="outline" className="text-red-600 border-red-600">Rejected</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const getAdjustmentTypeColor = (type: string) => {
+    switch (type) {
+      case "Stock Count":
+        return "text-blue-600";
+      case "Damage":
+        return "text-red-600";
+      case "Theft":
+        return "text-purple-600";
+      case "Return":
+        return "text-green-600";
+      default:
+        return "text-gray-600";
+    }
+  };
+
+  const filteredAdjustments = adjustments.filter(adjustment =>
+    adjustment.adjustment_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    adjustment.adjustment_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    adjustment.reason.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const pendingCount = adjustments.filter(adj => adj.status === "pending").length;
+  const approvedCount = adjustments.filter(adj => adj.status === "approved").length;
+  const positiveAdjustments = adjustmentItems.filter(item => item.difference > 0).length;
+  const negativeAdjustments = adjustmentItems.filter(item => item.difference < 0).length;
 
   return (
     <div className="p-6 space-y-6">
@@ -119,6 +392,176 @@ export default function InventoryAdjustments() {
             Track and manage inventory adjustments and stock corrections
           </p>
         </div>
+        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              New Adjustment
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {editingAdjustment ? "Edit Adjustment" : "Create New Adjustment"}
+              </DialogTitle>
+              <DialogDescription>
+                Add details about the inventory adjustment and the items involved.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="adjustment_number">Adjustment Number</Label>
+                  <Input
+                    id="adjustment_number"
+                    value={formData.adjustment_number}
+                    onChange={(e) => setFormData({...formData, adjustment_number: e.target.value})}
+                    placeholder="Auto-generated if empty"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="adjustment_date">Adjustment Date</Label>
+                  <Input
+                    type="date"
+                    id="adjustment_date"
+                    value={formData.adjustment_date}
+                    onChange={(e) => setFormData({...formData, adjustment_date: e.target.value})}
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="adjustment_type">Adjustment Type</Label>
+                  <Select value={formData.adjustment_type} onValueChange={(value) => setFormData({...formData, adjustment_type: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ADJUSTMENT_TYPES.map(type => (
+                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="reason">Reason</Label>
+                  <Select value={formData.reason} onValueChange={(value) => setFormData({...formData, reason: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select reason" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ADJUSTMENT_REASONS.map(reason => (
+                        <SelectItem key={reason} value={reason}>{reason}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea
+                  id="notes"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  placeholder="Additional notes about the adjustment"
+                />
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label>Adjustment Items</Label>
+                  <Button type="button" onClick={addItemToAdjustment} variant="outline" size="sm">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Item
+                  </Button>
+                </div>
+                
+                {selectedItems.map((item, index) => (
+                  <div key={index} className="grid grid-cols-7 gap-2 items-end p-3 border rounded-lg">
+                    <div>
+                      <Label>Item</Label>
+                      <Select 
+                        value={item.item_id} 
+                        onValueChange={(value) => updateSelectedItem(index, 'item_id', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select item" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {inventoryItems.map(invItem => (
+                            <SelectItem key={invItem.id} value={invItem.id}>
+                              {invItem.name} ({invItem.sku})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Current Qty</Label>
+                      <Input
+                        type="number"
+                        value={item.current_quantity}
+                        onChange={(e) => updateSelectedItem(index, 'current_quantity', Number(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <Label>Adjusted Qty</Label>
+                      <Input
+                        type="number"
+                        value={item.adjusted_quantity}
+                        onChange={(e) => updateSelectedItem(index, 'adjusted_quantity', Number(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <Label>Difference</Label>
+                      <Input
+                        value={item.difference}
+                        readOnly
+                        className={item.difference > 0 ? "text-green-600" : item.difference < 0 ? "text-red-600" : ""}
+                      />
+                    </div>
+                    <div>
+                      <Label>Unit Cost</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={item.unit_cost}
+                        onChange={(e) => updateSelectedItem(index, 'unit_cost', Number(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <Label>Total Cost</Label>
+                      <Input
+                        value={item.total_cost.toFixed(2)}
+                        readOnly
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => removeItemFromAdjustment(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? "Saving..." : editingAdjustment ? "Update Adjustment" : "Create Adjustment"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Statistics Cards */}
@@ -129,7 +572,7 @@ export default function InventoryAdjustments() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">{adjustments.length}</div>
             <p className="text-xs text-muted-foreground">All time</p>
           </CardContent>
         </Card>
@@ -140,7 +583,7 @@ export default function InventoryAdjustments() {
             <AlertTriangle className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">{pendingCount}</div>
             <p className="text-xs text-muted-foreground">Awaiting review</p>
           </CardContent>
         </Card>
@@ -151,7 +594,7 @@ export default function InventoryAdjustments() {
             <TrendingUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">{positiveAdjustments}</div>
             <p className="text-xs text-muted-foreground">Stock increases</p>
           </CardContent>
         </Card>
@@ -162,7 +605,7 @@ export default function InventoryAdjustments() {
             <TrendingDown className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">{negativeAdjustments}</div>
             <p className="text-xs text-muted-foreground">Stock decreases</p>
           </CardContent>
         </Card>
@@ -175,24 +618,178 @@ export default function InventoryAdjustments() {
             <div>
               <CardTitle>Inventory Adjustments</CardTitle>
               <CardDescription>
-                Feature not available - database schema configuration required
+                Manage inventory adjustments and stock corrections
               </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search adjustments..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8 w-64"
+                />
+              </div>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center space-y-3">
-              <Package className="h-12 w-12 text-muted-foreground mx-auto" />
-              <h3 className="text-lg font-medium">Inventory Adjustments Not Configured</h3>
-              <p className="text-sm text-muted-foreground max-w-md">
-                The inventory adjustments feature requires additional database tables that haven't been created yet. 
-                Contact your system administrator to set up the required schema.
-              </p>
-            </div>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Adjustment #</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Reason</TableHead>
+                <TableHead>Items</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredAdjustments.map((adjustment) => (
+                <TableRow key={adjustment.id}>
+                  <TableCell className="font-medium">
+                    {adjustment.adjustment_number}
+                  </TableCell>
+                  <TableCell>
+                    {format(new Date(adjustment.adjustment_date), 'MMM dd, yyyy')}
+                  </TableCell>
+                  <TableCell>
+                    <span className={getAdjustmentTypeColor(adjustment.adjustment_type)}>
+                      {adjustment.adjustment_type}
+                    </span>
+                  </TableCell>
+                  <TableCell>{adjustment.reason}</TableCell>
+                  <TableCell>{adjustment.total_items}</TableCell>
+                  <TableCell>{getStatusBadge(adjustment.status)}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setViewingAdjustment(adjustment);
+                          fetchAdjustmentItems(adjustment.id);
+                          setIsViewModalOpen(true);
+                        }}
+                      >
+                        View
+                      </Button>
+                      {adjustment.status === "pending" && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(adjustment)}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleApproveAdjustment(adjustment)}
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(adjustment.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
+
+      {/* View Adjustment Modal */}
+      <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Adjustment Details</DialogTitle>
+            <DialogDescription>
+              View details of the inventory adjustment
+            </DialogDescription>
+          </DialogHeader>
+          {viewingAdjustment && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Adjustment Number</Label>
+                  <p className="font-medium">{viewingAdjustment.adjustment_number}</p>
+                </div>
+                <div>
+                  <Label>Date</Label>
+                  <p>{format(new Date(viewingAdjustment.adjustment_date), 'MMM dd, yyyy')}</p>
+                </div>
+                <div>
+                  <Label>Type</Label>
+                  <p className={getAdjustmentTypeColor(viewingAdjustment.adjustment_type)}>
+                    {viewingAdjustment.adjustment_type}
+                  </p>
+                </div>
+                <div>
+                  <Label>Status</Label>
+                  <div>{getStatusBadge(viewingAdjustment.status)}</div>
+                </div>
+              </div>
+              
+              <div>
+                <Label>Reason</Label>
+                <p>{viewingAdjustment.reason}</p>
+              </div>
+              
+              {viewingAdjustment.notes && (
+                <div>
+                  <Label>Notes</Label>
+                  <p>{viewingAdjustment.notes}</p>
+                </div>
+              )}
+
+              <div>
+                <Label>Adjustment Items</Label>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead>Current</TableHead>
+                      <TableHead>Adjusted</TableHead>
+                      <TableHead>Difference</TableHead>
+                      <TableHead>Unit Cost</TableHead>
+                      <TableHead>Total Cost</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {adjustmentItems.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          {item.inventory_items?.name} ({item.inventory_items?.sku})
+                        </TableCell>
+                        <TableCell>{item.current_quantity}</TableCell>
+                        <TableCell>{item.adjusted_quantity}</TableCell>
+                        <TableCell className={item.difference > 0 ? "text-green-600" : item.difference < 0 ? "text-red-600" : ""}>
+                          {item.difference > 0 ? "+" : ""}{item.difference}
+                        </TableCell>
+                        <TableCell>${item.unit_cost.toFixed(2)}</TableCell>
+                        <TableCell>${item.total_cost.toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
