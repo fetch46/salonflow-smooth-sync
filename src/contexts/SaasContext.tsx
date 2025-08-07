@@ -122,7 +122,7 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Organization users found:', orgUsers?.length || 0);
 
       if (orgUsers && orgUsers.length > 0) {
-        const orgs = orgUsers.map(ou => ou.organizations as Organization).filter(Boolean);
+        const orgs = orgUsers.map(ou => ou.organizations).filter(Boolean).flat() as Organization[];
         const roles: Record<string, user_role> = {};
         
         orgUsers.forEach(ou => {
@@ -272,7 +272,7 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (orgUsers && orgUsers.length > 0) {
-          const orgs = orgUsers.map(ou => ou.organizations as Organization).filter(Boolean);
+          const orgs = orgUsers.map(ou => ou.organizations).filter(Boolean).flat() as Organization[];
           const roles: Record<string, user_role> = {};
           
           orgUsers.forEach(ou => {

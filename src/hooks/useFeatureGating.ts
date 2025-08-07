@@ -122,7 +122,7 @@ export const useFeatureGating = () => {
       return `${featureLabel} is not available in your current plan. Upgrade to access this feature.`;
     }
     
-    if (access.isAtLimit) {
+    if (!access.canCreate) {
       return `You've reached your ${featureLabel} limit. Upgrade to add more.`;
     }
     

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -77,12 +77,6 @@ export default function ClientProfile() {
     notes: '',
   });
 
-  useEffect(() => {
-    if (id) {
-      fetchClientData();
-    }
-  }, [id, fetchClientData]);
-
   const fetchClientData = useCallback(async () => {
     try {
       setLoading(true);
@@ -130,7 +124,10 @@ export default function ClientProfile() {
         .order("created_at", { ascending: false });
 
       if (jobCardsError) throw jobCardsError;
-      setJobCards(jobCardsData || []);
+      setJobCards((jobCardsData || []).map(jc => ({
+        ...jc,
+        staff: Array.isArray(jc.staff) ? jc.staff[0] || null : jc.staff
+      })));
 
       // Fetch appointments
       const { data: appointmentsData, error: appointmentsError } = await supabase
@@ -143,7 +140,10 @@ export default function ClientProfile() {
         .order("appointment_date", { ascending: false });
 
       if (appointmentsError) throw appointmentsError;
-      setAppointments(appointmentsData || []);
+      setAppointments((appointmentsData || []).map(app => ({
+        ...app,
+        staff: Array.isArray(app.staff) ? app.staff[0] || null : app.staff
+      })));
 
     } catch (error) {
       console.error("Error fetching client data:", error);
@@ -151,6 +151,12 @@ export default function ClientProfile() {
       setLoading(false);
     }
   }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      fetchClientData();
+    }
+  }, [id, fetchClientData]);
 
   const getStatusBadge = (status: string) => {
     const statusColors = {
@@ -219,32 +225,27 @@ export default function ClientProfile() {
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-2 text-muted-foreground">Loading client profile...</p>
-          </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-muted-foreground">Loading client profile...</p>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
   if (!client) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-muted-foreground">Client not found</h2>
-            <p className="text-muted-foreground">The requested client profile could not be found.</p>
-          </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-muted-foreground">Client not found</h2>
+          <p className="text-muted-foreground">The requested client profile could not be found.</p>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout>
       <div className="flex-1 space-y-6 p-8 pt-6">
         {/* Client Header */}
         <Card className="mb-6">
@@ -611,6 +612,5 @@ export default function ClientProfile() {
           </TabsContent>
         </Tabs>
       </div>
-    </DashboardLayout>
   );
 }

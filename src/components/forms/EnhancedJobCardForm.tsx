@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -79,13 +79,6 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
   const technicianType = watch("technicianType");
   const selectedServices = watch("services") || [];
 
-  useEffect(() => {
-    fetchInitialData();
-    if (appointmentId) {
-      fetchAppointmentData();
-    }
-  }, [appointmentId, fetchAppointmentData, fetchInitialData]);
-
   const fetchInitialData = useCallback(async () => {
     try {
       const [staffRes, clientsRes, servicesRes] = await Promise.all([
@@ -99,6 +92,33 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
       if (servicesRes.data) setServices(servicesRes.data);
     } catch (error) {
       console.error("Error fetching initial data:", error);
+    }
+  }, []);
+
+  const fetchServiceKits = useCallback(async (serviceId: string) => {
+    try {
+      const { data: kitsData, error } = await supabase
+        .from("service_kits")
+        .select(`
+          *,
+          inventory_items!service_kits_good_id_fkey (
+            id, name, type, unit, cost_price
+          )
+        `)
+        .eq("service_id", serviceId);
+
+      if (error) throw error;
+      if (kitsData) {
+        setServiceKits(kitsData);
+        // Initialize product quantities with default values
+        const initialQuantities: {[key: string]: number} = {};
+        kitsData.forEach(kit => {
+          initialQuantities[kit.good_id] = kit.default_quantity || 1;
+        });
+        setProductQuantities(initialQuantities);
+      }
+    } catch (error) {
+      console.error("Error fetching service kits:", error);
     }
   }, []);
 
@@ -139,32 +159,13 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
     }
   }, [appointmentId, setValue, fetchServiceKits]);
 
-  const fetchServiceKits = useCallback(async (serviceId: string) => {
-    try {
-      const { data: kitsData, error } = await supabase
-        .from("service_kits")
-        .select(`
-          *,
-          inventory_items!service_kits_good_id_fkey (
-            id, name, type, unit, cost_price
-          )
-        `)
-        .eq("service_id", serviceId);
-
-      if (error) throw error;
-      if (kitsData) {
-        setServiceKits(kitsData);
-        // Initialize product quantities with default values
-        const initialQuantities: {[key: string]: number} = {};
-        kitsData.forEach(kit => {
-          initialQuantities[kit.good_id] = kit.default_quantity || 1;
-        });
-        setProductQuantities(initialQuantities);
-      }
-    } catch (error) {
-      console.error("Error fetching service kits:", error);
+  useEffect(() => {
+    fetchInitialData();
+    if (appointmentId) {
+      fetchAppointmentData();
     }
-  }, []);
+  }, [appointmentId, fetchAppointmentData, fetchInitialData]);
+
 
   const updateProductQuantity = (itemId: string, quantity: number) => {
     setProductQuantities(prev => ({
@@ -184,7 +185,7 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
         start_time: new Date(`${data.date}T${data.time}`).toISOString(),
         end_time: data.endTime ? new Date(`${data.date}T${data.endTime}`).toISOString() : null,
         status: 'completed',
-        total_amount: parseFloat(data.serviceCharge) || appointment?.total_amount || 0,
+        total_amount: parseFloat(data.serviceCharge as string) || appointment?.total_amount || 0,
         notes: JSON.stringify({
           technicianType: data.technicianType,
           services: data.services,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,10 +51,6 @@ export default function Expenses() {
     notes: "",
   });
 
-  useEffect(() => {
-    fetchExpenses();
-  }, [fetchExpenses]);
-
   const fetchExpenses = useCallback(async () => {
     try {
       setLoading(true);
@@ -76,6 +72,11 @@ export default function Expenses() {
       setLoading(false);
     }
   }, [toast]);
+
+  useEffect(() => {
+    fetchExpenses();
+  }, [fetchExpenses]);
+
 
   const generateExpenseNumber = () => {
     const timestamp = Date.now().toString().slice(-6);
@@ -218,19 +219,16 @@ export default function Expenses() {
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-2 text-muted-foreground">Loading expenses...</p>
-          </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-muted-foreground">Loading expenses...</p>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout>
       <div className="flex-1 space-y-6 p-8 pt-6">
         <div className="flex items-center justify-between">
           <h2 className="text-3xl font-bold tracking-tight">Expenses</h2>
@@ -495,6 +493,5 @@ export default function Expenses() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
   );
 }

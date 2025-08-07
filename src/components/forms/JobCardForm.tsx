@@ -125,7 +125,7 @@ export function JobCardForm({ clientId, appointmentId, onSuccess }: JobCardFormP
         job_number: `JOB-${Date.now()}`,
         start_time: new Date(`${data.date}T${data.time}`).toISOString(),
         status: 'completed',
-        total_amount: parseFloat(data.serviceCharge) || 0,
+        total_amount: parseFloat(data.serviceCharge as string) || 0,
         notes: JSON.stringify({
           technicianType: data.technicianType,
           services: data.services,
