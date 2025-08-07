@@ -251,7 +251,7 @@ const OrganizationSetup = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user || !selectedPlan) {
+    if (!user) { // || !selectedPlan) {
       toast.error('Please select a plan and ensure you are logged in');
       return;
     }
