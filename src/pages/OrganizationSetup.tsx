@@ -18,11 +18,18 @@ const OrganizationSetup = () => {
   const navigate = useNavigate();
   const { user, refreshOrganizationDataSilently, organization, organizations } = useSaas();
   
-  // If user already has organizations, redirect to dashboard
+  // If user already has organizations, redirect to dashboard (but allow manual override)
   useEffect(() => {
-    if (organization || organizations.length > 0) {
+    // Don't redirect if user explicitly navigated here via direct URL or button
+    const urlParams = new URLSearchParams(window.location.search);
+    const forceSetup = urlParams.get('force') === 'true';
+    
+    if ((organization || organizations.length > 0) && !forceSetup) {
       console.log('User already has organization, redirecting to dashboard');
-      navigate('/dashboard');
+      // Add a small delay to prevent race conditions
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 100);
       return;
     }
   }, [organization, organizations, navigate]);
@@ -217,7 +224,24 @@ const OrganizationSetup = () => {
           code: orgError.code
         });
         
-        // Try fallback method if RPC fails
+        // Provide specific error messages for common issues
+        if (orgError.message?.includes('function create_organization_with_user does not exist')) {
+          toast.error('Database setup incomplete. Please contact support or run the emergency script.');
+          console.error('💥 Missing function: create_organization_with_user');
+          throw orgError;
+        }
+        
+        if (orgError.message?.includes('duplicate key') || orgError.message?.includes('already exists')) {
+          toast.error('Organization name already exists. Please choose a different name.');
+          throw orgError;
+        }
+        
+        if (orgError.message?.includes('permission denied')) {
+          toast.error('Permission denied. Please log out and log back in.');
+          throw orgError;
+        }
+        
+        // Try fallback method if RPC fails (but not for auth errors)
         if (!orgError.message?.includes('User must be authenticated')) {
           console.log('RPC failed, trying fallback method...');
           
@@ -353,12 +377,25 @@ const OrganizationSetup = () => {
       
       // Clear any pending data and refresh
       localStorage.removeItem('pendingBusinessInfo');
-      await refreshOrganizationDataSilently();
       
-      // Use setTimeout to ensure state updates have processed
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 1000);
+      try {
+        // Refresh organization data with timeout
+        await Promise.race([
+          refreshOrganizationDataSilently(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+        ]);
+        
+        // Navigate after successful refresh
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 500);
+      } catch (error) {
+        console.warn('Organization data refresh failed or timed out:', error);
+        // Still navigate to dashboard even if refresh fails
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 1000);
+      }
 
     } catch (error: any) {
       console.error('Error creating organization:', error);
@@ -388,16 +425,28 @@ const OrganizationSetup = () => {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
+                onClick={async () => {
                   console.log('Manual navigation to dashboard');
-                  // Force refresh organization data before navigating
-                  refreshOrganizationDataSilently().then(() => {
+                  setLoading(true);
+                  try {
+                    // Force refresh organization data before navigating
+                    await Promise.race([
+                      refreshOrganizationDataSilently(),
+                      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+                    ]);
                     navigate('/dashboard');
-                  });
+                  } catch (error) {
+                    console.warn('Failed to refresh data, navigating anyway:', error);
+                    // Navigate anyway, even if refresh fails
+                    navigate('/dashboard');
+                  } finally {
+                    setLoading(false);
+                  }
                 }}
                 className="bg-white hover:bg-blue-50 border-blue-300"
+                disabled={loading}
               >
-                Go to Dashboard
+                {loading ? 'Loading...' : 'Go to Dashboard'}
               </Button>
             </div>
           </div>
@@ -607,6 +656,20 @@ const OrganizationSetup = () => {
                           return;
                         }
                         console.log('✅ User authenticated:', user.email);
+
+                        // Test subscription plans access
+                        console.log('\n2. Testing subscription plans access...');
+                        const { data: plans, error: plansError } = await supabase
+                          .from('subscription_plans')
+                          .select('id, name, slug')
+                          .eq('is_active', true);
+                        
+                        if (plansError) {
+                          console.error('❌ Cannot access subscription plans:', plansError.message);
+                          toast.error('Cannot access subscription plans. Check database permissions.');
+                          return;
+                        }
+                        console.log('✅ Found', plans?.length || 0, 'active plans');
 
                         // Test RPC function
                         const { error: funcError } = await supabase.rpc('create_organization_with_user', {
