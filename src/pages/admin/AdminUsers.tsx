@@ -99,9 +99,11 @@ const AdminUsers = () => {
       
       if (authError) throw authError;
 
+      const authUsers = (authData as any)?.users as any[] | undefined;
+
       // Combine profile and auth data
-      const transformedData = data?.map(profile => {
-        const authUser = authData.users.find(u => u.id === profile.id);
+      const transformedData = data?.map((profile: any) => {
+        const authUser = authUsers?.find((u: any) => u?.id === profile.id);
         return {
           ...profile,
           email: profile.email || authUser?.email,

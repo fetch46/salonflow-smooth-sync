@@ -471,7 +471,7 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false
     }
 
-    const planFeatures = PLAN_FEATURES[state.subscriptionPlan.slug]
+    const planFeatures = PLAN_FEATURES[state.subscriptionPlan.slug] || PLAN_FEATURES['starter']
     const featureConfig = planFeatures?.[feature as keyof typeof planFeatures]
     
     return featureConfig?.enabled || false
@@ -487,7 +487,7 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return calculateFeatureAccess(false)
     }
 
-    const planFeatures = PLAN_FEATURES[state.subscriptionPlan.slug]
+    const planFeatures = PLAN_FEATURES[state.subscriptionPlan.slug] || PLAN_FEATURES['starter']
     const featureConfig = planFeatures?.[feature as keyof typeof planFeatures]
     
     if (!featureConfig) {

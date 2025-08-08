@@ -91,7 +91,7 @@ export const useFeatureGating = (): UseFeatureGatingResult => {
       return false
     }
 
-    const planFeatures = PLAN_FEATURES[subscriptionPlan.slug]
+    const planFeatures = PLAN_FEATURES[subscriptionPlan.slug] || PLAN_FEATURES['starter']
     const featureConfig = planFeatures?.[feature as keyof typeof planFeatures]
     
     return featureConfig?.enabled || false
@@ -107,7 +107,7 @@ export const useFeatureGating = (): UseFeatureGatingResult => {
       return calculateFeatureAccess(false)
     }
 
-    const planFeatures = PLAN_FEATURES[subscriptionPlan.slug]
+    const planFeatures = PLAN_FEATURES[subscriptionPlan.slug] || PLAN_FEATURES['starter']
     const featureConfig = planFeatures?.[feature as keyof typeof planFeatures]
     
     if (!featureConfig) {
@@ -290,7 +290,7 @@ export const useUsageMonitoring = () => {
   const getUsagePercentage = useCallback((feature: string): number => {
     if (!subscriptionPlan) return 0
     
-    const planFeatures = PLAN_FEATURES[subscriptionPlan.slug]
+    const planFeatures = PLAN_FEATURES[subscriptionPlan.slug] || PLAN_FEATURES['starter']
     const featureConfig = planFeatures?.[feature as keyof typeof planFeatures]
     const usage = usageMetrics[feature] || 0
     const limit = featureConfig?.max
