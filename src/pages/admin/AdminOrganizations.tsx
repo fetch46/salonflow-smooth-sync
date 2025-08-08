@@ -38,6 +38,15 @@ interface NewOrganization {
   status: string;
   settings: string;
   metadata: string;
+  plan_id?: string;
+}
+
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  slug: string;
+  price_monthly: number;
+  price_yearly: number;
 }
 
 const AdminOrganizations = () => {
@@ -54,11 +63,14 @@ const AdminOrganizations = () => {
     logo_url: "",
     status: "active",
     settings: "{}",
-    metadata: "{}"
+    metadata: "{}",
+    plan_id: ""
   });
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
 
   useEffect(() => {
     fetchOrganizations();
+    fetchPlans();
   }, []);
 
   const fetchOrganizations = async () => {
@@ -96,6 +108,21 @@ const AdminOrganizations = () => {
     }
   };
 
+  const fetchPlans = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('subscription_plans')
+        .select('id, name, slug, price_monthly, price_yearly')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+      if (error) throw error;
+      setPlans(data || []);
+    } catch (error) {
+      console.error('Error fetching plans:', error);
+      toast.error('Failed to fetch subscription plans');
+    }
+  };
+
   const createOrganization = async () => {
     try {
       let settings, metadata;
@@ -118,7 +145,7 @@ const AdminOrganizations = () => {
         org_name: newOrganization.name,
         org_slug: slug,
         org_settings: settings,
-        plan_id: null,
+        plan_id: newOrganization.plan_id || null,
       });
 
       if (error) throw error;
@@ -136,6 +163,7 @@ const AdminOrganizations = () => {
         status: 'active',
         settings: '{}',
         metadata: '{}',
+        plan_id: '',
       });
       fetchOrganizations();
     } catch (error: any) {
@@ -427,6 +455,27 @@ const AdminOrganizations = () => {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="plan">Subscription Plan (optional)</Label>
+                <Select
+                  value={newOrganization.plan_id || ""}
+                  onValueChange={(value) =>
+                    setNewOrganization({ ...newOrganization, plan_id: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No plan</SelectItem>
+                    {plans.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} — ${Math.round(p.price_monthly / 100)}/mo
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="logo_url">Logo URL (optional)</Label>
