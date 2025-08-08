@@ -79,7 +79,7 @@ const superAdminMenuItems: SuperAdminMenuItem[] = [
         },
         {
           title: "Super Admins",
-          url: "/super-admin/super-admins",
+          url: "/admin/users",
           icon: Shield,
         },
     ],
@@ -106,7 +106,7 @@ const superAdminMenuItems: SuperAdminMenuItem[] = [
     subItems: [
       {
         title: "System Settings",
-        url: "/super-admin/settings",
+        url: "/settings",
         icon: Settings,
       },
     ],

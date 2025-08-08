@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
 import { FEATURE_CATEGORIES, FEATURE_LABELS } from "@/lib/features";
 import { useSaas } from "@/lib/saas/context";
+import { SuperAdminService } from "@/lib/saas/services";
 
 interface SubscriptionPlan {
   id: string;
@@ -66,7 +67,7 @@ const AdminSubscriptionPlans = () => {
     sort_order: "0"
   });
 
-  const { isSuperAdmin } = useSaas();
+  const { isSuperAdmin, user } = useSaas();
 
   // Feature toggles helpers
   const allFeatureKeys = (Object.values(FEATURE_CATEGORIES) as any[]).flatMap((c: any) => c.features);
@@ -86,6 +87,29 @@ const AdminSubscriptionPlans = () => {
     const current = getFeaturesObj();
     const next = { ...current, [key]: checked } as Record<string, boolean>;
     setNewPlan({ ...newPlan, features: JSON.stringify(next, null, 2) });
+  };
+
+  const handleOpenCreate = async () => {
+    if (isSuperAdmin) {
+      setIsCreateDialogOpen(true);
+      return;
+    }
+    try {
+      const uid = user?.id;
+      if (!uid) {
+        toast.error('User not authenticated');
+        return;
+      }
+      const ok = await SuperAdminService.checkSuperAdminStatus(uid);
+      if (ok) {
+        setIsCreateDialogOpen(true);
+      } else {
+        toast.error('Only super admins can create subscription plans');
+      }
+    } catch (e) {
+      console.error('Error checking super admin status:', e);
+      toast.error('Permission check failed');
+    }
   };
 
   useEffect(() => {
@@ -271,7 +295,7 @@ const AdminSubscriptionPlans = () => {
             <h1 className="text-3xl font-bold text-gray-900">Subscription Plans</h1>
             <p className="text-gray-500 mt-1">Manage subscription plans and pricing</p>
           </div>
-          <Button onClick={() => { if (!isSuperAdmin) { toast.error('Only super admins can create subscription plans'); return; } setIsCreateDialogOpen(true); }}>
+          <Button onClick={handleOpenCreate}>
             <Plus className="h-4 w-4 mr-2" />
             Create Plan
           </Button>
