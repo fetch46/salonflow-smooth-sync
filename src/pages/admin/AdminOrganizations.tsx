@@ -489,26 +489,6 @@ const AdminOrganizations = () => {
                   placeholder="https://example.com/logo.png"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="settings">Settings (JSON)</Label>
-                <Textarea
-                  id="settings"
-                  value={newOrganization.settings}
-                  onChange={(e) => setNewOrganization({...newOrganization, settings: e.target.value})}
-                  placeholder="{}"
-                  rows={3}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="metadata">Metadata (JSON)</Label>
-                <Textarea
-                  id="metadata"
-                  value={newOrganization.metadata}
-                  onChange={(e) => setNewOrganization({...newOrganization, metadata: e.target.value})}
-                  placeholder="{}"
-                  rows={3}
-                />
-              </div>
             </div>
             <div className="flex justify-end space-x-2">
               <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
