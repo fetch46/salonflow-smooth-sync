@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useSaas } from '@/contexts/SaasContext';
+import { useSaas } from '@/lib/saas';
 import { PLAN_FEATURES, FeatureLimit, FEATURE_LABELS } from '@/lib/features';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';

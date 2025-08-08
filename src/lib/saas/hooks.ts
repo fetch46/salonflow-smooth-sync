@@ -1,0 +1,378 @@
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useSaas } from './context'
+import type {
+  UseOrganizationResult,
+  UseSubscriptionResult,
+  UseFeatureGatingResult,
+  UsePermissionsResult,
+  Organization,
+  CreateOrganizationData,
+  FeatureAccess,
+  UserRole,
+} from './types'
+import { PLAN_FEATURES } from '@/lib/features'
+import { 
+  isSubscriptionActive, 
+  isSubscriptionTrialing, 
+  calculateFeatureAccess,
+  hasMinimumRole,
+  canPerformAction,
+} from './utils'
+
+/**
+ * Hook for organization management
+ */
+export const useOrganization = (): UseOrganizationResult => {
+  const {
+    organization,
+    organizations,
+    loading,
+    error,
+    switchOrganization,
+    createOrganization,
+    updateOrganization,
+  } = useSaas()
+
+  return {
+    organization,
+    organizations,
+    loading,
+    error,
+    switchOrganization,
+    createOrganization,
+    updateOrganization,
+  }
+}
+
+/**
+ * Hook for subscription management
+ */
+export const useSubscription = (): UseSubscriptionResult => {
+  const {
+    subscription,
+    subscriptionPlan: plan,
+    subscriptionStatus: status,
+    loading,
+    error,
+    updateSubscription,
+    cancelSubscription,
+  } = useSaas()
+
+  return {
+    subscription,
+    plan,
+    status,
+    loading,
+    error,
+    updateSubscription,
+    cancelSubscription,
+  }
+}
+
+/**
+ * Enhanced feature gating hook
+ */
+export const useFeatureGating = (): UseFeatureGatingResult => {
+  const {
+    subscriptionPlan,
+    subscriptionStatus,
+    usageMetrics,
+    refreshUsage,
+    loading,
+  } = useSaas()
+
+  const hasFeature = useCallback((feature: string): boolean => {
+    if (!subscriptionPlan || !isSubscriptionActive(subscriptionStatus)) {
+      // During trial or if no subscription, allow basic features
+      if (isSubscriptionTrialing(subscriptionStatus)) {
+        const trialFeatures = ['appointments', 'clients', 'staff', 'services', 'reports', 'invoices']
+        return trialFeatures.includes(feature)
+      }
+      return false
+    }
+
+    const planFeatures = PLAN_FEATURES[subscriptionPlan.slug]
+    const featureConfig = planFeatures?.[feature as keyof typeof planFeatures]
+    
+    return featureConfig?.enabled || false
+  }, [subscriptionPlan, subscriptionStatus])
+
+  const getFeatureAccess = useCallback((feature: string): FeatureAccess => {
+    if (!subscriptionPlan || !isSubscriptionActive(subscriptionStatus)) {
+      if (isSubscriptionTrialing(subscriptionStatus)) {
+        const trialFeatures = ['appointments', 'clients', 'staff', 'services', 'reports', 'invoices']
+        const enabled = trialFeatures.includes(feature)
+        return calculateFeatureAccess(enabled)
+      }
+      return calculateFeatureAccess(false)
+    }
+
+    const planFeatures = PLAN_FEATURES[subscriptionPlan.slug]
+    const featureConfig = planFeatures?.[feature as keyof typeof planFeatures]
+    
+    if (!featureConfig) {
+      return calculateFeatureAccess(false)
+    }
+
+    const usage = usageMetrics[feature] || 0
+    return calculateFeatureAccess(featureConfig.enabled, featureConfig.max, usage)
+  }, [subscriptionPlan, subscriptionStatus, usageMetrics])
+
+  const enforceLimit = useCallback((feature: string): boolean => {
+    const access = getFeatureAccess(feature)
+    return access.canCreate
+  }, [getFeatureAccess])
+
+  return {
+    hasFeature,
+    getFeatureAccess,
+    enforceLimit,
+    usageMetrics,
+    loading,
+    refreshUsage,
+  }
+}
+
+/**
+ * Hook for permissions and role checking
+ */
+export const usePermissions = (): UsePermissionsResult => {
+  const { organizationRole } = useSaas()
+
+  const canPerformActionCheck = useCallback((action: string, resource: string): boolean => {
+    return canPerformAction(organizationRole, action, resource)
+  }, [organizationRole])
+
+  const hasRole = useCallback((role: UserRole): boolean => {
+    return organizationRole === role
+  }, [organizationRole])
+
+  const hasMinimumRoleCheck = useCallback((minRole: UserRole): boolean => {
+    return hasMinimumRole(organizationRole, minRole)
+  }, [organizationRole])
+
+  return {
+    canPerformAction: canPerformActionCheck,
+    hasRole,
+    hasMinimumRole: hasMinimumRoleCheck,
+    userRole: organizationRole,
+  }
+}
+
+/**
+ * Hook for checking specific feature access
+ */
+export const useFeatureAccess = (feature: string) => {
+  const { getFeatureAccess, hasFeature } = useFeatureGating()
+  
+  const access = useMemo(() => getFeatureAccess(feature), [getFeatureAccess, feature])
+  const enabled = useMemo(() => hasFeature(feature), [hasFeature, feature])
+
+  return {
+    access,
+    enabled,
+    canCreate: access.canCreate,
+    isApproachingLimit: access.warningThreshold && access.usage !== undefined 
+      ? access.usage >= access.warningThreshold 
+      : false,
+    isAtLimit: !access.canCreate && access.enabled,
+    upgradeRequired: access.upgradeRequired,
+  }
+}
+
+/**
+ * Hook for organization switching with loading state
+ */
+export const useOrganizationSwitcher = () => {
+  const { organizations, organization, switchOrganization } = useSaas()
+  const [switching, setSwitching] = useState(false)
+
+  const handleSwitch = useCallback(async (organizationId: string) => {
+    if (organization?.id === organizationId) return
+    
+    setSwitching(true)
+    try {
+      await switchOrganization(organizationId)
+    } finally {
+      setSwitching(false)
+    }
+  }, [organization, switchOrganization])
+
+  return {
+    organizations,
+    currentOrganization: organization,
+    switching,
+    switchTo: handleSwitch,
+  }
+}
+
+/**
+ * Hook for user invitation management
+ */
+export const useUserInvitations = () => {
+  const { inviteUser, canManageUsers } = useSaas()
+  const [inviting, setInviting] = useState(false)
+
+  const sendInvitation = useCallback(async (email: string, role: UserRole) => {
+    if (!canManageUsers) {
+      throw new Error('Insufficient permissions to invite users')
+    }
+
+    setInviting(true)
+    try {
+      const invitation = await inviteUser(email, role)
+      return invitation
+    } finally {
+      setInviting(false)
+    }
+  }, [inviteUser, canManageUsers])
+
+  return {
+    sendInvitation,
+    inviting,
+    canInvite: canManageUsers,
+  }
+}
+
+/**
+ * Hook for subscription plan comparison
+ */
+export const useSubscriptionPlans = () => {
+  const { subscriptionPlan } = useSaas()
+  const [plans, setPlans] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    // This would typically fetch from an API
+    // For now, using the static PLAN_FEATURES
+    setPlans(Object.entries(PLAN_FEATURES).map(([slug, features]) => ({
+      slug,
+      features,
+    })))
+  }, [])
+
+  const currentPlan = useMemo(() => {
+    return subscriptionPlan ? plans.find(p => p.slug === subscriptionPlan.slug) : null
+  }, [subscriptionPlan, plans])
+
+  const compareFeatures = useCallback((feature: string) => {
+    return plans.map(plan => ({
+      plan: plan.slug,
+      enabled: plan.features[feature]?.enabled || false,
+      limit: plan.features[feature]?.max,
+    }))
+  }, [plans])
+
+  return {
+    plans,
+    currentPlan,
+    loading,
+    compareFeatures,
+  }
+}
+
+/**
+ * Hook for usage monitoring
+ */
+export const useUsageMonitoring = () => {
+  const { usageMetrics, refreshUsage, subscriptionPlan } = useSaas()
+  const [refreshing, setRefreshing] = useState(false)
+
+  const refresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await refreshUsage()
+    } finally {
+      setRefreshing(false)
+    }
+  }, [refreshUsage])
+
+  const getUsagePercentage = useCallback((feature: string): number => {
+    if (!subscriptionPlan) return 0
+    
+    const planFeatures = PLAN_FEATURES[subscriptionPlan.slug]
+    const featureConfig = planFeatures?.[feature as keyof typeof planFeatures]
+    const usage = usageMetrics[feature] || 0
+    const limit = featureConfig?.max
+    
+    if (!limit) return 0
+    return Math.min(100, (usage / limit) * 100)
+  }, [usageMetrics, subscriptionPlan])
+
+  const getUsageStatus = useCallback((feature: string): 'normal' | 'warning' | 'danger' => {
+    const percentage = getUsagePercentage(feature)
+    if (percentage >= 95) return 'danger'
+    if (percentage >= 80) return 'warning'
+    return 'normal'
+  }, [getUsagePercentage])
+
+  return {
+    usageMetrics,
+    refreshing,
+    refresh,
+    getUsagePercentage,
+    getUsageStatus,
+  }
+}
+
+/**
+ * Hook for trial management
+ */
+export const useTrialStatus = () => {
+  const { 
+    subscription, 
+    isTrialing, 
+    daysLeftInTrial, 
+    subscriptionPlan,
+    updateSubscription 
+  } = useSaas()
+
+  const [upgrading, setUpgrading] = useState(false)
+
+  const upgradeToPlan = useCallback(async (planId: string) => {
+    setUpgrading(true)
+    try {
+      await updateSubscription(planId)
+    } finally {
+      setUpgrading(false)
+    }
+  }, [updateSubscription])
+
+  const trialStatus = useMemo(() => {
+    if (!isTrialing) return null
+    
+    if (daysLeftInTrial === null) return null
+    
+    if (daysLeftInTrial <= 0) return 'expired'
+    if (daysLeftInTrial <= 3) return 'critical'
+    if (daysLeftInTrial <= 7) return 'warning'
+    return 'active'
+  }, [isTrialing, daysLeftInTrial])
+
+  return {
+    isTrialing,
+    daysLeftInTrial,
+    trialStatus,
+    upgradeToPlan,
+    upgrading,
+    hasActivePlan: !!subscriptionPlan,
+  }
+}
+
+/**
+ * Hook for role-based component rendering
+ */
+export const useRoleGuard = (requiredRole: UserRole) => {
+  const { hasMinimumRole } = usePermissions()
+  
+  return hasMinimumRole(requiredRole)
+}
+
+/**
+ * Hook for feature-based component rendering
+ */
+export const useFeatureGuard = (feature: string) => {
+  const { hasFeature } = useFeatureGating()
+  
+  return hasFeature(feature)
+}

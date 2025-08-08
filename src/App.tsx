@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { SaasProvider, useSaas } from "@/contexts/SaasContext";
+import { SaasProvider, useSaas } from "@/lib/saas";
 import { Toaster } from "@/components/ui/sonner";
 
 // Layouts
