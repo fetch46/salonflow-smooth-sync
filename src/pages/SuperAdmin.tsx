@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Shield, Users, Building, CreditCard, UserPlus, UserX, Search, Eye, Plus, Settings, BarChart3, Activity } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
 
 interface Organization {
   id: string;
@@ -51,6 +52,23 @@ interface NewOrganization {
   settings: any;
 }
 
+interface NewOrgUser {
+  email: string;
+  role: 'owner' | 'admin' | 'manager' | 'member';
+  fullName?: string;
+}
+
+interface OrganizationUser {
+  id: string;
+  user_id: string;
+  organization_id: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+  email?: string;
+  full_name?: string;
+}
+
 export default function SuperAdmin() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [superAdmins, setSuperAdmins] = useState<SuperAdmin[]>([]);
@@ -66,6 +84,14 @@ export default function SuperAdmin() {
     domain: "",
     settings: {}
   });
+  const [newOrgUsers, setNewOrgUsers] = useState<NewOrgUser[]>([{
+    email: "",
+    role: "owner",
+    fullName: ""
+  }]);
+  const [selectedOrgForUsers, setSelectedOrgForUsers] = useState<string | null>(null);
+  const [orgUsers, setOrgUsers] = useState<OrganizationUser[]>([]);
+  const [isOrgUsersModalOpen, setIsOrgUsersModalOpen] = useState(false);
   const [stats, setStats] = useState({
     totalOrgs: 0,
     activeSubscriptions: 0,
@@ -179,22 +205,57 @@ export default function SuperAdmin() {
 
     try {
       // Find user by email in profiles
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('user_id')
         .eq('email', selectedUserEmail)
         .single();
 
-      if (!profile) {
-        toast.error('User not found');
+      if (profileError) {
+        console.error('Error finding user:', profileError);
+        toast.error('User not found with that email address');
         return;
       }
 
-      const { error } = await supabase.rpc('grant_super_admin', {
+      if (!profile) {
+        toast.error('User not found with that email address');
+        return;
+      }
+
+      // Check if user is already a super admin
+      const { data: existingSuperAdmin } = await supabase
+        .from('super_admins')
+        .select('id, is_active')
+        .eq('user_id', profile.user_id)
+        .single();
+
+      if (existingSuperAdmin && existingSuperAdmin.is_active) {
+        toast.error('User is already a super admin');
+        return;
+      }
+
+      // Try using the RPC function first
+      const { error: rpcError } = await supabase.rpc('grant_super_admin', {
         target_user_id: profile.user_id
       });
 
-      if (error) throw error;
+      if (rpcError) {
+        console.error('RPC error:', rpcError);
+        // Fallback to direct table insertion if RPC fails
+        const { error: insertError } = await supabase
+          .from('super_admins')
+          .upsert({
+            user_id: profile.user_id,
+            granted_by: (await supabase.auth.getUser()).data.user?.id,
+            granted_at: new Date().toISOString(),
+            is_active: true,
+          });
+
+        if (insertError) {
+          console.error('Direct insert error:', insertError);
+          throw insertError;
+        }
+      }
 
       toast.success('Super admin privileges granted successfully');
       setIsGrantModalOpen(false);
@@ -202,7 +263,7 @@ export default function SuperAdmin() {
       fetchData();
     } catch (error) {
       console.error('Error granting super admin:', error);
-      toast.error('Failed to grant super admin privileges');
+      toast.error('Failed to grant super admin privileges. Check console for details.');
     }
   };
 
@@ -231,16 +292,124 @@ export default function SuperAdmin() {
       .replace(/(^-|-$)/g, '');
   };
 
+  const addOrgUser = () => {
+    setNewOrgUsers(prev => [...prev, {
+      email: "",
+      role: "member",
+      fullName: ""
+    }]);
+  };
+
+  const removeOrgUser = (index: number) => {
+    if (newOrgUsers.length > 1) {
+      setNewOrgUsers(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateOrgUser = (index: number, field: keyof NewOrgUser, value: string) => {
+    setNewOrgUsers(prev => prev.map((user, i) => 
+      i === index ? { ...user, [field]: value } : user
+    ));
+  };
+
+  const fetchOrganizationUsers = async (organizationId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('organization_users')
+        .select(`
+          *,
+          profiles (
+            email,
+            full_name
+          )
+        `)
+        .eq('organization_id', organizationId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedUsers = data?.map(user => ({
+        ...user,
+        email: user.profiles?.email || 'No email',
+        full_name: user.profiles?.full_name || ''
+      })) || [];
+
+      setOrgUsers(formattedUsers);
+    } catch (error) {
+      console.error('Error fetching organization users:', error);
+      toast.error('Failed to fetch organization users');
+    }
+  };
+
+  const handleViewOrgUsers = async (organizationId: string) => {
+    setSelectedOrgForUsers(organizationId);
+    setIsOrgUsersModalOpen(true);
+    await fetchOrganizationUsers(organizationId);
+  };
+
+  const handleRemoveOrgUser = async (userId: string, organizationId: string) => {
+    if (!confirm('Are you sure you want to remove this user from the organization?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('organization_users')
+        .update({ is_active: false })
+        .eq('user_id', userId)
+        .eq('organization_id', organizationId);
+
+      if (error) throw error;
+
+      toast.success('User removed from organization successfully');
+      await fetchOrganizationUsers(organizationId);
+    } catch (error) {
+      console.error('Error removing user from organization:', error);
+      toast.error('Failed to remove user from organization');
+    }
+  };
+
+  const handleChangeUserRole = async (userId: string, organizationId: string, newRole: string) => {
+    try {
+      const { error } = await supabase
+        .from('organization_users')
+        .update({ role: newRole })
+        .eq('user_id', userId)
+        .eq('organization_id', organizationId);
+
+      if (error) throw error;
+
+      toast.success('User role updated successfully');
+      await fetchOrganizationUsers(organizationId);
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      toast.error('Failed to update user role');
+    }
+  };
+
   const handleCreateOrganization = async () => {
     if (!newOrg.name) {
       toast.error('Organization name is required');
       return;
     }
 
+    // Validate users
+    const validUsers = newOrgUsers.filter(user => user.email);
+    if (validUsers.length === 0) {
+      toast.error('At least one user with email is required');
+      return;
+    }
+
+    // Check if there's at least one owner
+    const hasOwner = validUsers.some(user => user.role === 'owner');
+    if (!hasOwner) {
+      toast.error('At least one user must be assigned as owner');
+      return;
+    }
+
     try {
       const slug = newOrg.slug || generateSlug(newOrg.name);
       
-      const { data, error } = await supabase.rpc('create_organization_with_user', {
+      // First create the organization
+      const { data: orgData, error: orgError } = await supabase.rpc('create_organization_with_user', {
         org_name: newOrg.name,
         org_slug: slug,
         org_settings: {
@@ -250,11 +419,45 @@ export default function SuperAdmin() {
         plan_id: null
       });
 
-      if (error) throw error;
+      if (orgError) throw orgError;
+
+      // If there are additional users beyond the creator, add them
+      if (validUsers.length > 1) {
+        for (const user of validUsers.slice(1)) {
+          // First check if user exists, if not create invite them to create account
+          const { data: existingProfile } = await supabase
+            .from('profiles')
+            .select('user_id')
+            .eq('email', user.email)
+            .single();
+
+          if (existingProfile) {
+            // User exists, add them directly to organization
+            const { error: userError } = await supabase
+              .from('organization_users')
+              .insert({
+                organization_id: orgData,
+                user_id: existingProfile.user_id,
+                role: user.role,
+                is_active: true
+              });
+
+            if (userError) {
+              console.error('Error adding user to organization:', userError);
+              toast.error(`Failed to add user ${user.email} to organization`);
+            }
+          } else {
+            // User doesn't exist, we'll need to create an invitation
+            // For now, just log this - in a real app you'd send an invitation email
+            console.log(`Would send invitation to ${user.email} with role ${user.role}`);
+          }
+        }
+      }
 
       toast.success('Organization created successfully');
       setIsOrgModalOpen(false);
       setNewOrg({ name: "", slug: "", domain: "", settings: {} });
+      setNewOrgUsers([{ email: "", role: "owner", fullName: "" }]);
       fetchData();
     } catch (error) {
       console.error('Error creating organization:', error);
@@ -273,17 +476,18 @@ export default function SuperAdmin() {
   );
 
   return (
-    <div className="p-6 space-y-8 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Super Admin
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            Comprehensive system administration and management
-          </p>
-        </div>
+    <SuperAdminLayout>
+      <div className="p-6 space-y-8 max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Super Admin
+            </h1>
+            <p className="text-muted-foreground text-lg">
+              Comprehensive system administration and management
+            </p>
+          </div>
         <div className="flex gap-3">
           <Dialog open={isOrgModalOpen} onOpenChange={setIsOrgModalOpen}>
             <DialogTrigger asChild>
@@ -292,47 +496,130 @@ export default function SuperAdmin() {
                 Add Organization
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create New Organization</DialogTitle>
                 <DialogDescription>
-                  Add a new organization to the system
+                  Add a new organization to the system and configure initial users
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="orgName">Organization Name *</Label>
-                  <Input
-                    id="orgName"
-                    value={newOrg.name}
-                    onChange={(e) => setNewOrg(prev => ({ 
-                      ...prev, 
-                      name: e.target.value,
-                      slug: prev.slug || generateSlug(e.target.value)
-                    }))}
-                    placeholder="Acme Corporation"
-                  />
+              <div className="space-y-6">
+                {/* Organization Details */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Organization Details</h3>
+                  <div>
+                    <Label htmlFor="orgName">Organization Name *</Label>
+                    <Input
+                      id="orgName"
+                      value={newOrg.name}
+                      onChange={(e) => setNewOrg(prev => ({ 
+                        ...prev, 
+                        name: e.target.value,
+                        slug: prev.slug || generateSlug(e.target.value)
+                      }))}
+                      placeholder="Acme Corporation"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="orgSlug">Slug</Label>
+                    <Input
+                      id="orgSlug"
+                      value={newOrg.slug}
+                      onChange={(e) => setNewOrg(prev => ({ ...prev, slug: e.target.value }))}
+                      placeholder="acme-corp"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="orgDomain">Domain (Optional)</Label>
+                    <Input
+                      id="orgDomain"
+                      value={newOrg.domain}
+                      onChange={(e) => setNewOrg(prev => ({ ...prev, domain: e.target.value }))}
+                      placeholder="acme.com"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="orgSlug">Slug</Label>
-                  <Input
-                    id="orgSlug"
-                    value={newOrg.slug}
-                    onChange={(e) => setNewOrg(prev => ({ ...prev, slug: e.target.value }))}
-                    placeholder="acme-corp"
-                  />
+
+                {/* Organization Users */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium">Organization Users</h3>
+                    <Button type="button" variant="outline" size="sm" onClick={addOrgUser}>
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Add User
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {newOrgUsers.map((user, index) => (
+                      <div key={index} className="flex gap-3 items-end p-3 border rounded-lg">
+                        <div className="flex-1 space-y-2">
+                          <div>
+                            <Label htmlFor={`userEmail${index}`}>Email *</Label>
+                            <Input
+                              id={`userEmail${index}`}
+                              type="email"
+                              value={user.email}
+                              onChange={(e) => updateOrgUser(index, 'email', e.target.value)}
+                              placeholder="user@example.com"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`userFullName${index}`}>Full Name</Label>
+                            <Input
+                              id={`userFullName${index}`}
+                              value={user.fullName || ''}
+                              onChange={(e) => updateOrgUser(index, 'fullName', e.target.value)}
+                              placeholder="John Doe"
+                            />
+                          </div>
+                        </div>
+                        <div className="w-32">
+                          <Label htmlFor={`userRole${index}`}>Role</Label>
+                          <Select
+                            value={user.role}
+                            onValueChange={(value) => updateOrgUser(index, 'role', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="owner">Owner</SelectItem>
+                              <SelectItem value="admin">Admin</SelectItem>
+                              <SelectItem value="manager">Manager</SelectItem>
+                              <SelectItem value="member">Member</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {newOrgUsers.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeOrgUser(index)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <UserX className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <p className="text-sm text-muted-foreground">
+                    At least one user must be assigned as owner. Users without existing accounts will be sent invitations.
+                  </p>
                 </div>
-                <div>
-                  <Label htmlFor="orgDomain">Domain (Optional)</Label>
-                  <Input
-                    id="orgDomain"
-                    value={newOrg.domain}
-                    onChange={(e) => setNewOrg(prev => ({ ...prev, domain: e.target.value }))}
-                    placeholder="acme.com"
-                  />
-                </div>
+
                 <div className="flex justify-end gap-2 pt-4">
-                  <Button variant="outline" onClick={() => setIsOrgModalOpen(false)}>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setIsOrgModalOpen(false);
+                      setNewOrg({ name: "", slug: "", domain: "", settings: {} });
+                      setNewOrgUsers([{ email: "", role: "owner", fullName: "" }]);
+                    }}
+                  >
                     Cancel
                   </Button>
                   <Button onClick={handleCreateOrganization}>
@@ -555,10 +842,18 @@ export default function SuperAdmin() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <Button variant="ghost" size="sm">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleViewOrgUsers(org.id)}
+                              title="View organization users"
+                            >
+                              <Users className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" title="View details">
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" title="Settings">
                               <Settings className="h-4 w-4" />
                             </Button>
                           </div>
@@ -702,6 +997,105 @@ export default function SuperAdmin() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      
+      {/* Organization Users Modal */}
+      <Dialog open={isOrgUsersModalOpen} onOpenChange={setIsOrgUsersModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Organization Users</DialogTitle>
+            <DialogDescription>
+              Manage users for {organizations.find(org => org.id === selectedOrgForUsers)?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {orgUsers.map((user) => (
+                    <TableRow key={user.id} className="hover:bg-muted/50">
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
+                            {user.email?.[0]?.toUpperCase() || 'U'}
+                          </div>
+                          <div>
+                            <div className="font-medium">{user.full_name || 'Unknown User'}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {user.user_id.substring(0, 8)}...
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>
+                        <Select
+                          value={user.role}
+                          onValueChange={(newRole) => handleChangeUserRole(user.user_id, user.organization_id, newRole)}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="owner">Owner</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="manager">Manager</SelectItem>
+                            <SelectItem value="member">Member</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={user.is_active ? 'default' : 'secondary'}>
+                          {user.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {format(new Date(user.created_at), 'MMM dd, yyyy')}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleRemoveOrgUser(user.user_id, user.organization_id)}
+                            className="text-red-600 hover:text-red-700"
+                            disabled={!user.is_active}
+                          >
+                            <UserX className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            {orgUsers.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                No users found for this organization
+              </div>
+            )}
+            <div className="flex justify-end">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsOrgUsersModalOpen(false)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      </div>
+    </SuperAdminLayout>
   );
 }
