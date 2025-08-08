@@ -105,9 +105,11 @@ const AdminDashboard = () => {
         active: subs?.filter(s => s.status === 'active').length || 0,
         trial: subs?.filter(s => s.status === 'trial').length || 0,
         canceled: subs?.filter(s => s.status === 'canceled').length || 0,
-        revenue: subs?.reduce((total, sub) => {
-          if (sub.status === 'active' && sub.subscription_plans?.price_monthly) {
-            return total + sub.subscription_plans.price_monthly;
+        revenue: (subs as any[])?.reduce((total, sub) => {
+          const plan = Array.isArray(sub.subscription_plans) ? sub.subscription_plans[0] : sub.subscription_plans;
+          const price = plan?.price_monthly ?? 0;
+          if (sub.status === 'active' && typeof price === 'number') {
+            return total + price;
           }
           return total;
         }, 0) || 0
@@ -120,13 +122,14 @@ const AdminDashboard = () => {
       try {
         const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
         
-        if (!authError && authUsers?.users) {
+        const users = (authUsers as any)?.users as any[] | undefined;
+        if (!authError && users) {
           userStats = {
-            total: authUsers.users.length,
-            recent: authUsers.users.filter(u => 
-              u.created_at && new Date(u.created_at) > subDays(new Date(), 7)
+            total: users.length,
+            recent: users.filter(u => 
+              u?.created_at && new Date(u.created_at) > subDays(new Date(), 7)
             ).length,
-            confirmed: authUsers.users.filter(u => u.email_confirmed_at).length
+            confirmed: users.filter(u => u?.email_confirmed_at).length
           };
         }
       } catch (error) {
@@ -238,12 +241,14 @@ const AdminDashboard = () => {
         .order('created_at', { ascending: false })
         .limit(5);
 
-      recentSubs?.forEach(sub => {
+      recentSubs?.forEach((sub: any) => {
+        const org = Array.isArray(sub.organizations) ? sub.organizations[0] : sub.organizations;
+        const plan = Array.isArray(sub.subscription_plans) ? sub.subscription_plans[0] : sub.subscription_plans;
         activities.push({
           type: 'subscription',
-          description: `${sub.organizations?.name} subscribed to ${sub.subscription_plans?.name}`,
+          description: `${org?.name ?? 'Organization'} subscribed to ${plan?.name ?? 'a plan'}`,
           timestamp: sub.created_at,
-          organization: sub.organizations?.name
+          organization: org?.name
         });
       });
 

@@ -277,7 +277,7 @@ const AdminBusinessData = () => {
                   <Card key={table.name} className="hover:shadow-md transition-shadow cursor-pointer"
                         onClick={() => {
                           setSelectedTable(table.name);
-                          document.querySelector('[value="data"]')?.click();
+                          (document.querySelector('[value="data"]') as HTMLElement | null)?.click();
                         }}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium">
