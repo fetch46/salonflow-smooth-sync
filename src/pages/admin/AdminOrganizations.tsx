@@ -459,16 +459,19 @@ const AdminOrganizations = () => {
               <div className="space-y-2">
                 <Label htmlFor="plan">Subscription Plan (optional)</Label>
                 <Select
-                  value={newOrganization.plan_id || ""}
+                  value={newOrganization.plan_id || undefined}
                   onValueChange={(value) =>
-                    setNewOrganization({ ...newOrganization, plan_id: value })
+                    setNewOrganization({
+                      ...newOrganization,
+                      plan_id: value === 'none' ? '' : value,
+                    })
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose a plan" />
+                    <SelectValue placeholder="Choose a plan (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No plan</SelectItem>
+                    <SelectItem value="none">No plan</SelectItem>
                     {plans.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
                         {p.name} — ${Math.round(p.price_monthly / 100)}/mo
