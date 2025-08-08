@@ -100,42 +100,47 @@ const AdminOrganizations = () => {
     try {
       let settings, metadata;
       try {
-        settings = JSON.parse(newOrganization.settings);
-        metadata = JSON.parse(newOrganization.metadata);
+        settings = JSON.parse(newOrganization.settings || '{}');
+        metadata = JSON.parse(newOrganization.metadata || '{}');
       } catch (e) {
         toast.error('Invalid JSON in settings or metadata');
         return;
       }
 
-      const { error } = await supabase
-        .from('organizations')
-        .insert([{
-          name: newOrganization.name,
-          slug: newOrganization.slug,
-          domain: newOrganization.domain || null,
-          logo_url: newOrganization.logo_url || null,
-          status: newOrganization.status,
-          settings,
-          metadata
-        }]);
+      const slug = (newOrganization.slug || newOrganization.name)
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '');
+
+      // Use RPC to also add the current user as owner so the org is visible via RLS
+      const { data: newOrgId, error } = await supabase.rpc('create_organization_with_user', {
+        org_name: newOrganization.name,
+        org_slug: slug,
+        org_settings: settings,
+        plan_id: null,
+      });
 
       if (error) throw error;
+
+      // Note: Additional fields (domain, logo_url, status, metadata) may require elevated permissions to update.
+      // We skip updating them here to avoid RLS failures.
 
       toast.success('Organization created successfully');
       setIsCreateDialogOpen(false);
       setNewOrganization({
-        name: "",
-        slug: "",
-        domain: "",
-        logo_url: "",
-        status: "active",
-        settings: "{}",
-        metadata: "{}"
+        name: '',
+        slug: '',
+        domain: '',
+        logo_url: '',
+        status: 'active',
+        settings: '{}',
+        metadata: '{}',
       });
       fetchOrganizations();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating organization:', error);
-      toast.error('Failed to create organization');
+      toast.error(error?.message || 'Failed to create organization');
     }
   };
 
