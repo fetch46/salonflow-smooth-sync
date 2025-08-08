@@ -128,7 +128,7 @@ const Landing = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link to="/register">
               <Button size="lg" className="text-lg px-8 py-6">
-                Register Your Salon
+                Get Started Free
               </Button>
             </Link>
             <Link to="/register">
@@ -141,15 +141,15 @@ const Landing = () => {
           <div className="mt-8 flex items-center justify-center space-x-6 text-sm text-muted-foreground">
             <div className="flex items-center">
               <CheckCircle className="w-4 h-4 mr-1 text-success" />
+              Setup in 2 minutes
+            </div>
+            <div className="flex items-center">
+              <CheckCircle className="w-4 h-4 mr-1 text-success" />
+              No credit card required
+            </div>
+            <div className="flex items-center">
+              <CheckCircle className="w-4 h-4 mr-1 text-success" />
               Free 14-day trial
-            </div>
-            <div className="flex items-center">
-              <CheckCircle className="w-4 h-4 mr-1 text-success" />
-              No setup fees
-            </div>
-            <div className="flex items-center">
-              <CheckCircle className="w-4 h-4 mr-1 text-success" />
-              Cancel anytime
             </div>
           </div>
         </div>
