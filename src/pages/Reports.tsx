@@ -18,7 +18,7 @@ import {
   Activity,
   Target,
 } from 'lucide-react';
-import { useSaas } from '@/contexts/SaasContext';
+import { useSaas } from '@/lib/saas/context';
 
 const Reports = () => {
   const { organization, subscriptionPlan } = useSaas();

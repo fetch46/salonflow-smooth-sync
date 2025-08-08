@@ -25,7 +25,7 @@ import {
   Package,
   DollarSign,
 } from 'lucide-react';
-import { useSaas } from '@/contexts/SaasContext';
+import { useSaas } from '@/lib/saas/context';
 
 const Help = () => {
   const { organization } = useSaas();

@@ -42,7 +42,7 @@ import {
   MessageSquare
 } from "lucide-react";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
-import { useSaas } from "@/contexts/SaasContext";
+import { useSaas } from "@/lib/saas/context";
 
 // Mock data - in a real app, this would come from your backend
 const generateMockData = () => {

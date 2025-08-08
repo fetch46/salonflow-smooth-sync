@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useSaas } from '@/contexts/SaasContext';
+import { useSaas } from '@/lib/saas/context';
 import {
   Building2,
   ArrowRight,
@@ -16,7 +16,7 @@ import {
 
 const OrganizationSetup = () => {
   const navigate = useNavigate();
-  const { user, refreshOrganizationDataSilently, organization, organizations } = useSaas();
+  const { user, refreshOrganization, organization, organizations } = useSaas();
   
   // If user already has organizations, redirect to dashboard (but allow manual override)
   useEffect(() => {
@@ -324,7 +324,7 @@ const OrganizationSetup = () => {
             toast.success('Organization created successfully!');
             
             // Refresh organization data silently, then navigate
-            await refreshOrganizationDataSilently();
+            await refreshOrganization();
             navigate('/dashboard');
             return;
 
@@ -381,7 +381,7 @@ const OrganizationSetup = () => {
       try {
         // Refresh organization data with timeout
         await Promise.race([
-          refreshOrganizationDataSilently(),
+          refreshOrganization(),
           new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
         ]);
         
@@ -431,7 +431,7 @@ const OrganizationSetup = () => {
                   try {
                     // Force refresh organization data before navigating
                     await Promise.race([
-                      refreshOrganizationDataSilently(),
+                      refreshOrganization(),
                       new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
                     ]);
                     navigate('/dashboard');

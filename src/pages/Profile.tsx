@@ -24,7 +24,7 @@ import {
   X,
   Check,
 } from 'lucide-react';
-import { useSaas } from '@/contexts/SaasContext';
+import { useSaas } from '@/lib/saas/context';
 import { toast } from 'sonner';
 
 const Profile = () => {

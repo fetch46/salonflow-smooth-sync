@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useSaas } from '@/contexts/SaasContext';
+import { useSaas } from '@/lib/saas/context';
 import { Check, X, Loader2, Database, User, Shield, Settings } from 'lucide-react';
 
 interface TestResult {
