@@ -13,6 +13,8 @@ import {
   Shield
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Landing = () => {
   const features = [
@@ -38,7 +40,7 @@ const Landing = () => {
     }
   ];
 
-  const plans = [
+  const defaultPlans = [
     {
       name: "Basic",
       price: "$29",
@@ -84,6 +86,75 @@ const Landing = () => {
       popular: false
     }
   ];
+
+  // Load subscription plans from Supabase and setup SEO
+  type DbPlan = {
+    id: string;
+    name: string;
+    slug: string;
+    description: string | null;
+    price_monthly: number | null;
+    price_yearly: number | null;
+    features: Record<string, boolean> | null;
+    is_active: boolean;
+    sort_order: number | null;
+    max_users: number | null;
+    max_locations: number | null;
+  };
+
+  const [dbPlans, setDbPlans] = useState<DbPlan[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState<boolean>(true);
+
+  useEffect(() => {
+    const loadPlans = async () => {
+      const { data, error } = await supabase
+        .from("subscription_plans")
+        .select(
+          "id, name, slug, description, price_monthly, price_yearly, features, is_active, sort_order, max_users, max_locations"
+        )
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+
+      if (!error && data) {
+        setDbPlans(data as unknown as DbPlan[]);
+      }
+      setLoadingPlans(false);
+    };
+
+    loadPlans();
+
+    // SEO: Title and meta description
+    document.title = "SalonSync | Salon Management Software Pricing";
+    const desc =
+      "See SalonSync pricing plans for salons: Starter, Professional, and Enterprise. Simple, transparent pricing.";
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta) {
+      meta.setAttribute("content", desc);
+    } else {
+      const m = document.createElement("meta");
+      m.name = "description";
+      m.content = desc;
+      document.head.appendChild(m);
+    }
+  }, []);
+
+  const toTitleCase = (s: string) =>
+    s
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+
+  const plans = (dbPlans && dbPlans.length > 0)
+    ? dbPlans.map((p) => ({
+        name: p.name,
+        description: p.description ?? "",
+        price: `$${Math.round(((p.price_monthly ?? 0) as number) / 100)}`,
+        period: "/month",
+        features: Object.entries(p.features ?? {})
+          .filter(([, v]) => Boolean(v))
+          .map(([k]) => toTitleCase(k)),
+        popular: p.slug === "professional",
+      }))
+    : defaultPlans;
 
   return (
     <div className="min-h-screen bg-background">
