@@ -43,18 +43,23 @@ const superAdminMenuItems: SuperAdminMenuItem[] = [
     icon: BarChart3,
   },
   {
+    title: "Admin Dashboard",
+    url: "/admin/dashboard",
+    icon: Activity,
+  },
+  {
     title: "Organizations",
     icon: Building,
     subItems: [
       {
-        title: "All Organizations",
-        url: "/super-admin/organizations",
+        title: "Manage Organizations",
+        url: "/admin/organizations",
         icon: Building2,
       },
       {
-        title: "Create Organization",
-        url: "/super-admin/organizations/create",
-        icon: Building,
+        title: "Subscription Plans",
+        url: "/admin/subscription-plans",
+        icon: Crown,
       },
     ],
   },
@@ -62,32 +67,43 @@ const superAdminMenuItems: SuperAdminMenuItem[] = [
     title: "User Management",
     icon: Users,
     subItems: [
-      {
-        title: "All Users",
-        url: "/super-admin/users",
-        icon: Users,
-      },
-      {
-        title: "Super Admins",
-        url: "/super-admin/super-admins",
-        icon: Shield,
-      },
-      {
-        title: "Grant Super Admin",
-        url: "/super-admin/grant-admin",
-        icon: UserPlus,
-      },
+              {
+          title: "Users & Organizations",
+          url: "/admin/users",
+          icon: Users,
+        },
+        {
+          title: "User Invitations",
+          url: "/admin/invitations",
+          icon: UserPlus,
+        },
+        {
+          title: "Super Admins",
+          url: "/super-admin/super-admins",
+          icon: Shield,
+        },
     ],
   },
   {
-    title: "System",
+    title: "Business Data",
     icon: Database,
     subItems: [
+      {
+        title: "All Business Tables",
+        url: "/admin/business-data",
+        icon: Database,
+      },
       {
         title: "Activity Logs",
         url: "/super-admin/activity",
         icon: Activity,
       },
+    ],
+  },
+  {
+    title: "System",
+    icon: Settings,
+    subItems: [
       {
         title: "System Settings",
         url: "/super-admin/settings",

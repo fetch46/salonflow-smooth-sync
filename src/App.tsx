@@ -38,6 +38,14 @@ import Profile from "@/pages/Profile";
 import Help from "@/pages/Help";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
+// Super Admin Pages
+import AdminDashboard from "@/pages/admin/AdminDashboard";
+import AdminOrganizations from "@/pages/admin/AdminOrganizations";
+import AdminSubscriptionPlans from "@/pages/admin/AdminSubscriptionPlans";
+import AdminUsers from "@/pages/admin/AdminUsers";
+import AdminInvitations from "@/pages/admin/AdminInvitations";
+import AdminBusinessData from "@/pages/admin/AdminBusinessData";
+
 // SAAS-specific wrapper component to handle routing logic
 const AppRoutes = () => {
   const { user, loading, organization, organizations } = useSaas();
@@ -83,6 +91,12 @@ const AppRoutes = () => {
     <Routes>
       {/* System-wide routes available to authenticated users */}
       <Route path="/super-admin" element={<SuperAdmin />} />
+      <Route path="/admin/dashboard" element={<AdminDashboard />} />
+      <Route path="/admin/organizations" element={<AdminOrganizations />} />
+      <Route path="/admin/subscription-plans" element={<AdminSubscriptionPlans />} />
+      <Route path="/admin/users" element={<AdminUsers />} />
+      <Route path="/admin/invitations" element={<AdminInvitations />} />
+      <Route path="/admin/business-data" element={<AdminBusinessData />} />
       
       {/* Redirect auth pages if already logged in */}
       <Route path="/login" element={<Navigate to="/dashboard" replace />} />

@@ -1,0 +1,614 @@
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users, Plus, Edit, Trash2, Search, Building, Shield } from "lucide-react";
+import { format } from "date-fns";
+import { toast } from "sonner";
+import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
+
+interface User {
+  id: string;
+  email: string;
+  created_at: string;
+  last_sign_in_at?: string;
+  email_confirmed_at?: string;
+  organization_count?: number;
+}
+
+interface OrganizationUser {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  role: string;
+  is_active: boolean;
+  invited_by?: string;
+  invited_at?: string;
+  joined_at?: string;
+  created_at: string;
+  updated_at: string;
+  user_email?: string;
+  organization_name?: string;
+  invited_by_email?: string;
+}
+
+interface NewOrganizationUser {
+  organization_id: string;
+  user_id: string;
+  role: string;
+  is_active: boolean;
+}
+
+const AdminUsers = () => {
+  const [users, setUsers] = useState<User[]>([]);
+  const [organizationUsers, setOrganizationUsers] = useState<OrganizationUser[]>([]);
+  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isCreateOrgUserDialogOpen, setIsCreateOrgUserDialogOpen] = useState(false);
+  const [isEditOrgUserDialogOpen, setIsEditOrgUserDialogOpen] = useState(false);
+  const [selectedOrgUser, setSelectedOrgUser] = useState<OrganizationUser | null>(null);
+  const [newOrgUser, setNewOrgUser] = useState<NewOrganizationUser>({
+    organization_id: "",
+    user_id: "",
+    role: "staff",
+    is_active: true
+  });
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      await Promise.all([
+        fetchUsers(),
+        fetchOrganizationUsers(),
+        fetchOrganizations()
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      // Get users with organization count
+      const { data, error } = await supabase
+        .from('profiles')
+        .select(`
+          id,
+          email,
+          created_at,
+          organization_users(count)
+        `);
+
+      if (error) throw error;
+
+      // Also get auth users data
+      const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+      
+      if (authError) throw authError;
+
+      // Combine profile and auth data
+      const transformedData = data?.map(profile => {
+        const authUser = authData.users.find(u => u.id === profile.id);
+        return {
+          ...profile,
+          email: profile.email || authUser?.email,
+          last_sign_in_at: authUser?.last_sign_in_at,
+          email_confirmed_at: authUser?.email_confirmed_at,
+          organization_count: profile.organization_users?.[0]?.count || 0
+        };
+      }) || [];
+
+      setUsers(transformedData);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast.error('Failed to fetch users');
+    }
+  };
+
+  const fetchOrganizationUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('organization_users')
+        .select(`
+          *,
+          organizations(name),
+          profiles!organization_users_user_id_fkey(email),
+          profiles!organization_users_invited_by_fkey(email)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const transformedData = data?.map(orgUser => ({
+        ...orgUser,
+        organization_name: orgUser.organizations?.name,
+        user_email: orgUser.profiles?.email,
+        invited_by_email: orgUser.profiles?.email
+      })) || [];
+
+      setOrganizationUsers(transformedData);
+    } catch (error) {
+      console.error('Error fetching organization users:', error);
+      toast.error('Failed to fetch organization users');
+    }
+  };
+
+  const fetchOrganizations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('id, name, slug')
+        .eq('status', 'active')
+        .order('name');
+
+      if (error) throw error;
+      setOrganizations(data || []);
+    } catch (error) {
+      console.error('Error fetching organizations:', error);
+    }
+  };
+
+  const createOrganizationUser = async () => {
+    try {
+      const { error } = await supabase
+        .from('organization_users')
+        .insert([{
+          organization_id: newOrgUser.organization_id,
+          user_id: newOrgUser.user_id,
+          role: newOrgUser.role,
+          is_active: newOrgUser.is_active,
+          joined_at: new Date().toISOString()
+        }]);
+
+      if (error) throw error;
+
+      toast.success('Organization user created successfully');
+      setIsCreateOrgUserDialogOpen(false);
+      resetOrgUserForm();
+      fetchOrganizationUsers();
+    } catch (error) {
+      console.error('Error creating organization user:', error);
+      toast.error('Failed to create organization user');
+    }
+  };
+
+  const updateOrganizationUser = async () => {
+    if (!selectedOrgUser) return;
+
+    try {
+      const { error } = await supabase
+        .from('organization_users')
+        .update({
+          role: newOrgUser.role,
+          is_active: newOrgUser.is_active
+        })
+        .eq('id', selectedOrgUser.id);
+
+      if (error) throw error;
+
+      toast.success('Organization user updated successfully');
+      setIsEditOrgUserDialogOpen(false);
+      setSelectedOrgUser(null);
+      fetchOrganizationUsers();
+    } catch (error) {
+      console.error('Error updating organization user:', error);
+      toast.error('Failed to update organization user');
+    }
+  };
+
+  const deleteOrganizationUser = async (id: string, userEmail: string, orgName: string) => {
+    if (!confirm(`Are you sure you want to remove ${userEmail} from ${orgName}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('organization_users')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast.success('Organization user removed successfully');
+      fetchOrganizationUsers();
+    } catch (error) {
+      console.error('Error deleting organization user:', error);
+      toast.error('Failed to remove organization user');
+    }
+  };
+
+  const openEditOrgUserDialog = (orgUser: OrganizationUser) => {
+    setSelectedOrgUser(orgUser);
+    setNewOrgUser({
+      organization_id: orgUser.organization_id,
+      user_id: orgUser.user_id,
+      role: orgUser.role,
+      is_active: orgUser.is_active
+    });
+    setIsEditOrgUserDialogOpen(true);
+  };
+
+  const resetOrgUserForm = () => {
+    setNewOrgUser({
+      organization_id: "",
+      user_id: "",
+      role: "staff",
+      is_active: true
+    });
+  };
+
+  const filteredUsers = users.filter(user =>
+    user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredOrgUsers = organizationUsers.filter(orgUser =>
+    orgUser.user_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    orgUser.organization_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    orgUser.role.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const getRoleBadge = (role: string) => {
+    const roleColors = {
+      owner: "bg-purple-100 text-purple-800",
+      admin: "bg-blue-100 text-blue-800",
+      manager: "bg-green-100 text-green-800",
+      staff: "bg-gray-100 text-gray-800",
+      viewer: "bg-yellow-100 text-yellow-800"
+    };
+    return roleColors[role as keyof typeof roleColors] || "bg-gray-100 text-gray-800";
+  };
+
+  return (
+    <SuperAdminLayout>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Users Management</h1>
+            <p className="text-gray-500 mt-1">Manage all users and organization memberships</p>
+          </div>
+          <Button onClick={() => setIsCreateOrgUserDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add User to Organization
+          </Button>
+        </div>
+
+        {/* Search and Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="md:col-span-2">
+            <CardContent className="p-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search users..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <Users className="h-8 w-8 text-blue-600" />
+                <div>
+                  <p className="text-2xl font-bold">{users.length}</p>
+                  <p className="text-sm text-gray-500">Total Users</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <Building className="h-8 w-8 text-green-600" />
+                <div>
+                  <p className="text-2xl font-bold">{organizationUsers.length}</p>
+                  <p className="text-sm text-gray-500">Organization Memberships</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Tabs for Users and Organization Users */}
+        <Tabs defaultValue="users" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="users">All Users</TabsTrigger>
+            <TabsTrigger value="org-users">Organization Users</TabsTrigger>
+          </TabsList>
+
+          {/* All Users Tab */}
+          <TabsContent value="users">
+            <Card>
+              <CardHeader>
+                <CardTitle>System Users</CardTitle>
+                <CardDescription>
+                  A list of all users in the system
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex items-center justify-center h-32">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Organizations</TableHead>
+                        <TableHead>Email Confirmed</TableHead>
+                        <TableHead>Last Sign In</TableHead>
+                        <TableHead>Created</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredUsers.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">{user.email}</TableCell>
+                          <TableCell>{user.organization_count || 0}</TableCell>
+                          <TableCell>
+                            <Badge 
+                              className={user.email_confirmed_at 
+                                ? "bg-green-100 text-green-800" 
+                                : "bg-red-100 text-red-800"
+                              }
+                            >
+                              {user.email_confirmed_at ? 'Confirmed' : 'Pending'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {user.last_sign_in_at 
+                              ? format(new Date(user.last_sign_in_at), 'MMM dd, yyyy HH:mm')
+                              : 'Never'
+                            }
+                          </TableCell>
+                          <TableCell>
+                            {format(new Date(user.created_at), 'MMM dd, yyyy')}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Organization Users Tab */}
+          <TabsContent value="org-users">
+            <Card>
+              <CardHeader>
+                <CardTitle>Organization Users</CardTitle>
+                <CardDescription>
+                  Manage user memberships in organizations
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex items-center justify-center h-32">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead>Organization</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Joined</TableHead>
+                        <TableHead>Invited By</TableHead>
+                        <TableHead className="w-[100px]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredOrgUsers.map((orgUser) => (
+                        <TableRow key={orgUser.id}>
+                          <TableCell className="font-medium">{orgUser.user_email}</TableCell>
+                          <TableCell>{orgUser.organization_name}</TableCell>
+                          <TableCell>
+                            <Badge className={getRoleBadge(orgUser.role)}>
+                              {orgUser.role}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              className={orgUser.is_active 
+                                ? "bg-green-100 text-green-800" 
+                                : "bg-red-100 text-red-800"
+                              }
+                            >
+                              {orgUser.is_active ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {orgUser.joined_at 
+                              ? format(new Date(orgUser.joined_at), 'MMM dd, yyyy')
+                              : 'Pending'
+                            }
+                          </TableCell>
+                          <TableCell>{orgUser.invited_by_email || '-'}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openEditOrgUserDialog(orgUser)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => deleteOrganizationUser(
+                                  orgUser.id, 
+                                  orgUser.user_email || '', 
+                                  orgUser.organization_name || ''
+                                )}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* Create Organization User Dialog */}
+        <Dialog open={isCreateOrgUserDialogOpen} onOpenChange={setIsCreateOrgUserDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Add User to Organization</DialogTitle>
+              <DialogDescription>
+                Add an existing user to an organization.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="organization">Organization</Label>
+                <Select 
+                  value={newOrgUser.organization_id} 
+                  onValueChange={(value) => setNewOrgUser({...newOrgUser, organization_id: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select organization" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {organizations.map((org) => (
+                      <SelectItem key={org.id} value={org.id}>
+                        {org.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="user">User</Label>
+                <Select 
+                  value={newOrgUser.user_id} 
+                  onValueChange={(value) => setNewOrgUser({...newOrgUser, user_id: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select user" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="role">Role</Label>
+                <Select 
+                  value={newOrgUser.role} 
+                  onValueChange={(value) => setNewOrgUser({...newOrgUser, role: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="owner">Owner</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="staff">Staff</SelectItem>
+                    <SelectItem value="viewer">Viewer</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="is_active"
+                  checked={newOrgUser.is_active}
+                  onCheckedChange={(checked) => setNewOrgUser({...newOrgUser, is_active: checked})}
+                />
+                <Label htmlFor="is_active">Active User</Label>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsCreateOrgUserDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={createOrganizationUser}>
+                Add User
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Organization User Dialog */}
+        <Dialog open={isEditOrgUserDialogOpen} onOpenChange={setIsEditOrgUserDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Edit Organization User</DialogTitle>
+              <DialogDescription>
+                Update user role and status in organization.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-role">Role</Label>
+                <Select 
+                  value={newOrgUser.role} 
+                  onValueChange={(value) => setNewOrgUser({...newOrgUser, role: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="owner">Owner</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="staff">Staff</SelectItem>
+                    <SelectItem value="viewer">Viewer</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="edit-is_active"
+                  checked={newOrgUser.is_active}
+                  onCheckedChange={(checked) => setNewOrgUser({...newOrgUser, is_active: checked})}
+                />
+                <Label htmlFor="edit-is_active">Active User</Label>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsEditOrgUserDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={updateOrganizationUser}>
+                Update User
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </SuperAdminLayout>
+  );
+};
+
+export default AdminUsers;
