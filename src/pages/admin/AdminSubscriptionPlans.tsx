@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
 import { FEATURE_CATEGORIES, FEATURE_LABELS } from "@/lib/features";
+import { useSaas } from "@/lib/saas/context";
 
 interface SubscriptionPlan {
   id: string;
@@ -64,6 +65,8 @@ const AdminSubscriptionPlans = () => {
     is_active: true,
     sort_order: "0"
   });
+
+  const { isSuperAdmin } = useSaas();
 
   // Feature toggles helpers
   const allFeatureKeys = (Object.values(FEATURE_CATEGORIES) as any[]).flatMap((c: any) => c.features);
@@ -150,9 +153,10 @@ const AdminSubscriptionPlans = () => {
       setIsCreateDialogOpen(false);
       resetForm();
       fetchPlans();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating subscription plan:', error);
-      toast.error('Failed to create subscription plan');
+      const message = (error && (error as any).message) ? (error as any).message : 'Failed to create subscription plan';
+      toast.error(message);
     }
   };
 
@@ -267,7 +271,7 @@ const AdminSubscriptionPlans = () => {
             <h1 className="text-3xl font-bold text-gray-900">Subscription Plans</h1>
             <p className="text-gray-500 mt-1">Manage subscription plans and pricing</p>
           </div>
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <Button onClick={() => { if (!isSuperAdmin) { toast.error('Only super admins can create subscription plans'); return; } setIsCreateDialogOpen(true); }}>
             <Plus className="h-4 w-4 mr-2" />
             Create Plan
           </Button>
