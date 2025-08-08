@@ -477,7 +477,7 @@ export default function SuperAdmin() {
 
   return (
     <SuperAdminLayout>
-      <div className="p-6 space-y-8 max-w-7xl mx-auto">
+      <div className="p-6 space-y-8 w-full">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="space-y-1">
