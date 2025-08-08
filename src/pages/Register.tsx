@@ -243,7 +243,7 @@ const Register = () => {
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/setup`,
+          emailRedirectTo: `${window.location.origin}/`,
           data: {
             first_name: formData.firstName,
             last_name: formData.lastName,
@@ -284,7 +284,7 @@ const Register = () => {
         if (authData.user.email_confirmed_at) {
           // User is immediately confirmed, redirect to organization setup
           toast.success("Registration successful! Let's set up your organization.");
-          navigate("/setup");
+          navigate("/dashboard");
         } else {
           // User needs email confirmation
           toast.success("Registration successful! Please check your email to verify your account, then you'll be redirected to complete setup.");
@@ -309,7 +309,7 @@ const Register = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/setup`,
+          redirectTo: `${window.location.origin}/`,
         }
       });
       

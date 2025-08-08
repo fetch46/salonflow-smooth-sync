@@ -8,7 +8,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 // Auth Pages
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
-import OrganizationSetup from "@/pages/OrganizationSetup";
+
 
 // Main Pages
 import Dashboard from "@/pages/Dashboard";
@@ -28,9 +28,6 @@ import Settings from "@/pages/Settings";
 import JobCards from "@/pages/JobCards";
 import CreateJobCard from "@/pages/CreateJobCard";
 import SuperAdmin from "@/pages/SuperAdmin";
-import TestPlans from "@/pages/TestPlans";
-import TestDashboard from "@/pages/TestDashboard";
-import DebugDatabase from "@/pages/DebugDatabase";
 import ServiceView from "@/pages/ServiceView";
 import Booking from "@/pages/Booking";
 import Invoices from "@/pages/Invoices";
@@ -80,30 +77,12 @@ const AppRoutes = () => {
     );
   }
 
-  // Authenticated but no organization - show setup
-  if (!organization && organizations.length === 0) {
-    return (
-      <Routes>
-        <Route path="/super-admin" element={<SuperAdmin />} />
-        <Route path="/test/plans" element={<TestPlans />} />
-        <Route path="/test/dashboard" element={<TestDashboard />} />
-        <Route path="/debug/database" element={<DebugDatabase />} />
-        <Route path="/setup" element={<OrganizationSetup />} />
-        <Route path="/login" element={<Navigate to="/setup" replace />} />
-        <Route path="/register" element={<Navigate to="/setup" replace />} />
-        <Route path="*" element={<Navigate to="/setup" replace />} />
-      </Routes>
-    );
-  }
 
   // Authenticated with organization - show main app
   return (
     <Routes>
       {/* System-wide routes available to authenticated users */}
       <Route path="/super-admin" element={<SuperAdmin />} />
-      <Route path="/test/plans" element={<TestPlans />} />
-      <Route path="/test/dashboard" element={<TestDashboard />} />
-      <Route path="/debug/database" element={<DebugDatabase />} />
       
       {/* Redirect auth pages if already logged in */}
       <Route path="/login" element={<Navigate to="/dashboard" replace />} />
