@@ -13,6 +13,7 @@ import { CreditCard, Plus, Edit, Trash2, Search, DollarSign } from "lucide-react
 import { format } from "date-fns";
 import { toast } from "sonner";
 import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
+import { FEATURE_CATEGORIES, FEATURE_LABELS } from "@/lib/features";
 
 interface SubscriptionPlan {
   id: string;
@@ -63,6 +64,26 @@ const AdminSubscriptionPlans = () => {
     is_active: true,
     sort_order: "0"
   });
+
+  // Feature toggles helpers
+  const allFeatureKeys = (Object.values(FEATURE_CATEGORIES) as any[]).flatMap((c: any) => c.features);
+  const getFeaturesObj = () => {
+    try {
+      const parsed = JSON.parse(newPlan.features || '{}') || {};
+      const obj: Record<string, boolean> = {};
+      allFeatureKeys.forEach((k: string) => { obj[k] = Boolean((parsed as any)[k]); });
+      return obj;
+    } catch {
+      const obj: Record<string, boolean> = {};
+      allFeatureKeys.forEach((k: string) => { obj[k] = false; });
+      return obj;
+    }
+  };
+  const handleFeatureToggle = (key: string, checked: boolean) => {
+    const current = getFeaturesObj();
+    const next = { ...current, [key]: checked } as Record<string, boolean>;
+    setNewPlan({ ...newPlan, features: JSON.stringify(next, null, 2) });
+  };
 
   useEffect(() => {
     fetchPlans();
@@ -475,14 +496,30 @@ const AdminSubscriptionPlans = () => {
                 <Label htmlFor="is_active">Active Plan</Label>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="features">Features (JSON)</Label>
-                <Textarea
-                  id="features"
-                  value={newPlan.features}
-                  onChange={(e) => setNewPlan({...newPlan, features: e.target.value})}
-                  placeholder='{"appointments": true, "clients": true, "staff": true}'
-                  rows={4}
-                />
+                <Label>Features</Label>
+                {(() => {
+                  const featuresObj = getFeaturesObj();
+                  return (
+                    <div className="space-y-4">
+                      {Object.entries(FEATURE_CATEGORIES as any).map(([catKey, cat]: any) => (
+                        <div key={catKey} className="border rounded-md p-3">
+                          <div className="font-medium mb-2">{cat.label}</div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {cat.features.map((feat: string) => (
+                              <div key={feat} className="flex items-center justify-between">
+                                <span className="text-sm">{FEATURE_LABELS[feat] || feat}</span>
+                                <Switch
+                                  checked={!!featuresObj[feat]}
+                                  onCheckedChange={(val) => handleFeatureToggle(feat, !!val)}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
             <div className="flex justify-end space-x-2">
@@ -599,14 +636,30 @@ const AdminSubscriptionPlans = () => {
                 <Label htmlFor="edit-is_active">Active Plan</Label>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-features">Features (JSON)</Label>
-                <Textarea
-                  id="edit-features"
-                  value={newPlan.features}
-                  onChange={(e) => setNewPlan({...newPlan, features: e.target.value})}
-                  placeholder='{"appointments": true, "clients": true, "staff": true}'
-                  rows={4}
-                />
+                <Label>Features</Label>
+                {(() => {
+                  const featuresObj = getFeaturesObj();
+                  return (
+                    <div className="space-y-4">
+                      {Object.entries(FEATURE_CATEGORIES as any).map(([catKey, cat]: any) => (
+                        <div key={catKey} className="border rounded-md p-3">
+                          <div className="font-medium mb-2">{cat.label}</div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {cat.features.map((feat: string) => (
+                              <div key={feat} className="flex items-center justify-between">
+                                <span className="text-sm">{FEATURE_LABELS[feat] || feat}</span>
+                                <Switch
+                                  checked={!!featuresObj[feat]}
+                                  onCheckedChange={(val) => handleFeatureToggle(feat, !!val)}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
             <div className="flex justify-end space-x-2">
