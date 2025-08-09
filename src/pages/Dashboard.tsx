@@ -39,7 +39,8 @@ import {
   Calendar as CalendarIcon,
   Phone,
   Mail,
-  MessageSquare
+  MessageSquare,
+  CreditCard
 } from "lucide-react";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { useSaas } from "@/lib/saas/context";
@@ -424,9 +425,9 @@ const Dashboard = () => {
 
   // Error boundary
   if (error) {
-    return (
-      <div className="flex-1 space-y-6 p-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen">
-        <div className="text-center space-y-4">
+          return (
+        <div className="flex-1 space-y-6 p-4 sm:p-6 pb-24 sm:pb-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen overflow-x-hidden">
+          <div className="text-center space-y-4">
           <AlertTriangle className="h-12 w-12 text-red-500 mx-auto" />
           <h2 className="text-xl font-semibold text-red-700">Dashboard Error</h2>
           <p className="text-red-600">{error}</p>
@@ -437,7 +438,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen">
+    <div className="flex-1 space-y-6 p-4 sm:p-6 pb-24 sm:pb-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen overflow-x-hidden">
 
 
       {/* Modern Header */}
@@ -454,9 +455,9 @@ const Dashboard = () => {
           </div>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex w-full lg:w-auto flex-wrap items-center gap-2 sm:gap-3">
           <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-36">
+            <SelectTrigger className="w-full sm:w-36">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -471,32 +472,32 @@ const Dashboard = () => {
             variant="outline" 
             onClick={refreshData}
             disabled={loading}
-            className="border-slate-300 hover:bg-slate-50"
+            className="border-slate-300 hover:bg-slate-50 px-2 sm:px-4"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''} sm:mr-2`} />
+            <span className="hidden sm:inline">Refresh</span>
           </Button>
           
-          <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg" onClick={() => navigate('/appointments?create=1')}>
-            <Plus className="w-4 h-4 mr-2" />
-            New Appointment
+          <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg px-2 sm:px-4" onClick={() => navigate('/appointments?create=1')}>
+            <Plus className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">New Appointment</span>
           </Button>
         </div>
       </div>
 
       {/* Enhanced Statistics Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {todayStats.map((stat, index) => (
           <Card key={index} className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-100`} />
-            <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="relative flex flex-row items-center justify-between space-y-0 p-3 sm:p-4 pb-2">
               <CardTitle className="text-sm font-medium text-white/90">
                 {stat.title}
               </CardTitle>
               <stat.icon className="h-4 w-4 text-white/80" />
             </CardHeader>
-            <CardContent className="relative">
-              <div className="text-2xl font-bold text-white">{stat.value}</div>
+            <CardContent className="relative p-3 sm:p-4">
+              <div className="text-xl sm:text-2xl font-bold text-white">{stat.value}</div>
               <div className="flex items-center mt-1">
                 {stat.change > 0 ? (
                   <ArrowUpRight className="h-3 w-3 text-white/80 mr-1" />
@@ -513,9 +514,9 @@ const Dashboard = () => {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Today's Appointments - Enhanced */}
-        <div className="lg:col-span-2">
+        <div className="md:col-span-2 lg:col-span-2">
           <Card className="shadow-sm border-slate-200">
             <CardHeader className="border-b border-slate-200">
               <div className="flex items-center justify-between">
@@ -535,7 +536,7 @@ const Dashboard = () => {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="max-h-96 overflow-y-auto">
+              <div className="max-h-80 sm:max-h-96 overflow-y-auto">
                 {todayAppointments.map((appointment) => {
                   const initials = (appointment.customer_name || '')
                     .split(' ')
@@ -674,7 +675,7 @@ const Dashboard = () => {
       </div>
 
       {/* Bottom Section */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
         {/* Recent Activity */}
         <Card className="shadow-sm border-slate-200">
           <CardHeader className="border-b border-slate-200">
@@ -685,7 +686,7 @@ const Dashboard = () => {
             <CardDescription>Latest updates and notifications</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="max-h-64 overflow-y-auto">
+            <div className="max-h-56 sm:max-h-64 overflow-y-auto">
               {recentActivities.map((activity, index) => (
                 <div key={index} className="flex items-start gap-3 p-4 border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors">
                   <div className={`p-2 rounded-lg bg-slate-50 ${activity.color}`}>
@@ -746,6 +747,28 @@ const Dashboard = () => {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Sticky Mobile Footer Actions */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-card/80 backdrop-blur-md supports-[backdrop-filter]:bg-card/60 sm:hidden">
+        <div className="grid grid-cols-4 gap-1 p-2 max-w-3xl mx-auto">
+          <Button variant="ghost" className="flex flex-col gap-1 py-2" onClick={() => navigate('/appointments')}>
+            <Calendar className="w-5 h-5" />
+            <span className="text-[10px]">Appts</span>
+          </Button>
+          <Button variant="ghost" className="flex flex-col gap-1 py-2" onClick={() => navigate('/clients')}>
+            <Users className="w-5 h-5" />
+            <span className="text-[10px]">Clients</span>
+          </Button>
+          <Button variant="ghost" className="flex flex-col gap-1 py-2" onClick={() => navigate('/pos')}>
+            <CreditCard className="w-5 h-5" />
+            <span className="text-[10px]">POS</span>
+          </Button>
+          <Button className="flex flex-col gap-1 py-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white" onClick={() => navigate('/appointments?create=1')}>
+            <Plus className="w-5 h-5" />
+            <span className="text-[10px]">New</span>
+          </Button>
+        </div>
       </div>
     </div>
   );
