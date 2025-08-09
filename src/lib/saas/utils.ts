@@ -330,15 +330,46 @@ export function validateSlug(slug: string): { valid: boolean; message?: string }
  */
 
 export function sanitizeOrganizationData(data: any) {
-  return {
-    name: data.name?.trim(),
-    slug: data.slug?.toLowerCase().trim(),
-    domain: data.domain?.toLowerCase().trim() || null,
-    logo_url: data.logo_url?.trim() || null,
-    currency_id: data.currency_id || null,
-    settings: data.settings || {},
-    metadata: data.metadata || {},
+  const updates: any = {}
+
+  if ('name' in data) {
+    updates.name = typeof data.name === 'string' ? data.name.trim() : data.name
   }
+
+  if ('slug' in data) {
+    updates.slug = typeof data.slug === 'string' ? data.slug.toLowerCase().trim() : data.slug
+  }
+
+  if ('domain' in data) {
+    const domainVal = data.domain
+    updates.domain = domainVal === null
+      ? null
+      : (typeof domainVal === 'string' ? domainVal.toLowerCase().trim() : domainVal)
+  }
+
+  if ('logo_url' in data) {
+    const logoVal = data.logo_url
+    updates.logo_url = logoVal === null
+      ? null
+      : (typeof logoVal === 'string' ? logoVal.trim() : logoVal)
+  }
+
+  if ('currency_id' in data) {
+    // Allow explicit null to clear the association
+    updates.currency_id = data.currency_id ?? null
+  }
+
+  if ('settings' in data) {
+    // If settings provided, use it as-is (caller should merge with existing if needed)
+    // Default to {} only if explicitly passed as undefined/null-like
+    updates.settings = data.settings ?? {}
+  }
+
+  if ('metadata' in data) {
+    updates.metadata = data.metadata ?? {}
+  }
+
+  return updates
 }
 
 export function formatCurrency(amount: number, currency: string = 'USD'): string {
