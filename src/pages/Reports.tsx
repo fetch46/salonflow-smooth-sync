@@ -376,7 +376,7 @@ const Reports = () => {
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <aside className="lg:col-span-3 xl:col-span-2 lg:sticky lg:top-24 self-start max-h-[calc(100vh-7rem)] overflow-y-auto">
-            <TabsList className="flex flex-col w-full items-stretch rounded-xl border bg-card shadow-sm p-1 gap-1">
+            <TabsList className="flex flex-col w-full items-stretch rounded-xl border bg-card shadow-sm p-1 gap-1 h-auto">
               <TabsTrigger value="overview" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
                 <Activity className="w-4 h-4" /> Overview
               </TabsTrigger>
