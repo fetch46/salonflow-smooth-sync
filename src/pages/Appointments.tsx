@@ -499,11 +499,31 @@ export default function Appointments() {
         }
         toast.success("Appointment updated successfully!");
       } else {
-        const { data: inserted, error: insertError } = await supabase
-          .from("appointments")
-          .insert([appointmentPayload])
-          .select("id")
-          .maybeSingle();
+        const { data: inserted, error: insertError } = await (async () => {
+          try {
+            const res = await supabase
+              .from("appointments")
+              .insert([appointmentPayload])
+              .select("id")
+              .maybeSingle();
+            if (res.error) throw res.error;
+            return { data: res.data, error: null } as any;
+          } catch (err: any) {
+            const message = String(err?.message || "");
+            // Fallback: retry without organization_id if column missing in schema
+            if (message.toLowerCase().includes("organization_id") ||
+                (message.toLowerCase().includes("column") && message.toLowerCase().includes("organization_id"))) {
+              const { organization_id: _omit, ...payloadNoOrg } = appointmentPayload as any;
+              const retry = await supabase
+                .from("appointments")
+                .insert([payloadNoOrg])
+                .select("id")
+                .maybeSingle();
+              return { data: retry.data, error: retry.error } as any;
+            }
+            throw err;
+          }
+        })();
         if (insertError) throw insertError;
         const apptId = inserted?.id;
         if (!apptId) throw new Error("Failed to create appointment");
