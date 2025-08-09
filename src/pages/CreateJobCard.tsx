@@ -427,6 +427,77 @@ export default function CreateJobCard() {
         }
       }
 
+      // After creating the job card and related rows, optionally create a receipt
+      try {
+        const finalTotal = (totalCost || 0) + (productCosts || 0);
+        const shouldCreateReceipt = jobCardData.receipt_issued || !!jobCardData.payment_method;
+        if (shouldCreateReceipt) {
+          const nowDate = new Date();
+          const y = nowDate.getFullYear().toString().slice(-2);
+          const m = String(nowDate.getMonth() + 1).padStart(2, '0');
+          const d = String(nowDate.getDate()).padStart(2, '0');
+          const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+          const receiptNumber = `RCT-${y}${m}${d}-${rand}`;
+
+          const { data: receipt, error: receiptError } = await supabase
+            .from('receipts')
+            .insert([
+              {
+                receipt_number: receiptNumber,
+                customer_id: selectedClient?.id || null,
+                job_card_id: jobCard.id,
+                subtotal: finalTotal,
+                tax_amount: 0,
+                discount_amount: 0,
+                total_amount: finalTotal,
+                status: jobCardData.payment_method ? 'paid' : 'open',
+                notes: `Receipt for ${jobNumber}`,
+              },
+            ])
+            .select('id')
+            .single();
+
+          if (receiptError) throw receiptError;
+
+          // Build receipt items from selected services and assigned staff
+          if (selectedServices.length > 0 && receipt?.id) {
+            const itemsPayload = selectedServices.map((svc) => ({
+              receipt_id: receipt.id,
+              service_id: svc.id,
+              product_id: null,
+              description: svc.name || 'Service',
+              quantity: 1,
+              unit_price: svc.price || 0,
+              total_price: svc.price || 0,
+              staff_id: serviceStaffMap[svc.id] || null,
+            }));
+
+            const { error: itemsError } = await supabase
+              .from('receipt_items')
+              .insert(itemsPayload);
+            if (itemsError) throw itemsError;
+          }
+
+          // Record full payment if a method is provided
+          if (jobCardData.payment_method && receipt?.id) {
+            const { error: payError } = await supabase
+              .from('receipt_payments')
+              .insert([
+                {
+                  receipt_id: receipt.id,
+                  amount: finalTotal,
+                  method: jobCardData.payment_method,
+                  reference_number: jobCardData.payment_transaction_number || null,
+                },
+              ]);
+            if (payError) throw payError;
+          }
+        }
+      } catch (receiptErr) {
+        console.error('Failed to create receipt from job card:', receiptErr);
+        toast.error('Job saved, but creating receipt failed');
+      }
+
       toast.success("Job card created successfully!");
       navigate("/job-cards");
     } catch (error) {

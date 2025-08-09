@@ -267,6 +267,30 @@ export default function JobCards() {
         .select()
         .single();
       if (error) throw error;
+
+      // Also create receipt items from job_card_services for commission allocation
+      const { data: jobServices } = await supabase
+        .from('job_card_services')
+        .select('service_id, staff_id, quantity, unit_price, services:service_id(name)')
+        .eq('job_card_id', card.id);
+
+      if (jobServices && jobServices.length > 0) {
+        const items = jobServices.map((js: any) => ({
+          receipt_id: receipt.id,
+          service_id: js.service_id,
+          product_id: null,
+          description: js.services?.name || 'Service',
+          quantity: js.quantity || 1,
+          unit_price: js.unit_price || 0,
+          total_price: (js.quantity || 1) * (js.unit_price || 0),
+          staff_id: js.staff_id || null,
+        }));
+        const { error: itemsError } = await supabase
+          .from('receipt_items')
+          .insert(items);
+        if (itemsError) throw itemsError;
+      }
+
       toast.success('Receipt created');
     } catch (e: any) {
       console.error('Error creating receipt from job card:', e);
