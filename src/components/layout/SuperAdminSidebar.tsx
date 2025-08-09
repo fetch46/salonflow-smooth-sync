@@ -13,6 +13,7 @@ import {
   Activity,
   ChevronDown,
   ChevronRight,
+  FileText
 } from "lucide-react";
 import {
   Sidebar,
@@ -72,21 +73,32 @@ const superAdminMenuItems: SuperAdminMenuItem[] = [
     title: "User Management",
     icon: Users,
     subItems: [
-              {
-          title: "Users & Organizations",
-          url: "/admin/users",
-          icon: Users,
-        },
-        {
-          title: "User Invitations",
-          url: "/admin/invitations",
-          icon: UserPlus,
-        },
-        {
-          title: "Super Admins",
-          url: "/admin/users",
-          icon: Shield,
-        },
+      {
+        title: "Users & Organizations",
+        url: "/admin/users",
+        icon: Users,
+      },
+      {
+        title: "User Invitations",
+        url: "/admin/invitations",
+        icon: UserPlus,
+      },
+      {
+        title: "Super Admins",
+        url: "/admin/users",
+        icon: Shield,
+      },
+    ],
+  },
+  {
+    title: "Content Management",
+    icon: FileText,
+    subItems: [
+      {
+        title: "Landing CMS",
+        url: "/super-admin/cms",
+        icon: FileText,
+      },
     ],
   },
   {
