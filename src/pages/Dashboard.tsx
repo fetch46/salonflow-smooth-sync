@@ -47,38 +47,15 @@ import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
-// Mock data - in a real app, this would come from your backend
-const generateMockData = () => {
-  const today = new Date();
-  const yesterday = subDays(today, 1);
-  const lastWeek = subDays(today, 7);
-  
-  return {
-    todayStats: {
-      revenue: 2847,
-      yesterdayRevenue: 2540,
-      appointments: 24,
-      yesterdayAppointments: 22,
-      newClients: 6,
-      yesterdayNewClients: 5,
-      staffUtilization: 87,
-      yesterdayUtilization: 84,
-      completionRate: 96,
-      yesterdayCompletionRate: 94,
-      avgServiceTime: 45,
-      yesterdayAvgServiceTime: 48
-    },
-    monthlyStats: {
-      totalRevenue: 45680,
-      lastMonthRevenue: 42350,
-      totalAppointments: 368,
-      lastMonthAppointments: 345,
-      newClients: 89,
-      lastMonthNewClients: 76,
-      clientRetention: 78,
-      lastMonthRetention: 76
-    }
-  };
+// Utility helpers for safe percentage and averages
+const safePercent = (current: number, previous: number) => {
+  if (!previous || previous === 0) return current > 0 ? 100 : 0;
+  return ((current - previous) / previous) * 100;
+};
+
+const average = (values: number[]) => {
+  if (!values.length) return 0;
+  return values.reduce((a, b) => a + b, 0) / values.length;
 };
 
 const Dashboard = () => {
@@ -89,8 +66,7 @@ const Dashboard = () => {
   const [error, setError] = useState<string | null>(null);
   
   const { user, organization, subscriptionPlan } = useSaas();
-  
-  const mockData = useMemo(() => generateMockData(), []);
+  const { symbol } = useOrganizationCurrency();
 
   // Load today's appointments and staff to show real data on dashboard
   type DashboardAppointment = {
@@ -106,13 +82,35 @@ const Dashboard = () => {
   };
 
   const [todayAppointments, setTodayAppointments] = useState<DashboardAppointment[]>([]);
+  const [yesterdayAppointments, setYesterdayAppointments] = useState<DashboardAppointment[]>([]);
   const [staffMap, setStaffMap] = useState<Record<string, string>>({});
+  // Derived counts will be computed from fetched arrays; no separate state for counts
+  // const [activeStaffCount, setActiveStaffCount] = useState<number>(0);
+
+  // Metrics state (no sample data)
+  const [metrics, setMetrics] = useState({
+    revenueToday: 0,
+    revenueYesterday: 0,
+    appointmentsToday: 0,
+    appointmentsYesterday: 0,
+    newClientsToday: 0,
+    newClientsYesterday: 0,
+    staffUtilizationToday: 0,
+    staffUtilizationYesterday: 0,
+    completionRateToday: 0,
+    completionRateYesterday: 0,
+    avgServiceTimeToday: 0,
+    avgServiceTimeYesterday: 0,
+  });
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const todayStr = format(new Date(), 'yyyy-MM-dd');
+        const today = new Date();
+        const yesterday = subDays(today, 1);
+        const todayStr = format(today, 'yyyy-MM-dd');
+        const yesterdayStr = format(yesterday, 'yyyy-MM-dd');
 
         const appointmentsQuery = supabase
           .from('appointments')
@@ -120,25 +118,124 @@ const Dashboard = () => {
           .eq('appointment_date', todayStr)
           .order('appointment_time', { ascending: true });
 
+        const appointmentsYesterdayQuery = supabase
+          .from('appointments')
+          .select('id, customer_name, service_name, staff_id, appointment_date, appointment_time, duration_minutes, status, price')
+          .eq('appointment_date', yesterdayStr)
+          .order('appointment_time', { ascending: true });
+
         const staffQuery = supabase
           .from('staff')
           .select('id, full_name')
           .eq('is_active', true);
 
-        const [{ data: appts, error: apptErr }, { data: staff, error: staffErr }] = await Promise.all([
+        // New clients counts
+        const clientsTodayQuery = supabase
+          .from('clients')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', startOfDay(today).toISOString())
+          .lte('created_at', endOfDay(today).toISOString());
+
+        const clientsYesterdayQuery = supabase
+          .from('clients')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', startOfDay(yesterday).toISOString())
+          .lte('created_at', endOfDay(yesterday).toISOString());
+
+        const [
+          { data: appts, error: apptErr },
+          { data: apptsY, error: apptYesterdayErr },
+          { data: staff, error: staffErr },
+          clientsToday,
+          clientsYesterday,
+        ] = await Promise.all([
           appointmentsQuery,
-          staffQuery
+          appointmentsYesterdayQuery,
+          staffQuery,
+          clientsTodayQuery,
+          clientsYesterdayQuery,
         ]);
 
         if (apptErr) throw apptErr;
+        if (apptYesterdayErr) throw apptYesterdayErr;
         if (staffErr) throw staffErr;
 
         setTodayAppointments((appts || []) as DashboardAppointment[]);
+        setYesterdayAppointments((apptsY || []) as DashboardAppointment[]);
         const map: Record<string, string> = {};
         (staff || []).forEach((s: any) => {
           if (s?.id) map[s.id] = s.full_name;
         });
         setStaffMap(map);
+        const staffCount = (staff || []).length;
+
+        // Compute appointment-based metrics
+        const apptsToday = (appts || []) as DashboardAppointment[];
+        const apptsYesterday = (apptsY || []) as DashboardAppointment[];
+        const completionTodayNumerator = apptsToday.filter(a => (a.status || '').toLowerCase() === 'completed').length;
+        const completionYesterdayNumerator = apptsYesterday.filter(a => (a.status || '').toLowerCase() === 'completed').length;
+        const completionRateToday = apptsToday.length ? Math.round((completionTodayNumerator / apptsToday.length) * 100) : 0;
+        const completionRateYesterday = apptsYesterday.length ? Math.round((completionYesterdayNumerator / apptsYesterday.length) * 100) : 0;
+        const avgServiceTimeToday = Math.round(average(apptsToday.map(a => a.duration_minutes || 0).filter(v => v > 0)));
+        const avgServiceTimeYesterday = Math.round(average(apptsYesterday.map(a => a.duration_minutes || 0).filter(v => v > 0)));
+        const utilizedStaffToday = new Set(apptsToday.map(a => a.staff_id).filter(Boolean)).size;
+        const utilizedStaffYesterday = new Set(apptsYesterday.map(a => a.staff_id).filter(Boolean)).size;
+        const staffUtilizationToday = staffCount > 0 ? Math.round((utilizedStaffToday / (staffCount || 1)) * 100) : 0;
+        const staffUtilizationYesterday = staffCount > 0 ? Math.round((utilizedStaffYesterday / (staffCount || 1)) * 100) : 0;
+
+        // Revenue from sales (prefer sale_date if exists, else created_at range)
+        let revenueToday = 0;
+        let revenueYesterday = 0;
+        try {
+          const { data: salesToday, error: salesTodayErr } = await supabase
+            .from('sales')
+            .select('total_amount')
+            .eq('sale_date', todayStr);
+          if (salesTodayErr) throw salesTodayErr;
+          revenueToday = (salesToday || []).reduce((sum: number, s: any) => sum + (Number(s.total_amount) || 0), 0);
+        } catch (_) {
+          const { data: salesToday, error: salesTodayErr } = await supabase
+            .from('sales')
+            .select('total_amount, created_at')
+            .gte('created_at', startOfDay(today).toISOString())
+            .lte('created_at', endOfDay(today).toISOString());
+          if (!salesTodayErr) {
+            revenueToday = (salesToday || []).reduce((sum: number, s: any) => sum + (Number(s.total_amount) || 0), 0);
+          }
+        }
+
+        try {
+          const { data: salesYesterday, error: salesYesterdayErr } = await supabase
+            .from('sales')
+            .select('total_amount')
+            .eq('sale_date', yesterdayStr);
+          if (salesYesterdayErr) throw salesYesterdayErr;
+          revenueYesterday = (salesYesterday || []).reduce((sum: number, s: any) => sum + (Number(s.total_amount) || 0), 0);
+        } catch (_) {
+          const { data: salesYesterday, error: salesYesterdayErr } = await supabase
+            .from('sales')
+            .select('total_amount, created_at')
+            .gte('created_at', startOfDay(yesterday).toISOString())
+            .lte('created_at', endOfDay(yesterday).toISOString());
+          if (!salesYesterdayErr) {
+            revenueYesterday = (salesYesterday || []).reduce((sum: number, s: any) => sum + (Number(s.total_amount) || 0), 0);
+          }
+        }
+
+        setMetrics({
+          revenueToday,
+          revenueYesterday,
+          appointmentsToday: apptsToday.length,
+          appointmentsYesterday: apptsYesterday.length,
+          newClientsToday: clientsToday.count || 0,
+          newClientsYesterday: clientsYesterday.count || 0,
+          staffUtilizationToday,
+          staffUtilizationYesterday,
+          completionRateToday,
+          completionRateYesterday,
+          avgServiceTimeToday,
+          avgServiceTimeYesterday,
+        });
       } catch (e: any) {
         console.error('Failed to load dashboard data', e);
         setError(e?.message || 'Failed to load dashboard data');
@@ -153,199 +250,122 @@ const Dashboard = () => {
   const todayStats = [
     {
       title: "Today's Revenue",
-             value: `${useOrganizationCurrency().symbol}${mockData.todayStats.revenue.toLocaleString()}` as string,
-      previousValue: mockData.todayStats.yesterdayRevenue,
-      change: ((mockData.todayStats.revenue - mockData.todayStats.yesterdayRevenue) / mockData.todayStats.yesterdayRevenue * 100),
+      value: `${symbol}${metrics.revenueToday.toLocaleString()}` as string,
+      previousValue: metrics.revenueYesterday,
+      change: safePercent(metrics.revenueToday, metrics.revenueYesterday),
       icon: DollarSign,
       gradient: "from-emerald-500 to-emerald-600",
-      trend: "up"
+      trend: metrics.revenueToday >= metrics.revenueYesterday ? "up" : "down"
     },
     {
       title: "Appointments",
-      value: mockData.todayStats.appointments.toString(),
-      previousValue: mockData.todayStats.yesterdayAppointments,
-      change: ((mockData.todayStats.appointments - mockData.todayStats.yesterdayAppointments) / mockData.todayStats.yesterdayAppointments * 100),
+      value: metrics.appointmentsToday.toString(),
+      previousValue: metrics.appointmentsYesterday,
+      change: safePercent(metrics.appointmentsToday, metrics.appointmentsYesterday),
       icon: Calendar,
       gradient: "from-blue-500 to-blue-600",
-      trend: "up"
+      trend: metrics.appointmentsToday >= metrics.appointmentsYesterday ? "up" : "down"
     },
     {
       title: "New Clients",
-      value: mockData.todayStats.newClients.toString(),
-      previousValue: mockData.todayStats.yesterdayNewClients,
-      change: ((mockData.todayStats.newClients - mockData.todayStats.yesterdayNewClients) / mockData.todayStats.yesterdayNewClients * 100),
+      value: metrics.newClientsToday.toString(),
+      previousValue: metrics.newClientsYesterday,
+      change: safePercent(metrics.newClientsToday, metrics.newClientsYesterday),
       icon: Users,
       gradient: "from-purple-500 to-purple-600",
-      trend: "up"
+      trend: metrics.newClientsToday >= metrics.newClientsYesterday ? "up" : "down"
     },
     {
       title: "Staff Utilization",
-      value: `${mockData.todayStats.staffUtilization}%`,
-      previousValue: mockData.todayStats.yesterdayUtilization,
-      change: ((mockData.todayStats.staffUtilization - mockData.todayStats.yesterdayUtilization) / mockData.todayStats.yesterdayUtilization * 100),
+      value: `${metrics.staffUtilizationToday}%`,
+      previousValue: metrics.staffUtilizationYesterday,
+      change: safePercent(metrics.staffUtilizationToday, metrics.staffUtilizationYesterday),
       icon: TrendingUp,
       gradient: "from-amber-500 to-amber-600",
-      trend: "up"
+      trend: metrics.staffUtilizationToday >= metrics.staffUtilizationYesterday ? "up" : "down"
     },
     {
       title: "Completion Rate",
-      value: `${mockData.todayStats.completionRate}%`,
-      previousValue: mockData.todayStats.yesterdayCompletionRate,
-      change: ((mockData.todayStats.completionRate - mockData.todayStats.yesterdayCompletionRate) / mockData.todayStats.yesterdayCompletionRate * 100),
+      value: `${metrics.completionRateToday}%`,
+      previousValue: metrics.completionRateYesterday,
+      change: safePercent(metrics.completionRateToday, metrics.completionRateYesterday),
       icon: CheckCircle,
       gradient: "from-green-500 to-green-600",
-      trend: "up"
+      trend: metrics.completionRateToday >= metrics.completionRateYesterday ? "up" : "down"
     },
     {
       title: "Avg Service Time",
-      value: `${mockData.todayStats.avgServiceTime}min`,
-      previousValue: mockData.todayStats.yesterdayAvgServiceTime,
-      change: ((mockData.todayStats.avgServiceTime - mockData.todayStats.yesterdayAvgServiceTime) / mockData.todayStats.yesterdayAvgServiceTime * 100),
+      value: `${metrics.avgServiceTimeToday}min`,
+      previousValue: metrics.avgServiceTimeYesterday,
+      change: safePercent(metrics.avgServiceTimeToday, metrics.avgServiceTimeYesterday),
       icon: Timer,
       gradient: "from-cyan-500 to-cyan-600",
-      trend: "down"
+      trend: metrics.avgServiceTimeToday <= metrics.avgServiceTimeYesterday ? "up" : "down"
     }
   ];
 
-  const upcomingAppointments = [
-    {
-      id: 1,
-      client: "Sarah Johnson",
-      service: "Hair Cut & Color",
-      staff: "Maria Garcia",
-      time: "10:00 AM",
-      duration: "2h",
-      status: "confirmed",
-      avatar: "SJ",
-      price: 165,
-      isVip: true
-    },
-    {
-      id: 2,
-      client: "Emily Chen",
-      service: "Manicure & Pedicure",
-      staff: "Lisa Wong",
-      time: "10:30 AM",
-      duration: "1h 30min",
-      status: "confirmed",
-      avatar: "EC",
-      price: 85,
-      isVip: false
-    },
-    {
-      id: 3,
-      client: "Michael Brown",
-      service: "Beard Trim & Styling",
-      staff: "John Smith",
-      time: "11:00 AM",
-      duration: "45min",
-      status: "pending",
-      avatar: "MB",
-      price: 45,
-      isVip: false
-    },
-    {
-      id: 4,
-      client: "Anna Rodriguez",
-      service: "Full Service Package",
-      staff: "Maria Garcia",
-      time: "2:00 PM",
-      duration: "3h",
-      status: "confirmed",
-      avatar: "AR",
-      price: 285,
-      isVip: true
-    },
-    {
-      id: 5,
-      client: "David Kim",
-      service: "Facial Treatment",
-      staff: "Lisa Wong",
-      time: "3:30 PM",
-      duration: "1h",
-      status: "confirmed",
-      avatar: "DK",
-      price: 95,
-      isVip: false
+  // Compute top performers from today's appointments
+  const topPerformers = useMemo(() => {
+    const byStaff: Record<string, { name: string; revenue: number; appointments: number; completionRate: number }> = {};
+    const totalByStaff: Record<string, { completed: number; total: number }> = {};
+    for (const a of todayAppointments) {
+      if (!a.staff_id) continue;
+      const key = a.staff_id;
+      const price = Number(a.price) || 0;
+      if (!byStaff[key]) {
+        byStaff[key] = { name: staffMap[key] || 'Unassigned', revenue: 0, appointments: 0, completionRate: 0 };
+        totalByStaff[key] = { completed: 0, total: 0 };
+      }
+      byStaff[key].revenue += price;
+      byStaff[key].appointments += 1;
+      totalByStaff[key].total += 1;
+      if ((a.status || '').toLowerCase() === 'completed') totalByStaff[key].completed += 1;
     }
-  ];
+    const list = Object.entries(byStaff).map(([key, val]) => ({
+      name: val.name,
+      revenue: Math.round(val.revenue),
+      appointments: val.appointments,
+      rating: 0,
+      specialties: [] as string[],
+      completionRate: totalByStaff[key].total ? Math.round((totalByStaff[key].completed / totalByStaff[key].total) * 100) : 0,
+      avatar: (val.name || 'NA').split(' ').filter(Boolean).slice(0, 2).map(s => s[0]?.toUpperCase()).join('') || '—',
+    }));
+    return list.sort((a, b) => b.revenue - a.revenue).slice(0, 4);
+  }, [todayAppointments, staffMap]);
 
-  const topStaff = [
-    {
-      name: "Maria Garcia",
-      revenue: 1248,
-      appointments: 8,
-      rating: 4.9,
-      specialties: ["Hair Color", "Styling"],
-      completionRate: 98,
-      avatar: "MG"
-    },
-    {
-      name: "Lisa Wong",
-      revenue: 892,
-      appointments: 12,
-      rating: 4.8,
-      specialties: ["Nails", "Facial"],
-      completionRate: 96,
-      avatar: "LW"
-    },
-    {
-      name: "John Smith",
-      revenue: 707,
-      appointments: 6,
-      rating: 4.7,
-      specialties: ["Men's Cuts", "Beard"],
-      completionRate: 94,
-      avatar: "JS"
-    },
-    {
-      name: "Sophie Martinez",
-      revenue: 654,
-      appointments: 9,
-      rating: 4.8,
-      specialties: ["Massage", "Spa"],
-      completionRate: 97,
-      avatar: "SM"
-    }
-  ];
+  // Recent activities from real data (appointments recently created/updated)
+  const [recentActivities, setRecentActivities] = useState<{
+    type: string;
+    message: string;
+    time: string;
+    icon: any;
+    color: string;
+  }[]>([]);
 
-  const recentActivities = [
-    {
-      type: "appointment",
-      message: "New appointment booked by Sarah Johnson",
-      time: "5 minutes ago",
-      icon: Calendar,
-      color: "text-blue-600"
-    },
-    {
-      type: "payment",
-      message: "Payment received - $165 from Emily Chen",
-      time: "12 minutes ago",
-      icon: DollarSign,
-      color: "text-green-600"
-    },
-    {
-      type: "review",
-      message: "New 5-star review from Michael Brown",
-      time: "25 minutes ago",
-      icon: Star,
-      color: "text-amber-600"
-    },
-    {
-      type: "staff",
-      message: "Maria Garcia completed appointment",
-      time: "35 minutes ago",
-      icon: CheckCircle,
-      color: "text-emerald-600"
-    },
-    {
-      type: "inventory",
-      message: "Low stock alert - Hair Color Kit",
-      time: "1 hour ago",
-      icon: AlertTriangle,
-      color: "text-red-600"
-    }
-  ];
+  useEffect(() => {
+    const loadRecent = async () => {
+      try {
+        const since = subDays(new Date(), 1);
+        const { data: recentAppts } = await supabase
+          .from('appointments')
+          .select('customer_name, status, created_at, updated_at, appointment_time')
+          .gte('created_at', since.toISOString())
+          .order('created_at', { ascending: false })
+          .limit(10);
+        const items = (recentAppts || []).map((a: any) => ({
+          type: 'appointment',
+          message: `${(a.status || '').toLowerCase() === 'completed' ? 'Completed' : 'Booked'} appointment for ${a.customer_name || 'Client'}`,
+          time: new Date(a.created_at || a.updated_at || Date.now()).toLocaleString(),
+          icon: Calendar,
+          color: 'text-blue-600',
+        }));
+        setRecentActivities(items);
+      } catch (e) {
+        // swallow errors; keep empty
+      }
+    };
+    loadRecent();
+  }, []);
 
   const quickActions = [
     {
@@ -586,7 +606,7 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent className="p-0">
               <div className="space-y-1">
-                {topStaff.map((staff, index) => (
+                {topPerformers.map((staff, index) => (
                   <div key={index} className="flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors">
                     <div className="flex items-center gap-3 flex-1">
                       <div className="relative">
@@ -603,10 +623,12 @@ const Dashboard = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                           <h4 className="font-medium text-slate-900 text-sm truncate">{staff.name}</h4>
-                          <div className="flex items-center">
-                            <Star className="w-3 h-3 text-amber-500 mr-1" />
-                            <span className="text-xs text-slate-600">{staff.rating}</span>
-                          </div>
+                          {typeof staff.rating === 'number' && staff.rating > 0 && (
+                            <div className="flex items-center">
+                              <Star className="w-3 h-3 text-amber-500 mr-1" />
+                              <span className="text-xs text-slate-600">{staff.rating.toFixed(1)}</span>
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center justify-between text-xs text-slate-500">
                           <span>${staff.revenue.toLocaleString()}</span>
