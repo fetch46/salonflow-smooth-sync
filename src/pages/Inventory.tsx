@@ -238,6 +238,7 @@ export default function Inventory() {
   const [isLoading, setIsLoading] = useState(true);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -335,7 +336,9 @@ export default function Inventory() {
     }
   };
 
-  const goodsItems = items.filter(item => item.type === 'good');
+  const allGoodsItems = items.filter(item => item.type === 'good');
+  const activeGoodsItems = allGoodsItems.filter(item => item.is_active);
+  const displayedGoodsItems = statusFilter === 'all' ? allGoodsItems : statusFilter === 'active' ? activeGoodsItems : allGoodsItems.filter(item => !item.is_active);
   const serviceItems = items.filter(item => item.type === 'service');
 
   const TableSkeleton = () => (
@@ -377,7 +380,7 @@ export default function Inventory() {
         onClose={() => setIsItemDialogOpen(false)}
         onSubmit={handleItemSubmit}
         editingItem={editingItem}
-        goodsItems={goodsItems}
+        goodsItems={activeGoodsItems}
         serviceKits={serviceKits}
       />
 
@@ -393,6 +396,19 @@ export default function Inventory() {
                 <Package className="w-5 h-5 text-primary" />
                 Products Inventory
               </CardTitle>
+              <div className="flex items-center gap-3">
+                <Label className="text-sm">Status</Label>
+                <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </CardHeader>
             <CardContent>
               {isLoading ? <TableSkeleton /> : (
@@ -408,7 +424,7 @@ export default function Inventory() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {goodsItems.map((item) => {
+                    {displayedGoodsItems.map((item) => {
                       return (
                         <TableRow key={item.id}>
                           <TableCell className="font-medium">{item.name}</TableCell>
