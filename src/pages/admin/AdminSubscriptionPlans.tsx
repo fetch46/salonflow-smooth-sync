@@ -16,6 +16,7 @@ import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
 import { FEATURE_CATEGORIES, FEATURE_LABELS } from "@/lib/features";
 import { useSaas } from "@/lib/saas/context";
 import { SuperAdminService } from "@/lib/saas/services";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 
 interface SubscriptionPlan {
   id: string;
@@ -53,7 +54,8 @@ const AdminSubscriptionPlans = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
+     const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
+   const { formatUsdCents } = useOrganizationCurrency()
   const [newPlan, setNewPlan] = useState<NewSubscriptionPlan>({
     name: "",
     slug: "",
@@ -302,9 +304,7 @@ const AdminSubscriptionPlans = () => {
     plan.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const formatPrice = (priceInCents: number) => {
-    return `$${(priceInCents / 100).toFixed(2)}`;
-  };
+
 
   return (
     <SuperAdminLayout>
@@ -398,8 +398,8 @@ const AdminSubscriptionPlans = () => {
                           <div className="text-sm text-gray-500">{plan.slug}</div>
                         </div>
                       </TableCell>
-                      <TableCell>{formatPrice(plan.price_monthly)}</TableCell>
-                      <TableCell>{formatPrice(plan.price_yearly)}</TableCell>
+                                             <TableCell>{formatUsdCents(plan.price_monthly)}</TableCell>
+                                             <TableCell>{formatUsdCents(plan.price_yearly)}</TableCell>
                       <TableCell>{plan.max_users || 'Unlimited'}</TableCell>
                       <TableCell>{plan.max_locations || 'Unlimited'}</TableCell>
                       <TableCell>
