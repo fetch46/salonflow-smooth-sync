@@ -195,6 +195,9 @@ phone: "+1 (555) 123-4567",
         },
       } as any)
       toast.success("Company settings updated successfully");
+      // Ensure local UI reflects saved country and currency immediately
+      setSelectedCountryCode(selectedCountryCode)
+      setSelectedCurrencyId(selectedCurrencyId)
     } catch (err) {
       console.error(err)
       toast.error("Failed to update organization");

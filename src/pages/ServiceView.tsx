@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -85,8 +86,8 @@ export default function ServiceView() {
     }
   }, [id]);
 
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES" }).format(price);
+  const { format: formatCurrency } = useOrganizationCurrency()
+  const formatPrice = (price: number) => formatCurrency(price)
 
   const formatDuration = (minutes: number) => {
     const h = Math.floor(minutes / 60);
