@@ -12,6 +12,7 @@ import { CalendarDays, Clock, Phone, Mail, User, Edit2, Trash2, Plus, MoreHorizo
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
 import { useSaas } from "@/lib/saas";
+import { tableExists } from "@/utils/mockDatabase";
 
 interface Appointment {
   id: string;
@@ -144,26 +145,46 @@ export default function Appointments() {
       // Fetch appointment services for the loaded appointments
       const appointmentIds = (appointmentsRes.data || []).map(a => a.id);
       if (appointmentIds.length > 0) {
-        const { data: apptServices, error: apptServicesError } = await supabase
-          .from("appointment_services")
-          .select("*")
-          .in("appointment_id", appointmentIds);
-        if (apptServicesError) throw apptServicesError;
-        const grouped: Record<string, AppointmentServiceItem[]> = {};
-        (apptServices || []).forEach((item: any) => {
-          if (!grouped[item.appointment_id]) grouped[item.appointment_id] = [];
-          grouped[item.appointment_id].push({
-            id: item.id,
-            appointment_id: item.appointment_id,
-            service_id: item.service_id,
-            staff_id: item.staff_id || "",
-            duration_minutes: item.duration_minutes || undefined,
-            price: item.price || undefined,
-            notes: item.notes || undefined,
-            sort_order: item.sort_order || 0,
+        const hasApptServices = await tableExists(supabase, 'appointment_services');
+        if (hasApptServices) {
+          const { data: apptServices, error: apptServicesError } = await supabase
+            .from("appointment_services")
+            .select("*")
+            .in("appointment_id", appointmentIds);
+          if (apptServicesError) throw apptServicesError;
+          const grouped: Record<string, AppointmentServiceItem[]> = {};
+          (apptServices || []).forEach((item: any) => {
+            if (!grouped[item.appointment_id]) grouped[item.appointment_id] = [];
+            grouped[item.appointment_id].push({
+              id: item.id,
+              appointment_id: item.appointment_id,
+              service_id: item.service_id,
+              staff_id: item.staff_id || "",
+              duration_minutes: item.duration_minutes || undefined,
+              price: item.price || undefined,
+              notes: item.notes || undefined,
+              sort_order: item.sort_order || 0,
+            });
           });
-        });
-        setAppointmentServicesById(grouped);
+          setAppointmentServicesById(grouped);
+        } else {
+          // Fallback: build single-item mapping from appointments table
+          const grouped: Record<string, AppointmentServiceItem[]> = {};
+          (appointmentsRes.data || []).forEach((appt: any) => {
+            const items: AppointmentServiceItem[] = appt.service_id ? [{
+              id: undefined,
+              appointment_id: appt.id,
+              service_id: appt.service_id,
+              staff_id: appt.staff_id || "",
+              duration_minutes: appt.duration_minutes || undefined,
+              price: appt.price || undefined,
+              notes: appt.notes || undefined,
+              sort_order: 0,
+            }] : [];
+            grouped[appt.id] = items;
+          });
+          setAppointmentServicesById(grouped);
+        }
 
         // Build set of appointment IDs that already have job cards
         const { data: apptJobcards, error: apptJobcardsErr } = await supabase
@@ -440,25 +461,28 @@ export default function Appointments() {
           .eq("id", editingAppointment.id);
         if (updateError) throw updateError;
 
-        // Replace appointment_services
-        const { error: delError } = await supabase
-          .from("appointment_services")
-          .delete()
-          .eq("appointment_id", editingAppointment.id);
-        if (delError) throw delError;
+        // Replace appointment_services if table exists; otherwise rely on appointment fields
+        const hasApptServices = await tableExists(supabase, 'appointment_services');
+        if (hasApptServices) {
+          const { error: delError } = await supabase
+            .from("appointment_services")
+            .delete()
+            .eq("appointment_id", editingAppointment.id);
+          if (delError) throw delError;
 
-        const rows = form.serviceItems.map((it, idx) => ({
-          appointment_id: editingAppointment.id,
-          service_id: it.service_id,
-          staff_id: it.staff_id || null,
-          duration_minutes: it.duration_minutes || null,
-          price: it.price || null,
-          notes: it.notes || null,
-          sort_order: idx,
-        }));
-        if (rows.length) {
-          const { error: insError } = await supabase.from("appointment_services").insert(rows);
-          if (insError) throw insError;
+          const rows = form.serviceItems.map((it, idx) => ({
+            appointment_id: editingAppointment.id,
+            service_id: it.service_id,
+            staff_id: it.staff_id || null,
+            duration_minutes: it.duration_minutes || null,
+            price: it.price || null,
+            notes: it.notes || null,
+            sort_order: idx,
+          }));
+          if (rows.length) {
+            const { error: insError } = await supabase.from("appointment_services").insert(rows);
+            if (insError) throw insError;
+          }
         }
         toast.success("Appointment updated successfully!");
       } else {
@@ -471,17 +495,23 @@ export default function Appointments() {
         const apptId = inserted?.id;
         if (!apptId) throw new Error("Failed to create appointment");
 
-        const rows = form.serviceItems.map((it, idx) => ({
-          appointment_id: apptId,
-          service_id: it.service_id,
-          staff_id: it.staff_id || null,
-          duration_minutes: it.duration_minutes || null,
-          price: it.price || null,
-          notes: it.notes || null,
-          sort_order: idx,
-        }));
-        const { error: insError } = await supabase.from("appointment_services").insert(rows);
-        if (insError) throw insError;
+        // Insert appointment_services rows only if table exists; else store on appointment
+        const hasApptServices = await tableExists(supabase, 'appointment_services');
+        if (hasApptServices) {
+          const rows = form.serviceItems.map((it, idx) => ({
+            appointment_id: apptId,
+            service_id: it.service_id,
+            staff_id: it.staff_id || null,
+            duration_minutes: it.duration_minutes || null,
+            price: it.price || null,
+            notes: it.notes || null,
+            sort_order: idx,
+          }));
+          if (rows.length) {
+            const { error: insError } = await supabase.from("appointment_services").insert(rows);
+            if (insError) throw insError;
+          }
+        }
 
         // If booking fee collected, create a receipt and payment
         const paid = bookingFeeReceived ? Number(bookingFeeAmount || 0) : 0;
@@ -540,23 +570,37 @@ export default function Appointments() {
     // Load service items for this appointment from cache or fetch
     let items = appointmentServicesById[appointment.id];
     if (!items) {
-      const { data: apptServices, error } = await supabase
-        .from("appointment_services")
-        .select("*")
-        .eq("appointment_id", appointment.id);
-      if (error) {
-        console.error(error);
+      const hasApptServices = await tableExists(supabase, 'appointment_services');
+      if (hasApptServices) {
+        const { data: apptServices, error } = await supabase
+          .from("appointment_services")
+          .select("*")
+          .eq("appointment_id", appointment.id);
+        if (error) {
+          console.error(error);
+        } else {
+          items = (apptServices || []).map((it: any) => ({
+            id: it.id,
+            appointment_id: it.appointment_id,
+            service_id: it.service_id,
+            staff_id: it.staff_id || "",
+            duration_minutes: it.duration_minutes || undefined,
+            price: it.price || undefined,
+            notes: it.notes || undefined,
+            sort_order: it.sort_order || 0,
+          }));
+        }
       } else {
-        items = (apptServices || []).map((it: any) => ({
-          id: it.id,
-          appointment_id: it.appointment_id,
-          service_id: it.service_id,
-          staff_id: it.staff_id || "",
-          duration_minutes: it.duration_minutes || undefined,
-          price: it.price || undefined,
-          notes: it.notes || undefined,
-          sort_order: it.sort_order || 0,
-        }));
+        items = appointment.service_id ? [{
+          id: undefined,
+          appointment_id: appointment.id,
+          service_id: appointment.service_id,
+          staff_id: appointment.staff_id || "",
+          duration_minutes: appointment.duration_minutes || undefined,
+          price: appointment.price || undefined,
+          notes: appointment.notes || undefined,
+          sort_order: 0,
+        }] : [];
       }
     }
 
