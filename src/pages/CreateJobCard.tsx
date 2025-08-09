@@ -92,6 +92,8 @@ interface Appointment {
   appointment_time: string;
   status: string;
   notes?: string;
+  customer_name?: string; // Added for client name in appointment list
+  service_name?: string; // Added for service name in appointment list
 }
 
 interface InventoryItem {
@@ -728,6 +730,8 @@ function StepAppointmentClient({
 }: StepAppointmentClientProps) {
   const [showNewClient, setShowNewClient] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [appointmentFilter, setAppointmentFilter] = useState<'today' | 'upcoming' | 'all'>("today");
+  const [appointmentSearch, setAppointmentSearch] = useState("");
 
   const filteredClients = clients.filter(client =>
     client.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -735,9 +739,19 @@ function StepAppointmentClient({
     client.phone?.includes(searchTerm)
   );
 
-  const todayAppointments = appointments.filter(apt => 
-    apt.appointment_date === format(new Date(), 'yyyy-MM-dd')
-  );
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const filteredAppointments = appointments
+    .filter(apt => {
+      if (appointmentFilter === 'today') return apt.appointment_date === todayStr;
+      if (appointmentFilter === 'upcoming') return apt.appointment_date > todayStr;
+      return apt.appointment_date >= todayStr;
+    })
+    .filter(apt => {
+      if (!appointmentSearch.trim()) return true;
+      const client = clients.find(c => c.id === apt.client_id);
+      const hay = `${client?.full_name || ''} ${apt.service_name || ''} ${apt.appointment_time || ''}`.toLowerCase();
+      return hay.includes(appointmentSearch.toLowerCase());
+    });
 
   return (
     <div className="space-y-8">
@@ -754,13 +768,33 @@ function StepAppointmentClient({
           <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b">
             <CardTitle className="flex items-center gap-2 text-blue-800">
               <Calendar className="w-5 h-5" />
-              Today's Appointments
+              Appointments
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            {todayAppointments.length > 0 ? (
+            <div className="flex items-center gap-3 p-4 border-b">
+              <Select value={appointmentFilter} onValueChange={(v) => setAppointmentFilter(v as any)}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Filter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="upcoming">Upcoming</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="flex-1">
+                <Input
+                  placeholder="Search appointments..."
+                  value={appointmentSearch}
+                  onChange={(e) => setAppointmentSearch(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {filteredAppointments.length > 0 ? (
               <div className="space-y-2 p-4">
-                {todayAppointments.map((appointment) => {
+                {filteredAppointments.map((appointment) => {
                   const client = clients.find(c => c.id === appointment.client_id);
                   const isSelected = selectedAppointment?.id === appointment.id;
                   
@@ -785,8 +819,8 @@ function StepAppointmentClient({
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <div className="font-medium text-slate-900">{client?.full_name}</div>
-                            <div className="text-sm text-slate-600">{appointment.appointment_time}</div>
+                            <div className="font-medium text-slate-900">{client?.full_name || appointment.customer_name}</div>
+                            <div className="text-sm text-slate-600">{appointment.appointment_date} • {appointment.appointment_time}</div>
                           </div>
                         </div>
                         <Badge variant="outline" className="text-xs">
@@ -800,7 +834,7 @@ function StepAppointmentClient({
             ) : (
               <div className="p-8 text-center text-slate-500">
                 <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>No appointments scheduled for today</p>
+                <p>No appointments found</p>
               </div>
             )}
           </CardContent>
