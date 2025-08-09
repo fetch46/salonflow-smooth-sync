@@ -1,167 +1,129 @@
 // Mock database for handling missing tables until proper migration
-// This allows POS and invoice systems to work without database errors
+// This allows POS and receipts systems to work without database errors
 
-interface MockSale {
+interface MockReceipt {
   id: string;
-  sale_number: string;
+  receipt_number: string;
   customer_id: string | null;
-  customer_name: string;
   subtotal: number;
   tax_amount: number;
   discount_amount: number;
   total_amount: number;
-  payment_method: string;
-  status: string;
+  status: string; // open, partial, paid, cancelled
   notes: string | null;
   created_at: string;
   updated_at: string;
 }
 
-interface MockInvoice {
-  id: string;
-  invoice_number: string;
-  customer_id: string | null;
-  customer_name: string;
-  customer_email: string | null;
-  customer_phone: string | null;
-  subtotal: number;
-  tax_amount: number;
-  discount_amount: number;
-  total_amount: number;
-  status: string;
-  due_date: string | null;
-  payment_method: string | null;
-  notes: string | null;
-  jobcard_id: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-// Use localStorage to persist mock data
-class MockDatabase {
-  private storageKey = 'salon_mock_db';
-
-  private getStorage(): any {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(this.storageKey);
-      return stored ? JSON.parse(stored) : { sales: [], invoices: [], sale_items: [], invoice_items: [] };
-    }
-    return { sales: [], invoices: [], sale_items: [], invoice_items: [] };
-  }
-
-  private setStorage(data: any): void {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(this.storageKey, JSON.stringify(data));
-    }
-  }
-
-  // Sales operations
-  async createSale(saleData: Omit<MockSale, 'id' | 'created_at' | 'updated_at'>): Promise<MockSale> {
-    const storage = this.getStorage();
-    const sale: MockSale = {
-      ...saleData,
-      id: `sale_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    
-    storage.sales.push(sale);
-    this.setStorage(storage);
-    return sale;
-  }
-
-  async getSales(): Promise<MockSale[]> {
-    const storage = this.getStorage();
-    return storage.sales || [];
-  }
-
-  // Sale items operations
-  async createSaleItems(items: any[]): Promise<any[]> {
-    const storage = this.getStorage();
-    const saleItems = items.map(item => ({
-      ...item,
-      id: `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      created_at: new Date().toISOString(),
-    }));
-    
-    storage.sale_items.push(...saleItems);
-    this.setStorage(storage);
-    return saleItems;
-  }
-
-  // Invoice operations
-  async createInvoice(invoiceData: Omit<MockInvoice, 'id' | 'created_at' | 'updated_at'>): Promise<MockInvoice> {
-    const storage = this.getStorage();
-    const invoice: MockInvoice = {
-      ...invoiceData,
-      id: `invoice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    
-    storage.invoices.push(invoice);
-    this.setStorage(storage);
-    return invoice;
-  }
-
-  async getInvoices(): Promise<MockInvoice[]> {
-    const storage = this.getStorage();
-    return storage.invoices || [];
-  }
-
-  async updateInvoice(id: string, updates: Partial<MockInvoice>): Promise<MockInvoice | null> {
-    const storage = this.getStorage();
-    const index = storage.invoices.findIndex((inv: MockInvoice) => inv.id === id);
-    
-    if (index !== -1) {
-      storage.invoices[index] = {
-        ...storage.invoices[index],
-        ...updates,
-        updated_at: new Date().toISOString(),
-      };
-      this.setStorage(storage);
-      return storage.invoices[index];
-    }
-    
-    return null;
-  }
-
-  async deleteInvoice(id: string): Promise<boolean> {
-    const storage = this.getStorage();
-    const index = storage.invoices.findIndex((inv: MockInvoice) => inv.id === id);
-    
-    if (index !== -1) {
-      storage.invoices.splice(index, 1);
-      // Also remove associated items
-      storage.invoice_items = storage.invoice_items.filter((item: any) => item.invoice_id !== id);
-      this.setStorage(storage);
-      return true;
-    }
-    
-    return false;
-  }
-
-  // Invoice items operations
-  async createInvoiceItems(items: any[]): Promise<any[]> {
-    const storage = this.getStorage();
-    const invoiceItems = items.map(item => ({
-      ...item,
-      id: `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      created_at: new Date().toISOString(),
-    }));
-    
-    storage.invoice_items.push(...invoiceItems);
-    this.setStorage(storage);
-    return invoiceItems;
-  }
-
-  async getInvoiceItems(invoiceId: string): Promise<any[]> {
-    const storage = this.getStorage();
-    return storage.invoice_items.filter((item: any) => item.invoice_id === invoiceId) || [];
+function getStorage() {
+  try {
+    const stored = JSON.parse(localStorage.getItem('mockDb') || '{}');
+    return stored ? stored : { sales: [], receipts: [], receipt_items: [], receipt_payments: [] };
+  } catch {
+    return { sales: [], receipts: [], receipt_items: [], receipt_payments: [] };
   }
 }
 
-export const mockDb = new MockDatabase();
+function setStorage(data: any) {
+  localStorage.setItem('mockDb', JSON.stringify(data));
+}
+
+export const mockDb = {
+  async getStore() {
+    return getStorage();
+  },
+  async saveStore(data: any) {
+    setStorage(data);
+  },
+
+  // Receipt operations
+  async createReceipt(receiptData: Omit<MockReceipt, 'id' | 'created_at' | 'updated_at'>): Promise<MockReceipt> {
+    const storage = getStorage();
+    const receipt: MockReceipt = {
+      ...receiptData,
+      id: `receipt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    storage.receipts = storage.receipts || [];
+    storage.receipts.push(receipt);
+    setStorage(storage);
+    return receipt;
+  },
+  async getReceipts(): Promise<MockReceipt[]> {
+    const storage = getStorage();
+    return storage.receipts || [];
+  },
+};
+
+// Wrapper functions for Receipts
+export async function createReceiptWithFallback(supabase: any, receiptData: any, items: any[]) {
+  try {
+    const dbReceipt = {
+      receipt_number: receiptData.receipt_number,
+      customer_id: receiptData.customer_id || null,
+      job_card_id: receiptData.job_card_id || null,
+      subtotal: receiptData.subtotal ?? 0,
+      tax_amount: receiptData.tax_amount ?? 0,
+      discount_amount: receiptData.discount_amount ?? 0,
+      total_amount: receiptData.total_amount ?? 0,
+      status: receiptData.status || 'open',
+      notes: receiptData.notes || null,
+    };
+    const { data: receipt, error: receiptError } = await supabase
+      .from('receipts')
+      .insert([dbReceipt])
+      .select('id')
+      .maybeSingle();
+    if (receiptError) throw receiptError;
+    if (!receipt?.id) throw new Error('Receipt created but no ID returned');
+
+    if (items?.length) {
+      await supabase
+        .from('receipt_items')
+        .insert(items.map((it: any) => ({
+          receipt_id: receipt.id,
+          description: it.description,
+          quantity: it.quantity || 1,
+          unit_price: it.unit_price || 0,
+          total_price: it.total_price || 0,
+          service_id: it.service_id || null,
+          product_id: it.product_id || null,
+          staff_id: it.staff_id || null,
+        })));
+    }
+    return receipt;
+  } catch (err) {
+    console.log('Using mock database for receipts');
+    const receipt = await mockDb.createReceipt({
+      receipt_number: receiptData.receipt_number,
+      customer_id: receiptData.customer_id || null,
+      subtotal: receiptData.subtotal ?? 0,
+      tax_amount: receiptData.tax_amount ?? 0,
+      discount_amount: receiptData.discount_amount ?? 0,
+      total_amount: receiptData.total_amount ?? 0,
+      status: receiptData.status || 'open',
+      notes: receiptData.notes || null,
+      updated_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+    } as any);
+    return receipt;
+  }
+}
+
+export async function getReceiptsWithFallback(supabase: any) {
+  try {
+    const { data, error } = await supabase
+      .from('receipts')
+      .select('id, receipt_number, customer_id, subtotal, tax_amount, discount_amount, total_amount, status, notes, created_at, updated_at')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.log('Using mock database for receipts');
+    return await mockDb.getReceipts();
+  }
+}
 
 // Helper function to check if table exists in Supabase
 export async function tableExists(supabase: any, tableName: string): Promise<boolean> {
@@ -204,15 +166,18 @@ export async function createSaleWithFallback(supabase: any, saleData: any, items
   } catch (error) {
     console.log('Using mock database for sales');
     // Fallback to mock database
-    const sale = await mockDb.createSale(saleData);
-    await mockDb.createSaleItems(items.map(item => ({
-      sale_id: sale.id,
-      product_id: item.product.id,
-      quantity: item.quantity,
-      unit_price: item.product.selling_price,
-      discount_percentage: item.discount,
-      total_price: item.total,
-    })));
+    const sale = await mockDb.createReceipt({
+      receipt_number: saleData.sale_number,
+      customer_id: saleData.customer_id || null,
+      subtotal: saleData.subtotal,
+      tax_amount: saleData.tax_amount,
+      discount_amount: saleData.discount_amount,
+      total_amount: saleData.total_amount,
+      status: 'open',
+      notes: saleData.notes || null,
+      updated_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+    } as any);
     return sale;
   }
 }
@@ -260,33 +225,18 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
   } catch (error) {
     console.log('Using mock database for invoices');
     // Fallback to mock database
-    const invoice = await mockDb.createInvoice({
-      invoice_number: invoiceData.invoice_number,
+    const invoice = await mockDb.createReceipt({
+      receipt_number: invoiceData.invoice_number,
       customer_id: invoiceData.customer_id || null,
-      customer_name: invoiceData.customer_name || '',
-      customer_email: invoiceData.customer_email || null,
-      customer_phone: invoiceData.customer_phone || null,
       subtotal: invoiceData.subtotal ?? 0,
       tax_amount: invoiceData.tax_amount ?? 0,
       discount_amount: invoiceData.discount_amount ?? 0,
       total_amount: invoiceData.total_amount ?? 0,
       status: invoiceData.status || 'draft',
-      due_date: invoiceData.due_date || null,
-      payment_method: invoiceData.payment_method || null,
       notes: invoiceData.notes || null,
-      jobcard_id: invoiceData.jobcard_id || null,
-    });
-    await mockDb.createInvoiceItems(items.map((item: any) => ({
-      invoice_id: invoice.id,
-      service_id: item.service_id || null,
-      description: item.description,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-      discount_percentage: item.discount_percentage || 0,
-      staff_id: item.staff_id || null,
-      commission_percentage: item.commission_percentage || 0,
-      total_price: item.total_price,
-    })));
+      updated_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+    } as any);
     return invoice;
   }
 }
@@ -325,7 +275,7 @@ export async function getInvoicesWithFallback(supabase: any) {
     }));
   } catch (error) {
     console.log('Using mock database for invoices');
-    return await mockDb.getInvoices();
+    return await mockDb.getReceipts();
   }
 }
 

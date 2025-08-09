@@ -31,7 +31,7 @@ import EditJobCard from "@/pages/EditJobCard";
 import SuperAdmin from "@/pages/SuperAdmin";
 import ServiceView from "@/pages/ServiceView";
 import Booking from "@/pages/Booking";
-import Invoices from "@/pages/Invoices";
+
 import NotFound from "@/pages/NotFound";
 import Landing from "@/pages/Landing";
 import Reports from "@/pages/Reports";
@@ -141,7 +141,7 @@ const AppRoutes = () => {
          <Route path="job-cards/:id/edit" element={<EditJobCard />} />
          <Route path="pos" element={<POS />} />
         <Route path="booking" element={<Booking />} />
-        <Route path="invoices" element={<Invoices />} />
+        
         
         {/* Settings & Support */}
         <Route path="settings" element={<Settings />} />

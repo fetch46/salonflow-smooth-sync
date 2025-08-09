@@ -245,55 +245,10 @@ export default function JobCards() {
     return `INV-${y}${m}${d}-${rand}`;
   };
 
-  const createInvoiceFromJobCard = async (card: JobCard) => {
-    try {
-      const today = new Date();
-      const issueDate = today.toISOString().split('T')[0];
-      const dueDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split('T')[0];
-
-      const invoicePayload = {
-        invoice_number: generateInvoiceNumber(),
-        client_id: card.client?.id || null,
-        issue_date: issueDate,
-        due_date: dueDate,
-        subtotal: card.total_amount,
-        tax_amount: 0,
-        total_amount: card.total_amount,
-        status: 'draft',
-        notes: `Invoice for Job Card ${card.job_number}`,
-      } as const;
-
-      const { data: invoice, error: invErr } = await supabase
-        .from('invoices')
-        .insert([invoicePayload])
-        .select('id')
-        .maybeSingle();
-
-      if (invErr) throw invErr;
-      if (!invoice?.id) throw new Error('Invoice created but no ID returned');
-
-      const itemPayload = {
-        invoice_id: invoice.id,
-        description: `Services for ${card.job_number}`,
-        quantity: 1,
-        unit_price: card.total_amount,
-        total_price: card.total_amount,
-      } as const;
-
-      const { error: itemErr } = await supabase
-        .from('invoice_items')
-        .insert([itemPayload]);
-
-      if (itemErr) throw itemErr;
-
-      toast.success('Invoice created');
-      navigate('/invoices');
-    } catch (e: any) {
-      console.error('Error creating invoice from job card:', e);
-      toast.error(e?.message ? `Failed to create invoice: ${e.message}` : 'Failed to create invoice');
-    }
+  // Invoicing removed in favor of receipts
+  const createInvoiceFromJobCard = async (_card: JobCard) => {
+    toast.info('Invoicing has been removed. Use Receipts via Job Cards.');
+    return;
   };
 
   const getStatusBadge = (status: string) => {
@@ -762,11 +717,6 @@ export default function JobCards() {
                             <DropdownMenuItem>
                               <Send className="w-4 h-4 mr-2" />
                               Send to Client
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => createInvoiceFromJobCard(jobCard)}>
-                              <Receipt className="w-4 h-4 mr-2" />
-                              Create Invoice
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
