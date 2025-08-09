@@ -373,13 +373,23 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
       )
       dispatch({ type: 'SET_ORGANIZATIONS', payload: updatedOrgs })
 
+      // Invalidate cached organizations so fresh data (including currency/country) is fetched next time
+      try {
+        if (state.user) {
+          const cacheKey = createCacheKey(CACHE_KEYS.USER_ORGANIZATIONS, state.user.id)
+          CacheService.delete(cacheKey)
+        }
+      } catch (e) {
+        console.warn('Failed to invalidate organizations cache:', e)
+      }
+
       toast.success('Organization updated successfully!')
       return updatedOrg
     } catch (error) {
       handleError(error, 'Failed to update organization')
       throw error
     }
-  }, [state.organization, state.organizations, handleError])
+  }, [state.organization, state.organizations, state.user, handleError])
 
   // User management actions
   const inviteUser = useCallback(async (email: string, role: UserRole): Promise<UserInvitation> => {
