@@ -149,6 +149,18 @@ export default function Services() {
  
   const { format: formatCurrency } = useOrganizationCurrency();
 
+  const [serviceMetrics, setServiceMetrics] = useState<{
+    totalRevenue: number;
+    totalBookings: number;
+    bestSelling: BookingService[];
+    categoriesStats: { name: string; count: number; revenue: number; icon: any; color: string }[];
+  }>({
+    totalRevenue: 0,
+    totalBookings: 0,
+    bestSelling: [],
+    categoriesStats: [],
+  });
+
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -192,6 +204,7 @@ export default function Services() {
     try {
       setRefreshing(true);
       await fetchServices();
+      await fetchServiceMetrics();
       toast.success("Data refreshed successfully");
     } catch (error) {
       toast.error("Failed to refresh data");
@@ -219,6 +232,64 @@ export default function Services() {
     fetchServices();
     fetchAvailableProducts();
   }, [fetchServices, fetchAvailableProducts]);
+
+  const fetchServiceMetrics = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("receipt_items")
+        .select("service_id, quantity, total_price, services:service_id(name, category)")
+        .not("service_id", "is", null);
+      if (error) throw error;
+      const items = (data || []) as any[];
+
+      const byService: Record<string, { name: string; category?: string; bookings: number; revenue: number }> = {};
+      for (const it of items) {
+        const sid = (it.service_id as string) || null;
+        if (!sid) continue;
+        const qty = Number(it.quantity) || 0;
+        const rev = Number(it.total_price) || 0;
+        const name = it.services?.name || "Service";
+        const category = it.services?.category || undefined;
+        if (!byService[sid]) {
+          byService[sid] = { name, category, bookings: 0, revenue: 0 };
+        }
+        byService[sid].bookings += qty;
+        byService[sid].revenue += rev;
+      }
+
+      const totalRevenue = Object.values(byService).reduce((sum, v) => sum + v.revenue, 0);
+      const totalBookings = Object.values(byService).reduce((sum, v) => sum + v.bookings, 0);
+
+      const bestSelling: BookingService[] = Object.entries(byService)
+        .map(([service_id, v]) => ({
+          service_id,
+          service_name: v.name,
+          total_bookings: v.bookings,
+          total_revenue: v.revenue,
+          avg_rating: 0,
+          growth_rate: 0,
+        }))
+        .sort((a, b) => b.total_bookings - a.total_bookings)
+        .slice(0, 3);
+
+      const categoriesStats = SERVICE_CATEGORIES.map((cat) => {
+        const count = services.filter((s) => s.category === cat.name).length;
+        const revenue = Object.values(byService)
+          .filter((v) => v.category === cat.name)
+          .reduce((sum, v) => sum + v.revenue, 0);
+        return { name: cat.name, count, revenue, icon: cat.icon, color: cat.color };
+      }).filter((c) => c.count > 0);
+
+      setServiceMetrics({ totalRevenue, totalBookings, bestSelling, categoriesStats });
+    } catch (err) {
+      console.error("Error fetching service metrics:", err);
+      setServiceMetrics({ totalRevenue: 0, totalBookings: 0, bestSelling: [], categoriesStats: [] });
+    }
+  }, [services]);
+
+  useEffect(() => {
+    fetchServiceMetrics();
+  }, [fetchServiceMetrics]);
 
   const fetchServiceKits = async (serviceId: string) => {
     try {
@@ -460,38 +531,26 @@ export default function Services() {
   const dashboard = useMemo(() => {
     const active = services.filter((s) => s.is_active).length;
     const inactive = services.length - active;
-    const totalRevenue = ENHANCED_MOCK_BOOKINGS.reduce((sum, b) => sum + b.total_revenue, 0);
-    const totalBookings = ENHANCED_MOCK_BOOKINGS.reduce((sum, b) => sum + b.total_bookings, 0);
+    const totalRevenue = serviceMetrics.totalRevenue;
+    const totalBookings = serviceMetrics.totalBookings;
     const avgPrice = services.length > 0 ? services.reduce((sum, s) => sum + s.price, 0) / services.length : 0;
     const avgDuration = services.length > 0 ? services.reduce((sum, s) => sum + s.duration_minutes, 0) / services.length : 0;
     const avgRating = services.length > 0 ? services.reduce((sum, s) => sum + (s.avg_rating || 0), 0) / services.length : 0;
-    
-    const bestSelling = ENHANCED_MOCK_BOOKINGS
-      .sort((a, b) => b.total_bookings - a.total_bookings)
-      .slice(0, 3);
-    
-    const categoriesStats = SERVICE_CATEGORIES.map(cat => ({
-      name: cat.name,
-      count: services.filter(s => s.category === cat.name).length,
-      revenue: ENHANCED_MOCK_BOOKINGS
-        .filter(b => services.find(s => s.id === b.service_id && s.category === cat.name))
-        .reduce((sum, b) => sum + b.total_revenue, 0),
-      icon: cat.icon,
-      color: cat.color
-    })).filter(cat => cat.count > 0);
+    const bestSelling = serviceMetrics.bestSelling;
+    const categoriesStats = serviceMetrics.categoriesStats;
 
-    return { 
-      active, 
-      inactive, 
-      totalRevenue, 
-      totalBookings, 
-      avgPrice, 
-      avgDuration, 
-      avgRating, 
-      bestSelling, 
-      categoriesStats 
+    return {
+      active,
+      inactive,
+      totalRevenue,
+      totalBookings,
+      avgPrice,
+      avgDuration,
+      avgRating,
+      bestSelling,
+      categoriesStats,
     };
-  }, [services]);
+  }, [services, serviceMetrics]);
 
   if (loading) {
     return (
