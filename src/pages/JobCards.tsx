@@ -35,7 +35,6 @@ import {
   RefreshCw,
   Filter,
   Download,
-  Send,
   ChevronRight,
   Star,
   Zap,
@@ -802,46 +801,32 @@ export default function JobCards() {
                       </div>
                       
                       <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => navigate(`/job-cards/${jobCard.id}`)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-
-                        {jobCard.status === 'completed' && !jobCardsWithReceipts.has(jobCard.id) && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => createReceiptFromJobCard(jobCard)}
-                            className="h-8"
-                          >
-                            <Receipt className="w-4 h-4 mr-2" />
-                            Create Receipt
-                          </Button>
-                        )}
-                        
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="w-4 h-4" />
+                            <Button variant="outline" size="sm" className="h-8">
+                              <MoreHorizontal className="w-4 h-4 mr-2" />
+                              Actions
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48 z-50 bg-background">
+                          <DropdownMenuContent align="end" className="w-52 z-50 bg-background">
+                            <DropdownMenuItem onClick={() => navigate(`/job-cards/${jobCard.id}`)}>
+                              <Eye className="w-4 h-4 mr-2" />
+                              View
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => navigate(`/job-cards/${jobCard.id}/edit`)}>
                               <Edit className="w-4 h-4 mr-2" />
-                              Edit Job Card
+                              Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem>
                               <Printer className="w-4 h-4 mr-2" />
-                              Print Job Card
+                              Print
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Send className="w-4 h-4 mr-2" />
-                              Send to Client
-                            </DropdownMenuItem>
+                            {jobCard.status === 'completed' && !jobCardsWithReceipts.has(jobCard.id) && (
+                              <DropdownMenuItem onClick={() => createReceiptFromJobCard(jobCard)}>
+                                <Receipt className="w-4 h-4 mr-2" />
+                                Create Receipt
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               onClick={() => handleDeleteJobCard(jobCard.id)}
@@ -854,26 +839,26 @@ export default function JobCards() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                        
-                        <Select 
-                          value={jobCard.status} 
-                          onValueChange={(value) => handleStatusUpdate(jobCard.id, value)}
-                        >
-                          <SelectTrigger className="w-24 h-8">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {JOB_STATUSES.map((status) => (
-                              <SelectItem key={status.value} value={status.value}>
-                                <div className="flex items-center gap-2">
-                                  <status.icon className="w-3 h-3" />
-                                  {status.label}
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+ 
+                         <Select 
+                           value={jobCard.status} 
+                           onValueChange={(value) => handleStatusUpdate(jobCard.id, value)}
+                         >
+                           <SelectTrigger className="w-24 h-8">
+                             <SelectValue />
+                           </SelectTrigger>
+                           <SelectContent>
+                             {JOB_STATUSES.map((status) => (
+                               <SelectItem key={status.value} value={status.value}>
+                                 <div className="flex items-center gap-2">
+                                   <status.icon className="w-3 h-3" />
+                                   {status.label}
+                                 </div>
+                               </SelectItem>
+                             ))}
+                           </SelectContent>
+                         </Select>
+                       </div>
                     </div>
                   ))}
                 </div>
