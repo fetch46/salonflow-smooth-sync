@@ -151,50 +151,50 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [])
 
   // Set active organization
-  const setActiveOrganization = useCallback(async (
-    organization: Organization, 
-    role: UserRole, 
+  async function setActiveOrganization(
+    organization: Organization,
+    role: UserRole,
     silent = false
-  ) => {
-   try {
-     dispatch({ type: 'SET_ORGANIZATION', payload: organization })
-     dispatch({ type: 'SET_ORGANIZATION_ROLE', payload: role })
-     localStorage.setItem(STORAGE_KEYS.ACTIVE_ORGANIZATION, organization.id)
+  ) {
+    try {
+      dispatch({ type: 'SET_ORGANIZATION', payload: organization })
+      dispatch({ type: 'SET_ORGANIZATION_ROLE', payload: role })
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_ORGANIZATION, organization.id)
 
-     // Load subscription data
-     try {
-       const subscription = await SubscriptionService.getOrganizationSubscription(organization.id)
-       dispatch({ type: 'SET_SUBSCRIPTION', payload: subscription })
-       
-       if (subscription?.subscription_plans) {
-         dispatch({ type: 'SET_SUBSCRIPTION_PLAN', payload: subscription.subscription_plans })
-       }
-     } catch (error) {
-       console.error('Error loading subscription:', error)
-       // Don't throw, just set null
-       dispatch({ type: 'SET_SUBSCRIPTION', payload: null })
-       dispatch({ type: 'SET_SUBSCRIPTION_PLAN', payload: null })
-     }
+      // Load subscription data
+      try {
+        const subscription = await SubscriptionService.getOrganizationSubscription(organization.id)
+        dispatch({ type: 'SET_SUBSCRIPTION', payload: subscription })
+        
+        if (subscription?.subscription_plans) {
+          dispatch({ type: 'SET_SUBSCRIPTION_PLAN', payload: subscription.subscription_plans })
+        }
+      } catch (error) {
+        console.error('Error loading subscription:', error)
+        // Don't throw, just set null
+        dispatch({ type: 'SET_SUBSCRIPTION', payload: null })
+        dispatch({ type: 'SET_SUBSCRIPTION_PLAN', payload: null })
+      }
 
-     // Load usage metrics
-     if (!silent) {
-       try {
-         const metrics = await UsageService.getUsageMetrics(organization.id)
-         dispatch({ type: 'SET_USAGE_METRICS', payload: metrics })
-       } catch (error) {
-         console.error('Error loading usage metrics:', error)
-       }
-     }
+      // Load usage metrics
+      if (!silent) {
+        try {
+          const metrics = await UsageService.getUsageMetrics(organization.id)
+          dispatch({ type: 'SET_USAGE_METRICS', payload: metrics })
+        } catch (error) {
+          console.error('Error loading usage metrics:', error)
+        }
+      }
 
-     // Track organization switch
-     AnalyticsService.trackEvent(organization.id, 'organization_switched', {
-       organization_name: organization.name,
-       user_role: role,
-     })
-   } catch (error) {
-     handleError(error, 'Failed to switch organization')
-   }
- }, [handleError])
+      // Track organization switch
+      AnalyticsService.trackEvent(organization.id, 'organization_switched', {
+        organization_name: organization.name,
+        user_role: role,
+      })
+    } catch (error) {
+      handleError(error, 'Failed to switch organization')
+    }
+  }
 
   // Load user organizations
   const loadUserOrganizations = useCallback(async (userId: string, silent = false) => {
