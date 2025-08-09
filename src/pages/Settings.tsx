@@ -39,6 +39,9 @@ phone: "+1 (555) 123-4567",
   const [countries, setCountries] = useState<{ id: string; code: string; name: string; is_active: boolean }[]>([])
   const [selectedCountryCode, setSelectedCountryCode] = useState<string>("US")
 
+  // New: Finance Settings - Tax Rate
+  const [taxRatePercent, setTaxRatePercent] = useState<string>("");
+
   // Users & Roles State
   const [users] = useState([
     { id: "1", name: "Admin User", email: "admin@salon.com", role: "Administrator", status: "Active", last_login: "2024-01-15" },
@@ -161,6 +164,10 @@ phone: "+1 (555) 123-4567",
       }))
       setSelectedCurrencyId((organization as any).currency_id || "")
       setSelectedCountryCode(s.country || "US")
+      // Initialize tax rate percent from org settings
+      const tax = s.tax_rate_percent
+      const parsed = typeof tax === 'number' ? tax : typeof tax === 'string' ? parseFloat(tax) : 0
+      setTaxRatePercent(Number.isFinite(parsed) ? String(parsed) : "")
     }
   }, [organization])
 
@@ -184,6 +191,7 @@ phone: "+1 (555) 123-4567",
           email: companyData.email,
           website: companyData.website,
           timezone: companyData.timezone,
+          tax_rate_percent: taxRatePercent === '' ? null : parseFloat(taxRatePercent),
         },
       } as any)
       toast.success("Company settings updated successfully");
@@ -338,6 +346,23 @@ phone: "+1 (555) 123-4567",
                   <div className="space-y-2">
                     <Label htmlFor="logo_url">Logo URL</Label>
                     <Input id="logo_url" value={companyData.logo_url} onChange={(e) => setCompanyData({ ...companyData, logo_url: e.target.value })} />
+                  </div>
+                </div>
+
+                {/* Finance Settings: Tax Rate */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="tax_rate_percent">Tax Rate (%)</Label>
+                    <Input
+                      id="tax_rate_percent"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={taxRatePercent}
+                      onChange={(e) => setTaxRatePercent(e.target.value)}
+                      placeholder="e.g. 8.5"
+                    />
+                    <p className="text-xs text-muted-foreground">This rate will be used across POS, Invoices, Receipts and Purchases.</p>
                   </div>
                 </div>
 

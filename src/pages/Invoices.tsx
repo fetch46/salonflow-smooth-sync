@@ -78,6 +78,7 @@ import {
   getInvoiceItemsWithFallback 
 } from "@/utils/mockDatabase";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { useOrganizationTaxRate } from "@/lib/saas/hooks";
 
 interface Invoice {
   id: string;
@@ -176,6 +177,7 @@ const DATE_FILTERS = [
 
 export default function Invoices() {
   const { symbol } = useOrganizationCurrency();
+  const orgTaxRate = useOrganizationTaxRate();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -350,7 +352,7 @@ export default function Invoices() {
 
   const calculateTotals = () => {
     const subtotal = selectedItems.reduce((sum, item) => sum + item.total_price, 0);
-    const taxAmount = subtotal * 0.085;
+    const taxAmount = subtotal * ((orgTaxRate || 0) / 100);
     const total = subtotal + taxAmount;
     return { subtotal, taxAmount, total };
   };
@@ -926,7 +928,7 @@ export default function Invoices() {
                                     <span className="font-semibold">{symbol}{totals.subtotal.toFixed(2)}</span>
                                   </div>
                                   <div className="flex justify-between text-sm">
-                                    <span>Tax (8.5%):</span>
+                                    <span>Tax ({(orgTaxRate || 0)}%):</span>
                                     <span className="font-semibold">{symbol}{totals.taxAmount.toFixed(2)}</span>
                                   </div>
                                   <Separator />
@@ -1407,7 +1409,7 @@ export default function Invoices() {
                         <span className="font-semibold">${selectedInvoice.subtotal.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span>Tax (8.5%):</span>
+                        <span>Tax ({(orgTaxRate || 0)}%):</span>
                         <span className="font-semibold">${selectedInvoice.tax_amount.toFixed(2)}</span>
                       </div>
                       {selectedInvoice.discount_amount > 0 && (

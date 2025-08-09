@@ -432,3 +432,14 @@ export const useOrganizationCurrency = () => {
 
   return { currency, symbol: currency?.symbol ?? '$', code: currency?.code ?? 'USD', loading, format }
 }
+
+export const useOrganizationTaxRate = () => {
+  const { organization } = useSaas()
+  const taxRate = useMemo(() => {
+    const settings = (organization?.settings as any) || {}
+    const raw = settings.tax_rate_percent
+    const parsed = typeof raw === 'string' ? parseFloat(raw) : typeof raw === 'number' ? raw : NaN
+    return Number.isFinite(parsed) ? parsed : 0
+  }, [organization])
+  return taxRate
+}

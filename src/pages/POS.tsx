@@ -14,6 +14,8 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { createSaleWithFallback } from "@/utils/mockDatabase";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { useOrganizationTaxRate } from "@/lib/saas/hooks";
+import { Switch } from "@/components/ui/switch";
 
 interface Product {
   id: string;
@@ -77,6 +79,7 @@ export default function POS() {
   const [currentSale, setCurrentSale] = useState<Sale | null>(null);
 
   const { format: formatMoney } = useOrganizationCurrency();
+  const orgTaxRate = useOrganizationTaxRate();
 
   const [paymentData, setPaymentData] = useState({
     payment_method: "",
@@ -85,6 +88,11 @@ export default function POS() {
     notes: "",
     cash_received: "",
   });
+  const [applyTax, setApplyTax] = useState<boolean>(true);
+
+  useEffect(() => {
+    setPaymentData(prev => ({ ...prev, tax_percentage: typeof orgTaxRate === 'number' ? orgTaxRate : prev.tax_percentage }))
+  }, [orgTaxRate])
 
   useEffect(() => {
     fetchProducts();
@@ -204,7 +212,7 @@ export default function POS() {
     const subtotal = cart.reduce((sum, item) => sum + item.total, 0);
     const globalDiscount = subtotal * (paymentData.discount_percentage / 100);
     const discountedSubtotal = subtotal - globalDiscount;
-    const taxAmount = discountedSubtotal * (paymentData.tax_percentage / 100);
+    const taxAmount = applyTax ? (discountedSubtotal * (paymentData.tax_percentage / 100)) : 0;
     const total = discountedSubtotal + taxAmount;
 
     return {
@@ -472,9 +480,14 @@ export default function POS() {
                     <span>-${totals.globalDiscount.toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <span>Tax ({paymentData.tax_percentage}%):</span>
-                  <span>${totals.taxAmount.toFixed(2)}</span>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    Tax ({applyTax ? paymentData.tax_percentage : 0}%):
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={applyTax} onCheckedChange={setApplyTax} />
+                    <span>${totals.taxAmount.toFixed(2)}</span>
+                  </div>
                 </div>
                 <div className="flex justify-between font-bold text-lg border-t pt-2">
                   <span>Total:</span>
@@ -537,6 +550,10 @@ export default function POS() {
                           value={paymentData.tax_percentage}
                           onChange={(e) => setPaymentData({...paymentData, tax_percentage: parseFloat(e.target.value) || 0})}
                         />
+                        <div className="flex items-center gap-2 mt-2">
+                          <Switch checked={applyTax} onCheckedChange={setApplyTax} />
+                          <span className="text-sm">Apply Tax</span>
+                        </div>
                       </div>
                     </div>
 
@@ -580,9 +597,14 @@ export default function POS() {
                             <span>-${totals.globalDiscount.toFixed(2)}</span>
                           </div>
                         )}
-                        <div className="flex justify-between">
-                          <span>Tax:</span>
-                          <span>${totals.taxAmount.toFixed(2)}</span>
+                        <div className="flex items-center justify-between">
+                          <span className="flex items-center gap-2">
+                            Tax:
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <Switch checked={applyTax} onCheckedChange={setApplyTax} />
+                            <span>${totals.taxAmount.toFixed(2)}</span>
+                          </div>
                         </div>
                         <div className="flex justify-between font-bold text-lg border-t pt-1">
                           <span>Total:</span>
