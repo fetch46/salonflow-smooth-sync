@@ -13,6 +13,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Plus, Search, ShoppingCart, Package, TrendingUp, Truck } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { useSaas } from "@/lib/saas";
 
 interface Purchase {
   id: string;
@@ -45,6 +46,7 @@ interface PurchaseItem {
 }
 
 export default function Purchases() {
+  const { organization } = useSaas();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -180,8 +182,9 @@ export default function Purchases() {
   }, [purchaseItems, formData.tax_amount]);
 
   useEffect(() => {
-    calculateTotals();
-  }, [purchaseItems, formData.tax_amount, calculateTotals]);
+    fetchPurchases();
+    fetchInventoryItems();
+  }, [fetchPurchases, fetchInventoryItems]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,6 +196,7 @@ export default function Purchases() {
         subtotal: parseFloat(formData.subtotal) || 0,
         tax_amount: parseFloat(formData.tax_amount) || 0,
         total_amount: parseFloat(formData.total_amount) || 0,
+        organization_id: organization?.id || null,
       };
 
       let purchaseId: string;
@@ -248,6 +252,27 @@ export default function Purchases() {
           .insert(itemsToInsert);
 
         if (itemsError) throw itemsError;
+
+        // Update inventory levels for received goods (increase stock)
+        for (const item of purchaseItems) {
+          try {
+            // Find existing inventory levels across locations
+            const { data: levels } = await supabase
+              .from("inventory_levels")
+              .select("id, quantity")
+              .eq("item_id", item.item_id)
+              .limit(1);
+            if (levels && levels.length > 0) {
+              const level = levels[0];
+              await supabase
+                .from("inventory_levels")
+                .update({ quantity: (level.quantity || 0) + (item.received_quantity || item.quantity || 0) })
+                .eq("id", level.id);
+            }
+          } catch (err) {
+            console.warn("Failed to update inventory level for", item.item_id, err);
+          }
+        }
       }
 
       setIsModalOpen(false);

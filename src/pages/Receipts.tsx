@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { RefreshCw, DollarSign } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { getReceiptsWithFallback } from "@/utils/mockDatabase";
 
 interface Receipt {
   id: string;
@@ -37,12 +38,8 @@ export default function Receipts() {
   const fetchReceipts = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('receipts')
-        .select('id, receipt_number, customer_id, subtotal, tax_amount, discount_amount, total_amount, amount_paid, status, notes, created_at')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      setReceipts(data || []);
+      const data = await getReceiptsWithFallback(supabase);
+      setReceipts((data as any[]).map(r => ({ amount_paid: 0, ...r })) as Receipt[]);
     } catch (e) {
       console.error(e);
       toast.error('Failed to load receipts');
@@ -67,6 +64,41 @@ export default function Receipts() {
   }, [receipts, search]);
 
   const outstanding = (r: Receipt) => Math.max(0, (r.total_amount || 0) - (r.amount_paid || 0));
+
+  const exportCsv = () => {
+    const headers = [
+      'Receipt Number',
+      'Date',
+      'Status',
+      'Subtotal',
+      'Tax',
+      'Discount',
+      'Total',
+      'Amount Paid',
+      'Outstanding',
+    ];
+    const rows = filtered.map(r => [
+      r.receipt_number,
+      new Date(r.created_at).toISOString(),
+      r.status,
+      (r.subtotal || 0).toFixed(2),
+      (r.tax_amount || 0).toFixed(2),
+      (r.discount_amount || 0).toFixed(2),
+      (r.total_amount || 0).toFixed(2),
+      (r.amount_paid || 0).toFixed(2),
+      outstanding(r).toFixed(2),
+    ]);
+    const csv = [headers, ...rows].map(cols => cols.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `receipts_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const openPayment = (r: Receipt) => {
     setSelected(r);
@@ -116,6 +148,9 @@ export default function Receipts() {
         <h2 className="text-2xl font-bold">Receipts</h2>
         <div className="flex items-center gap-2">
           <Input placeholder="Search receipts..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
+          <Button variant="outline" onClick={exportCsv}>
+            Export CSV
+          </Button>
           <Button variant="outline" onClick={refresh} disabled={refreshing}>
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh

@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Calculator, Plus, RefreshCw, Search } from "lucide-react";
+import { useSaas } from "@/lib/saas";
+import { getReceiptsWithFallback } from "@/utils/mockDatabase";
 
 interface Account {
   id: string;
@@ -23,6 +25,7 @@ interface Account {
 }
 
 export default function Accounts() {
+  const { organization } = useSaas();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -48,11 +51,14 @@ export default function Accounts() {
       const { data, error } = await supabase
         .from("accounts")
         .select("id, account_code, account_name, account_type, normal_balance, description, parent_account_id")
+        .eq("organization_id", organization?.id || "00000000-0000-0000-0000-000000000000")
         .order("account_code", { ascending: true });
       if (error) throw error;
       setAccounts(data || []);
     } catch (e) {
       console.error(e);
+      // Graceful fallback: if accounts table/policies not ready, surface an empty state rather than erroring
+      setAccounts([]);
       toast.error("Failed to load accounts");
     } finally {
       setLoading(false);
@@ -107,6 +113,7 @@ export default function Accounts() {
             normal_balance: form.normal_balance,
             description: form.description || null,
             parent_account_id: form.parent_account_id || null,
+            organization_id: organization?.id || null,
           })
           .eq("id", editing.id);
         if (error) throw error;
@@ -122,6 +129,7 @@ export default function Accounts() {
               normal_balance: form.normal_balance,
               description: form.description || null,
               parent_account_id: form.parent_account_id || null,
+              organization_id: organization?.id || null,
             },
           ]);
         if (error) throw error;

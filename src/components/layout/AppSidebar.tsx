@@ -237,50 +237,7 @@ export function AppSidebar() {
     );
   };
 
-  const getUsageBadge = (feature: string) => {
-    const access = getFeatureAccess(feature);
-    
-    if (!access.enabled) {
-      return (
-        <Badge variant="outline" className="text-xs bg-slate-100 text-slate-500 border-slate-300">
-          <Lock className="w-2 h-2 mr-1" />
-          Locked
-        </Badge>
-      );
-    }
-
-    if (access.unlimited) {
-      return (
-        <Badge className="text-xs bg-emerald-100 text-emerald-700 border-emerald-200">
-          <Sparkles className="w-2 h-2 mr-1" />
-          ∞
-        </Badge>
-      );
-    }
-
-    if (access.usage !== undefined && access.limit) {
-      const percentage = (access.usage / access.limit) * 100;
-      const isNearLimit = percentage >= 80;
-      const isAtLimit = percentage >= 100;
-
-      if (isAtLimit || isNearLimit) {
-        return (
-          <Badge 
-            variant="outline" 
-            className={`text-xs ${
-              isAtLimit 
-                ? 'bg-red-50 text-red-700 border-red-200' 
-                : 'bg-amber-50 text-amber-700 border-amber-200'
-            }`}
-          >
-            {access.usage}/{access.limit}
-          </Badge>
-        );
-      }
-    }
-
-    return null;
-  };
+  const getUsageBadge = (_feature: string) => null;
 
   const isMenuItemAvailable = (item: MenuItem) => {
     // Check if at least one feature is available
@@ -331,7 +288,6 @@ export function AppSidebar() {
                         <item.icon className="w-4 h-4" />
                         <span className="flex-1">{item.title}</span>
                         <div className="flex items-center gap-1">
-                          {usageBadge}
                           {!isAvailable && <Lock className="w-3 h-3 text-slate-400" />}
                           {isOpen ? (
                             <ChevronDown className="w-4 h-4" />
@@ -364,7 +320,6 @@ export function AppSidebar() {
                                     <subItem.icon className="w-4 h-4" />
                                     <span className="flex-1">{subItem.title}</span>
                                     <div className="flex items-center gap-1">
-                                      {subItemUsageBadge}
                                       {!subItemAvailable && <Lock className="w-3 h-3 text-slate-400" />}
                                     </div>
                                   </NavLink>
@@ -396,10 +351,7 @@ export function AppSidebar() {
                       >
                         <item.icon className="w-4 h-4" />
                         <span className="flex-1">{item.title}</span>
-                        <div className="flex items-center gap-1">
-                          {usageBadge}
-                          {!isAvailable && <Lock className="w-3 h-3 text-slate-400" />}
-                        </div>
+                        <div className="flex items-center gap-1"></div>
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
