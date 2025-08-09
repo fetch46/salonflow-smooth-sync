@@ -7,7 +7,7 @@ import { useSaas } from "@/lib/saas/context";
 import { useEffect, useState } from "react";
 
 export default function BillingHistory() {
-  const { symbol } = useOrganizationCurrency();
+  const { symbol, format } = useOrganizationCurrency();
   const { organization } = useSaas();
   const [rows, setRows] = useState<any[]>([])
 
@@ -44,7 +44,7 @@ export default function BillingHistory() {
                 <TableRow key={r.id}>
                   <TableCell>{new Date(r.created_at).toLocaleDateString()}</TableCell>
                   <TableCell>{r.description}</TableCell>
-                  <TableCell className="text-right">{symbol}{Number(r.amount).toFixed(2)}</TableCell>
+                  <TableCell className="text-right">{format(Number(r.amount))}</TableCell>
                   <TableCell><Badge variant="outline">{r.status}</Badge></TableCell>
                 </TableRow>
               ))}
