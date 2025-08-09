@@ -12,6 +12,7 @@ export default function ReceiptView() {
   const [items, setItems] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { symbol, format: formatMoney } = useOrganizationCurrency();
 
   useEffect(() => {
     (async () => {

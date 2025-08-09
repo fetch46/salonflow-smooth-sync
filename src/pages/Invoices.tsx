@@ -779,7 +779,7 @@ export default function Invoices() {
                                 <SelectItem key={service.id} value={service.id}>
                                   <div className="flex flex-col">
                                     <span className="font-medium">{service.name}</span>
-                                    <span className="text-xs text-muted-foreground">${service.price}</span>
+                                    <span className="text-xs text-muted-foreground">{useOrganizationCurrency().symbol}{service.price}</span>
                                   </div>
                                 </SelectItem>
                               ))}
@@ -887,9 +887,9 @@ export default function Invoices() {
                               <TableRow key={index}>
                                 <TableCell className="font-medium">{item.description}</TableCell>
                                 <TableCell>{item.quantity}</TableCell>
-                                <TableCell>${parseFloat(String(item.unit_price)).toFixed(2)}</TableCell>
+                                <TableCell>{useOrganizationCurrency().symbol}{parseFloat(String(item.unit_price)).toFixed(2)}</TableCell>
                                 <TableCell>{item.discount_percentage}%</TableCell>
-                                <TableCell className="font-semibold">${item.total_price.toFixed(2)}</TableCell>
+                                <TableCell className="font-semibold">{useOrganizationCurrency().symbol}{item.total_price.toFixed(2)}</TableCell>
                                 <TableCell>
                                   <Button
                                     type="button"
@@ -921,16 +921,16 @@ export default function Invoices() {
                                 <>
                                   <div className="flex justify-between text-sm">
                                     <span>Subtotal:</span>
-                                    <span className="font-semibold">${totals.subtotal.toFixed(2)}</span>
+                                    <span className="font-semibold">{useOrganizationCurrency().symbol}{totals.subtotal.toFixed(2)}</span>
                                   </div>
                                   <div className="flex justify-between text-sm">
                                     <span>Tax (8.5%):</span>
-                                    <span className="font-semibold">${totals.taxAmount.toFixed(2)}</span>
+                                    <span className="font-semibold">{useOrganizationCurrency().symbol}{totals.taxAmount.toFixed(2)}</span>
                                   </div>
                                   <Separator />
                                   <div className="flex justify-between text-lg font-bold">
                                     <span>Total:</span>
-                                    <span className="text-violet-600">${totals.total.toFixed(2)}</span>
+                                    <span className="text-violet-600">{useOrganizationCurrency().symbol}{totals.total.toFixed(2)}</span>
                                   </div>
                                 </>
                               );
@@ -1386,7 +1386,7 @@ export default function Invoices() {
                             <TableCell className="font-medium">{item.description}</TableCell>
                             <TableCell>{item.quantity}</TableCell>
                             <TableCell>${item.unit_price.toFixed(2)}</TableCell>
-                            <TableCell className="font-semibold">${item.total_price.toFixed(2)}</TableCell>
+                            <TableCell className="font-semibold">{useOrganizationCurrency().symbol}{item.total_price.toFixed(2)}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

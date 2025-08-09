@@ -294,20 +294,34 @@ useEffect(() => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Feature Flags (JSON)</Label>
-                  <Textarea
-                    value={JSON.stringify(settings.features, null, 2)}
-                    onChange={(e) => {
-                      try {
-                        const parsed = JSON.parse(e.target.value);
-                        setSettings((s) => ({ ...s, features: parsed }));
-                      } catch {
-                        // ignore parse errors while typing
-                      }
-                    }}
-                    rows={6}
-                  />
-                  <p className="text-xs text-gray-500">Edit feature flags as JSON</p>
+                  <Label>Feature Flags</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {Object.entries(settings.features || {}).map(([key, value]) => (
+                      <div key={key} className="flex items-center justify-between border rounded-md p-3">
+                        <div className="text-sm font-medium">{key}</div>
+                        <Switch
+                          checked={!!value}
+                          onCheckedChange={(v) => setSettings((s) => ({ ...s, features: { ...(s.features || {}), [key]: v } }))}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2">
+                    <Label className="text-sm">Raw JSON (advanced)</Label>
+                    <Textarea
+                      value={JSON.stringify(settings.features, null, 2)}
+                      onChange={(e) => {
+                        try {
+                          const parsed = JSON.parse(e.target.value);
+                          setSettings((s) => ({ ...s, features: parsed }));
+                        } catch {
+                          // ignore parse errors while typing
+                        }
+                      }}
+                      rows={6}
+                    />
+                    <p className="text-xs text-gray-500">Toggle common flags above or edit JSON directly</p>
+                  </div>
                 </div>
 
                 <div className="flex justify-end">

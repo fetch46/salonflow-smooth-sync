@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { Link } from "react-router-dom";
 
 interface SystemStats {
@@ -261,8 +262,9 @@ const AdminDashboard = () => {
     }
   };
 
+  const { symbol } = useOrganizationCurrency();
   const formatCurrency = (cents: number) => {
-    return `$${(cents / 100).toLocaleString()}`;
+    return `${symbol}${(cents / 100).toLocaleString()}`;
   };
 
   const getGrowthIcon = (growth: number) => {

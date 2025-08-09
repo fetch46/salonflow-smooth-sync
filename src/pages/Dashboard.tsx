@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { useSaas } from "@/lib/saas/context";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 
 // Mock data - in a real app, this would come from your backend
 const generateMockData = () => {
@@ -99,7 +100,7 @@ const Dashboard = () => {
   const todayStats = [
     {
       title: "Today's Revenue",
-      value: `$${mockData.todayStats.revenue.toLocaleString()}`,
+             value: `${useOrganizationCurrency().symbol}${mockData.todayStats.revenue.toLocaleString()}` as string,
       previousValue: mockData.todayStats.yesterdayRevenue,
       change: ((mockData.todayStats.revenue - mockData.todayStats.yesterdayRevenue) / mockData.todayStats.yesterdayRevenue * 100),
       icon: DollarSign,
