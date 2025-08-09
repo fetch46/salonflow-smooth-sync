@@ -64,6 +64,7 @@ export default function Appointments() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [accounts, setAccounts] = useState<Array<{ id: string; account_code: string; account_name: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
@@ -88,22 +89,38 @@ export default function Appointments() {
     serviceItems: [] as AppointmentServiceItem[],
   });
 
+  // Booking fee UI state
+  const [bookingFeeReceived, setBookingFeeReceived] = useState(false);
+  const [bookingFeeAmount, setBookingFeeAmount] = useState<string>("");
+  const [bookingPaymentMethod, setBookingPaymentMethod] = useState<string>("");
+  const [bookingTxnNumber, setBookingTxnNumber] = useState<string>("");
+  const [bookingAccountId, setBookingAccountId] = useState<string>("");
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [appointmentsRes, staffRes, servicesRes] = await Promise.all([
+      const [appointmentsRes, staffRes, servicesRes, accountsRes] = await Promise.all([
         supabase.from("appointments").select("*").order("appointment_date", { ascending: true }),
         supabase.from("staff").select("*").eq("is_active", true),
-        supabase.from("services").select("*").eq("is_active", true)
+        supabase.from("services").select("*").eq("is_active", true),
+        organization?.id
+          ? supabase
+              .from("accounts")
+              .select("id, account_code, account_name")
+              .eq("organization_id", organization.id)
+              .order("account_code", { ascending: true })
+          : Promise.resolve({ data: [], error: null } as any),
       ]);
 
       if (appointmentsRes.error) throw appointmentsRes.error;
       if (staffRes.error) throw staffRes.error;
       if (servicesRes.error) throw servicesRes.error;
+      if ((accountsRes as any).error) throw (accountsRes as any).error;
 
       setAppointments(appointmentsRes.data || []);
       setStaff(staffRes.data || []);
       setServices(servicesRes.data || []);
+      setAccounts(((accountsRes as any).data || []) as Array<{ id: string; account_code: string; account_name: string }>);
 
       // Fetch appointment services for the loaded appointments
       const appointmentIds = (appointmentsRes.data || []).map(a => a.id);
@@ -183,6 +200,11 @@ export default function Appointments() {
       serviceItems: [{ service_id: "", staff_id: "" }],
     });
     setEditingAppointment(null);
+    setBookingFeeReceived(false);
+    setBookingFeeAmount("");
+    setBookingPaymentMethod("");
+    setBookingTxnNumber("");
+    setBookingAccountId("");
   };
 
   const addServiceItem = () => {
@@ -317,6 +339,48 @@ export default function Appointments() {
         }));
         const { error: insError } = await supabase.from("appointment_services").insert(rows);
         if (insError) throw insError;
+
+        // If booking fee collected, create a receipt and payment
+        const paid = bookingFeeReceived ? Number(bookingFeeAmount || 0) : 0;
+        if (bookingFeeReceived && paid > 0) {
+          const total = totalPrice || form.price || 0;
+          const receiptNumber = `RCT-${Date.now().toString().slice(-6)}`;
+          const { data: receipt, error: receiptErr } = await supabase
+            .from('receipts')
+            .insert([
+              {
+                receipt_number: receiptNumber,
+                customer_id: null,
+                job_card_id: null,
+                subtotal: total,
+                tax_amount: 0,
+                discount_amount: 0,
+                total_amount: total,
+                amount_paid: 0,
+                status: paid >= total ? 'paid' : 'partial',
+                notes: bookingAccountId
+                  ? `Booking fee for appointment ${apptId}. Deposited to ${(accounts.find(a => a.id === bookingAccountId)?.account_name) || 'selected account'}.`
+                  : `Booking fee for appointment ${apptId}.`,
+              },
+            ])
+            .select()
+            .single();
+          if (receiptErr) throw receiptErr;
+          if (receipt) {
+            const { error: payErr } = await supabase
+              .from('receipt_payments')
+              .insert([
+                {
+                  receipt_id: receipt.id,
+                  amount: paid,
+                  method: bookingPaymentMethod as any,
+                  reference_number: bookingTxnNumber || null,
+                },
+              ]);
+            if (payErr) throw payErr;
+          }
+        }
+
         toast.success("Appointment created successfully!");
       }
       
@@ -805,6 +869,78 @@ export default function Appointments() {
                       min="0"
                     />
                   </div>
+
+                  {/* Booking fee section */}
+                  <div className="md:col-span-2 border rounded-md p-4 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <input
+                        id="booking-fee-received"
+                        type="checkbox"
+                        checked={bookingFeeReceived}
+                        onChange={(e) => setBookingFeeReceived(e.target.checked)}
+                      />
+                      <Label htmlFor="booking-fee-received">Booking fee received</Label>
+                    </div>
+                    {bookingFeeReceived && (
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                          <Label htmlFor="booking-amount">Amount Paid</Label>
+                          <Input
+                            id="booking-amount"
+                            type="number"
+                            step="0.01"
+                            value={bookingFeeAmount}
+                            onChange={(e) => setBookingFeeAmount(e.target.value)}
+                            placeholder="0.00"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="booking-method">Payment Method</Label>
+                          <Select value={bookingPaymentMethod} onValueChange={setBookingPaymentMethod}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select method" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="cash">Cash</SelectItem>
+                              <SelectItem value="mpesa">M-Pesa</SelectItem>
+                              <SelectItem value="card">Card</SelectItem>
+                              <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="booking-account">Account Deposited To</Label>
+                          <Select value={bookingAccountId} onValueChange={setBookingAccountId}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select account" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {accounts.map(acc => (
+                                <SelectItem key={acc.id} value={acc.id}>
+                                  {acc.account_code} · {acc.account_name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="booking-ref">Transaction Number</Label>
+                          <Input
+                            id="booking-ref"
+                            value={bookingTxnNumber}
+                            onChange={(e) => setBookingTxnNumber(e.target.value)}
+                            placeholder="e.g. QFG3XXXXXX"
+                          />
+                        </div>
+                        <div className="md:col-span-4">
+                          <div className="text-sm text-muted-foreground">
+                            Balance: <span className="font-medium text-foreground">${Math.max(0, (Number(form.price || 0)) - (Number(bookingFeeAmount || 0))).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <div>
                     <Label htmlFor="status">Status</Label>
                     <Select 
