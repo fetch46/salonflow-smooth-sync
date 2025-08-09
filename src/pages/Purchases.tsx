@@ -15,6 +15,8 @@ import { format } from "date-fns";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { useToast } from "@/hooks/use-toast";
 import { useSaas } from "@/lib/saas";
+import { useOrganizationTaxRate } from "@/lib/saas/hooks";
+import { Switch } from "@/components/ui/switch";
 
 interface Purchase {
   id: string;
@@ -70,6 +72,8 @@ export default function Purchases() {
   const { toast } = useToast();
 
   const { format: formatMoney } = useOrganizationCurrency();
+  const orgTaxRate = useOrganizationTaxRate();
+  const [applyTax, setApplyTax] = useState<boolean>(true);
 
   const [formData, setFormData] = useState({
     purchase_number: "",
@@ -267,15 +271,16 @@ export default function Purchases() {
 
     const calculateTotals = useCallback(() => {
     const subtotal = purchaseItems.reduce((sum, item) => sum + item.total_cost, 0);
-    const taxAmount = parseFloat(formData.tax_amount) || 0;
-    const total = subtotal + taxAmount;
+    const computedTax = applyTax ? (subtotal * ((orgTaxRate || 0) / 100)) : 0;
+    const total = subtotal + computedTax;
     
     setFormData(prev => ({
       ...prev,
       subtotal: subtotal.toString(),
+      tax_amount: computedTax.toString(),
       total_amount: total.toString(),
     }));
-  }, [purchaseItems, formData.tax_amount]);
+  }, [purchaseItems, orgTaxRate, applyTax]);
 
   useEffect(() => {
     fetchPurchases();
@@ -659,8 +664,13 @@ export default function Purchases() {
                       step="0.01"
                       placeholder="0.00"
                       value={formData.tax_amount}
-                      onChange={(e) => setFormData({ ...formData, tax_amount: e.target.value })}
+                      readOnly
                     />
+                    <div className="flex items-center gap-2">
+                      <Switch checked={applyTax} onCheckedChange={setApplyTax} />
+                      <span className="text-sm">Apply Tax ({(orgTaxRate || 0)}%)</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Auto-calculated when enabled.</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="total_amount">Total Amount</Label>

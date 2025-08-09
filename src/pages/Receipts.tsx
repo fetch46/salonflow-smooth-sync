@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { getReceiptsWithFallback } from "@/utils/mockDatabase";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { Switch } from "@/components/ui/switch";
 
 interface Receipt {
   id: string;
@@ -42,6 +43,7 @@ export default function Receipts() {
   const [selected, setSelected] = useState<Receipt | null>(null);
   const [payment, setPayment] = useState({ amount: "", method: "cash", reference: "" });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [reportApplyTax, setReportApplyTax] = useState<boolean>(false);
 
   const fetchReceipts = async () => {
     try {
@@ -94,8 +96,11 @@ export default function Receipts() {
     const total = filtered.reduce((sum, r) => sum + (r.total_amount || 0), 0);
     const paid = filtered.reduce((sum, r) => sum + (r.amount_paid || 0), 0);
     const due = total - paid;
-    return { total, paid, due };
-  }, [filtered]);
+    // Optional tax inclusion for reporting: if enabled, add up all receipt subtotals*rate differences.
+    // Here, as receipts already include tax in total_amount, toggling tax is treated as a display feature: when off, show subtotal-like by subtracting tax_amount.
+    const totalWithoutTax = filtered.reduce((sum, r) => sum + ((r.total_amount || 0) - (r.tax_amount || 0)), 0);
+    return reportApplyTax ? { total, paid, due } : { total: totalWithoutTax, paid, due: Math.max(0, totalWithoutTax - paid) };
+  }, [filtered, reportApplyTax]);
 
   const exportCsv = () => {
     const headers = [
@@ -248,7 +253,11 @@ export default function Receipts() {
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Total</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center justify-between">Total
+            <span className="flex items-center gap-2 text-xs font-normal">
+              <Switch checked={reportApplyTax} onCheckedChange={setReportApplyTax} /> Include Tax
+            </span>
+          </CardTitle></CardHeader>
           <CardContent className="text-2xl font-semibold">${totals.total.toFixed(2)}</CardContent>
         </Card>
         <Card>
