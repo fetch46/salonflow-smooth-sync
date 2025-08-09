@@ -119,6 +119,7 @@ export async function createReceiptWithFallback(supabase: any, receiptData: any,
     return receipt;
   } catch (err) {
     console.log('Using mock database for receipts');
+    const nowIso = new Date().toISOString();
     const receipt = await mockDb.createReceipt({
       receipt_number: receiptData.receipt_number,
       customer_id: receiptData.customer_id || null,
@@ -128,9 +129,32 @@ export async function createReceiptWithFallback(supabase: any, receiptData: any,
       total_amount: receiptData.total_amount ?? 0,
       status: receiptData.status || 'open',
       notes: receiptData.notes || null,
-      updated_at: new Date().toISOString(),
-      created_at: new Date().toISOString(),
+      updated_at: nowIso,
+      created_at: nowIso,
     } as any);
+
+    // Persist items to local storage for reporting/commissions fallbacks
+    try {
+      const storage = getStorage();
+      storage.receipt_items = storage.receipt_items || [];
+      for (const it of (items || [])) {
+        storage.receipt_items.push({
+          id: `ritem_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+          receipt_id: receipt.id,
+          service_id: it.service_id || null,
+          product_id: it.product_id || null,
+          description: it.description || 'Item',
+          quantity: it.quantity || 1,
+          unit_price: it.unit_price || 0,
+          total_price: it.total_price || ((it.quantity || 1) * (it.unit_price || 0)),
+          staff_id: it.staff_id || null,
+          created_at: nowIso,
+          updated_at: nowIso,
+        });
+      }
+      setStorage(storage);
+    } catch {}
+
     return receipt;
   }
 }

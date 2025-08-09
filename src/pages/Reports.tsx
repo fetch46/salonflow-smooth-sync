@@ -26,6 +26,7 @@ import {
 import { useSaas } from '@/lib/saas/context';
 import { supabase } from '@/integrations/supabase/client';
 import { useSearchParams } from 'react-router-dom';
+import { mockDb } from '@/utils/mockDatabase';
 
 const Reports = () => {
   const { organization, subscriptionPlan } = useSaas();
@@ -136,47 +137,102 @@ const Reports = () => {
   const loadCommissions = async () => {
     setLoading(true);
     try {
-      // Fetch receipt items within date range, join staff and services
-      const { data, error } = await supabase
-        .from('receipt_items')
-        .select(`
-          id, quantity, unit_price, created_at,
-          receipt:receipt_id ( id, created_at ),
-          service:service_id ( id, name, commission_percentage ),
-          staff:staff_id ( id, full_name, commission_rate )
-        `)
+      // Step 1: find receipts in range
+      const { data: receiptsInRange, error: rcptErr } = await supabase
+        .from('receipts')
+        .select('id, created_at')
         .gte('created_at', startDate)
         .lte('created_at', endDate);
-      if (error) throw error;
+      if (rcptErr) throw rcptErr;
+      const receiptIds: string[] = (receiptsInRange || []).map((r: any) => r.id);
 
-      // Normalize potential array joins into single objects
-      const normalized = (data || []).map((r: any) => {
+      if (receiptIds.length === 0) {
+        setCommissionRows([]);
+        setCommissionSummary({});
+        return;
+      }
+
+      // Step 2: load staff commissions for those receipts
+      const { data: comms, error: commErr } = await supabase
+        .from('staff_commissions')
+        .select(`
+          id, commission_rate, gross_amount, commission_amount, created_at,
+          receipt:receipt_id ( id, created_at ),
+          staff:staff_id ( id, full_name ),
+          service:service_id ( id, name )
+        `)
+        .in('receipt_id', receiptIds);
+      if (commErr) throw commErr;
+
+      const normalized = (comms || []).map((r: any) => {
         const staff = Array.isArray(r.staff) ? r.staff[0] : r.staff;
         const service = Array.isArray(r.service) ? r.service[0] : r.service;
         const receipt = Array.isArray(r.receipt) ? r.receipt[0] : r.receipt;
         return { ...r, staff, service, receipt };
       });
 
-      const rows = normalized.filter((r: any) => {
-        if (commissionStaffFilter === 'all') return true;
-        return r.staff?.id === commissionStaffFilter;
-      });
-      setCommissionRows(rows);
+      const filtered = normalized.filter((r: any) => commissionStaffFilter === 'all' ? true : r.staff?.id === commissionStaffFilter);
+      setCommissionRows(filtered.map((r: any) => ({
+        id: r.id,
+        created_at: r.receipt?.created_at || r.created_at,
+        service: r.service,
+        staff: r.staff,
+        quantity: 1,
+        unit_price: Number(r.gross_amount || 0),
+        gross_amount: Number(r.gross_amount || 0),
+        commission_rate: Number(r.commission_rate || 0),
+        commission_amount: Number(r.commission_amount || 0),
+      })));
 
       const summary: Record<string, { staffId: string; staffName: string; gross: number; commissionRate: number; commission: number }> = {};
-      for (const r of rows as any[]) {
+      for (const r of filtered as any[]) {
         const staffId = r.staff?.id || 'unassigned';
         const staffName = r.staff?.full_name || 'Unassigned';
-        const gross = Number(r.unit_price || 0) * Number(r.quantity || 1);
-        const rate = (r.service?.commission_percentage ?? r.staff?.commission_rate ?? 0) as number;
-        const commission = gross * (Number(rate) || 0) / 100;
-        if (!summary[staffId]) summary[staffId] = { staffId, staffName, gross: 0, commissionRate: Number(rate) || 0, commission: 0 };
+        const gross = Number(r.gross_amount || 0);
+        const rate = Number(r.commission_rate || 0);
+        const commission = Number(r.commission_amount || 0);
+        if (!summary[staffId]) summary[staffId] = { staffId, staffName, gross: 0, commissionRate: 0, commission: 0 };
         summary[staffId].gross += gross;
+        // For display, keep last non-zero rate; this is a per-line rate in reality
+        summary[staffId].commissionRate = rate || summary[staffId].commissionRate;
         summary[staffId].commission += commission;
       }
       setCommissionSummary(summary);
     } catch (e) {
       console.error('Error loading commissions', e);
+      // Fallback to mock storage when Supabase not available
+      try {
+        const storage = await mockDb.getStore();
+        const inRangeReceiptIds = (storage.receipts || [])
+          .filter((r: any) => {
+            const d = String(r.created_at || '').slice(0, 10);
+            return (!startDate || d >= startDate) && (!endDate || d <= endDate);
+          })
+          .map((r: any) => r.id);
+        const items = (storage.receipt_items || [])
+          .filter((it: any) => inRangeReceiptIds.includes(it.receipt_id));
+        const rows = items.filter((it: any) => commissionStaffFilter === 'all' ? true : it.staff_id === commissionStaffFilter)
+          .map((it: any) => ({
+            id: it.id,
+            created_at: it.created_at,
+            service: { id: it.service_id, name: it.description },
+            staff: { id: it.staff_id, full_name: (storage.staff?.find?.((s: any) => s.id === it.staff_id)?.full_name) || 'Unassigned' },
+            quantity: Number(it.quantity || 1),
+            unit_price: Number(it.unit_price || 0),
+          }));
+        setCommissionRows(rows);
+        const summary: Record<string, { staffId: string; staffName: string; gross: number; commissionRate: number; commission: number }> = {};
+        for (const r of rows as any[]) {
+          const staffId = r.staff?.id || 'unassigned';
+          const staffName = r.staff?.full_name || 'Unassigned';
+          const gross = Number(r.unit_price || 0) * Number(r.quantity || 1);
+          const rate = 0; // mock has no rate context
+          const commission = 0;
+          if (!summary[staffId]) summary[staffId] = { staffId, staffName, gross: 0, commissionRate: 0, commission: 0 };
+          summary[staffId].gross += gross;
+        }
+        setCommissionSummary(summary);
+      } catch {}
     } finally {
       setLoading(false);
     }
