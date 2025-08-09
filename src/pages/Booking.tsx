@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CreditCard, ChevronLeft, ChevronRight, Check, Calendar, User } from "lucide-react";
+import { CreditCard, ChevronLeft, ChevronRight, Check, Calendar, User, DollarSign, Phone } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const Booking = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -18,6 +21,12 @@ const Booking = () => {
     cvc: ""
   });
 
+  // Reservation fee state
+  const [collectReservationFee, setCollectReservationFee] = useState(false);
+  const [reservationAmount, setReservationAmount] = useState("");
+  const [reservationPaymentMethod, setReservationPaymentMethod] = useState("");
+  const [reservationTransactionNumber, setReservationTransactionNumber] = useState("");
+
   const steps = [
     { number: 1, title: "Services", icon: User },
     { number: 2, title: "Date & Time", icon: Calendar },
@@ -32,8 +41,17 @@ const Booking = () => {
     return true;
   };
 
+  const isReservationValid = () => {
+    if (!collectReservationFee) return true;
+    if (!reservationAmount || isNaN(Number(reservationAmount)) || Number(reservationAmount) <= 0) return false;
+    if (!reservationPaymentMethod) return false;
+    if (reservationPaymentMethod === 'mpesa' && !reservationTransactionNumber.trim()) return false;
+    return true;
+  };
+
   const isFormValid = () => {
-    return Object.values(form).every(val => val.trim() !== "");
+    const basic = Object.values(form).every(val => String(val).trim() !== "");
+    return basic && isReservationValid();
   };
 
   const handleBookingSubmit = () => {
@@ -44,7 +62,14 @@ const Booking = () => {
       date: selectedDate,
       time: selectedTime,
       staff: selectedStaff,
-      customer: form
+      customer: form,
+      reservation: collectReservationFee
+        ? {
+            amount: Number(reservationAmount),
+            payment_method: reservationPaymentMethod,
+            transaction_number: reservationPaymentMethod === 'mpesa' ? reservationTransactionNumber.trim() : undefined,
+          }
+        : null,
     };
 
     console.log("Booking submitted:", bookingData);
@@ -52,9 +77,88 @@ const Booking = () => {
   };
 
   const renderStepContent = () => {
+    if (currentStep !== 4) {
+      return (
+        <div className="text-muted-foreground text-center p-12 border border-dashed rounded-lg">
+          <p>Step {currentStep} content will go here.</p>
+        </div>
+      );
+    }
+
     return (
-      <div className="text-muted-foreground text-center p-12 border border-dashed rounded-lg">
-        <p>Step {currentStep} content will go here.</p>
+      <div className="space-y-6">
+        <div className="text-muted-foreground">
+          Review your details and optionally collect a reservation fee.
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Reservation Fee (Optional)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center gap-3">
+              <input
+                id="collect-fee"
+                type="checkbox"
+                checked={collectReservationFee}
+                onChange={(e) => setCollectReservationFee(e.target.checked)}
+              />
+              <Label htmlFor="collect-fee">Collect reservation fee now</Label>
+            </div>
+
+            {collectReservationFee && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="reservation-amount">Amount</Label>
+                  <Input
+                    id="reservation-amount"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={reservationAmount}
+                    onChange={(e) => setReservationAmount(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="reservation-method">Payment Method</Label>
+                  <Select value={reservationPaymentMethod} onValueChange={setReservationPaymentMethod}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select payment method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">
+                        <div className="flex items-center gap-2"><DollarSign className="w-4 h-4"/>Cash</div>
+                      </SelectItem>
+                      <SelectItem value="mpesa">
+                        <div className="flex items-center gap-2"><Phone className="w-4 h-4"/>M-Pesa</div>
+                      </SelectItem>
+                      <SelectItem value="card">
+                        <div className="flex items-center gap-2"><CreditCard className="w-4 h-4"/>Card</div>
+                      </SelectItem>
+                      <SelectItem value="bank_transfer">
+                        <div className="flex items-center gap-2"><DollarSign className="w-4 h-4"/>Bank Transfer</div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {reservationPaymentMethod === 'mpesa' && (
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="reservation-txn">M-Pesa Transaction Number<span className="text-red-500">*</span></Label>
+                    <Input
+                      id="reservation-txn"
+                      placeholder="e.g. QFG3XXXXXX"
+                      value={reservationTransactionNumber}
+                      onChange={(e) => setReservationTransactionNumber(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">Required when paying via M-Pesa</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     );
   };
