@@ -46,6 +46,7 @@ import { useFeatureGating } from "@/hooks/useFeatureGating";
 import { CreateButtonGate, FeatureGate, UsageBadge } from "@/components/features/FeatureGate";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useNavigate } from "react-router-dom";
 
 interface Staff {
   id: string;
@@ -110,6 +111,7 @@ export default function Staff() {
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const { toast } = useToast();
   const { hasFeature, getFeatureAccess, enforceLimit } = useFeatureGating();
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     full_name: "",
@@ -875,7 +877,7 @@ export default function Staff() {
                                 <Edit2 className="w-4 h-4 mr-2" />
                                 Edit Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate(`/staff/${member.id}`)}>
                                 <Eye className="w-4 h-4 mr-2" />
                                 View Profile
                               </DropdownMenuItem>

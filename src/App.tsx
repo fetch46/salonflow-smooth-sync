@@ -20,6 +20,7 @@ import Services from "@/pages/Services";
 import Inventory from "@/pages/Inventory";
 import Receipts from "@/pages/Receipts";
 import ReceiptView from "@/pages/ReceiptView";
+import StaffProfile from "@/pages/StaffProfile";
 import Expenses from "@/pages/Expenses";
 import Purchases from "@/pages/Purchases";
 import Suppliers from "@/pages/Suppliers";
@@ -128,6 +129,7 @@ const AppRoutes = () => {
         
         {/* Staff & Services */}
         <Route path="staff" element={<Staff />} />
+        <Route path="staff/:id" element={<StaffProfile />} />
         <Route path="services" element={<Services />} />
         <Route path="services/:id" element={<ServiceView />} />
         
