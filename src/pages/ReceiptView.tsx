@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,12 +15,14 @@ import {
 
 export default function ReceiptView() {
   const { id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const [receipt, setReceipt] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { symbol } = useOrganizationCurrency();
+  const isPrintMode = useMemo(() => new URLSearchParams(location.search).get('print') === '1', [location.search]);
 
   useEffect(() => {
     (async () => {
@@ -55,6 +57,15 @@ export default function ReceiptView() {
     })();
   }, [id]);
 
+  useEffect(() => {
+    if (!loading && isPrintMode) {
+      // Defer to allow render
+      setTimeout(() => {
+        window.print();
+      }, 100);
+    }
+  }, [loading, isPrintMode]);
+
   const [customerInfo, setCustomerInfo] = useState<any | null>(null);
 
   if (loading) return <div className="p-6">Loading...</div>;
@@ -63,7 +74,7 @@ export default function ReceiptView() {
   const outstanding = Math.max(0, (receipt.total_amount || 0) - (receipt.amount_paid || 0));
 
   return (
-    <div className="p-6 space-y-6">
+    <div className={`p-6 space-y-6 ${isPrintMode ? 'bg-white' : ''}`}>
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Receipt {receipt.receipt_number}</h2>
@@ -224,33 +235,35 @@ export default function ReceiptView() {
         </CardContent>
       </Card>
 
-      <div className="flex justify-between items-center pt-2">
-        <Button variant="outline" onClick={() => navigate(-1)}>Back</Button>
-        <div className="flex gap-3">
-          {outstanding > 0 && (
-            <Button onClick={() => navigate('/receipts') }>
-              <DollarSign className="w-4 h-4 mr-2" />
-              Record Payment
+      {!isPrintMode && (
+        <div className="flex justify-between items-center pt-2 print:hidden">
+          <Button variant="outline" onClick={() => navigate(-1)}>Back</Button>
+          <div className="flex gap-3">
+            {outstanding > 0 && (
+              <Button onClick={() => navigate('/receipts') }>
+                <DollarSign className="w-4 h-4 mr-2" />
+                Record Payment
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => window.print()}>
+              <Printer className="w-4 h-4 mr-2" />
+              Print
             </Button>
-          )}
-          <Button variant="outline">
-            <Printer className="w-4 h-4 mr-2" />
-            Print
-          </Button>
-          <Button variant="outline">
-            <Download className="w-4 h-4 mr-2" />
-            Download PDF
-          </Button>
-          <Button variant="outline">
-            <MessageSquare className="w-4 h-4 mr-2" />
-            Send WhatsApp
-          </Button>
-          <Button className="bg-violet-600 hover:bg-violet-700">
-            <Edit2 className="w-4 h-4 mr-2" />
-            Edit Receipt
-          </Button>
+            <Button variant="outline">
+              <Download className="w-4 h-4 mr-2" />
+              Download PDF
+            </Button>
+            <Button variant="outline">
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Send WhatsApp
+            </Button>
+            <Button className="bg-violet-600 hover:bg-violet-700">
+              <Edit2 className="w-4 h-4 mr-2" />
+              Edit Receipt
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
