@@ -235,6 +235,10 @@ export default function Appointments() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      if (!organization?.id) {
+        toast.error("Please select an organization before saving");
+        return;
+      }
       // Ensure at least one service is selected
       if (!form.serviceItems.length || form.serviceItems.some(it => !it.service_id)) {
         toast.error("Please select at least one service");
@@ -261,7 +265,7 @@ export default function Appointments() {
         status: form.status,
         notes: form.notes || null,
         price: totalPrice || form.price,
-        organization_id: organization?.id || null,
+        organization_id: organization.id,
       };
 
       if (editingAppointment) {
