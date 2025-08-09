@@ -809,8 +809,8 @@ export default function Appointments() {
                             <User className="w-4 h-4 text-muted-foreground" />
                             <span className="font-medium">{appointment.customer_name}</span>
                           </div>
-                          <Badge className={getStatusColor(appointment.status)}>
-                            {appointment.status.replace('_', ' ')}
+                          <Badge className={getStatusColor(appointment.status || 'scheduled')}>
+                            {String(appointment.status || 'scheduled').replace('_', ' ')}
                           </Badge>
                         </div>
                         
@@ -821,7 +821,7 @@ export default function Appointments() {
                           </div>
                           <div className="flex items-center gap-2">
                             <Clock className="w-4 h-4" />
-                            <span>{appointment.appointment_time} ({appointment.duration_minutes}min)</span>
+                            <span>{appointment.appointment_time} ({Number(appointment.duration_minutes ?? 0)}min)</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium">
@@ -862,9 +862,9 @@ export default function Appointments() {
                           </div>
                         )}
 
-                        {appointment.price > 0 && (
+                        {Number(appointment.price || 0) > 0 && (
                           <div className="text-sm font-medium text-green-600">
-                            ${appointment.price.toFixed(2)}
+                            ${Number(appointment.price || 0).toFixed(2)}
                           </div>
                         )}
                       </div>
