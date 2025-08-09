@@ -706,7 +706,7 @@ export default function Services() {
                   {/* Add Product Selection */}
                   <div>
                     <Label htmlFor="addProduct">Add Product to Kit</Label>
-                    <Select value="" onValueChange={addKitItem}>
+                    <Select value={undefined} onValueChange={addKitItem}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a product to add..." />
                       </SelectTrigger>
