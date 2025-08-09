@@ -13,6 +13,7 @@ import { Plus, Search, ShoppingCart, CreditCard, DollarSign, Package, Trash2, Us
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { createSaleWithFallback } from "@/utils/mockDatabase";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 
 interface Product {
   id: string;
@@ -74,6 +75,8 @@ export default function POS() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [currentSale, setCurrentSale] = useState<Sale | null>(null);
+
+  const { format: formatMoney } = useOrganizationCurrency();
 
   const [paymentData, setPaymentData] = useState({
     payment_method: "",
