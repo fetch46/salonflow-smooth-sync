@@ -152,9 +152,12 @@ export default function EditJobCard() {
           .select('service_id, staff_id, quantity, unit_price, services:service_id(name)')
           .eq('job_card_id', jobCard.id);
         if (jobServices && jobServices.length > 0) {
-          for (const js of jobServices) {
+          for (const js of jobServices as any[]) {
+            const serviceName = Array.isArray((js as any).services)
+              ? (js as any).services[0]?.name
+              : (js as any).services?.name;
             items.push({
-              description: js.services?.name || 'Service',
+              description: serviceName || 'Service',
               quantity: js.quantity || 1,
               unit_price: js.unit_price || 0,
               total_price: (js.quantity || 1) * (js.unit_price || 0),
@@ -164,7 +167,7 @@ export default function EditJobCard() {
             });
           }
         }
-      } catch {}
+      } catch (err) { console.error(err) }
 
       await createReceiptWithFallback(supabase as any, {
         receipt_number: receiptNumber,

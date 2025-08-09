@@ -56,7 +56,7 @@ export default function ReceiptView() {
               .maybeSingle();
             customer = data || null;
           }
-        } catch {}
+        } catch (err) { console.error('Failed to fetch customer', err) }
 
         setReceipt(rec);
         // Only list services: filter out items that have product_id, keep those with service_id or no explicit product_id

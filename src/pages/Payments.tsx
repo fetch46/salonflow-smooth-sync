@@ -51,6 +51,7 @@ interface PurchaseLite {
   vendor_name: string;
   total_amount: number;
   purchase_date: string;
+  created_at?: string;
   status: string;
 }
 

@@ -267,7 +267,7 @@ export default function Receipts() {
         .eq('status', 'completed')
         .order('created_at', { ascending: false });
       const jobIds = (cards || []).map(c => c.id);
-      let rcptByJob: Record<string, any[]> = {};
+      const rcptByJob: Record<string, any[]> = {};
       if (jobIds.length > 0) {
         const { data: rcpts } = await supabase
           .from('receipts')
@@ -286,7 +286,7 @@ export default function Receipts() {
       });
       // Attach display name
       const clientIds = Array.from(new Set(eligible.map(c => c.client_id).filter(Boolean)));
-      let clientsById: Record<string, any> = {};
+      const clientsById: Record<string, any> = {};
       if (clientIds.length) {
         const { data: clients } = await supabase.from('clients').select('id, full_name').in('id', clientIds as string[]);
         (clients || []).forEach(c => { clientsById[c.id] = c; });
