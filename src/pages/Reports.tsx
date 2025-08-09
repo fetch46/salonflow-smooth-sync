@@ -23,13 +23,17 @@ import {
 } from 'lucide-react';
 import { useSaas } from '@/lib/saas/context';
 import { supabase } from '@/integrations/supabase/client';
+import { useSearchParams } from 'react-router-dom';
 
 const Reports = () => {
   const { organization, subscriptionPlan } = useSaas();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'overview';
+  const initialSub = searchParams.get('sub');
   const [timeRange, setTimeRange] = useState('month');
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [activeSubTab, setActiveSubTab] = useState<Record<string, string>>({ overview: 'summary', revenue: 'summary', services: 'top', clients: 'top', pnl: 'summary', balancesheet: 'summary', commissions: 'summary' });
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const [activeSubTab, setActiveSubTab] = useState<Record<string, string>>({ overview: 'summary', revenue: 'summary', services: 'top', clients: 'top', pnl: 'summary', balancesheet: 'summary', commissions: initialSub || 'summary' });
   const [staffList, setStaffList] = useState<Array<{ id: string; full_name: string; commission_rate?: number | null }>>([]);
   const [commissionRows, setCommissionRows] = useState<Array<any>>([]);
   const [commissionSummary, setCommissionSummary] = useState<Record<string, { staffId: string; staffName: string; gross: number; commissionRate: number; commission: number }>>({});
@@ -43,6 +47,30 @@ const Reports = () => {
   });
   const [endDate, setEndDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [recalcLoading, setRecalcLoading] = useState(false);
+
+  useEffect(() => {
+    const tab = searchParams.get('tab') || 'overview';
+    const sub = searchParams.get('sub');
+    if (tab !== activeTab) {
+      setActiveTab(tab);
+    }
+    if (sub && activeSubTab[tab] !== sub) {
+      setActiveSubTab((prev) => ({ ...prev, [tab]: sub }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', activeTab);
+    const sub = activeSubTab[activeTab];
+    if (sub) next.set('sub', sub); else next.delete('sub');
+    // Only update if changed to avoid loops
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, activeSubTab]);
 
   const recalcFinancials = async () => {
     setRecalcLoading(true);
@@ -273,7 +301,7 @@ const Reports = () => {
               </TabsTrigger>
               {activeTab === 'overview' && (
                 <div className="ml-6 mt-2 space-y-1 text-sm">
-                  <button className={`text-left ${activeSubTab.overview === 'summary' ? 'font-semibold' : ''}`} onClick={() => setActiveSubTab(prev => ({ ...prev, overview: 'summary' }))}>Summary</button>
+                  <button className={`text-left ${activeSubTab.overview === 'summary' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, overview: 'summary' })); setSearchParams({ tab: 'overview', sub: 'summary' }, { replace: true }); }}>Summary</button>
                 </div>
               )}
               <TabsTrigger value="revenue" className="justify-start flex items-center gap-2">
@@ -281,7 +309,7 @@ const Reports = () => {
               </TabsTrigger>
               {activeTab === 'revenue' && (
                 <div className="ml-6 mt-2 space-y-1 text-sm">
-                  <button className={`text-left ${activeSubTab.revenue === 'summary' ? 'font-semibold' : ''}`} onClick={() => setActiveSubTab(prev => ({ ...prev, revenue: 'summary' }))}>Summary</button>
+                  <button className={`text-left ${activeSubTab.revenue === 'summary' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, revenue: 'summary' })); setSearchParams({ tab: 'revenue', sub: 'summary' }, { replace: true }); }}>Summary</button>
                 </div>
               )}
               <TabsTrigger value="services" className="justify-start flex items-center gap-2">
@@ -289,7 +317,7 @@ const Reports = () => {
               </TabsTrigger>
               {activeTab === 'services' && (
                 <div className="ml-6 mt-2 space-y-1 text-sm">
-                  <button className={`text-left ${activeSubTab.services === 'top' ? 'font-semibold' : ''}`} onClick={() => setActiveSubTab(prev => ({ ...prev, services: 'top' }))}>Top Services</button>
+                  <button className={`text-left ${activeSubTab.services === 'top' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, services: 'top' })); setSearchParams({ tab: 'services', sub: 'top' }, { replace: true }); }}>Top Services</button>
                 </div>
               )}
               <TabsTrigger value="clients" className="justify-start flex items-center gap-2">
@@ -297,7 +325,7 @@ const Reports = () => {
               </TabsTrigger>
               {activeTab === 'clients' && (
                 <div className="ml-6 mt-2 space-y-1 text-sm">
-                  <button className={`text-left ${activeSubTab.clients === 'top' ? 'font-semibold' : ''}`} onClick={() => setActiveSubTab(prev => ({ ...prev, clients: 'top' }))}>Top Clients</button>
+                  <button className={`text-left ${activeSubTab.clients === 'top' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, clients: 'top' })); setSearchParams({ tab: 'clients', sub: 'top' }, { replace: true }); }}>Top Clients</button>
                 </div>
               )}
               <TabsTrigger value="pnl" className="justify-start flex items-center gap-2">
@@ -311,8 +339,8 @@ const Reports = () => {
               </TabsTrigger>
               {activeTab === 'commissions' && (
                 <div className="ml-6 mt-2 space-y-1 text-sm">
-                  <button className={`text-left ${activeSubTab.commissions === 'summary' ? 'font-semibold' : ''}`} onClick={() => setActiveSubTab(prev => ({ ...prev, commissions: 'summary' }))}>Summary</button>
-                  <button className={`text-left ${activeSubTab.commissions === 'detailed' ? 'font-semibold' : ''}`} onClick={() => setActiveSubTab(prev => ({ ...prev, commissions: 'detailed' }))}>Detailed</button>
+                  <button className={`text-left ${activeSubTab.commissions === 'summary' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, commissions: 'summary' })); setSearchParams({ tab: 'commissions', sub: 'summary' }, { replace: true }); }}>Summary</button>
+                  <button className={`text-left ${activeSubTab.commissions === 'detailed' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, commissions: 'detailed' })); setSearchParams({ tab: 'commissions', sub: 'detailed' }, { replace: true }); }}>Detailed</button>
                 </div>
               )}
             </TabsList>

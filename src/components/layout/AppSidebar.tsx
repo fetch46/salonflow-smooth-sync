@@ -175,9 +175,17 @@ const menuItems: MenuItem[] = [
   },
   {
     title: "Reports",
-    url: "/reports",
     icon: TrendingUp,
     feature: "reports",
+    subItems: [
+      { title: "Overview", url: "/reports?tab=overview", icon: TrendingUp, feature: "reports" },
+      { title: "Revenue", url: "/reports?tab=revenue", icon: DollarSign, feature: "reports" },
+      { title: "Services", url: "/reports?tab=services", icon: Scissors, feature: "reports" },
+      { title: "Clients", url: "/reports?tab=clients", icon: Users, feature: "reports" },
+      { title: "P&L", url: "/reports?tab=pnl", icon: Calculator, feature: "reports" },
+      { title: "Balance Sheet", url: "/reports?tab=balancesheet", icon: Calculator, feature: "reports" },
+      { title: "Commissions", url: "/reports?tab=commissions", icon: DollarSign, feature: "reports" },
+    ],
   },
   {
     title: "Settings",
@@ -343,7 +351,7 @@ export function AppSidebar() {
                                 <SidebarMenuSubButton 
                                   asChild
                                   className={`${!subItemAvailable ? 'opacity-50 pointer-events-none' : ''}`}
-                                  isActive={location.pathname === subItem.url}
+                                  isActive={(item.title === 'Reports') ? (location.pathname === '/reports' && subItem.url.includes(`tab=${new URLSearchParams(location.search).get('tab') || 'overview'}`)) : (location.pathname === subItem.url)}
                                 >
                                   <NavLink
                                     to={subItem.url}
