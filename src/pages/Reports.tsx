@@ -272,45 +272,168 @@ const Reports = () => {
      // eslint-disable-next-line react-hooks/exhaustive-deps
    }, [activeTab, startDate, endDate, commissionStaffFilter]);
 
-  // Mock data for reports
-  const mockData = {
-    revenue: {
-      current: 15420,
-      previous: 12850,
-      change: 20.0,
-    },
-    appointments: {
-      current: 156,
-      previous: 142,
-      change: 9.9,
-    },
-    clients: {
-      current: 89,
-      previous: 76,
-      change: 17.1,
-    },
-    services: {
-      current: 234,
-      previous: 198,
-      change: 18.2,
-    },
+  // Real metrics state for reports
+  type OverviewStat = { current: number; previous: number; change: number };
+  const safePercent = (current: number, previous: number) => {
+    if (!previous || previous === 0) return current > 0 ? 100 : 0;
+    return Number((((current - previous) / previous) * 100).toFixed(1));
   };
 
-  const topServices = [
-    { name: 'Haircut & Style', revenue: 4200, appointments: 45, growth: 12.5 },
-    { name: 'Hair Coloring', revenue: 3800, appointments: 32, growth: 8.3 },
-    { name: 'Manicure', revenue: 2100, appointments: 28, growth: 15.2 },
-    { name: 'Facial Treatment', revenue: 1800, appointments: 22, growth: 5.7 },
-    { name: 'Hair Treatment', revenue: 1520, appointments: 18, growth: 22.1 },
-  ];
+  const [overview, setOverview] = useState<{
+    revenue: OverviewStat;
+    appointments: OverviewStat;
+    clients: OverviewStat;
+    services: OverviewStat;
+  }>({
+    revenue: { current: 0, previous: 0, change: 0 },
+    appointments: { current: 0, previous: 0, change: 0 },
+    clients: { current: 0, previous: 0, change: 0 },
+    services: { current: 0, previous: 0, change: 0 },
+  });
 
-  const topClients = [
-    { name: 'Sarah Johnson', visits: 12, totalSpent: 850, lastVisit: '2 days ago' },
-    { name: 'Michael Chen', visits: 10, totalSpent: 720, lastVisit: '1 week ago' },
-    { name: 'Emily Davis', visits: 9, totalSpent: 680, lastVisit: '3 days ago' },
-    { name: 'David Wilson', visits: 8, totalSpent: 590, lastVisit: '5 days ago' },
-    { name: 'Lisa Brown', visits: 7, totalSpent: 520, lastVisit: '1 week ago' },
-  ];
+  const [topServices, setTopServices] = useState<Array<{ name: string; revenue: number; appointments: number; growth: number }>>([]);
+  const [topClients, setTopClients] = useState<Array<{ name: string; visits: number; totalSpent: number; lastVisit: string }>>([]);
+
+  const loadOverview = useCallback(async () => {
+    setLoading(true);
+    try {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const dayMs = 24 * 60 * 60 * 1000;
+      const periodDays = Math.max(1, Math.floor((end.getTime() - start.getTime()) / dayMs) + 1);
+      const prevEnd = new Date(start.getTime() - dayMs);
+      const prevStart = new Date(prevEnd.getTime() - (periodDays - 1) * dayMs);
+      const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
+
+      // Fetch core datasets
+      const [
+        receiptsNowRes,
+        receiptsPrevRes,
+        apptsNowRes,
+        apptsPrevRes,
+        clientsNowRes,
+        clientsPrevRes,
+        svcItemsNowRes,
+        svcItemsPrevRes,
+      ] = await Promise.all([
+        supabase.from('receipts')
+          .select('id, total_amount, created_at, customer_id')
+          .gte('created_at', startDate)
+          .lte('created_at', endDate),
+        supabase.from('receipts')
+          .select('id, total_amount, created_at, customer_id')
+          .gte('created_at', toDateStr(prevStart))
+          .lte('created_at', toDateStr(prevEnd)),
+        supabase.from('appointments')
+          .select('id, appointment_date')
+          .gte('appointment_date', startDate)
+          .lte('appointment_date', endDate),
+        supabase.from('appointments')
+          .select('id, appointment_date')
+          .gte('appointment_date', toDateStr(prevStart))
+          .lte('appointment_date', toDateStr(prevEnd)),
+        supabase.from('clients')
+          .select('id, created_at')
+          .gte('created_at', startDate)
+          .lte('created_at', endDate),
+        supabase.from('clients')
+          .select('id, created_at')
+          .gte('created_at', toDateStr(prevStart))
+          .lte('created_at', toDateStr(prevEnd)),
+        supabase.from('receipt_items')
+          .select('id, created_at, quantity, unit_price, total_price, service_id')
+          .not('service_id', 'is', null)
+          .gte('created_at', startDate)
+          .lte('created_at', endDate),
+        supabase.from('receipt_items')
+          .select('id, created_at, quantity, unit_price, total_price, service_id')
+          .not('service_id', 'is', null)
+          .gte('created_at', toDateStr(prevStart))
+          .lte('created_at', toDateStr(prevEnd)),
+      ]);
+
+      const receiptsNow = receiptsNowRes.data || [];
+      const receiptsPrev = receiptsPrevRes.data || [];
+      const apptsNow = apptsNowRes.data || [];
+      const apptsPrev = apptsPrevRes.data || [];
+      const clientsNow = clientsNowRes.data || [];
+      const clientsPrev = clientsPrevRes.data || [];
+      const svcItemsNow = svcItemsNowRes.data || [];
+      const svcItemsPrev = svcItemsPrevRes.data || [];
+
+      const revenueNow = receiptsNow.reduce((s: number, r: any) => s + (Number(r.total_amount) || 0), 0);
+      const revenuePrev = receiptsPrev.reduce((s: number, r: any) => s + (Number(r.total_amount) || 0), 0);
+      const appointmentsNow = apptsNow.length;
+      const appointmentsPrev = apptsPrev.length;
+      const newClientsNow = clientsNow.length;
+      const newClientsPrev = clientsPrev.length;
+      const servicesNow = svcItemsNow.reduce((s: number, it: any) => s + (Number(it.quantity) || 0), 0);
+      const servicesPrev = svcItemsPrev.reduce((s: number, it: any) => s + (Number(it.quantity) || 0), 0);
+
+      setOverview({
+        revenue: { current: revenueNow, previous: revenuePrev, change: safePercent(revenueNow, revenuePrev) },
+        appointments: { current: appointmentsNow, previous: appointmentsPrev, change: safePercent(appointmentsNow, appointmentsPrev) },
+        clients: { current: newClientsNow, previous: newClientsPrev, change: safePercent(newClientsNow, newClientsPrev) },
+        services: { current: servicesNow, previous: servicesPrev, change: safePercent(servicesNow, servicesPrev) },
+      });
+
+      // Top services (by revenue)
+      const byService: Record<string, { revenue: number; qty: number }> = {};
+      for (const it of svcItemsNow as any[]) {
+        const id = it.service_id as string;
+        if (!byService[id]) byService[id] = { revenue: 0, qty: 0 };
+        const gross = Number(it.total_price) || (Number(it.quantity) || 0) * (Number(it.unit_price) || 0);
+        byService[id].revenue += gross;
+        byService[id].qty += Number(it.quantity) || 0;
+      }
+      const serviceIds = Object.keys(byService);
+      let serviceNames: Record<string, string> = {};
+      if (serviceIds.length > 0) {
+        const { data: services } = await supabase.from('services').select('id, name').in('id', serviceIds);
+        (services || []).forEach((s: any) => { serviceNames[s.id] = s.name; });
+      }
+      const topSvc = serviceIds.map(id => ({
+        name: serviceNames[id] || 'Service',
+        revenue: Math.round(byService[id].revenue),
+        appointments: byService[id].qty,
+        growth: 0,
+      })).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+      setTopServices(topSvc);
+
+      // Top clients (by total spent)
+      const byClient: Record<string, { total: number; count: number; last: string }> = {};
+      for (const r of receiptsNow as any[]) {
+        const cid = r.customer_id as string | null;
+        if (!cid) continue;
+        if (!byClient[cid]) byClient[cid] = { total: 0, count: 0, last: '' };
+        byClient[cid].total += Number(r.total_amount) || 0;
+        byClient[cid].count += 1;
+        const d = r.created_at as string;
+        if (!byClient[cid].last || new Date(d).getTime() > new Date(byClient[cid].last).getTime()) byClient[cid].last = d;
+      }
+      const clientIds = Object.keys(byClient);
+      let clientNames: Record<string, string> = {};
+      if (clientIds.length > 0) {
+        const { data: clientsData } = await supabase.from('clients').select('id, full_name, name').in('id', clientIds);
+        (clientsData || []).forEach((c: any) => { clientNames[c.id] = c.full_name || c.name || 'Client'; });
+      }
+      const topCli = clientIds.map(id => ({
+        name: clientNames[id] || 'Client',
+        visits: byClient[id].count,
+        totalSpent: Math.round(byClient[id].total),
+        lastVisit: (byClient[id].last ? new Date(byClient[id].last).toLocaleDateString() : ''),
+      })).sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 5);
+      setTopClients(topCli);
+    } catch (e) {
+      console.error('Failed to load overview metrics', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [startDate, endDate]);
+
+  useEffect(() => {
+    loadOverview();
+  }, [loadOverview]);
 
   const refreshData = async () => {
     setLoading(true);
@@ -480,10 +603,10 @@ const Reports = () => {
                     <DollarSign className="h-4 w-4 text-green-600" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">${mockData.revenue.current.toLocaleString()}</div>
+                    <div className="text-2xl font-bold">${overview.revenue.current.toLocaleString()}</div>
                     <div className="flex items-center text-xs text-slate-600">
                       <TrendingUp className="h-3 w-3 mr-1 text-green-600" />
-                      +{mockData.revenue.change}% from last period
+                      +{overview.revenue.change}% from last period
                     </div>
                   </CardContent>
                 </Card>
@@ -494,24 +617,24 @@ const Reports = () => {
                     <Calendar className="h-4 w-4 text-blue-600" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{mockData.appointments.current}</div>
+                    <div className="text-2xl font-bold">{overview.appointments.current}</div>
                     <div className="flex items-center text-xs text-slate-600">
                       <TrendingUp className="h-3 w-3 mr-1 text-green-600" />
-                      +{mockData.appointments.change}% from last period
+                      +{overview.appointments.change}% from last period
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card className="border-0 shadow-lg">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-slate-600">Active Clients</CardTitle>
+                    <CardTitle className="text-sm font-medium text-slate-600">New Clients</CardTitle>
                     <Users className="h-4 w-4 text-purple-600" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{mockData.clients.current}</div>
+                    <div className="text-2xl font-bold">{overview.clients.current}</div>
                     <div className="flex items-center text-xs text-slate-600">
                       <TrendingUp className="h-3 w-3 mr-1 text-green-600" />
-                      +{mockData.clients.change}% from last period
+                      +{overview.clients.change}% from last period
                     </div>
                   </CardContent>
                 </Card>
@@ -522,10 +645,10 @@ const Reports = () => {
                     <Target className="h-4 w-4 text-orange-600" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{mockData.services.current}</div>
+                    <div className="text-2xl font-bold">{overview.services.current}</div>
                     <div className="flex items-center text-xs text-slate-600">
                       <TrendingUp className="h-3 w-3 mr-1 text-green-600" />
-                      +{mockData.services.change}% from last period
+                      +{overview.services.change}% from last period
                     </div>
                   </CardContent>
                 </Card>
@@ -579,15 +702,15 @@ const Reports = () => {
                   <div className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-3">
                       <div className="text-center p-4 bg-green-50 rounded-lg">
-                        <div className="text-2xl font-bold text-green-600">${mockData.revenue.current.toLocaleString()}</div>
+                        <div className="text-2xl font-bold text-green-600">${overview.revenue.current.toLocaleString()}</div>
                         <div className="text-sm text-green-700">Total Revenue</div>
                       </div>
                       <div className="text-center p-4 bg-blue-50 rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600">${(mockData.revenue.current / mockData.appointments.current).toFixed(0)}</div>
+                        <div className="text-2xl font-bold text-blue-600">${(overview.appointments.current ? (overview.revenue.current / overview.appointments.current) : 0).toFixed(0)}</div>
                         <div className="text-sm text-blue-700">Average per Appointment</div>
                       </div>
                       <div className="text-center p-4 bg-purple-50 rounded-lg">
-                        <div className="text-2xl font-bold text-purple-600">${(mockData.revenue.current / mockData.clients.current).toFixed(0)}</div>
+                        <div className="text-2xl font-bold text-purple-600">${(overview.clients.current ? (overview.revenue.current / overview.clients.current) : 0).toFixed(0)}</div>
                         <div className="text-sm text-purple-700">Average per Client</div>
                       </div>
                     </div>
