@@ -190,25 +190,12 @@ export default function ReceiptView() {
     }
   };
 
-  if (loading) return <div className="p-6">Loading...</div>;
-  if (!receipt) return <div className="p-6">Receipt not found</div>;
-
-  const outstanding = Math.max(0, (receipt.total_amount || 0) - (receipt.amount_paid || 0));
-
-  const orgName = organization?.name || 'Your Business';
-  const orgSettings = (organization?.settings as any) || {};
-  const orgAddress = [orgSettings.address, orgSettings.city, orgSettings.state, orgSettings.zip_code, orgSettings.country]
-    .filter(Boolean)
-    .join(', ');
-
-  // Build commission mappings
+  // Build commission mappings (moved above early returns to keep hook order stable)
   const commissionIndex = useMemo(() => {
     const map = new Map<string, number | null>();
     for (const js of jobServices || []) {
       const key = `${js.service_id || ''}::${js.staff_id || ''}`;
-      // Prefer explicit mapping by service+staff
       if (!map.has(key)) map.set(key, js.commission_percentage);
-      // Also store a fallback by service only if not already set
       const svcKey = `${js.service_id || ''}::`;
       if (!map.has(svcKey)) map.set(svcKey, js.commission_percentage);
     }
@@ -237,6 +224,17 @@ export default function ReceiptView() {
     }
     return Object.values(out).sort((a, b) => b.commission_due - a.commission_due);
   }, [itemsWithCommission, staffById]);
+
+  if (loading) return <div className="p-6">Loading...</div>;
+  if (!receipt) return <div className="p-6">Receipt not found</div>;
+
+  const outstanding = Math.max(0, (receipt.total_amount || 0) - (receipt.amount_paid || 0));
+
+  const orgName = organization?.name || 'Your Business';
+  const orgSettings = (organization?.settings as any) || {};
+  const orgAddress = [orgSettings.address, orgSettings.city, orgSettings.state, orgSettings.zip_code, orgSettings.country]
+    .filter(Boolean)
+    .join(', ');
 
   return (
     <div className={`p-6 space-y-6 ${isPrintMode ? 'bg-white' : ''}`}>
