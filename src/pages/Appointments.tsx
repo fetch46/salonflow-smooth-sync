@@ -112,17 +112,10 @@ export default function Appointments() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [appointmentsRes, staffRes, servicesRes, accountsRes] = await Promise.all([
+      const [appointmentsRes, staffRes, servicesRes] = await Promise.all([
         supabase.from("appointments").select("*").order("appointment_date", { ascending: true }),
         supabase.from("staff").select("*").eq("is_active", true),
         supabase.from("services").select("*").eq("is_active", true),
-        organization?.id
-          ? supabase
-              .from("accounts")
-              .select("id, account_code, account_name")
-              .eq("organization_id", organization.id)
-              .order("account_code", { ascending: true })
-          : Promise.resolve({ data: [], error: null } as any),
       ]);
 
       if (appointmentsRes.error) throw appointmentsRes.error;
@@ -133,13 +126,31 @@ export default function Appointments() {
       setStaff(staffRes.data || []);
       setServices(servicesRes.data || []);
 
-      const accErr = (accountsRes as any)?.error;
-      const accData = (accountsRes as any)?.data;
-      if (accErr) {
-        console.warn('Accounts fetch failed, continuing without accounts', accErr);
+      // Fetch accounts only if org is selected and table exists
+      try {
+        if (organization?.id) {
+          const hasAccounts = await tableExists(supabase, 'accounts');
+          if (hasAccounts) {
+            const { data: accData, error: accErr } = await supabase
+              .from("accounts")
+              .select("id, account_code, account_name")
+              .eq("organization_id", organization.id)
+              .order("account_code", { ascending: true });
+            if (accErr) {
+              console.warn('Accounts fetch failed, continuing without accounts', accErr);
+              setAccounts([]);
+            } else {
+              setAccounts((accData || []) as Array<{ id: string; account_code: string; account_name: string }>);
+            }
+          } else {
+            setAccounts([]);
+          }
+        } else {
+          setAccounts([]);
+        }
+      } catch (accCatch) {
+        console.warn('Accounts fetch failed, continuing without accounts', accCatch);
         setAccounts([]);
-      } else {
-        setAccounts((accData || []) as Array<{ id: string; account_code: string; account_name: string }>);
       }
 
       // Fetch appointment services for the loaded appointments
