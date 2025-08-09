@@ -26,9 +26,11 @@ import {
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -36,6 +38,8 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   SidebarTrigger,
+  SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { useFeatureGating } from "@/hooks/useFeatureGating";
@@ -209,6 +213,7 @@ export function AppSidebar() {
   const [openSubmenus, setOpenSubmenus] = useState<string[]>([]);
   const { hasFeature, getFeatureAccess, usageData } = useFeatureGating();
   const { subscriptionPlan, isTrialing, daysLeftInTrial, isSuperAdmin } = useSaas();
+  const { state } = useSidebar();
 
   const toggleSubmenu = (title: string) => {
     setOpenSubmenus((prev) =>
@@ -272,8 +277,17 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar variant="inset">
+    <Sidebar variant="inset" className="bg-sidebar">
       <SidebarContent>
+        <SidebarHeader className="px-2 pt-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-md bg-gradient-to-br from-blue-500 to-violet-600" />
+              <span className="font-semibold">SalonFlow</span>
+            </div>
+            <SidebarTrigger className="hidden md:inline-flex" />
+          </div>
+        </SidebarHeader>
         <SidebarGroup>
           <SidebarGroupLabel className="flex items-center justify-between">
             <span>Menu</span>
@@ -298,6 +312,7 @@ export function AppSidebar() {
                       <SidebarMenuButton
                         onClick={() => toggleSubmenu(item.title)}
                         className={`${!isAvailable ? 'opacity-50' : ''}`}
+                        tooltip={state === 'collapsed' ? item.title : undefined}
                       >
                         <item.icon className="w-4 h-4" />
                         <span className="flex-1">{item.title}</span>
@@ -322,6 +337,7 @@ export function AppSidebar() {
                                 <SidebarMenuSubButton 
                                   asChild
                                   className={`${!subItemAvailable ? 'opacity-50 pointer-events-none' : ''}`}
+                                  isActive={location.pathname === subItem.url}
                                 >
                                   <NavLink
                                     to={subItem.url}
@@ -353,6 +369,8 @@ export function AppSidebar() {
                     <SidebarMenuButton 
                       asChild
                       className={`${!isAvailable ? 'opacity-50 pointer-events-none' : ''}`}
+                      tooltip={state === 'collapsed' ? item.title : undefined}
+                      isActive={location.pathname === item.url}
                     >
                       <NavLink
                         to={item.url!}
@@ -377,7 +395,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Super Admin Section */}
         {isSuperAdmin && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-violet-700">System Admin</SidebarGroupLabel>
@@ -388,6 +405,7 @@ export function AppSidebar() {
                     asChild 
                     isActive={location.pathname === superAdminMenuItem.url}
                     className="hover:bg-violet-50 data-[active=true]:bg-violet-100 data-[active=true]:text-violet-900"
+                    tooltip={state === 'collapsed' ? superAdminMenuItem.title : undefined}
                   >
                     <a href={superAdminMenuItem.url} className="flex items-center gap-2">
                       <superAdminMenuItem.icon className="h-4 w-4" />
@@ -407,7 +425,6 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {/* Plan Information */}
         <SidebarGroup>
           <SidebarGroupLabel>Subscription</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -470,7 +487,12 @@ export function AppSidebar() {
             </div>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <SidebarFooter className="mt-auto">
+          <div className="text-xs text-muted-foreground px-2 py-2">v1.0.0</div>
+        </SidebarFooter>
       </SidebarContent>
+      <SidebarRail />
     </Sidebar>
   );
 }
