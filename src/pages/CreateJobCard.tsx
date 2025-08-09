@@ -122,6 +122,7 @@ interface JobCardData {
   client_feedback?: string;
   service_charge: number;
   payment_method?: string;
+  payment_transaction_number?: string;
   receipt_issued: boolean;
   next_appointment: boolean;
   products_used: { [key: string]: number };
@@ -328,6 +329,11 @@ export default function CreateJobCard() {
   const handleSubmit = async () => {
     if (!selectedClient || !selectedStaff || selectedServices.length === 0) {
       toast.error("Please complete all required fields");
+      return;
+    }
+
+    if (jobCardData.payment_method === 'mpesa' && !(jobCardData.payment_transaction_number && jobCardData.payment_transaction_number.trim())) {
+      toast.error("M-Pesa transaction number is required for M-Pesa payments");
       return;
     }
 
@@ -1503,6 +1509,19 @@ function StepPaymentReceipt({
               </Select>
             </div>
 
+            {jobCardData.payment_method === 'mpesa' && (
+              <div className="space-y-2">
+                <Label htmlFor="mpesa-txn">M-Pesa Transaction Number<span className="text-red-500">*</span></Label>
+                <Input
+                  id="mpesa-txn"
+                  placeholder="e.g. QFG3XXXXXX"
+                  value={jobCardData.payment_transaction_number || ""}
+                  onChange={(e) => onDataChange({ payment_transaction_number: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">Required when paying via M-Pesa</p>
+              </div>
+            )}
+
             <div className="space-y-4">
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -1625,7 +1644,7 @@ function StepPaymentReceipt({
               </Button>
               <Button 
                 onClick={onSubmit} 
-                disabled={saving}
+                disabled={saving || (jobCardData.payment_method === 'mpesa' && !(jobCardData.payment_transaction_number && jobCardData.payment_transaction_number.trim()))}
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
                 {saving ? (
