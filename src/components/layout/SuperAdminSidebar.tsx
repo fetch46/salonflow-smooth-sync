@@ -144,7 +144,7 @@ export function SuperAdminSidebar() {
   };
 
   return (
-    <Sidebar variant="inset" className="border-r border-purple-200 max-w-[260px] md:max-w-[280px]">
+    <Sidebar variant="inset" collapsible="icon" className="border-r border-purple-200 max-w-[260px] md:max-w-[280px]">
       <SidebarContent className="bg-gradient-to-b from-purple-50 to-violet-50">
         <SidebarHeader className="px-2 pt-3">
           <div className="flex items-center justify-between">

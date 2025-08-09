@@ -82,10 +82,25 @@ const SidebarProvider = React.forwardRef<
         }
 
         // This sets the cookie to keep the sidebar state.
-        document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+        if (typeof document !== 'undefined') {
+          document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+        }
       },
       [setOpenProp, open]
     )
+
+    // Initialize open state from cookie on mount
+    React.useEffect(() => {
+      if (openProp !== undefined) return
+      if (typeof document === 'undefined') return
+      const cookie = document.cookie
+        .split('; ')
+        .find((row) => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
+      if (cookie) {
+        const value = cookie.split('=')[1]
+        _setOpen(value === 'true')
+      }
+    }, [openProp])
 
     // Helper to toggle the sidebar.
     const toggleSidebar = React.useCallback(() => {

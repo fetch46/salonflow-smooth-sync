@@ -255,7 +255,7 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar variant="inset" className="bg-sidebar">
+    <Sidebar variant="inset" collapsible="icon" className="bg-sidebar">
       <SidebarContent>
         <SidebarHeader className="px-2 pt-3">
           <div className="flex items-center justify-between">
