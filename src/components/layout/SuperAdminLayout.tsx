@@ -20,7 +20,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps = {
       cleanupAuthState();
       try {
         await supabase.auth.signOut({ scope: 'global' } as any);
-      } catch (err) {}
+      } catch (err) { /* ignore sign-out errors */ }
     } finally {
       window.location.href = '/login';
     }

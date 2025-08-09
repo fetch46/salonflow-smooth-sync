@@ -118,11 +118,22 @@ const Reports = () => {
         .lte('created_at', endDate);
       if (error) throw error;
 
-      const rows = (data || []).filter((r: any) => (commissionStaffFilter === 'all' ? true : r.staff?.id === commissionStaffFilter));
+      // Normalize potential array joins into single objects
+      const normalized = (data || []).map((r: any) => {
+        const staff = Array.isArray(r.staff) ? r.staff[0] : r.staff;
+        const service = Array.isArray(r.service) ? r.service[0] : r.service;
+        const receipt = Array.isArray(r.receipt) ? r.receipt[0] : r.receipt;
+        return { ...r, staff, service, receipt };
+      });
+
+      const rows = normalized.filter((r: any) => {
+        if (commissionStaffFilter === 'all') return true;
+        return r.staff?.id === commissionStaffFilter;
+      });
       setCommissionRows(rows);
 
       const summary: Record<string, { staffId: string; staffName: string; gross: number; commissionRate: number; commission: number }> = {};
-      for (const r of rows) {
+      for (const r of rows as any[]) {
         const staffId = r.staff?.id || 'unassigned';
         const staffName = r.staff?.full_name || 'Unassigned';
         const gross = Number(r.unit_price || 0) * Number(r.quantity || 1);

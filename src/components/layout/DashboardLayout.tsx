@@ -5,6 +5,8 @@ import { AppTopbar } from "./Topbar";
 import { useSaas } from "@/lib/saas/context";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { Crown } from "lucide-react";
 
 interface DashboardLayoutProps {
   children?: React.ReactNode;

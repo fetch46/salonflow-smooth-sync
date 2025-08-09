@@ -17,7 +17,7 @@ function useSignOut() {
       cleanupAuthState();
       try {
         await supabase.auth.signOut({ scope: "global" } as any);
-      } catch (_) {}
+      } catch (_) { /* ignore sign-out errors */ }
     } finally {
       window.location.href = "/login";
     }
