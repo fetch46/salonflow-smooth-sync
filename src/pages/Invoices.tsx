@@ -77,6 +77,7 @@ import {
   deleteInvoiceWithFallback,
   getInvoiceItemsWithFallback 
 } from "@/utils/mockDatabase";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 
 interface Invoice {
   id: string;

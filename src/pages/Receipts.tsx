@@ -11,6 +11,7 @@ import { RefreshCw, DollarSign } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { getReceiptsWithFallback } from "@/utils/mockDatabase";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 
 interface Receipt {
   id: string;
