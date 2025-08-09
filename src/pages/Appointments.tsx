@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CalendarDays, Clock, Phone, Mail, User, Edit2, Trash2, Plus, MoreHorizontal, Eye, FilePlus } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useNavigate } from "react-router-dom";
 
 interface Appointment {
   id: string;
@@ -17,6 +18,7 @@ interface Appointment {
   customer_email: string;
   customer_phone: string;
   service_name: string;
+  service_id?: string;
   staff_id: string;
   appointment_date: string;
   appointment_time: string;
@@ -25,6 +27,7 @@ interface Appointment {
   notes: string;
   price: number;
   created_at: string;
+  client_id?: string;
 }
 
 interface Staff {
@@ -51,6 +54,7 @@ export default function Appointments() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+  const navigate = useNavigate();
   
   const [form, setForm] = useState({
     customer_name: "",
@@ -218,10 +222,39 @@ export default function Appointments() {
     toast("View Appointment functionality goes here.");
   };
 
-  const handleCreateJobcard = (appointment: Appointment) => {
-    // Implement logic to create a jobcard from the appointment
-    console.log("Creating jobcard for appointment:", appointment);
-    toast("Create Jobcard functionality goes here.");
+  const handleCreateJobcard = async (appointment: Appointment) => {
+    try {
+      // Build start and end times
+      const start = new Date(`${appointment.appointment_date}T${appointment.appointment_time}`);
+      const duration = appointment.duration_minutes || 60;
+      const end = new Date(start.getTime() + duration * 60 * 1000);
+
+      const payload: any = {
+        appointment_id: appointment.id,
+        client_id: appointment.client_id || null,
+        staff_id: appointment.staff_id || null,
+        service_ids: appointment.service_id ? [appointment.service_id] : null,
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        total_amount: appointment.price || 0,
+        status: 'in_progress',
+        notes: appointment.notes || null,
+      };
+
+      const { data, error } = await supabase
+        .from('job_cards')
+        .insert([payload])
+        .select('id')
+        .maybeSingle();
+
+      if (error) throw error;
+
+      toast.success('Job card created successfully');
+      navigate('/job-cards');
+    } catch (err) {
+      console.error('Failed to create job card', err);
+      toast.error('Failed to create job card');
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -395,7 +428,7 @@ export default function Appointments() {
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent align="end" className="z-50 bg-background">
                           <DropdownMenuItem onClick={() => handleView(appointment)}>
                             <Eye className="mr-2 h-4 w-4" />
                             View Appointment
