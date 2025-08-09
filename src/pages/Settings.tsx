@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Building, Users, CreditCard, MessageSquare, MapPin, Plus, Edit2, Trash2, Crown, Shield, User } from "lucide-react";
 import { toast } from "sonner";
+import { useOrganization } from "@/lib/saas/hooks";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("company");
@@ -32,6 +34,10 @@ export default function Settings() {
     currency: "USD",
     language: "en",
   });
+
+  const { organization, updateOrganization } = useOrganization();
+  const [currencies, setCurrencies] = useState<{ id: string; code: string; name: string; symbol: string; is_active: boolean; }[]>([]);
+  const [selectedCurrencyId, setSelectedCurrencyId] = useState<string>("");
 
   // Users & Roles State
   const [users] = useState([
@@ -78,10 +84,69 @@ export default function Settings() {
     { id: "2", name: "Downtown Branch", address: "456 Style Avenue, New York, NY 10002", phone: "+1 (555) 234-5678", manager: "Mike Davis", status: "Active" },
   ]);
 
-  const handleCompanySubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('currencies')
+        .select('*')
+        .eq('is_active', true)
+        .order('code')
+      setCurrencies(data || [])
+    })()
+  }, [])
+
+  useEffect(() => {
+    if (organization) {
+      const s = (organization.settings as any) || {}
+      setCompanyData(prev => ({
+        ...prev,
+        name: organization.name || prev.name,
+        address: s.address || prev.address,
+        city: s.city || prev.city,
+        state: s.state || prev.state,
+        zip: s.zip || prev.zip,
+        country: s.country || prev.country,
+        phone: s.phone || prev.phone,
+        email: s.email || prev.email,
+        website: s.website || prev.website,
+        tax_id: s.tax_id || prev.tax_id,
+        logo_url: organization.logo_url || prev.logo_url,
+        timezone: s.timezone || prev.timezone,
+      }))
+      setSelectedCurrencyId((organization as any).currency_id || "")
+    }
+  }, [organization])
+
+  const handleCompanySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Here you would save to Supabase
-    toast.success("Company settings updated successfully");
+    if (!organization) {
+      toast.error("No organization selected");
+      return;
+    }
+    try {
+      await updateOrganization(organization.id, {
+        name: companyData.name,
+        logo_url: companyData.logo_url,
+        currency_id: selectedCurrencyId || null,
+        settings: {
+          ...(organization.settings as any),
+          address: companyData.address,
+          city: companyData.city,
+          state: companyData.state,
+          zip: companyData.zip,
+          country: companyData.country,
+          phone: companyData.phone,
+          email: companyData.email,
+          website: companyData.website,
+          tax_id: companyData.tax_id,
+          timezone: companyData.timezone,
+        },
+      } as any)
+      toast.success("Company settings updated successfully");
+    } catch (err) {
+      console.error(err)
+      toast.error("Failed to update organization");
+    }
   };
 
   const handleCommunicationSubmit = (e: React.FormEvent) => {
@@ -273,15 +338,16 @@ export default function Settings() {
                   </div>
                   <div>
                     <Label htmlFor="currency">Currency</Label>
-                    <Select value={companyData.currency} onValueChange={(value) => setCompanyData({ ...companyData, currency: value })}>
+                    <Select value={selectedCurrencyId} onValueChange={setSelectedCurrencyId}>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Select currency" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="USD">USD ($)</SelectItem>
-                        <SelectItem value="CAD">CAD ($)</SelectItem>
-                        <SelectItem value="EUR">EUR (€)</SelectItem>
-                        <SelectItem value="GBP">GBP (£)</SelectItem>
+                        {currencies.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.code} ({c.symbol}) — {c.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>

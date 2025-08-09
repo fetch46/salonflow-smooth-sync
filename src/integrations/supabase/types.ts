@@ -155,6 +155,36 @@ export type Database = {
           },
         ]
       }
+      currencies: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          symbol?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number
@@ -708,6 +738,7 @@ export type Database = {
       organizations: {
         Row: {
           created_at: string | null
+          currency_id: string | null
           domain: string | null
           id: string
           logo_url: string | null
@@ -720,6 +751,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          currency_id?: string | null
           domain?: string | null
           id?: string
           logo_url?: string | null
@@ -732,6 +764,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          currency_id?: string | null
           domain?: string | null
           id?: string
           logo_url?: string | null
@@ -742,7 +775,15 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "organizations_currency_id_fkey"
+            columns: ["currency_id"]
+            isOneToOne: false
+            referencedRelation: "currencies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

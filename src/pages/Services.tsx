@@ -144,7 +144,7 @@ export default function Services() {
   const [refreshing, setRefreshing] = useState(false);
   const [availableProducts, setAvailableProducts] = useState<{ id: string; name: string; type: string; category: string | null; unit: string | null; cost_price: number | null; selling_price: number | null }[]>([]);
   const [serviceKits, setServiceKits] = useState<ServiceKit[]>([]);
-  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [viewMode, setViewMode] = useState<"cards" | "table">("table");
  
   const [formData, setFormData] = useState({
     name: "",

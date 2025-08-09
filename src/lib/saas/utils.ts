@@ -296,6 +296,7 @@ export function sanitizeOrganizationData(data: any) {
     slug: data.slug?.toLowerCase().trim(),
     domain: data.domain?.toLowerCase().trim() || null,
     logo_url: data.logo_url?.trim() || null,
+    currency_id: data.currency_id || null,
     settings: data.settings || {},
     metadata: data.metadata || {},
   }

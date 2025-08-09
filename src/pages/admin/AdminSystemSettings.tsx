@@ -33,6 +33,9 @@ export default function AdminSystemSettings() {
   const [settings, setSettings] = useState<SystemSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
+  const [currencies, setCurrencies] = useState<any[]>([]);
+  const [newCurrency, setNewCurrency] = useState({ code: '', name: '', symbol: '' });
+  const [savingCurrency, setSavingCurrency] = useState<boolean>(false);
 
   useEffect(() => {
     loadSettings();
