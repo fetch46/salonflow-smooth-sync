@@ -348,9 +348,8 @@ export default function Inventory() {
       />
 
       <Tabs defaultValue="goods" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 md:w-fit">
+        <TabsList className="grid w-full grid-cols-1 md:w-fit">
           <TabsTrigger value="goods">Products</TabsTrigger>
-          <TabsTrigger value="services">Services</TabsTrigger>
         </TabsList>
 
         <TabsContent value="goods">
@@ -384,56 +383,6 @@ export default function Inventory() {
                           <TableCell>{item.reorder_point}</TableCell>
                           <TableCell>
                             <Badge variant="secondary">Active</Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button variant="ghost" size="sm" onClick={() => handleEditItem(item)}>
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="services">
-          <Card>
-            <CardHeader>
-              <CardTitle>Services</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? <TableSkeleton /> : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>SKU</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Kit Items</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {serviceItems.map((item) => {
-                      const kits = serviceKits.filter(kit => kit.service_id === item.id);
-                      
-                      return (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">{item.name}</TableCell>
-                          <TableCell>{item.sku}</TableCell>
-                          <TableCell>{item.description}</TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {kits.map((kit) => (
-                                <Badge key={kit.id} variant="outline">
-                                  {kit.good.name} × {kit.quantity}
-                                </Badge>
-                              ))}
-                            </div>
                           </TableCell>
                           <TableCell className="text-right">
                             <Button variant="ghost" size="sm" onClick={() => handleEditItem(item)}>
