@@ -545,8 +545,20 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [state.subscriptionPlan, state.subscriptionStatus, state.usageMetrics])
 
   const canPerformActionCheck = useCallback((action: string, resource: string): boolean => {
+    const overrides = (state.organization?.settings as any)?.role_permissions as
+      | Record<string, { action: string; resource: string; conditions?: Record<string, any> }[]>
+      | undefined
+    if (overrides) {
+      // Lazy import to avoid circular issues if any
+      try {
+        const { canPerformActionWithOverrides } = require('./utils') as typeof import('./utils')
+        return canPerformActionWithOverrides(state.organizationRole, action, resource, overrides)
+      } catch {
+        return canPerformAction(state.organizationRole, action, resource)
+      }
+    }
     return canPerformAction(state.organizationRole, action, resource)
-  }, [state.organizationRole])
+  }, [state.organizationRole, state.organization])
 
   // Set up auth listener
   useEffect(() => {

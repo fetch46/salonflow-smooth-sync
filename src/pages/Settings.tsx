@@ -53,6 +53,50 @@ phone: "+1 (555) 123-4567",
     { id: "4", name: "Receptionist", description: "Front desk operations", permissions: ["manage_appointments", "manage_clients"], users_count: 2 },
   ]);
 
+  // Roles Editor state (organization-specific overrides)
+  type PermRow = { action: string; resource: string }
+  const [roleOverrides, setRoleOverrides] = useState<Record<string, PermRow[]>>({})
+  useEffect(() => {
+    const s = (organization?.settings as any) || {}
+    const overrides = (s.role_permissions as Record<string, PermRow[]>) || {}
+    setRoleOverrides(overrides)
+  }, [organization])
+
+  const addPermissionRow = (roleKey: string) => {
+    setRoleOverrides(prev => ({
+      ...prev,
+      [roleKey]: [...(prev[roleKey] || []), { action: "read", resource: "dashboard" }],
+    }))
+  }
+  const removePermissionRow = (roleKey: string, idx: number) => {
+    setRoleOverrides(prev => ({
+      ...prev,
+      [roleKey]: (prev[roleKey] || []).filter((_, i) => i !== idx),
+    }))
+  }
+  const updatePermissionRow = (roleKey: string, idx: number, field: keyof PermRow, value: string) => {
+    setRoleOverrides(prev => {
+      const rows = [...(prev[roleKey] || [])]
+      rows[idx] = { ...rows[idx], [field]: value }
+      return { ...prev, [roleKey]: rows }
+    })
+  }
+  const saveRoleOverrides = async () => {
+    if (!organization) return toast.error('No organization selected')
+    try {
+      await updateOrganization(organization.id, {
+        settings: {
+          ...(organization.settings as any),
+          role_permissions: roleOverrides,
+        },
+      } as any)
+      toast.success('Role permissions updated')
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to save role permissions')
+    }
+  }
+
   // Subscription State
   const [subscription] = useState({
     plan: "Professional",
@@ -388,15 +432,74 @@ phone: "+1 (555) 123-4567",
                         </div>
                       </div>
                       <p className="text-sm text-muted-foreground mb-2">{role.description}</p>
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-1 mb-3">
                         {role.permissions.map((permission, index) => (
                           <Badge key={index} variant="secondary" className="text-xs">
                             {permission.replace('_', ' ')}
                           </Badge>
                         ))}
                       </div>
+
+                      {/* Organization overrides editor */}
+                      <div className="mt-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs">Overrides for this organization</Label>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => addPermissionRow(role.name.toLowerCase())}
+                          >
+                            Add Permission
+                          </Button>
+                        </div>
+                        <div className="space-y-2">
+                          {(roleOverrides[role.name.toLowerCase()] || []).map((row, idx) => (
+                            <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                              <div className="col-span-5">
+                                <Select
+                                  value={row.action}
+                                  onValueChange={(v) => updatePermissionRow(role.name.toLowerCase(), idx, 'action', v)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Action" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="read">View</SelectItem>
+                                    <SelectItem value="create">Create</SelectItem>
+                                    <SelectItem value="update">Edit</SelectItem>
+                                    <SelectItem value="delete">Delete</SelectItem>
+                                    <SelectItem value="approve">Approve</SelectItem>
+                                    <SelectItem value="*">All</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="col-span-6">
+                                <Input
+                                  value={row.resource}
+                                  onChange={(e) => updatePermissionRow(role.name.toLowerCase(), idx, 'resource', e.target.value)}
+                                  placeholder="Resource e.g. appointments, job_cards"
+                                />
+                              </div>
+                              <div className="col-span-1 flex justify-end">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => removePermissionRow(role.name.toLowerCase(), idx)}
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   ))}
+                </div>
+                <div className="flex justify-end mt-4">
+                  <Button onClick={saveRoleOverrides}>Save Role Permissions</Button>
                 </div>
               </CardContent>
             </Card>

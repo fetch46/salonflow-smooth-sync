@@ -140,6 +140,15 @@ export const usePermissions = (): UsePermissionsResult => {
   const { organizationRole } = useSaas()
 
   const canPerformActionCheck = useCallback((action: string, resource: string): boolean => {
+    try {
+      const { useSaas } = require('./context')
+      const ctx = useSaas() as import('./types').SaasContextType
+      const overrides = (ctx.organization?.settings as any)?.role_permissions
+      if (overrides) {
+        const { canPerformActionWithOverrides } = require('./utils') as typeof import('./utils')
+        return canPerformActionWithOverrides(organizationRole, action, resource, overrides)
+      }
+    } catch {}
     return canPerformAction(organizationRole, action, resource)
   }, [organizationRole])
 

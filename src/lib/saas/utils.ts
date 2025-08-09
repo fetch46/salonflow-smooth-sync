@@ -68,6 +68,44 @@ export function isRoleHigherThan(role1: UserRole, role2: UserRole): boolean {
   return ROLE_HIERARCHY[role1] > ROLE_HIERARCHY[role2]
 }
 
+// Role/permission overrides support
+export function buildEffectivePermissions(
+  base: Record<UserRole, Permission[]>,
+  overrides?: Record<string, Permission[]>
+): Record<UserRole, Permission[]> {
+  if (!overrides) return base
+  const result: Record<UserRole, Permission[]> = { ...base }
+  for (const [roleKey, perms] of Object.entries(overrides)) {
+    const r = roleKey as UserRole
+    // Replace entire set for role if provided
+    result[r] = Array.isArray(perms) ? perms : result[r]
+  }
+  return result
+}
+
+export function canPerformActionWithOverrides(
+  userRole: UserRole | null,
+  action: string,
+  resource: string,
+  overrides?: Record<string, Permission[]>,
+  conditions?: Record<string, any>
+): boolean {
+  if (!userRole) return false
+  const effective = buildEffectivePermissions(ROLE_PERMISSIONS, overrides)
+  const permissions = effective[userRole] || []
+
+  if (permissions.some(p => p.action === '*' && p.resource === '*')) return true
+  if (permissions.some(p => p.action === '*' && p.resource === resource)) return true
+
+  const exactMatch = permissions.find(p => p.action === action && p.resource === resource)
+  if (!exactMatch) return false
+
+  if (exactMatch.conditions && conditions) {
+    return Object.entries(exactMatch.conditions).every(([key, value]) => conditions[key] === value)
+  }
+  return true
+}
+
 /**
  * Subscription and Billing Utilities
  */
