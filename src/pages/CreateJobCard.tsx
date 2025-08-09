@@ -205,7 +205,7 @@ export default function CreateJobCard() {
         supabase.from("staff").select("*").eq("is_active", true),
         supabase.from("clients").select("*"),
         supabase.from("services").select("*").eq("is_active", true),
-        supabase.from("appointments").select("*").eq("status", "confirmed").gte("appointment_date", new Date().toISOString().split('T')[0])
+        supabase.from("appointments").select("*").gte("appointment_date", format(new Date(), 'yyyy-MM-dd'))
       ]);
 
       if (staffRes.data) setStaff(staffRes.data);
@@ -736,7 +736,7 @@ function StepAppointmentClient({
   );
 
   const todayAppointments = appointments.filter(apt => 
-    apt.appointment_date === new Date().toISOString().split('T')[0]
+    apt.appointment_date === format(new Date(), 'yyyy-MM-dd')
   );
 
   return (
