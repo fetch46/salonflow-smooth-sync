@@ -76,10 +76,9 @@ const Reports = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, activeSubTab]);
 
-  const recalcFinancials = async () => {
+  const recalcFinancials = useCallback(async () => {
     setRecalcLoading(true);
     try {
-      // Pull transactions in range with account types
       const { data: txns, error } = await supabase
         .from('account_transactions')
         .select('account_id, transaction_date, debit_amount, credit_amount, accounts:account_id (account_type, account_code)')
@@ -95,13 +94,10 @@ const Reports = () => {
         .filter((t: any) => t.accounts?.account_type === type)
         .reduce((sum: number, t: any) => sum + (Number(t.credit_amount) || 0) - (Number(t.debit_amount) || 0), 0);
 
-      // Income: credits - debits for Income accounts
       const income = sumByTypeCreditMinusDebit('Income');
-      // COGS specifically 5001: debit - credit
       const cogs = transactions
         .filter((t: any) => t.accounts?.account_code === '5001')
         .reduce((sum: number, t: any) => sum + (Number(t.debit_amount) || 0) - (Number(t.credit_amount) || 0), 0);
-      // Expenses: debit - credit for Expense excluding 5001
       const expenses = transactions
         .filter((t: any) => t.accounts?.account_type === 'Expense' && t.accounts?.account_code !== '5001')
         .reduce((sum: number, t: any) => sum + (Number(t.debit_amount) || 0) - (Number(t.credit_amount) || 0), 0);
@@ -109,8 +105,6 @@ const Reports = () => {
       const netProfit = grossProfit - expenses;
       setPl({ income, cogs, expenses, grossProfit, netProfit });
 
-      // Balance Sheet as of endDate: calculate balances using debits/credits to date
-      // Assets: debit - credit, Liabilities/Equity: credit - debit
       const assets = sumByType('Asset');
       const liabilities = sumByTypeCreditMinusDebit('Liability');
       const equity = sumByTypeCreditMinusDebit('Equity');
@@ -120,11 +114,11 @@ const Reports = () => {
     } finally {
       setRecalcLoading(false);
     }
-  };
+  }, [startDate, endDate]);
 
   useEffect(() => {
     recalcFinancials();
-  }, []);
+  }, [recalcFinancials]);
 
   useEffect(() => {
     const loadStaff = async () => {

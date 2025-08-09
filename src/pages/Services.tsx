@@ -170,12 +170,12 @@ export default function Services() {
     }));
   };
 
-  useEffect(() => {
+    useEffect(() => {
     fetchServices();
     fetchAvailableProducts();
-  }, []);
-
-  const fetchServices = useCallback(async () => {
+  }, [fetchServices, fetchAvailableProducts]);
+ 
+   const fetchServices = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase

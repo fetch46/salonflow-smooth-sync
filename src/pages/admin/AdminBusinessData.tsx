@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,7 @@ const AdminBusinessData = () => {
   const [selectedOrganization, setSelectedOrganization] = useState<string>("");
   const [organizations, setOrganizations] = useState<any[]>([]);
 
-  const businessTables = [
+  const businessTables = useMemo(() => [
     { name: 'clients', label: 'Clients', icon: Users, description: 'Customer database' },
     { name: 'staff', label: 'Staff', icon: Users, description: 'Employee records' },
     { name: 'services', label: 'Services', icon: Briefcase, description: 'Service catalog' },
@@ -52,20 +52,20 @@ const AdminBusinessData = () => {
     { name: 'accounts', label: 'Accounts', icon: Calculator, description: 'Chart of accounts' },
     { name: 'suppliers', label: 'Suppliers', icon: Building, description: 'Vendor database' },
     { name: 'job_cards', label: 'Job Cards', icon: FileText, description: 'Service records' }
-  ];
+  ], []);
 
   useEffect(() => {
     fetchTableStats();
     fetchOrganizations();
-  }, []);
+  }, [fetchTableStats, fetchOrganizations]);
 
-  useEffect(() => {
+    useEffect(() => {
     if (selectedTable) {
       fetchTableData(selectedTable);
     }
-  }, [selectedTable, selectedOrganization]);
-
-  const fetchTableStats = async () => {
+  }, [selectedTable, selectedOrganization, fetchTableData]);
+ 
+  const fetchTableStats = useCallback(async () => {
     try {
       setLoading(true);
       const stats: TableStats[] = [];
@@ -122,9 +122,9 @@ const AdminBusinessData = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [businessTables]);
 
-  const fetchOrganizations = async () => {
+  const fetchOrganizations = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('organizations')
@@ -137,9 +137,9 @@ const AdminBusinessData = () => {
     } catch (error) {
       console.error('Error fetching organizations:', error);
     }
-  };
+  }, []);
 
-  const fetchTableData = async (tableName: string) => {
+  const fetchTableData = useCallback(async (tableName: string) => {
     try {
       setDataLoading(true);
       
@@ -172,7 +172,7 @@ const AdminBusinessData = () => {
     } finally {
       setDataLoading(false);
     }
-  };
+  }, [selectedOrganization]);
 
   const getTableIcon = (tableName: string) => {
     const table = businessTables.find(t => t.name === tableName);

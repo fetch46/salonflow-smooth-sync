@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -109,7 +109,7 @@ export default function Appointments() {
   const [bookingTxnNumber, setBookingTxnNumber] = useState<string>("");
   const [bookingAccountId, setBookingAccountId] = useState<string>("");
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [appointmentsRes, staffRes, servicesRes] = await Promise.all([
@@ -217,11 +217,11 @@ export default function Appointments() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [organization]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   // Prefill from URL (e.g., /appointments?create=1&name=...)
   useEffect(() => {

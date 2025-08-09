@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,9 +23,9 @@ export default function AdminActivity() {
 
   useEffect(() => {
     fetchActivity();
-  }, [rangeDays]);
+  }, [rangeDays, fetchActivity]);
 
-  const fetchActivity = async () => {
+  const fetchActivity = useCallback(async () => {
     try {
       setLoading(true);
       const since = subDays(new Date(), rangeDays).toISOString();
@@ -78,7 +78,7 @@ export default function AdminActivity() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [rangeDays]);
 
   const filtered = items.filter((i) => {
     const hay = `${i.type} ${i.description} ${i.organization ?? ""}`.toLowerCase();

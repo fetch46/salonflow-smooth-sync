@@ -45,13 +45,13 @@ export default function ServiceView() {
   const [serviceKits, setServiceKits] = useState<ServiceKit[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+    useEffect(() => {
     if (id) {
       fetchServiceData();
     }
-  }, [id]);
-
-  const fetchServiceData = useCallback(async () => {
+  }, [id, fetchServiceData]);
+ 
+   const fetchServiceData = useCallback(async () => {
     try {
       setLoading(true);
 

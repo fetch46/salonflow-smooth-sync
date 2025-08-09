@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -56,7 +56,7 @@ const AdminDashboard = () => {
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const businessTables = [
+  const businessTables = useMemo(() => [
     { name: 'clients', label: 'Clients', icon: Users, color: 'text-blue-600' },
     { name: 'staff', label: 'Staff', icon: Users, color: 'text-green-600' },
     { name: 'services', label: 'Services', icon: Briefcase, color: 'text-purple-600' },
@@ -65,14 +65,14 @@ const AdminDashboard = () => {
     { name: 'sales', label: 'Sales', icon: ShoppingCart, color: 'text-emerald-600' },
     { name: 'receipts', label: 'Receipts', icon: FileText, color: 'text-red-600' },
     { name: 'expenses', label: 'Expenses', icon: DollarSign, color: 'text-yellow-600' }
-  ];
+  ], []);
 
-  useEffect(() => {
+    useEffect(() => {
     fetchSystemStats();
     fetchRecentActivity();
-  }, []);
-
-  const fetchSystemStats = async () => {
+  }, [fetchSystemStats, fetchRecentActivity]);
+ 
+   const fetchSystemStats = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -206,9 +206,9 @@ const AdminDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [businessTables]);
 
-  const fetchRecentActivity = async () => {
+  const fetchRecentActivity = useCallback(async () => {
     try {
       const activities: RecentActivity[] = [];
 
@@ -260,7 +260,7 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('Error fetching recent activity:', error);
     }
-  };
+  }, []);
 
   const { symbol } = useOrganizationCurrency();
   const formatCurrency = (cents: number) => {
