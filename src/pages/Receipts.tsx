@@ -189,12 +189,14 @@ export default function Receipts() {
       return;
     }
     try {
-      const { error } = await supabase
-        .from('receipt_payments')
-        .insert([
-          { receipt_id: selected.id, amount: amt, method: payment.method, reference_number: payment.reference || null },
-        ]);
-      if (error) throw error;
+      const { recordReceiptPaymentWithFallback } = await import('@/utils/mockDatabase');
+      const ok = await recordReceiptPaymentWithFallback(supabase, {
+        receipt_id: selected.id,
+        amount: amt,
+        method: payment.method,
+        reference_number: payment.reference || null,
+      });
+      if (!ok) throw new Error('Failed to record payment');
       toast.success('Payment recorded');
       setIsPayOpen(false);
       setSelected(null);
@@ -354,10 +356,14 @@ export default function Receipts() {
       if (receiptId && createPayment.enabled) {
         const amt = parseFloat(createPayment.amount) || 0;
         if (amt > 0) {
-          const { error: payErr } = await supabase
-            .from('receipt_payments')
-            .insert([{ receipt_id: receiptId, amount: amt, method: createPayment.method, reference_number: createPayment.reference || null }]);
-          if (payErr) throw payErr;
+          const { recordReceiptPaymentWithFallback } = await import('@/utils/mockDatabase');
+          const ok = await recordReceiptPaymentWithFallback(supabase, {
+            receipt_id: receiptId,
+            amount: amt,
+            method: createPayment.method,
+            reference_number: createPayment.reference || null,
+          });
+          if (!ok) throw new Error('Failed to record payment');
         }
       }
 
