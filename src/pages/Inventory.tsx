@@ -239,6 +239,7 @@ export default function Inventory() {
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [searchQuery, setSearchQuery] = useState("");
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -340,32 +341,41 @@ export default function Inventory() {
   const activeGoodsItems = allGoodsItems.filter(item => item.is_active);
   const displayedGoodsItems = statusFilter === 'all' ? allGoodsItems : statusFilter === 'active' ? activeGoodsItems : allGoodsItems.filter(item => !item.is_active);
   const serviceItems = items.filter(item => item.type === 'service');
+  const filteredGoodsItems = displayedGoodsItems.filter(item => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return item.name.toLowerCase().includes(q) || (item.sku || '').toLowerCase().includes(q);
+  });
 
   const TableSkeleton = () => (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>SKU</TableHead>
-          <TableHead>Total Stock</TableHead>
-          <TableHead>Status</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {Array.from({ length: 5 }).map((_, i) => (
-          <TableRow key={i}>
-            <TableCell><Skeleton className="h-4 w-[150px]" /></TableCell>
-            <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
-            <TableCell><Skeleton className="h-4 w-[50px]" /></TableCell>
-            <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+    <div className="overflow-auto max-h-[65vh] rounded-lg border">
+      <Table className="min-w-[720px]">
+        <TableHeader className="sticky top-0 bg-background z-10">
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead className="hidden sm:table-cell">SKU</TableHead>
+            <TableHead className="hidden md:table-cell">Unit</TableHead>
+            <TableHead className="hidden lg:table-cell">Reorder Point</TableHead>
+            <TableHead>Status</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <TableRow key={i} className="hover:bg-muted/50">
+              <TableCell><Skeleton className="h-4 w-[180px]" /></TableCell>
+              <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-[120px]" /></TableCell>
+              <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
+              <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-[60px]" /></TableCell>
+              <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 
   return (
-    <div className="container mx-auto p-6 space-y-8">
+    <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8 py-6 space-y-6 lg:space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold">Inventory Management</h1>
         <div className="flex flex-wrap gap-2">
@@ -391,72 +401,82 @@ export default function Inventory() {
 
         <TabsContent value="goods">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <CardTitle className="flex items-center gap-2">
                 <Package className="w-5 h-5 text-primary" />
                 Products Inventory
               </CardTitle>
-              <div className="flex items-center gap-3">
-                <Label className="text-sm">Status</Label>
-                <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex w-full lg:w-auto items-center gap-3">
+                <Input
+                  placeholder="Search products by name or SKU..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full lg:w-64"
+                />
+                <div className="flex items-center gap-3">
+                  <Label className="text-sm">Status</Label>
+                  <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
               {isLoading ? <TableSkeleton /> : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>SKU</TableHead>
-                      <TableHead>Unit</TableHead>
-                      <TableHead>Reorder Point</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {displayedGoodsItems.map((item) => {
-                      return (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">{item.name}</TableCell>
-                          <TableCell>{item.sku}</TableCell>
-                          <TableCell>{item.unit}</TableCell>
-                          <TableCell>{item.reorder_point}</TableCell>
-                          <TableCell>
-                            {item.is_active ? (
-                              <Badge variant="secondary">Active</Badge>
-                            ) : (
-                              <Badge variant="outline">Inactive</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button variant="ghost" size="sm" onClick={() => handleEditItem(item)}>
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            {item.is_active ? (
-                              <Button variant="ghost" size="sm" onClick={() => handleDeactivateItem(item)}>
-                                <Trash2 className="w-4 h-4 text-red-600" />
+                <div className="overflow-auto max-h-[65vh] rounded-lg border">
+                  <Table className="min-w-[720px]">
+                    <TableHeader className="sticky top-0 bg-background z-10">
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead className="hidden sm:table-cell">SKU</TableHead>
+                        <TableHead className="hidden md:table-cell">Unit</TableHead>
+                        <TableHead className="hidden lg:table-cell">Reorder Point</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredGoodsItems.map((item) => {
+                        return (
+                          <TableRow key={item.id} className="hover:bg-muted/50">
+                            <TableCell className="font-medium max-w-[320px] truncate">{item.name}</TableCell>
+                            <TableCell className="hidden sm:table-cell">{item.sku}</TableCell>
+                            <TableCell className="hidden md:table-cell">{item.unit}</TableCell>
+                            <TableCell className="hidden lg:table-cell">{item.reorder_point}</TableCell>
+                            <TableCell>
+                              {item.is_active ? (
+                                <Badge variant="secondary">Active</Badge>
+                              ) : (
+                                <Badge variant="outline">Inactive</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="sm" onClick={() => handleEditItem(item)}>
+                                <Edit className="w-4 h-4" />
                               </Button>
-                            ) : (
-                              <Button variant="ghost" size="sm" onClick={() => handleActivateItem(item)}>
-                                Activate
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                              {item.is_active ? (
+                                <Button variant="ghost" size="sm" onClick={() => handleDeactivateItem(item)}>
+                                  <Trash2 className="w-4 h-4 text-red-600" />
+                                </Button>
+                              ) : (
+                                <Button variant="ghost" size="sm" onClick={() => handleActivateItem(item)}>
+                                  Activate
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
