@@ -45,6 +45,7 @@ import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { useSaas } from "@/lib/saas/context";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 // Mock data - in a real app, this would come from your backend
 const generateMockData = () => {
@@ -91,13 +92,63 @@ const Dashboard = () => {
   
   const mockData = useMemo(() => generateMockData(), []);
 
-  
+  // Load today's appointments and staff to show real data on dashboard
+  type DashboardAppointment = {
+    id: string;
+    customer_name: string;
+    service_name: string;
+    staff_id: string | null;
+    appointment_date: string;
+    appointment_time: string;
+    duration_minutes: number | null;
+    status: string;
+    price: number | null;
+  };
+
+  const [todayAppointments, setTodayAppointments] = useState<DashboardAppointment[]>([]);
+  const [staffMap, setStaffMap] = useState<Record<string, string>>({});
+
   useEffect(() => {
-    console.log('Dashboard mounted');
-    console.log('User:', user);
-    console.log('Organization:', organization);
-    console.log('Subscription Plan:', subscriptionPlan);
-  }, [user, organization, subscriptionPlan]);
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+        const appointmentsQuery = supabase
+          .from('appointments')
+          .select('id, customer_name, service_name, staff_id, appointment_date, appointment_time, duration_minutes, status, price')
+          .eq('appointment_date', todayStr)
+          .order('appointment_time', { ascending: true });
+
+        const staffQuery = supabase
+          .from('staff')
+          .select('id, full_name')
+          .eq('is_active', true);
+
+        const [{ data: appts, error: apptErr }, { data: staff, error: staffErr }] = await Promise.all([
+          appointmentsQuery,
+          staffQuery
+        ]);
+
+        if (apptErr) throw apptErr;
+        if (staffErr) throw staffErr;
+
+        setTodayAppointments((appts || []) as DashboardAppointment[]);
+        const map: Record<string, string> = {};
+        (staff || []).forEach((s: any) => {
+          if (s?.id) map[s.id] = s.full_name;
+        });
+        setStaffMap(map);
+      } catch (e: any) {
+        console.error('Failed to load dashboard data', e);
+        setError(e?.message || 'Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   const todayStats = [
     {
@@ -337,6 +388,8 @@ const Dashboard = () => {
         return "bg-blue-50 text-blue-700 border-blue-200";
       case "cancelled":
         return "bg-red-50 text-red-700 border-red-200";
+      case "scheduled":
+        return "bg-slate-50 text-slate-700 border-slate-200";
       default:
         return "bg-slate-50 text-slate-700 border-slate-200";
     }
@@ -404,7 +457,7 @@ const Dashboard = () => {
             Refresh
           </Button>
           
-          <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg">
+          <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg" onClick={() => navigate('/appointments?create=1')}>
             <Plus className="w-4 h-4 mr-2" />
             New Appointment
           </Button>
@@ -452,10 +505,10 @@ const Dashboard = () => {
                     Today's Schedule
                   </CardTitle>
                   <CardDescription>
-                    {upcomingAppointments.length} appointments • ${upcomingAppointments.reduce((sum, apt) => sum + apt.price, 0).toLocaleString()} revenue
+                    {todayAppointments.length} appointments • ${todayAppointments.reduce((sum, apt) => sum + (apt.price || 0), 0).toLocaleString()} revenue
                   </CardDescription>
                 </div>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => navigate('/appointments')}>
                   View All
                   <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
@@ -463,48 +516,58 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent className="p-0">
               <div className="max-h-96 overflow-y-auto">
-                {upcomingAppointments.map((appointment) => (
-                  <div
-                    key={appointment.id}
-                    className="flex items-center justify-between p-4 border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="relative">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-medium text-sm">
-                          {appointment.avatar}
-                        </div>
-                        {appointment.isVip && (
-                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center">
-                            <Crown className="w-2 h-2 text-white" />
+                {todayAppointments.map((appointment) => {
+                  const initials = (appointment.customer_name || '')
+                    .split(' ')
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map((p) => p[0]?.toUpperCase())
+                    .join('') || '—';
+                  const staffName = appointment.staff_id ? (staffMap[appointment.staff_id] || 'Unassigned') : 'Unassigned';
+                  const durationLabel = appointment.duration_minutes ? `${appointment.duration_minutes}min` : '';
+                  return (
+                    <div
+                      key={appointment.id}
+                      className="flex items-center justify-between p-4 border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="relative">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-medium text-sm">
+                            {initials}
                           </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <h4 className="font-semibold text-slate-900 truncate">
-                            {appointment.client}
-                          </h4>
-                          <Badge className={`${getStatusColor(appointment.status)} text-xs border`}>
-                            {appointment.status}
-                          </Badge>
                         </div>
-                        <p className="text-sm text-slate-600 truncate">
-                          {appointment.service} • {appointment.staff}
-                        </p>
-                        <div className="flex items-center justify-between mt-1">
-                          <div className="flex items-center text-xs text-slate-500">
-                            <Clock className="w-3 h-3 mr-1" />
-                            {appointment.time} ({appointment.duration})
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className="font-semibold text-slate-900 truncate">
+                              {appointment.customer_name}
+                            </h4>
+                            <Badge className={`${getStatusColor(appointment.status)} text-xs border`}>
+                              {appointment.status}
+                            </Badge>
                           </div>
-                          <div className="text-sm font-semibold text-slate-900">
-                            ${appointment.price}
+                          <p className="text-sm text-slate-600 truncate">
+                            {(appointment.service_name || 'Service')} • {staffName}
+                          </p>
+                          <div className="flex items-center justify-between mt-1">
+                            <div className="flex items-center text-xs text-slate-500">
+                              <Clock className="w-3 h-3 mr-1" />
+                              {appointment.appointment_time} {durationLabel ? `(${durationLabel})` : ''}
+                            </div>
+                            {typeof appointment.price === 'number' && (
+                              <div className="text-sm font-semibold text-slate-900">
+                                ${appointment.price}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
+                {todayAppointments.length === 0 && (
+                  <div className="p-6 text-sm text-slate-500">No appointments scheduled for today.</div>
+                )}
               </div>
             </CardContent>
           </Card>
