@@ -106,7 +106,7 @@ const superAdminMenuItems: SuperAdminMenuItem[] = [
     subItems: [
       {
         title: "System Settings",
-        url: "/settings",
+        url: "/super-admin/settings",
         icon: Settings,
       },
     ],
