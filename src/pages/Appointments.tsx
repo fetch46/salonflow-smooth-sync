@@ -94,6 +94,20 @@ export default function Appointments() {
     fetchData();
   }, []);
 
+  // Prefill from URL (e.g., /appointments?create=1&name=...)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('create') === '1') {
+      setForm((prev) => ({
+        ...prev,
+        customer_name: params.get('name') || '',
+        customer_email: params.get('email') || '',
+        customer_phone: params.get('phone') || ''
+      }));
+      setIsModalOpen(true);
+    }
+  }, []);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));

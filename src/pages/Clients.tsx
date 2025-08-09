@@ -971,7 +971,7 @@ export default function Clients() {
               )}
             </div>
           ) : (
-            {viewMode === "table" ? (
+            <>{viewMode === "table" ? (
               <div className="p-6">
                 <ClientsTable
                   clients={currentClients}
@@ -1105,6 +1105,7 @@ export default function Clients() {
                 })}
               </div>
             )}
+            </>
           )}
         </CardContent>
       </Card>
