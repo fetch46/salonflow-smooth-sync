@@ -10,7 +10,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Calculator, Plus, RefreshCw, Search } from "lucide-react";
 import { useSaas } from "@/lib/saas";
-import { getReceiptsWithFallback } from "@/utils/mockDatabase";
 
 interface Account {
   id: string;
@@ -48,10 +47,15 @@ export default function Accounts() {
   const fetchAccounts = async () => {
     try {
       setLoading(true);
+      if (!organization?.id) {
+        // No active organization yet; surface an empty list
+        setAccounts([]);
+        return;
+      }
       const { data, error } = await supabase
         .from("accounts")
         .select("id, account_code, account_name, account_type, normal_balance, description, parent_account_id")
-        .eq("organization_id", organization?.id || "00000000-0000-0000-0000-000000000000")
+        .eq("organization_id", organization.id)
         .order("account_code", { ascending: true });
       if (error) throw error;
 
@@ -83,8 +87,14 @@ export default function Accounts() {
   };
 
   useEffect(() => {
-    fetchAccounts();
-  }, []);
+    // Re-fetch when organization changes and is available
+    if (organization?.id) {
+      fetchAccounts();
+    } else {
+      // Reset view when org not ready
+      setAccounts([]);
+    }
+  }, [organization?.id]);
 
   const refresh = async () => {
     setRefreshing(true);
@@ -120,6 +130,10 @@ export default function Accounts() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      if (!organization?.id) {
+        toast.error("No active organization selected");
+        return;
+      }
       if (editing) {
         const { error } = await supabase
           .from("accounts")
@@ -130,7 +144,6 @@ export default function Accounts() {
             normal_balance: form.normal_balance,
             description: form.description || null,
             parent_account_id: form.parent_account_id || null,
-            organization_id: organization?.id || null,
           })
           .eq("id", editing.id);
         if (error) throw error;
@@ -146,7 +159,7 @@ export default function Accounts() {
               normal_balance: form.normal_balance,
               description: form.description || null,
               parent_account_id: form.parent_account_id || null,
-              organization_id: organization?.id || null,
+              organization_id: organization.id,
             },
           ]);
         if (error) throw error;
