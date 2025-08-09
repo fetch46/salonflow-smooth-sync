@@ -323,7 +323,7 @@ export default function POS() {
                       )}
                       <div className="flex justify-between items-center">
                         <span className="text-lg font-bold text-green-600">
-                          ${product.selling_price.toFixed(2)}
+                          {formatMoney(product.selling_price)}
                         </span>
                         <Button size="sm" className="bg-gradient-to-r from-pink-500 to-purple-600">
                           <Plus className="w-3 h-3" />
@@ -394,7 +394,7 @@ export default function POS() {
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <h4 className="font-medium text-sm">{item.product.name}</h4>
-                          <p className="text-xs text-muted-foreground">${item.product.selling_price.toFixed(2)} each</p>
+                          <p className="text-xs text-muted-foreground">{formatMoney(item.product.selling_price)} each</p>
                         </div>
                         <Button
                           variant="ghost"
@@ -441,7 +441,7 @@ export default function POS() {
                       
                       <div className="text-right">
                         <span className="font-semibold text-green-600">
-                          ${item.total.toFixed(2)}
+                          {formatMoney(item.total)}
                         </span>
                       </div>
                     </div>
@@ -545,7 +545,7 @@ export default function POS() {
                         />
                         {paymentData.cash_received && (
                           <p className="text-sm text-muted-foreground mt-1">
-                            Change: ${(parseFloat(paymentData.cash_received) - totals.total).toFixed(2)}
+                            Change: {formatMoney(parseFloat(paymentData.cash_received) - totals.total)}
                           </p>
                         )}
                       </div>
@@ -638,7 +638,7 @@ export default function POS() {
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span>${currentSale.subtotal.toFixed(2)}</span>
+                  <span>{formatMoney(currentSale.subtotal)}</span>
                 </div>
                 {currentSale.discount_amount > 0 && (
                   <div className="flex justify-between text-red-600">
@@ -648,11 +648,11 @@ export default function POS() {
                 )}
                 <div className="flex justify-between">
                   <span>Tax:</span>
-                  <span>${currentSale.tax_amount.toFixed(2)}</span>
+                  <span>{formatMoney(currentSale.tax_amount)}</span>
                 </div>
                 <div className="flex justify-between font-bold text-lg border-t pt-1">
                   <span>Total:</span>
-                  <span>${currentSale.total_amount.toFixed(2)}</span>
+                  <span>{formatMoney(currentSale.total_amount)}</span>
                 </div>
               </div>
 

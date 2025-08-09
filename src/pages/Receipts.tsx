@@ -32,6 +32,7 @@ export default function Receipts() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>("all");
+  const { format: formatMoney } = useOrganizationCurrency();
   const [customers, setCustomers] = useState<{ id: string; full_name: string }[]>([]);
   const [customerId, setCustomerId] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState<string>("");

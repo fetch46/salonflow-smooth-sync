@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Plus, Search, ShoppingCart, Package, TrendingUp, Truck } from "lucide-react";
 import { format } from "date-fns";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { useToast } from "@/hooks/use-toast";
 import { useSaas } from "@/lib/saas";
 
@@ -61,6 +62,8 @@ export default function Purchases() {
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const [selectedPurchaseItems, setSelectedPurchaseItems] = useState<PurchaseItem[]>([]);
   const { toast } = useToast();
+
+  const { format: formatMoney } = useOrganizationCurrency();
 
   const [formData, setFormData] = useState({
     purchase_number: "",
@@ -592,8 +595,8 @@ export default function Purchases() {
                           <TableRow key={index}>
                             <TableCell>{item.inventory_items?.name || 'Unknown Item'}</TableCell>
                             <TableCell>{item.quantity}</TableCell>
-                            <TableCell>${item.unit_cost.toFixed(2)}</TableCell>
-                            <TableCell>${item.total_cost.toFixed(2)}</TableCell>
+                            <TableCell>{formatMoney(item.unit_cost)}</TableCell>
+                            <TableCell>{formatMoney(item.total_cost)}</TableCell>
                             <TableCell>
                               <Button
                                 type="button"
@@ -706,7 +709,7 @@ export default function Purchases() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${stats.totalAmount.toFixed(2)}</div>
+              <div className="text-2xl font-bold">{formatMoney(stats.totalAmount)}</div>
               <p className="text-xs text-muted-foreground">Received orders</p>
             </CardContent>
           </Card>
@@ -749,7 +752,7 @@ export default function Purchases() {
                     <TableCell className="font-medium">{purchase.purchase_number}</TableCell>
                     <TableCell>{purchase.vendor_name}</TableCell>
                     <TableCell>{format(new Date(purchase.created_at), 'MMM dd, yyyy')}</TableCell>
-                    <TableCell>${purchase.total_amount.toFixed(2)}</TableCell>
+                    <TableCell>{formatMoney(purchase.total_amount)}</TableCell>
                     <TableCell>
                       <Badge className={getStatusBadge(purchase.status).props.className}>{purchase.status.toUpperCase()}</Badge>
                     </TableCell>

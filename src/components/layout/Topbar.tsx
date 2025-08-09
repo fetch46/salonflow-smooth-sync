@@ -8,6 +8,7 @@ import { Bell, Building2, ChevronDown, CreditCard, Crown, LogOut, Search, Settin
 import { useSaas } from "@/lib/saas/context";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 function useSignOut() {
   const navigate = useNavigate();
@@ -40,6 +41,36 @@ function RoleBadge({ role }: { role?: string | null }) {
 export function AppTopbar() {
   const { user, organization, organizations, organizationRole, subscriptionPlan, isTrialing, daysLeftInTrial, switchOrganization } = useSaas();
   const { handleSignOut, navigate } = useSignOut();
+
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [notifLoading, setNotifLoading] = useState(false)
+
+  useEffect(() => {
+    (async () => {
+      if (!user) return
+      try {
+        setNotifLoading(true)
+        const { data } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(10)
+        setNotifications(data || [])
+      } finally {
+        setNotifLoading(false)
+      }
+    })()
+  }, [user])
+
+  const markAllRead = async () => {
+    try {
+      await supabase.rpc('mark_all_notifications_read', { org_id: organization?.id || null })
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+    } catch (_) {}
+  }
+
+  const unreadCount = notifications.filter(n => !n.is_read).length
 
   return (
     <header className="sticky top-0 z-40 h-16 border-b bg-card/60 backdrop-blur-xl supports-[backdrop-filter]:bg-card/50">
@@ -91,27 +122,29 @@ export function AppTopbar() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="w-5 h-5" />
-                <Badge variant="destructive" className="absolute -top-1 -right-1 w-5 h-5 text-[10px] leading-none">3</Badge>
+                {unreadCount > 0 && (
+                  <Badge variant="destructive" className="absolute -top-1 -right-1 w-5 h-5 text-[10px] leading-none">{unreadCount}</Badge>
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80">
               <div className="flex items-center justify-between px-2 py-1">
-                <button className="text-xs text-muted-foreground hover:underline" onClick={(e) => { e.preventDefault(); /* TODO: wire to notifications API */ }}>
+                <button className="text-xs text-muted-foreground hover:underline" onClick={(e) => { e.preventDefault(); markAllRead(); }}>
                   Mark all as read
                 </button>
               </div>
               <DropdownMenuLabel>Notifications</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="flex flex-col items-start p-4">
-                <div className="font-medium">New appointment booked</div>
-                <div className="text-sm text-muted-foreground">Sarah Johnson booked a hair appointment for tomorrow</div>
-                <div className="text-xs text-muted-foreground mt-1">2 minutes ago</div>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="flex flex-col items-start p-4">
-                <div className="font-medium">Low inventory alert</div>
-                <div className="text-sm text-muted-foreground">Hair color kit is running low</div>
-                <div className="text-xs text-muted-foreground mt-1">1 hour ago</div>
-              </DropdownMenuItem>
+              {notifications.map((n) => (
+                <DropdownMenuItem key={n.id} className="flex flex-col items-start p-4">
+                  <div className="font-medium">{n.title}</div>
+                  {n.body && <div className="text-sm text-muted-foreground">{n.body}</div>}
+                  <div className="text-xs text-muted-foreground mt-1">{new Date(n.created_at).toLocaleString()}</div>
+                </DropdownMenuItem>
+              ))}
+              {notifications.length === 0 && (
+                <div className="p-4 text-sm text-muted-foreground">No notifications</div>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -170,6 +203,36 @@ export function SuperAdminTopbar() {
   const { user } = useSaas();
   const { handleSignOut, navigate } = useSignOut();
 
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [notifLoading, setNotifLoading] = useState(false)
+
+  useEffect(() => {
+    (async () => {
+      if (!user) return
+      try {
+        setNotifLoading(true)
+        const { data } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(10)
+        setNotifications(data || [])
+      } finally {
+        setNotifLoading(false)
+      }
+    })()
+  }, [user])
+
+  const markAllRead = async () => {
+    try {
+      await supabase.rpc('mark_all_notifications_read', { org_id: null })
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+    } catch (_) {}
+  }
+
+  const unreadCount = notifications.filter(n => !n.is_read).length
+
   return (
     <header className="sticky top-0 z-40 h-16 border-b bg-gradient-to-r from-purple-600 to-violet-600 text-white shadow-sm">
       <div className="flex h-full items-center justify-between px-4 md:px-6">
@@ -193,27 +256,29 @@ export function SuperAdminTopbar() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative text-white hover:bg-white/10">
                 <Bell className="w-5 h-5" />
-                <Badge variant="destructive" className="absolute -top-1 -right-1 w-5 h-5 text-[10px] leading-none">2</Badge>
+                {unreadCount > 0 && (
+                  <Badge variant="destructive" className="absolute -top-1 -right-1 w-5 h-5 text-[10px] leading-none">{unreadCount}</Badge>
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80">
               <div className="flex items-center justify-between px-2 py-1">
-                <button className="text-xs text-muted-foreground hover:underline" onClick={(e) => { e.preventDefault(); /* TODO: wire to notifications API */ }}>
+                <button className="text-xs text-muted-foreground hover:underline" onClick={(e) => { e.preventDefault(); markAllRead(); }}>
                   Mark all as read
                 </button>
               </div>
               <DropdownMenuLabel>System Notifications</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="flex flex-col items-start p-4">
-                <div className="font-medium">New organization created</div>
-                <div className="text-sm text-muted-foreground">Acme Corp was created by user@example.com</div>
-                <div className="text-xs text-muted-foreground mt-1">5 minutes ago</div>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="flex flex-col items-start p-4">
-                <div className="font-medium">Subscription upgraded</div>
-                <div className="text-sm text-muted-foreground">TechStart Inc upgraded to Enterprise plan</div>
-                <div className="text-xs text-muted-foreground mt-1">1 hour ago</div>
-              </DropdownMenuItem>
+              {notifications.map((n) => (
+                <DropdownMenuItem key={n.id} className="flex flex-col items-start p-4">
+                  <div className="font-medium">{n.title}</div>
+                  {n.body && <div className="text-sm text-muted-foreground">{n.body}</div>}
+                  <div className="text-xs text-muted-foreground mt-1">{new Date(n.created_at).toLocaleString()}</div>
+                </DropdownMenuItem>
+              ))}
+              {notifications.length === 0 && (
+                <div className="p-4 text-sm text-muted-foreground">No notifications</div>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 
