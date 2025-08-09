@@ -170,12 +170,7 @@ export default function Services() {
     }));
   };
 
-    useEffect(() => {
-    fetchServices();
-    fetchAvailableProducts();
-  }, [fetchServices, fetchAvailableProducts]);
- 
-   const fetchServices = useCallback(async () => {
+  const fetchServices = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -219,6 +214,11 @@ export default function Services() {
       console.error("Error fetching products:", error);
     }
   }, []);
+
+  useEffect(() => {
+    fetchServices();
+    fetchAvailableProducts();
+  }, [fetchServices, fetchAvailableProducts]);
 
   const fetchServiceKits = async (serviceId: string) => {
     try {
