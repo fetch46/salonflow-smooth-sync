@@ -21,6 +21,7 @@ import {
   LineChart,
   Activity,
   Target,
+  Package,
 } from 'lucide-react';
 import { useSaas } from '@/lib/saas/context';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,7 +35,7 @@ const Reports = () => {
   const [timeRange, setTimeRange] = useState('month');
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab);
-  const [activeSubTab, setActiveSubTab] = useState<Record<string, string>>({ overview: 'summary', revenue: 'summary', services: 'top', clients: 'top', pnl: 'summary', balancesheet: 'summary', commissions: initialSub || 'summary' });
+  const [activeSubTab, setActiveSubTab] = useState<Record<string, string>>({ overview: 'summary', revenue: 'summary', services: 'top', clients: 'top', pnl: 'summary', balancesheet: 'summary', commissions: initialSub || 'summary', product_usage: 'history' });
   const [staffList, setStaffList] = useState<Array<{ id: string; full_name: string; commission_rate?: number | null }>>([]);
   const [commissionRows, setCommissionRows] = useState<Array<any>>([]);
   const [commissionSummary, setCommissionSummary] = useState<Record<string, { staffId: string; staffName: string; gross: number; commissionRate: number; commission: number }>>({});
@@ -347,6 +348,14 @@ const Reports = () => {
                 <div className="ml-6 mt-2 space-y-1 text-sm">
                   <button className={`text-left ${activeSubTab.commissions === 'summary' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, commissions: 'summary' })); setSearchParams({ tab: 'commissions', sub: 'summary' }, { replace: true }); }}>Summary</button>
                   <button className={`text-left ${activeSubTab.commissions === 'detailed' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, commissions: 'detailed' })); setSearchParams({ tab: 'commissions', sub: 'detailed' }, { replace: true }); }}>Detailed</button>
+                </div>
+              )}
+              <TabsTrigger value="product_usage" className="justify-start flex items-center gap-2">
+                <Package className="w-4 h-4" /> Product Usage
+              </TabsTrigger>
+              {activeTab === 'product_usage' && (
+                <div className="ml-6 mt-2 space-y-1 text-sm">
+                  <button className={`text-left ${activeSubTab.product_usage === 'history' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, product_usage: 'history' })); setSearchParams({ tab: 'product_usage', sub: 'history' }, { replace: true }); }}>Usage History</button>
                 </div>
               )}
             </TabsList>
@@ -704,6 +713,35 @@ const Reports = () => {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* Product Usage Tab */}
+            <TabsContent value="product_usage" className="space-y-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Product Usage History</CardTitle>
+                    <p className="text-sm text-slate-600">Detailed movements from Purchases, Sales/Receipts, Inventory Adjustments and Service Kits</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="space-y-1">
+                      <div className="text-xs text-slate-600">Start</div>
+                      <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="border rounded px-2 py-1" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-xs text-slate-600">End</div>
+                      <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="border rounded px-2 py-1" />
+                    </div>
+                    <Button variant="outline" onClick={refreshData} disabled={loading}>
+                      <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <ProductUsageHistory startDate={startDate} endDate={endDate} density={density} />
+                </CardContent>
+              </Card>
+            </TabsContent>
           </main>
         </div>
       </Tabs>
@@ -712,3 +750,182 @@ const Reports = () => {
 };
 
 export default Reports;
+
+function groupBy<T, K extends string | number>(arr: T[], keyFn: (t: T) => K): Record<K, T[]> {
+  return arr.reduce((acc: any, item) => {
+    const k = keyFn(item);
+    (acc[k] ||= []).push(item);
+    return acc;
+  }, {} as Record<K, T[]>);
+}
+
+function sum(arr: number[]) { return arr.reduce((a, b) => a + (Number(b) || 0), 0); }
+
+const ProductUsageHistory: React.FC<{ startDate: string; endDate: string; density: 'compact' | 'comfortable'; }> = ({ startDate, endDate, density }) => {
+  const [rows, setRows] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [productFilter, setProductFilter] = React.useState<string>('all');
+  const [products, setProducts] = React.useState<Array<{ id: string; name: string }>>([]);
+
+  React.useEffect(() => {
+    const loadProducts = async () => {
+      const { data } = await supabase.from('inventory_items').select('id, name').eq('type', 'good').order('name');
+      setProducts(data || []);
+    };
+    loadProducts();
+  }, []);
+
+  const load = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      // Purchases
+      const { data: purchaseItems } = await supabase
+        .from('purchase_items')
+        .select('id, created_at, quantity, unit_cost, item_id, purchases:purchase_id (purchase_number, purchase_date)')
+        .gte('created_at', startDate)
+        .lte('created_at', endDate);
+
+      // Sales
+      const { data: saleItems } = await supabase
+        .from('sale_items')
+        .select('id, created_at, quantity, unit_price, product_id, sales:sale_id (sale_number, sale_date)')
+        .gte('created_at', startDate)
+        .lte('created_at', endDate);
+
+      // Receipt Items (alternative to Sales)
+      let receiptItems: any[] = [];
+      try {
+        const { data: rItems } = await supabase
+          .from('receipt_items')
+          .select('id, created_at, quantity, unit_price, product_id, receipt:receipt_id (receipt_number, created_at)')
+          .gte('created_at', startDate)
+          .lte('created_at', endDate);
+        receiptItems = rItems || [];
+      } catch {
+        receiptItems = [];
+      }
+
+      // Inventory Adjustments
+      const { data: adjItems } = await supabase
+        .from('inventory_adjustment_items')
+        .select('id, created_at, quantity_adjusted, unit_cost, inventory_item_id, adjustment:adjustment_id (adjustment_number, adjustment_date, adjustment_type)')
+        .gte('created_at', startDate)
+        .lte('created_at', endDate);
+
+      const normalize: any[] = [];
+      (purchaseItems || []).forEach((pi: any) => normalize.push({
+        date: pi.created_at,
+        type: 'Purchase',
+        reference: pi.purchases?.purchase_number || '',
+        product_id: pi.item_id,
+        quantity_in: Number(pi.quantity) || 0,
+        quantity_out: 0,
+        unit_price: Number(pi.unit_cost) || 0,
+        total: (Number(pi.quantity) || 0) * (Number(pi.unit_cost) || 0),
+      }));
+      (saleItems || []).forEach((si: any) => normalize.push({
+        date: si.created_at,
+        type: 'Sale',
+        reference: si.sales?.sale_number || '',
+        product_id: si.product_id,
+        quantity_in: 0,
+        quantity_out: Number(si.quantity) || 0,
+        unit_price: Number(si.unit_price) || 0,
+        total: (Number(si.quantity) || 0) * (Number(si.unit_price) || 0),
+      }));
+      (receiptItems || []).forEach((ri: any) => normalize.push({
+        date: ri.created_at,
+        type: 'Receipt',
+        reference: ri.receipt?.receipt_number || '',
+        product_id: ri.product_id,
+        quantity_in: 0,
+        quantity_out: Number(ri.quantity) || 0,
+        unit_price: Number(ri.unit_price) || 0,
+        total: (Number(ri.quantity) || 0) * (Number(ri.unit_price) || 0),
+      }));
+      (adjItems || []).forEach((ai: any) => normalize.push({
+        date: ai.created_at,
+        type: `Adjustment (${ai.adjustment?.adjustment_type || ''})`,
+        reference: ai.adjustment?.adjustment_number || '',
+        product_id: ai.inventory_item_id,
+        quantity_in: Math.max(0, Number(ai.quantity_adjusted) || 0),
+        quantity_out: Math.max(0, -(Number(ai.quantity_adjusted) || 0)),
+        unit_price: Number(ai.unit_cost) || 0,
+        total: Math.abs((Number(ai.quantity_adjusted) || 0) * (Number(ai.unit_cost) || 0)),
+      }));
+
+      const filtered = productFilter === 'all' ? normalize : normalize.filter(r => r.product_id === productFilter);
+      setRows(filtered.sort((a, b) => a.date.localeCompare(b.date)));
+    } finally {
+      setLoading(false);
+    }
+  }, [startDate, endDate, productFilter]);
+
+  React.useEffect(() => { load(); }, [load]);
+
+  const byProduct = groupBy(rows, r => r.product_id || 'unassigned');
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-end gap-3">
+        <div className="w-72">
+          <Label>Product</Label>
+          <Select value={productFilter} onValueChange={setProductFilter}>
+            <SelectTrigger><SelectValue placeholder="All products" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All products</SelectItem>
+              {products.map(p => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {Object.entries(byProduct).length === 0 ? (
+        <div className="text-sm text-muted-foreground">No usage found for the selected filters.</div>
+      ) : (
+        Object.entries(byProduct).map(([productId, entries]) => (
+          <Card key={productId}>
+            <CardHeader>
+              <CardTitle className="text-base">{products.find(p => p.id === productId)?.name || 'Unknown Product'}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table className={density === 'compact' ? 'text-xs' : ''}>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Reference</TableHead>
+                    <TableHead className="text-right">Qty In</TableHead>
+                    <TableHead className="text-right">Qty Out</TableHead>
+                    <TableHead className="text-right">Unit Price</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(entries as any[]).map((r) => (
+                    <TableRow key={`${r.type}-${r.reference}-${r.date}-${r.product_id}`}>
+                      <TableCell>{new Date(r.date).toLocaleString()}</TableCell>
+                      <TableCell>{r.type}</TableCell>
+                      <TableCell>{r.reference}</TableCell>
+                      <TableCell className="text-right">{Number(r.quantity_in || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-right">{Number(r.quantity_out || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-right">{Number(r.unit_price || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-right">{Number(r.total || 0).toLocaleString()}</TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow>
+                    <TableCell colSpan={3} className="font-semibold">Totals</TableCell>
+                    <TableCell className="text-right font-semibold">{sum((entries as any[]).map(e => e.quantity_in)).toLocaleString()}</TableCell>
+                    <TableCell className="text-right font-semibold">{sum((entries as any[]).map(e => e.quantity_out)).toLocaleString()}</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell className="text-right font-semibold">{sum((entries as any[]).map(e => e.total)).toLocaleString()}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        ))
+      )}
+    </div>
+  );
+};

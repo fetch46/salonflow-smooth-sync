@@ -301,6 +301,70 @@ export default function Inventory() {
     return false;
   };
 
+  const handleDeleteItem = async (item: InventoryItem) => {
+    const confirm = window.confirm(`Delete product "${item.name}"? This cannot be undone.`);
+    if (!confirm) return;
+
+    try {
+      // Check Purchases usage
+      const { count: purchaseCount, error: purchaseErr } = await supabase
+        .from("purchase_items")
+        .select("id", { count: "exact", head: true })
+        .eq("item_id", item.id);
+      if (purchaseErr) throw purchaseErr;
+
+      // Check Sales usage (sale_items)
+      const { count: saleCount, error: saleErr } = await supabase
+        .from("sale_items")
+        .select("id", { count: "exact", head: true })
+        .eq("product_id", item.id);
+      if (saleErr) throw saleErr;
+
+      // Check Receipts usage as well (if receipts are used instead of sales)
+      const { count: receiptCount, error: receiptErr } = await supabase
+        .from("receipt_items")
+        .select("id", { count: "exact", head: true })
+        .eq("product_id", item.id);
+      if (receiptErr && receiptErr.code !== "42P01") {
+        // Ignore table missing; otherwise rethrow
+        throw receiptErr;
+      }
+
+      // Check Service Kit usage
+      const { count: kitCount, error: kitErr } = await supabase
+        .from("service_kits")
+        .select("id", { count: "exact", head: true })
+        .eq("good_id", item.id);
+      if (kitErr) throw kitErr;
+
+      const totalSalesUsage = (saleCount || 0) + (receiptCount || 0);
+      if ((purchaseCount || 0) > 0 || totalSalesUsage > 0 || (kitCount || 0) > 0) {
+        const reasons: string[] = [];
+        if ((purchaseCount || 0) > 0) reasons.push("purchases");
+        if (totalSalesUsage > 0) reasons.push("sales/receipts");
+        if ((kitCount || 0) > 0) reasons.push("service kit");
+        toast({
+          title: "Cannot delete",
+          description: `This product is referenced in ${reasons.join(", ")}. Remove those references first.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { error: delErr } = await supabase
+        .from("inventory_items")
+        .delete()
+        .eq("id", item.id);
+      if (delErr) throw delErr;
+
+      toast({ title: "Deleted", description: "Product deleted successfully" });
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Error", description: "Failed to delete product", variant: "destructive" });
+    }
+  };
+
   const goodsItems = items.filter(item => item.type === 'good');
   const serviceItems = items.filter(item => item.type === 'service');
 
@@ -387,6 +451,9 @@ export default function Inventory() {
                           <TableCell className="text-right">
                             <Button variant="ghost" size="sm" onClick={() => handleEditItem(item)}>
                               <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteItem(item)}>
+                              <Trash2 className="w-4 h-4 text-red-600" />
                             </Button>
                           </TableCell>
                         </TableRow>
