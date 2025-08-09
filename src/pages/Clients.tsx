@@ -67,7 +67,7 @@ import {
   LayoutGrid,
   Table as TableIcon
  } from "lucide-react";
-import { format, subDays, isThisMonth, isThisYear, differenceInDays } from "date-fns";
+import { format as formatDate, subDays, isThisMonth, isThisYear, differenceInDays } from "date-fns";
 
 interface Client {
   id: string;
@@ -1124,7 +1124,7 @@ export default function Clients() {
                           <div className="flex items-center text-slate-600 text-sm pt-2 border-t">
                             <Cake className="w-4 h-4 mr-2" />
                             <span>
-                              {format(new Date(client.date_of_birth), "MMM dd")} birthday
+                              {formatDate(new Date(client.date_of_birth), "MMM dd")} birthday
                             </span>
                           </div>
                         )}

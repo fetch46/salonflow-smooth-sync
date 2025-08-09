@@ -4,7 +4,8 @@ import type {
   SubscriptionStatus, 
   OrganizationSubscription, 
   FeatureAccess,
-  SaasError 
+  SaasError,
+  RolePermissions 
 } from './types'
 import { 
   ROLE_HIERARCHY, 
@@ -70,11 +71,11 @@ export function isRoleHigherThan(role1: UserRole, role2: UserRole): boolean {
 
 // Role/permission overrides support
 export function buildEffectivePermissions(
-  base: Record<UserRole, Permission[]>,
+  base: RolePermissions,
   overrides?: Record<string, Permission[]>
-): Record<UserRole, Permission[]> {
+): RolePermissions {
   if (!overrides) return base
-  const result: Record<UserRole, Permission[]> = { ...base }
+  const result: RolePermissions = { ...base }
   for (const [roleKey, perms] of Object.entries(overrides)) {
     const r = roleKey as UserRole
     // Replace entire set for role if provided

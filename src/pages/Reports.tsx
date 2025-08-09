@@ -198,42 +198,8 @@ const Reports = () => {
         summary[staffId].commission += commission;
       }
       setCommissionSummary(summary);
-    } catch (e) {
-      console.error('Error loading commissions', e);
-      // Fallback to mock storage when Supabase not available
-      try {
-        const storage = await mockDb.getStore();
-        const inRangeReceiptIds = (storage.receipts || [])
-          .filter((r: any) => {
-            const d = String(r.created_at || '').slice(0, 10);
-            return (!startDate || d >= startDate) && (!endDate || d <= endDate);
-          })
-          .map((r: any) => r.id);
-        const items = (storage.receipt_items || [])
-          .filter((it: any) => inRangeReceiptIds.includes(it.receipt_id));
-        const rows = items.filter((it: any) => commissionStaffFilter === 'all' ? true : it.staff_id === commissionStaffFilter)
-          .map((it: any) => ({
-            id: it.id,
-            created_at: it.created_at,
-            service: { id: it.service_id, name: it.description },
-            staff: { id: it.staff_id, full_name: (storage.staff?.find?.((s: any) => s.id === it.staff_id)?.full_name) || 'Unassigned' },
-            quantity: Number(it.quantity || 1),
-            unit_price: Number(it.unit_price || 0),
-          }));
-        setCommissionRows(rows);
-        const summary: Record<string, { staffId: string; staffName: string; gross: number; commissionRate: number; commission: number }> = {};
-        for (const r of rows as any[]) {
-          const staffId = r.staff?.id || 'unassigned';
-          const staffName = r.staff?.full_name || 'Unassigned';
-          const gross = Number(r.unit_price || 0) * Number(r.quantity || 1);
-          const rate = 0; // mock has no rate context
-          const commission = 0;
-          if (!summary[staffId]) summary[staffId] = { staffId, staffName, gross: 0, commissionRate: 0, commission: 0 };
-          summary[staffId].gross += gross;
-        }
-        setCommissionSummary(summary);
-      } catch {}
-    } finally {
+    } catch (err) { console.error(err) }
+    finally {
       setLoading(false);
     }
   };

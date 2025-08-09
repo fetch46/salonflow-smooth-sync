@@ -153,7 +153,7 @@ export async function createReceiptWithFallback(supabase: any, receiptData: any,
         });
       }
       setStorage(storage);
-    } catch {}
+    } catch (err) { console.error(err) }
 
     return receipt;
   }
