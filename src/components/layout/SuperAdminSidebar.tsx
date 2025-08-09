@@ -17,15 +17,20 @@ import {
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  SidebarTrigger,
+  SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 
@@ -116,6 +121,7 @@ const superAdminMenuItems: SuperAdminMenuItem[] = [
 export function SuperAdminSidebar() {
   const location = useLocation();
   const [openSubmenus, setOpenSubmenus] = useState<string[]>([]);
+  const { state } = useSidebar();
 
   const toggleSubmenu = (title: string) => {
     setOpenSubmenus((prev) =>
@@ -128,6 +134,15 @@ export function SuperAdminSidebar() {
   return (
     <Sidebar variant="inset" className="border-r border-purple-200">
       <SidebarContent className="bg-gradient-to-b from-purple-50 to-violet-50">
+        <SidebarHeader className="px-2 pt-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-purple-800">
+              <Crown className="h-5 w-5" />
+              <span className="font-semibold">Admin Panel</span>
+            </div>
+            <SidebarTrigger className="hidden md:inline-flex text-purple-700" />
+          </div>
+        </SidebarHeader>
         <SidebarGroup>
           <SidebarGroupLabel className="flex items-center gap-2 text-purple-700 font-semibold">
             <Crown className="h-4 w-4" />
@@ -148,6 +163,7 @@ export function SuperAdminSidebar() {
                       <SidebarMenuButton
                         onClick={() => toggleSubmenu(item.title)}
                         className="hover:bg-purple-100 text-slate-700 hover:text-purple-800"
+                        tooltip={state === 'collapsed' ? item.title : undefined}
                       >
                         <item.icon className="w-4 h-4" />
                         <span className="flex-1">{item.title}</span>
@@ -164,6 +180,7 @@ export function SuperAdminSidebar() {
                               <SidebarMenuSubButton 
                                 asChild
                                 className="hover:bg-purple-100"
+                                isActive={location.pathname === subItem.url}
                               >
                                 <NavLink
                                   to={subItem.url!}
@@ -192,6 +209,8 @@ export function SuperAdminSidebar() {
                     <SidebarMenuButton 
                       asChild
                       className="hover:bg-purple-100"
+                      isActive={location.pathname === item.url}
+                      tooltip={state === 'collapsed' ? item.title : undefined}
                     >
                       <NavLink
                         to={item.url!}
@@ -214,7 +233,6 @@ export function SuperAdminSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Quick Actions */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-purple-700">Quick Actions</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -240,7 +258,12 @@ export function SuperAdminSidebar() {
             </div>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <SidebarFooter className="mt-auto">
+          <div className="text-xs text-purple-700/80 px-2 py-2">Super Admin Suite</div>
+        </SidebarFooter>
       </SidebarContent>
+      <SidebarRail />
     </Sidebar>
   );
 }
