@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useSaas } from '@/lib/saas/context';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const Profile = () => {
   const { user, organization } = useSaas();
@@ -62,13 +63,55 @@ const Profile = () => {
     ],
   });
 
+  React.useEffect(() => {
+    (async () => {
+      if (!user?.id) return;
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('full_name, email, phone')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (error) throw error;
+        if (data) {
+          const [firstName = '', ...rest] = (data.full_name || '').split(' ');
+          const lastName = rest.join(' ');
+          setProfileData((prev) => ({
+            ...prev,
+            firstName: firstName || prev.firstName,
+            lastName: lastName || prev.lastName,
+            email: data.email || prev.email,
+            phone: data.phone || prev.phone,
+          }));
+        }
+      } catch (e) {
+        console.warn('Failed to load profile, using defaults');
+      }
+    })();
+  }, [user?.id]);
+
   const handleSave = async () => {
     setLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsEditing(false);
-    setLoading(false);
-    toast.success('Profile updated successfully');
+    try {
+      // Persist to profiles table
+      const payload: any = {
+        full_name: `${profileData.firstName} ${profileData.lastName}`.trim(),
+        email: profileData.email,
+        phone: profileData.phone,
+      };
+      // Upsert based on user_id
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({ user_id: user?.id as string, ...payload }, { onConflict: 'user_id' } as any);
+      if (error) throw error;
+      toast.success('Profile updated successfully');
+      setIsEditing(false);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || 'Failed to update profile');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCancel = () => {

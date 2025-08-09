@@ -45,6 +45,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useFeatureGating } from "@/hooks/useFeatureGating";
 import { CreateButtonGate, FeatureGate, UsageBadge } from "@/components/features/FeatureGate";
 import { format } from "date-fns";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface Staff {
   id: string;
@@ -106,6 +107,7 @@ export default function Staff() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const { toast } = useToast();
   const { hasFeature, getFeatureAccess, enforceLimit } = useFeatureGating();
 
@@ -386,6 +388,14 @@ export default function Staff() {
         </div>
         
         <div className="flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2">
+            <Button variant={viewMode === 'table' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('table')}>
+              Table
+            </Button>
+            <Button variant={viewMode === 'cards' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('cards')}>
+              Cards
+            </Button>
+          </div>
           <Button 
             variant="outline" 
             onClick={refreshData}
@@ -754,182 +764,222 @@ export default function Staff() {
             </div>
           ) : (
             <FeatureGate feature="staff">
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {currentStaff.map((member) => {
-                const performance = getPerformanceData(member.id);
-                return (
-                  <Card key={member.id} className="hover:shadow-lg transition-all duration-300 border-slate-200 relative overflow-hidden">
-                    {/* Performance Indicator */}
-                    <div className={`absolute top-0 left-0 w-full h-1 ${
-                      performance.rating >= 4.8 ? 'bg-gradient-to-r from-emerald-500 to-green-500' :
-                      performance.rating >= 4.5 ? 'bg-gradient-to-r from-blue-500 to-cyan-500' :
-                      performance.rating >= 4.0 ? 'bg-gradient-to-r from-amber-500 to-orange-500' :
-                      'bg-gradient-to-r from-slate-400 to-slate-500'
-                    }`} />
-                    
-                    <CardHeader className="pb-4">
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-3">
-                          {/* Enhanced Profile Avatar */}
-                          <div className="relative">
-                            <div className="w-14 h-14 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center border-2 border-white shadow-lg">
-                              {member.profile_image ? (
-                                <img
-                                  src={member.profile_image}
-                                  alt={member.full_name}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    const target = e.currentTarget as HTMLImageElement;
-                                    target.style.display = 'none';
-                                    const sibling = target.nextElementSibling as HTMLElement;
-                                    if (sibling) sibling.style.display = 'flex';
-                                  }}
-                                />
-                              ) : null}
-                              <div 
-                                className={`w-full h-full flex items-center justify-center text-white font-bold text-lg ${member.profile_image ? 'hidden' : 'flex'}`}
-                                style={{ display: member.profile_image ? 'none' : 'flex' }}
-                              >
-                                {member.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+              {viewMode === 'table' ? (
+                <div className="overflow-x-auto">
+                  <Table className="min-w-[900px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Commission %</TableHead>
+                        <TableHead>Hire Date</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {currentStaff.map((member) => (
+                        <TableRow key={member.id}>
+                          <TableCell className="font-medium">{member.full_name}</TableCell>
+                          <TableCell>{member.email || '—'}</TableCell>
+                          <TableCell>{member.phone || '—'}</TableCell>
+                          <TableCell>{member.is_active ? <Badge>Active</Badge> : <Badge variant="secondary">Inactive</Badge>}</TableCell>
+                          <TableCell>{typeof member.commission_rate === 'number' ? `${member.commission_rate}%` : '—'}</TableCell>
+                          <TableCell>{member.hire_date || '—'}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex gap-2 justify-end">
+                              <Button size="sm" variant="outline" onClick={() => handleEdit(member)}>
+                                Edit
+                              </Button>
+                              <Button size="sm" variant="outline" className="text-red-600" onClick={() => handleDelete(member.id)}>
+                                Delete
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {currentStaff.map((member) => {
+                  const performance = getPerformanceData(member.id);
+                  return (
+                    <Card key={member.id} className="hover:shadow-lg transition-all duration-300 border-slate-200 relative overflow-hidden">
+                      {/* Performance Indicator */}
+                      <div className={`absolute top-0 left-0 w-full h-1 ${
+                        performance.rating >= 4.8 ? 'bg-gradient-to-r from-emerald-500 to-green-500' :
+                        performance.rating >= 4.5 ? 'bg-gradient-to-r from-blue-500 to-cyan-500' :
+                        performance.rating >= 4.0 ? 'bg-gradient-to-r from-amber-500 to-orange-500' :
+                        'bg-gradient-to-r from-slate-400 to-slate-500'
+                      }`} />
+                      
+                      <CardHeader className="pb-4">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-3">
+                            {/* Enhanced Profile Avatar */}
+                            <div className="relative">
+                              <div className="w-14 h-14 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center border-2 border-white shadow-lg">
+                                {member.profile_image ? (
+                                  <img
+                                    src={member.profile_image}
+                                    alt={member.full_name}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      const target = e.currentTarget as HTMLImageElement;
+                                      target.style.display = 'none';
+                                      const sibling = target.nextElementSibling as HTMLElement;
+                                      if (sibling) sibling.style.display = 'flex';
+                                    }}
+                                  />
+                                ) : null}
+                                <div 
+                                  className={`w-full h-full flex items-center justify-center text-white font-bold text-lg ${member.profile_image ? 'hidden' : 'flex'}`}
+                                  style={{ display: member.profile_image ? 'none' : 'flex' }}
+                                >
+                                  {member.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                </div>
+                              </div>
+                              {performance.rating >= 4.8 && (
+                                <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
+                                  <Crown className="w-3 h-3 text-white" />
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div>
+                              <CardTitle className="text-lg font-bold text-slate-900">{member.full_name}</CardTitle>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge variant={member.is_active ? "default" : "secondary"} className="text-xs">
+                                  {member.is_active ? "Active" : "Inactive"}
+                                </Badge>
+                                {member.commission_rate && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {member.commission_rate}% comm.
+                                  </Badge>
+                                )}
                               </div>
                             </div>
-                            {performance.rating >= 4.8 && (
-                              <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
-                                <Crown className="w-3 h-3 text-white" />
-                              </div>
-                            )}
                           </div>
                           
-                          <div>
-                            <CardTitle className="text-lg font-bold text-slate-900">{member.full_name}</CardTitle>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Badge variant={member.is_active ? "default" : "secondary"} className="text-xs">
-                                {member.is_active ? "Active" : "Inactive"}
-                              </Badge>
-                              {member.commission_rate && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => handleEdit(member)}>
+                                <Edit2 className="w-4 h-4 mr-2" />
+                                Edit Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Eye className="w-4 h-4 mr-2" />
+                                View Profile
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Calendar className="w-4 h-4 mr-2" />
+                                View Schedule
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <MessageSquare className="w-4 h-4 mr-2" />
+                                Send Message
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => handleDelete(member.id)}
+                                className="text-red-600 focus:text-red-600"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </CardHeader>
+                      
+                      <CardContent className="space-y-4">
+                        {/* Contact Information */}
+                        <div className="space-y-2">
+                          {member.email && (
+                            <div className="flex items-center gap-2 text-sm text-slate-600">
+                              <Mail className="w-4 h-4 text-slate-400" />
+                              <span className="truncate">{member.email}</span>
+                            </div>
+                          )}
+                          {member.phone && (
+                            <div className="flex items-center gap-2 text-sm text-slate-600">
+                              <Phone className="w-4 h-4 text-slate-400" />
+                              <span>{member.phone}</span>
+                            </div>
+                          )}
+                          {member.hire_date && (
+                            <div className="flex items-center gap-2 text-sm text-slate-600">
+                              <Calendar className="w-4 h-4 text-slate-400" />
+                              <span>Hired {format(new Date(member.hire_date), "MMM dd, yyyy")}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Performance Metrics */}
+                        {performance.appointments > 0 && (
+                          <div className="pt-3 border-t border-slate-100">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-slate-700">This Month</span>
+                              <div className="flex items-center gap-1">
+                                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                <span className="text-sm font-medium">{performance.rating}</span>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 text-xs">
+                              <div>
+                                <p className="text-slate-500">Appointments</p>
+                                <p className="font-semibold text-slate-900">{performance.appointments}</p>
+                              </div>
+                              <div>
+                                <p className="text-slate-500">Revenue</p>
+                                <p className="font-semibold text-slate-900">${performance.revenue.toLocaleString()}</p>
+                              </div>
+                            </div>
+                            <div className="mt-2">
+                              <div className="flex justify-between items-center text-xs mb-1">
+                                <span className="text-slate-500">Completion Rate</span>
+                                <span className="font-medium">{performance.completionRate}%</span>
+                              </div>
+                              <Progress value={performance.completionRate} className="h-1.5" />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Specialties */}
+                        {member.specialties && member.specialties.length > 0 && (
+                          <div className="pt-3 border-t border-slate-100">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Star className="w-4 h-4 text-amber-500" />
+                              <span className="text-sm font-medium text-slate-700">Specialties</span>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {member.specialties.slice(0, 3).map((specialty) => (
+                                <Badge key={specialty} variant="outline" className="text-xs">
+                                  {specialty}
+                                </Badge>
+                              ))}
+                              {member.specialties.length > 3 && (
                                 <Badge variant="outline" className="text-xs">
-                                  {member.commission_rate}% comm.
+                                  +{member.specialties.length - 3} more
                                 </Badge>
                               )}
                             </div>
                           </div>
-                        </div>
-                        
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem onClick={() => handleEdit(member)}>
-                              <Edit2 className="w-4 h-4 mr-2" />
-                              Edit Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Eye className="w-4 h-4 mr-2" />
-                              View Profile
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Calendar className="w-4 h-4 mr-2" />
-                              View Schedule
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <MessageSquare className="w-4 h-4 mr-2" />
-                              Send Message
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => handleDelete(member.id)}
-                              className="text-red-600 focus:text-red-600"
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </CardHeader>
-                    
-                    <CardContent className="space-y-4">
-                      {/* Contact Information */}
-                      <div className="space-y-2">
-                        {member.email && (
-                          <div className="flex items-center gap-2 text-sm text-slate-600">
-                            <Mail className="w-4 h-4 text-slate-400" />
-                            <span className="truncate">{member.email}</span>
-                          </div>
                         )}
-                        {member.phone && (
-                          <div className="flex items-center gap-2 text-sm text-slate-600">
-                            <Phone className="w-4 h-4 text-slate-400" />
-                            <span>{member.phone}</span>
-                          </div>
-                        )}
-                        {member.hire_date && (
-                          <div className="flex items-center gap-2 text-sm text-slate-600">
-                            <Calendar className="w-4 h-4 text-slate-400" />
-                            <span>Hired {format(new Date(member.hire_date), "MMM dd, yyyy")}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Performance Metrics */}
-                      {performance.appointments > 0 && (
-                        <div className="pt-3 border-t border-slate-100">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-slate-700">This Month</span>
-                            <div className="flex items-center gap-1">
-                              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                              <span className="text-sm font-medium">{performance.rating}</span>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3 text-xs">
-                            <div>
-                              <p className="text-slate-500">Appointments</p>
-                              <p className="font-semibold text-slate-900">{performance.appointments}</p>
-                            </div>
-                            <div>
-                              <p className="text-slate-500">Revenue</p>
-                              <p className="font-semibold text-slate-900">${performance.revenue.toLocaleString()}</p>
-                            </div>
-                          </div>
-                          <div className="mt-2">
-                            <div className="flex justify-between items-center text-xs mb-1">
-                              <span className="text-slate-500">Completion Rate</span>
-                              <span className="font-medium">{performance.completionRate}%</span>
-                            </div>
-                            <Progress value={performance.completionRate} className="h-1.5" />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Specialties */}
-                      {member.specialties && member.specialties.length > 0 && (
-                        <div className="pt-3 border-t border-slate-100">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Star className="w-4 h-4 text-amber-500" />
-                            <span className="text-sm font-medium text-slate-700">Specialties</span>
-                          </div>
-                          <div className="flex flex-wrap gap-1">
-                            {member.specialties.slice(0, 3).map((specialty) => (
-                              <Badge key={specialty} variant="outline" className="text-xs">
-                                {specialty}
-                              </Badge>
-                            ))}
-                            {member.specialties.length > 3 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{member.specialties.length - 3} more
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-              </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+                </div>
+              )}
             </FeatureGate>
           )}
         </CardContent>

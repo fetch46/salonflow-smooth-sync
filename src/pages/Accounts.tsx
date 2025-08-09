@@ -54,10 +54,27 @@ export default function Accounts() {
         .eq("organization_id", organization?.id || "00000000-0000-0000-0000-000000000000")
         .order("account_code", { ascending: true });
       if (error) throw error;
+
+      // If no accounts exist, try initializing defaults
+      if ((data || []).length === 0 && organization?.id) {
+        try {
+          await supabase.rpc('setup_new_organization', { org_id: organization.id });
+          const { data: afterInit } = await supabase
+            .from("accounts")
+            .select("id, account_code, account_name, account_type, normal_balance, description, parent_account_id")
+            .eq("organization_id", organization.id)
+            .order("account_code", { ascending: true });
+          setAccounts(afterInit || []);
+          return;
+        } catch (initErr) {
+          console.warn('Account initialization failed', initErr);
+        }
+      }
+
       setAccounts(data || []);
     } catch (e) {
       console.error(e);
-      // Graceful fallback: if accounts table/policies not ready, surface an empty state rather than erroring
+      // Graceful fallback: surface empty state rather than erroring
       setAccounts([]);
       toast.error("Failed to load accounts");
     } finally {
@@ -239,32 +256,34 @@ export default function Accounts() {
           <CardTitle>Accounts</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Code</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Normal Balance</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((acc) => (
-                <TableRow key={acc.id}>
-                  <TableCell className="font-medium">{acc.account_code}</TableCell>
-                  <TableCell>{acc.account_name}</TableCell>
-                  <TableCell>{acc.account_type}</TableCell>
-                  <TableCell>{acc.normal_balance || "—"}</TableCell>
-                  <TableCell>{acc.description || "—"}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="outline" size="sm" onClick={() => openEdit(acc)}>Edit</Button>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table className="min-w-[900px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Code</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Normal Balance</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((acc) => (
+                  <TableRow key={acc.id}>
+                    <TableCell className="font-medium">{acc.account_code}</TableCell>
+                    <TableCell>{acc.account_name}</TableCell>
+                    <TableCell>{acc.account_type}</TableCell>
+                    <TableCell>{acc.normal_balance || "—"}</TableCell>
+                    <TableCell>{acc.description || "—"}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" size="sm" onClick={() => openEdit(acc)}>Edit</Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

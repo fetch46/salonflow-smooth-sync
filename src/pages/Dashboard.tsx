@@ -44,6 +44,7 @@ import {
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { useSaas } from "@/lib/saas/context";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { useNavigate } from "react-router-dom";
 
 // Mock data - in a real app, this would come from your backend
 const generateMockData = () => {
@@ -80,6 +81,7 @@ const generateMockData = () => {
 };
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [timeRange, setTimeRange] = useState("today");
   const [loading, setLoading] = useState(false);
@@ -300,28 +302,28 @@ const Dashboard = () => {
       description: "Book appointment for client",
       icon: Calendar,
       color: "bg-blue-50 text-blue-600 hover:bg-blue-100",
-      action: () => console.log("New appointment")
+      action: () => navigate("/appointments?create=1")
     },
     {
       title: "Add Client",
       description: "Register new customer",
       icon: Users,
       color: "bg-green-50 text-green-600 hover:bg-green-100",
-      action: () => console.log("Add client")
+      action: () => navigate("/clients?create=1")
     },
     {
       title: "Process Payment",
       description: "Handle transaction",
       icon: DollarSign,
       color: "bg-emerald-50 text-emerald-600 hover:bg-emerald-100",
-      action: () => console.log("Process payment")
+      action: () => navigate("/pos")
     },
     {
       title: "View Reports",
       description: "Analytics & insights",
       icon: BarChart3,
       color: "bg-purple-50 text-purple-600 hover:bg-purple-100",
-      action: () => console.log("View reports")
+      action: () => navigate("/reports")
     }
   ];
 
