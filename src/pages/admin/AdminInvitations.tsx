@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mail, Plus, Trash2, Search, RefreshCw, Send } from "lucide-react";
+import { Mail, Plus, Trash2, Search, RefreshCw, Send, Check, Ban, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
@@ -162,6 +162,53 @@ const AdminInvitations = () => {
     } catch (error) {
       console.error('Error resending invitation:', error);
       toast.error('Failed to resend invitation');
+    }
+  };
+  
+  const markAsAccepted = async (invitationId: string) => {
+    try {
+      const { error } = await supabase
+        .from('user_invitations')
+        .update({ accepted_at: new Date().toISOString() })
+        .eq('id', invitationId);
+      if (error) throw error;
+      toast.success('Invitation marked as accepted');
+      fetchInvitations();
+    } catch (error) {
+      console.error('Error marking accepted:', error);
+      toast.error('Failed to mark as accepted');
+    }
+  };
+
+  const markAsPending = async (invitationId: string) => {
+    try {
+      const expires = new Date();
+      expires.setDate(expires.getDate() + 7);
+      const { error } = await supabase
+        .from('user_invitations')
+        .update({ accepted_at: null, expires_at: expires.toISOString() })
+        .eq('id', invitationId);
+      if (error) throw error;
+      toast.success('Invitation set to pending');
+      fetchInvitations();
+    } catch (error) {
+      console.error('Error setting pending:', error);
+      toast.error('Failed to set pending');
+    }
+  };
+
+  const expireNow = async (invitationId: string) => {
+    try {
+      const { error } = await supabase
+        .from('user_invitations')
+        .update({ expires_at: new Date().toISOString() })
+        .eq('id', invitationId);
+      if (error) throw error;
+      toast.success('Invitation expired');
+      fetchInvitations();
+    } catch (error) {
+      console.error('Error expiring invitation:', error);
+      toast.error('Failed to expire invitation');
     }
   };
 
@@ -388,14 +435,50 @@ const AdminInvitations = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
-                          {isPending(invitation) && (
+                          {invitation.accepted_at ? (
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => resendInvitation(invitation.id)}
-                              title="Resend invitation"
+                              onClick={() => markAsPending(invitation.id)}
+                              title="Set to pending"
                             >
-                              <RefreshCw className="h-4 w-4" />
+                              <RotateCcw className="h-4 w-4" />
+                            </Button>
+                          ) : isPending(invitation) ? (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => markAsAccepted(invitation.id)}
+                                title="Mark as accepted"
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => expireNow(invitation.id)}
+                                title="Expire now"
+                              >
+                                <Ban className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => resendInvitation(invitation.id)}
+                                title="Resend invitation"
+                              >
+                                <RefreshCw className="h-4 w-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => markAsPending(invitation.id)}
+                              title="Reopen (pending)"
+                            >
+                              <RotateCcw className="h-4 w-4" />
                             </Button>
                           )}
                           <Button
