@@ -431,3 +431,28 @@ export async function getInvoiceItemsWithFallback(supabase: any, invoiceId: stri
     return await mockDb.getInvoiceItems(invoiceId);
   }
 }
+
+// New: delete receipt with fallback helper
+export async function deleteReceiptWithFallback(supabase: any, id: string) {
+  try {
+    // Delete child rows first
+    await supabase.from('receipt_payments').delete().eq('receipt_id', id);
+    await supabase.from('receipt_items').delete().eq('receipt_id', id);
+
+    const { error } = await supabase
+      .from('receipts')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.log('Using mock database for receipt deletion');
+    const storage = getStorage();
+    storage.receipts = (storage.receipts || []).filter((r: any) => r.id !== id);
+    storage.receipt_items = (storage.receipt_items || []).filter((it: any) => it.receipt_id !== id && it.invoice_id !== id);
+    storage.receipt_payments = (storage.receipt_payments || []).filter((p: any) => p.receipt_id !== id);
+    setStorage(storage);
+    return true;
+  }
+}

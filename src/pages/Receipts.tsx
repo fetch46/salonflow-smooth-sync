@@ -13,6 +13,9 @@ import { toast } from "sonner";
 import { getReceiptsWithFallback } from "@/utils/mockDatabase";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { Switch } from "@/components/ui/switch";
+import { useNavigate } from "react-router-dom";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Eye, Mail, MessageSquare, MoreHorizontal, Trash2 } from "lucide-react";
 
 interface Receipt {
   id: string;
@@ -44,6 +47,7 @@ export default function Receipts() {
   const [payment, setPayment] = useState({ amount: "", method: "cash", reference: "" });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [reportApplyTax, setReportApplyTax] = useState<boolean>(false);
+  const navigate = useNavigate();
 
   // Create Receipt modal state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -205,6 +209,28 @@ export default function Receipts() {
       console.error(e);
       toast.error('Failed to record payment');
     }
+  };
+
+  const handleDeleteReceipt = async (receipt: Receipt) => {
+    const payments = Number(receipt.amount_paid || 0);
+    if (payments > 0) {
+      toast.error('Cannot delete a receipt with recorded payments');
+      return;
+    }
+    if (!confirm(`Delete receipt ${receipt.receipt_number}? This cannot be undone.`)) return;
+    try {
+      const { deleteReceiptWithFallback } = await import('@/utils/mockDatabase');
+      await deleteReceiptWithFallback(supabase, receipt.id);
+      toast.success('Receipt deleted');
+      fetchReceipts();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to delete receipt');
+    }
+  };
+
+  const handleSendReceipt = (receipt: Receipt) => {
+    toast.success('Send receipt flow started');
   };
 
   const toggleSelectAll = (checked: boolean) => {
@@ -476,11 +502,47 @@ export default function Receipts() {
                   <TableCell>${(r.amount_paid || 0).toFixed(2)}</TableCell>
                   <TableCell>${outstanding(r).toFixed(2)}</TableCell>
                   <TableCell className="text-right">
-                    {outstanding(r) > 0 && (
-                      <Button size="sm" onClick={() => openPayment(r)}>
-                        <DollarSign className="w-4 h-4 mr-1" /> Pay
+                    <div className="flex justify-end items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigate(`/receipts/${r.id}`)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Eye className="w-4 h-4" />
                       </Button>
-                    )}
+                      {outstanding(r) > 0 && (
+                        <Button size="sm" onClick={() => openPayment(r)}>
+                          <DollarSign className="w-4 h-4 mr-1" /> Pay
+                        </Button>
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem onClick={() => handleSendReceipt(r)}>
+                            <Mail className="w-4 h-4 mr-2" />
+                            Send Email
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSendReceipt(r)}>
+                            <MessageSquare className="w-4 h-4 mr-2" />
+                            Send WhatsApp
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteReceipt(r)}
+                            disabled={(r.amount_paid || 0) > 0}
+                            className={(r.amount_paid || 0) > 0 ? 'opacity-50' : 'text-red-600 focus:text-red-600'}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
