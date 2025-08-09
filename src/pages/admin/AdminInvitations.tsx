@@ -55,22 +55,38 @@ const AdminInvitations = () => {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
+      const { data: rawInvites, error } = await supabase
         .from('user_invitations')
         .select(`
           *,
-          organizations(name),
-          profiles!user_invitations_invited_by_fkey(email)
+          organizations(name)
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const transformedData = data?.map(invitation => ({
+      const inviterIds = Array.from(new Set((rawInvites || []).map((inv: any) => inv.invited_by).filter(Boolean))) as string[];
+
+      let inviterMap: Record<string, string> = {};
+      if (inviterIds.length > 0) {
+        const { data: inviterProfiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('user_id,email')
+          .in('user_id', inviterIds);
+
+        if (!profilesError && inviterProfiles) {
+          inviterMap = inviterProfiles.reduce((acc: Record<string, string>, p: any) => {
+            if (p.user_id) acc[p.user_id] = p.email || '';
+            return acc;
+          }, {});
+        }
+      }
+
+      const transformedData = (rawInvites || []).map((invitation: any) => ({
         ...invitation,
         organization_name: invitation.organizations?.name,
-        invited_by_email: invitation.profiles?.email
-      })) || [];
+        invited_by_email: invitation.invited_by ? inviterMap[invitation.invited_by] : undefined,
+      }));
 
       setInvitations(transformedData);
     } catch (error) {
