@@ -15,7 +15,7 @@ import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Eye, Mail, MessageSquare, MoreHorizontal, Trash2 } from "lucide-react";
+import { Eye, Mail, MessageSquare, MoreHorizontal, Trash2, Printer } from "lucide-react";
 
 interface Receipt {
   id: string;
@@ -88,6 +88,11 @@ export default function Receipts() {
     setRefreshing(true);
     await fetchReceipts();
     setRefreshing(false);
+  };
+
+  const handlePrintReceipt = (receipt: Receipt) => {
+    // Open detail page in print mode in a new tab
+    window.open(`/receipts/${receipt.id}?print=1`, "_blank");
   };
 
   const filtered = useMemo(() => {
@@ -415,9 +420,9 @@ export default function Receipts() {
 
   return (
     <div className="flex-1 space-y-6 p-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h2 className="text-2xl font-bold">Receipts</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <select className="border rounded px-3 py-2" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="all">All</option>
             <option value="open">Open</option>
@@ -431,7 +436,7 @@ export default function Receipts() {
           </select>
           <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-auto" />
           <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-auto" />
-          <Input placeholder="Search receipts..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
+          <Input placeholder="Search receipts..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full md:max-w-xs" />
           <Button variant="outline" onClick={exportCsv}>
             Export CSV
           </Button>
@@ -470,84 +475,146 @@ export default function Receipts() {
           <CardTitle>All Receipts</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
-                  <input type="checkbox" onChange={(e) => toggleSelectAll(e.currentTarget.checked)} checked={selectedIds.size === filtered.length && filtered.length > 0} />
-                </TableHead>
-                <TableHead>#</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Paid</TableHead>
-                <TableHead>Outstanding</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map(r => (
-                <TableRow key={r.id}>
-                  <TableCell>
-                    <input type="checkbox" checked={selectedIds.has(r.id)} onChange={(e) => toggleSelect(r.id, e.currentTarget.checked)} />
-                  </TableCell>
-                  <TableCell className="font-medium">{r.receipt_number}</TableCell>
-                  <TableCell>{format(new Date(r.created_at), 'MMM dd, yyyy')}</TableCell>
-                  <TableCell>
-                    <Badge variant={r.status === 'paid' ? 'default' : r.status === 'partial' ? 'outline' : 'secondary'}>
-                      {r.status.toUpperCase()}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>${(r.total_amount || 0).toFixed(2)}</TableCell>
-                  <TableCell>${(r.amount_paid || 0).toFixed(2)}</TableCell>
-                  <TableCell>${outstanding(r).toFixed(2)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate(`/receipts/${r.id}`)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      {outstanding(r) > 0 && (
-                        <Button size="sm" onClick={() => openPayment(r)}>
-                          <DollarSign className="w-4 h-4 mr-1" /> Pay
-                        </Button>
-                      )}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
-                          <DropdownMenuItem onClick={() => handleSendReceipt(r)}>
-                            <Mail className="w-4 h-4 mr-2" />
-                            Send Email
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleSendReceipt(r)}>
-                            <MessageSquare className="w-4 h-4 mr-2" />
-                            Send WhatsApp
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteReceipt(r)}
-                            disabled={(r.amount_paid || 0) > 0}
-                            className={(r.amount_paid || 0) > 0 ? 'opacity-50' : 'text-red-600 focus:text-red-600'}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </TableCell>
+          <div className="hidden md:block overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>
+                    <input type="checkbox" onChange={(e) => toggleSelectAll(e.currentTarget.checked)} checked={selectedIds.size === filtered.length && filtered.length > 0} />
+                  </TableHead>
+                  <TableHead>#</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead>Paid</TableHead>
+                  <TableHead>Outstanding</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filtered.map(r => (
+                  <TableRow key={r.id}>
+                    <TableCell>
+                      <input type="checkbox" checked={selectedIds.has(r.id)} onChange={(e) => toggleSelect(r.id, e.currentTarget.checked)} />
+                    </TableCell>
+                    <TableCell className="font-medium">{r.receipt_number}</TableCell>
+                    <TableCell>{format(new Date(r.created_at), 'MMM dd, yyyy')}</TableCell>
+                    <TableCell>
+                      <Badge variant={r.status === 'paid' ? 'default' : r.status === 'partial' ? 'outline' : 'secondary'}>
+                        {r.status.toUpperCase()}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>${(r.total_amount || 0).toFixed(2)}</TableCell>
+                    <TableCell>${(r.amount_paid || 0).toFixed(2)}</TableCell>
+                    <TableCell>${outstanding(r).toFixed(2)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end items-center gap-2 flex-wrap">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/receipts/${r.id}`)}
+                        >
+                          <Eye className="w-4 h-4 mr-2" /> View
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePrintReceipt(r)}
+                        >
+                          <Printer className="w-4 h-4 mr-2" /> Print
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSendReceipt(r)}
+                        >
+                          <Mail className="w-4 h-4 mr-2" /> Send
+                        </Button>
+                        {outstanding(r) > 0 && (
+                          <Button size="sm" onClick={() => openPayment(r)}>
+                            <DollarSign className="w-4 h-4 mr-1" /> Pay
+                          </Button>
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={() => handleSendReceipt(r)}>
+                              <Mail className="w-4 h-4 mr-2" />
+                              Send Email
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSendReceipt(r)}>
+                              <MessageSquare className="w-4 h-4 mr-2" />
+                              Send WhatsApp
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteReceipt(r)}
+                              disabled={(r.amount_paid || 0) > 0}
+                              className={(r.amount_paid || 0) > 0 ? 'opacity-50' : 'text-red-600 focus:text-red-600'}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden space-y-3">
+            {filtered.map(r => (
+              <div key={r.id} className="border rounded-lg p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-semibold">{r.receipt_number}</div>
+                    <div className="text-sm text-muted-foreground">{format(new Date(r.created_at), 'MMM dd, yyyy')}</div>
+                  </div>
+                  <Badge variant={r.status === 'paid' ? 'default' : r.status === 'partial' ? 'outline' : 'secondary'}>
+                    {r.status.toUpperCase()}
+                  </Badge>
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
+                  <div>
+                    <div className="text-muted-foreground">Total</div>
+                    <div className="font-medium">${(r.total_amount || 0).toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Paid</div>
+                    <div className="font-medium">${(r.amount_paid || 0).toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Outstanding</div>
+                    <div className="font-medium">${outstanding(r).toFixed(2)}</div>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={() => navigate(`/receipts/${r.id}`)}>
+                    <Eye className="w-4 h-4 mr-2" /> View
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handlePrintReceipt(r)}>
+                    <Printer className="w-4 h-4 mr-2" /> Print
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleSendReceipt(r)}>
+                    <Mail className="w-4 h-4 mr-2" /> Send
+                  </Button>
+                  {outstanding(r) > 0 && (
+                    <Button size="sm" onClick={() => openPayment(r)}>
+                      <DollarSign className="w-4 h-4 mr-1" /> Pay
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
