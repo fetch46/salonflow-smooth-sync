@@ -274,16 +274,26 @@ export default function Services() {
     try {
       let serviceId = editingService?.id;
 
+      // Only send columns that exist on the services table
+      const payload = {
+        name: formData.name,
+        description: formData.description || null,
+        duration_minutes: formData.duration_minutes,
+        price: formData.price,
+        category: formData.category || null,
+        is_active: formData.is_active,
+      } as const;
+
       if (editingService) {
         const { error } = await supabase
           .from("services")
-          .update(formData)
+          .update(payload)
           .eq("id", editingService.id);
         if (error) throw error;
       } else {
         const { data, error } = await supabase
           .from("services")
-          .insert([formData])
+          .insert([payload])
           .select()
           .single();
         if (error) throw error;
@@ -299,7 +309,7 @@ export default function Services() {
 
         if (serviceKits.length > 0) {
           const kitData = serviceKits.map(kit => ({
-            service_id: serviceId,
+            service_id: serviceId!,
             good_id: kit.good_id,
             default_quantity: kit.default_quantity
           }));
@@ -316,9 +326,9 @@ export default function Services() {
       fetchServices();
       resetForm();
       setIsModalOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving service:", error);
-      toast.error("Failed to save service");
+      toast.error(error?.message ? `Failed to save service: ${error.message}` : "Failed to save service");
     }
   };
 
