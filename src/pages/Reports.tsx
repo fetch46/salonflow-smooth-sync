@@ -19,12 +19,72 @@ import {
   Target,
 } from 'lucide-react';
 import { useSaas } from '@/lib/saas/context';
+import { supabase } from '@/integrations/supabase/client';
 
 const Reports = () => {
   const { organization, subscriptionPlan } = useSaas();
   const [timeRange, setTimeRange] = useState('month');
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const [pl, setPl] = useState<{ income: number; cogs: number; expenses: number; grossProfit: number; netProfit: number }>({ income: 0, cogs: 0, expenses: 0, grossProfit: 0, netProfit: 0 });
+  const [bs, setBs] = useState<{ assets: number; liabilities: number; equity: number } >({ assets: 0, liabilities: 0, equity: 0 });
+  const [startDate, setStartDate] = useState<string>(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    return start.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [recalcLoading, setRecalcLoading] = useState(false);
+
+  const recalcFinancials = async () => {
+    setRecalcLoading(true);
+    try {
+      // Pull transactions in range with account types
+      const { data: txns, error } = await supabase
+        .from('account_transactions')
+        .select('account_id, transaction_date, debit_amount, credit_amount, accounts:account_id (account_type, account_code)')
+        .gte('transaction_date', startDate)
+        .lte('transaction_date', endDate);
+      if (error) throw error;
+      const transactions = txns || [];
+
+      const sumByType = (type: string) => transactions
+        .filter((t: any) => t.accounts?.account_type === type)
+        .reduce((sum: number, t: any) => sum + (Number(t.debit_amount) || 0) - (Number(t.credit_amount) || 0), 0);
+      const sumByTypeCreditMinusDebit = (type: string) => transactions
+        .filter((t: any) => t.accounts?.account_type === type)
+        .reduce((sum: number, t: any) => sum + (Number(t.credit_amount) || 0) - (Number(t.debit_amount) || 0), 0);
+
+      // Income: credits - debits for Income accounts
+      const income = sumByTypeCreditMinusDebit('Income');
+      // COGS specifically 5001: debit - credit
+      const cogs = transactions
+        .filter((t: any) => t.accounts?.account_code === '5001')
+        .reduce((sum: number, t: any) => sum + (Number(t.debit_amount) || 0) - (Number(t.credit_amount) || 0), 0);
+      // Expenses: debit - credit for Expense excluding 5001
+      const expenses = transactions
+        .filter((t: any) => t.accounts?.account_type === 'Expense' && t.accounts?.account_code !== '5001')
+        .reduce((sum: number, t: any) => sum + (Number(t.debit_amount) || 0) - (Number(t.credit_amount) || 0), 0);
+      const grossProfit = income - cogs;
+      const netProfit = grossProfit - expenses;
+      setPl({ income, cogs, expenses, grossProfit, netProfit });
+
+      // Balance Sheet as of endDate: calculate balances using debits/credits to date
+      // Assets: debit - credit, Liabilities/Equity: credit - debit
+      const assets = sumByType('Asset');
+      const liabilities = sumByTypeCreditMinusDebit('Liability');
+      const equity = sumByTypeCreditMinusDebit('Equity');
+      setBs({ assets, liabilities, equity });
+    } catch (e) {
+      console.error('Error calculating financials', e);
+    } finally {
+      setRecalcLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    recalcFinancials();
+  }, []);
 
   // Mock data for reports
   const mockData = {
@@ -95,6 +155,20 @@ const Reports = () => {
         </div>
         
         <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className="space-y-1">
+              <div className="text-xs text-slate-600">Start</div>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="border rounded px-2 py-1" />
+            </div>
+            <div className="space-y-1">
+              <div className="text-xs text-slate-600">End</div>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="border rounded px-2 py-1" />
+            </div>
+            <Button variant="outline" onClick={recalcFinancials} disabled={recalcLoading}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${recalcLoading ? 'animate-spin' : ''}`} />
+              Recalculate
+            </Button>
+          </div>
           <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger className="w-36">
               <SelectValue />
@@ -126,7 +200,7 @@ const Reports = () => {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <Activity className="w-4 h-4" />
             Overview
@@ -142,6 +216,14 @@ const Reports = () => {
           <TabsTrigger value="clients" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
             Clients
+          </TabsTrigger>
+          <TabsTrigger value="pnl" className="flex items-center gap-2">
+            <DollarSign className="w-4 h-4" />
+            P&L
+          </TabsTrigger>
+          <TabsTrigger value="balancesheet" className="flex items-center gap-2">
+            <PieChart className="w-4 h-4" />
+            Balance Sheet
           </TabsTrigger>
         </TabsList>
 
@@ -326,6 +408,65 @@ const Reports = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="pnl" className="space-y-6">
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle>Profit & Loss</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <div className="text-center p-4 bg-green-50 rounded-lg">
+                  <div className="text-2xl font-bold text-green-700">${pl.income.toFixed(2)}</div>
+                  <div className="text-sm text-green-700">Income</div>
+                </div>
+                <div className="text-center p-4 bg-amber-50 rounded-lg">
+                  <div className="text-2xl font-bold text-amber-700">${pl.cogs.toFixed(2)}</div>
+                  <div className="text-sm text-amber-700">Cost of Goods Sold</div>
+                </div>
+                <div className="text-center p-4 bg-red-50 rounded-lg">
+                  <div className="text-2xl font-bold text-red-700">${pl.expenses.toFixed(2)}</div>
+                  <div className="text-sm text-red-700">Expenses</div>
+                </div>
+                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-700">${pl.grossProfit.toFixed(2)}</div>
+                  <div className="text-sm text-blue-700">Gross Profit</div>
+                </div>
+              </div>
+              <div className="mt-6 text-center p-4 bg-indigo-50 rounded-lg">
+                <div className="text-3xl font-bold text-indigo-700">${pl.netProfit.toFixed(2)}</div>
+                <div className="text-sm text-indigo-700">Net Profit</div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="balancesheet" className="space-y-6">
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle>Balance Sheet</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="text-center p-4 bg-slate-50 rounded-lg">
+                  <div className="text-2xl font-bold text-slate-700">${bs.assets.toFixed(2)}</div>
+                  <div className="text-sm text-slate-700">Assets</div>
+                </div>
+                <div className="text-center p-4 bg-slate-50 rounded-lg">
+                  <div className="text-2xl font-bold text-slate-700">${bs.liabilities.toFixed(2)}</div>
+                  <div className="text-sm text-slate-700">Liabilities</div>
+                </div>
+                <div className="text-center p-4 bg-slate-50 rounded-lg">
+                  <div className="text-2xl font-bold text-slate-700">${bs.equity.toFixed(2)}</div>
+                  <div className="text-sm text-slate-700">Equity</div>
+                </div>
+              </div>
+              <div className="mt-6 text-center text-sm text-slate-600">
+                Check: Assets (${bs.assets.toFixed(2)}) = Liabilities (${bs.liabilities.toFixed(2)}) + Equity (${bs.equity.toFixed(2)})
               </div>
             </CardContent>
           </Card>

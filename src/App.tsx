@@ -18,6 +18,8 @@ import ClientProfile from "@/pages/ClientProfile";
 import Staff from "@/pages/Staff";
 import Services from "@/pages/Services";
 import Inventory from "@/pages/Inventory";
+import Receipts from "@/pages/Receipts";
+import ReceiptView from "@/pages/ReceiptView";
 import Expenses from "@/pages/Expenses";
 import Purchases from "@/pages/Purchases";
 import Suppliers from "@/pages/Suppliers";
@@ -31,7 +33,7 @@ import EditJobCard from "@/pages/EditJobCard";
 import SuperAdmin from "@/pages/SuperAdmin";
 import ServiceView from "@/pages/ServiceView";
 import Booking from "@/pages/Booking";
-import Invoices from "@/pages/Invoices";
+
 import NotFound from "@/pages/NotFound";
 import Landing from "@/pages/Landing";
 import Reports from "@/pages/Reports";
@@ -130,7 +132,9 @@ const AppRoutes = () => {
         <Route path="inventory-adjustments" element={<InventoryAdjustments />} />
         
         {/* Financial Management */}
-        <Route path="expenses" element={<Expenses />} />
+                 <Route path="expenses" element={<Expenses />} />
+         <Route path="receipts" element={<Receipts />} />
+         <Route path="receipts/:id" element={<ReceiptView />} />
         <Route path="purchases" element={<Purchases />} />
         <Route path="suppliers" element={<Suppliers />} />
         <Route path="accounts" element={<Accounts />} />
@@ -141,7 +145,7 @@ const AppRoutes = () => {
          <Route path="job-cards/:id/edit" element={<EditJobCard />} />
          <Route path="pos" element={<POS />} />
         <Route path="booking" element={<Booking />} />
-        <Route path="invoices" element={<Invoices />} />
+        
         
         {/* Settings & Support */}
         <Route path="settings" element={<Settings />} />

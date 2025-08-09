@@ -62,7 +62,7 @@ const AdminDashboard = () => {
     { name: 'appointments', label: 'Appointments', icon: Calendar, color: 'text-orange-600' },
     { name: 'inventory_items', label: 'Inventory', icon: Package, color: 'text-indigo-600' },
     { name: 'sales', label: 'Sales', icon: ShoppingCart, color: 'text-emerald-600' },
-    { name: 'invoices', label: 'Invoices', icon: FileText, color: 'text-red-600' },
+    { name: 'receipts', label: 'Receipts', icon: FileText, color: 'text-red-600' },
     { name: 'expenses', label: 'Expenses', icon: DollarSign, color: 'text-yellow-600' }
   ];
 

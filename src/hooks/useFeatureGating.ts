@@ -40,7 +40,7 @@ export const useFeatureGating = () => {
     if (!subscriptionPlan || !isSubscriptionActive) {
       // During trial, allow basic features
       if (isTrialing) {
-        const trialFeatures = ['appointments', 'clients', 'staff', 'services', 'reports', 'invoices'];
+                 const trialFeatures = ['appointments', 'clients', 'staff', 'services', 'reports'];
         const enabled = trialFeatures.includes(featureName);
         return {
           enabled,

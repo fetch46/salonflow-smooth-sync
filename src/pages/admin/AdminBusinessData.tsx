@@ -46,7 +46,7 @@ const AdminBusinessData = () => {
     { name: 'appointments', label: 'Appointments', icon: Calendar, description: 'Booking records' },
     { name: 'inventory_items', label: 'Inventory', icon: Package, description: 'Product catalog' },
     { name: 'sales', label: 'Sales', icon: ShoppingCart, description: 'Sales transactions' },
-    { name: 'invoices', label: 'Invoices', icon: FileText, description: 'Invoice records' },
+    { name: 'receipts', label: 'Receipts', icon: FileText, description: 'Receipt records' },
     { name: 'purchases', label: 'Purchases', icon: Truck, description: 'Purchase orders' },
     { name: 'expenses', label: 'Expenses', icon: DollarSign, description: 'Expense tracking' },
     { name: 'accounts', label: 'Accounts', icon: Calculator, description: 'Chart of accounts' },
