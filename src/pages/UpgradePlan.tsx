@@ -6,11 +6,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSaas } from "@/lib/saas/context";
 import { useEffect, useState } from "react";
 import { SubscriptionService } from "@/lib/saas/services";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 
 export default function UpgradePlan() {
   const navigate = useNavigate();
   const { organization } = useSaas();
   const [plans, setPlans] = useState<any[]>([])
+  const { formatUsdCents } = useOrganizationCurrency()
   const [saving, setSaving] = useState<string | null>(null)
 
   useEffect(() => {
@@ -46,7 +48,7 @@ export default function UpgradePlan() {
             <div key={p} className="border rounded-md p-4 space-y-3">
               <div className="text-lg font-semibold capitalize">{p.name}</div>
               <div className="text-sm text-muted-foreground">{p.slug}</div>
-              <div className="text-xl font-bold">${(p.price_monthly / 100).toFixed(0)}/mo</div>
+                             <div className="text-xl font-bold">{formatUsdCents(p.price_monthly)}/mo</div>
               <Button variant="outline" disabled={!!saving} onClick={() => handleSelect(p.id)}>{saving === p.id ? 'Saving...' : 'Select'}</Button>
             </div>
           ))}

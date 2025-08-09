@@ -391,26 +391,45 @@ export const useOrganizationCurrency = () => {
   const { organization } = useSaas()
   const [currency, setCurrency] = useState<{ id: string; code: string; symbol: string } | null>(null)
   const [loading, setLoading] = useState(false)
+  const [rate, setRate] = useState<number>(1)
 
   useEffect(() => {
     let isMounted = true
     ;(async () => {
       if (!organization || !(organization as any).currency_id) {
-        if (isMounted) setCurrency(null)
+        if (isMounted) {
+          setCurrency(null)
+          setRate(1)
+        }
         return
       }
       try {
         setLoading(true)
         const { supabase } = await import('@/integrations/supabase/client')
-        const { data, error } = await supabase
+        const { data: cur, error: curErr } = await supabase
           .from('currencies')
           .select('id, code, symbol')
           .eq('id', (organization as any).currency_id)
           .maybeSingle()
-        if (error) throw error
-        if (isMounted) setCurrency(data as any)
+        if (curErr) throw curErr
+        if (isMounted) setCurrency(cur as any)
+
+        // Fetch FX rate relative to USD (plans are stored/priced in USD cents)
+        if (cur?.code) {
+          const { data: rateRow } = await supabase
+            .from('currency_rates')
+            .select('rate')
+            .eq('code', cur.code)
+            .maybeSingle()
+          if (isMounted) setRate(rateRow?.rate ? Number(rateRow.rate) : 1)
+        } else if (isMounted) {
+          setRate(1)
+        }
       } catch (_) {
-        if (isMounted) setCurrency(null)
+        if (isMounted) {
+          setCurrency(null)
+          setRate(1)
+        }
       } finally {
         if (isMounted) setLoading(false)
       }
@@ -430,7 +449,39 @@ export const useOrganizationCurrency = () => {
     [currency]
   )
 
-  return { currency, symbol: currency?.symbol ?? '$', code: currency?.code ?? 'USD', loading, format }
+  // Convert a USD amount expressed in cents to the organization currency (major units)
+  const convertUsdCentsToOrgMajor = useCallback(
+    (usdCents: number | null | undefined): number => {
+      const cents = typeof usdCents === 'number' ? usdCents : 0
+      const usdMajor = cents / 100
+      return usdMajor * (Number.isFinite(rate) && rate > 0 ? rate : 1)
+    },
+    [rate]
+  )
+
+  // Format a USD amount (in cents) into the organization currency string
+  const formatUsdCents = useCallback(
+    (usdCents: number | null | undefined) => {
+      const code = currency?.code ?? 'USD'
+      // Default decimals: 0 for KES/JPY-like, 2 otherwise
+      const zeroDecimalCodes = new Set(['KES', 'JPY', 'KRW'])
+      const decimals = zeroDecimalCodes.has(code) ? 0 : 2
+      const major = convertUsdCentsToOrgMajor(usdCents)
+      return format(major, { decimals })
+    },
+    [currency, convertUsdCentsToOrgMajor, format]
+  )
+
+  return { 
+    currency, 
+    symbol: currency?.symbol ?? '$', 
+    code: currency?.code ?? 'USD', 
+    rate, 
+    loading, 
+    format, 
+    convertUsdCentsToOrgMajor, 
+    formatUsdCents,
+  }
 }
 
 export const useOrganizationTaxRate = () => {

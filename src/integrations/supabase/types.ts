@@ -273,6 +273,33 @@ export type Database = {
         }
         Relationships: []
       }
+      currency_rates: {
+        Row: {
+          id: string
+          code: string
+          rate: number
+          source: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          code: string
+          rate: number
+          source?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          code?: string
+          rate?: number
+          source?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number
