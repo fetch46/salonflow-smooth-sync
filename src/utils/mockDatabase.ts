@@ -174,7 +174,9 @@ export async function getReceiptsWithFallback(supabase: any) {
       const paid = (storage.receipt_payments || [])
         .filter((p: any) => p.receipt_id === r.id)
         .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
-      return { ...r, amount_paid: paid };
+      const total = Number(r.total_amount || 0);
+      const derivedStatus = paid >= total ? 'paid' : paid > 0 ? 'partial' : (r.status || 'open');
+      return { ...r, amount_paid: paid, status: derivedStatus };
     });
     return receipts;
   }
@@ -197,7 +199,9 @@ export async function getReceiptByIdWithFallback(supabase: any, id: string): Pro
     const paid = (storage.receipt_payments || [])
       .filter((p: any) => p.receipt_id === id)
       .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
-    return { ...r, amount_paid: paid };
+    const total = Number(r.total_amount || 0);
+    const derivedStatus = paid >= total ? 'paid' : paid > 0 ? 'partial' : (r.status || 'open');
+    return { ...r, amount_paid: paid, status: derivedStatus };
   }
 }
 
@@ -262,6 +266,21 @@ export async function recordReceiptPaymentWithFallback(
     };
     storage.receipt_payments = storage.receipt_payments || [];
     storage.receipt_payments.push(localPay);
+
+    // Update the related receipt's status based on total paid
+    const receiptsArr: any[] = storage.receipts || [];
+    const idx = receiptsArr.findIndex((x: any) => x.id === payment.receipt_id);
+    if (idx !== -1) {
+      const receipt = receiptsArr[idx];
+      const paidSum = (storage.receipt_payments || [])
+        .filter((p: any) => p.receipt_id === payment.receipt_id)
+        .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+      const total = Number(receipt.total_amount || 0);
+      const newStatus = paidSum >= total ? 'paid' : paidSum > 0 ? 'partial' : (receipt.status || 'open');
+      receiptsArr[idx] = { ...receipt, status: newStatus, updated_at: nowIso };
+      storage.receipts = receiptsArr;
+    }
+
     setStorage(storage);
     return true;
   }
