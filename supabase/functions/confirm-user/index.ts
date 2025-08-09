@@ -1,6 +1,7 @@
 // Supabase Edge Function: confirm-user
 // Allows super admins to confirm (verify) a user's email via Admin API
-// CORS and auth checks included
+// Uses two clients: one for verifying caller (anon + user JWT), one with service role for admin action
+// Includes CORS and basic logging
 
 import { serve } from "https://deno.land/std@0.223.0/http/server.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -12,40 +13,42 @@ const corsHeaders = {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (!supabaseUrl || !anonKey || !serviceRoleKey) {
+    return new Response(JSON.stringify({ error: "Server not configured" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      return new Response(JSON.stringify({ error: "Server not configured" }), {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
-    }
-
     const authHeader = req.headers.get("Authorization") ?? "";
 
-    // Use service role, but forward end-user auth header for auth.getUser()
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    // Client bound to end-user JWT for identity checks & RLS
+    const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // Verify caller and ensure they are super admin
-    const {
-      data: { user: actor },
-    } = await supabase.auth.getUser();
+    // Admin client with service role for privileged operations
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    if (!actor) {
+    // Verify caller identity
+    const { data: userData, error: getUserErr } = await userClient.auth.getUser();
+    if (getUserErr || !userData?.user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
-    const { data: isSuperAdmin, error: saErr } = await supabase.rpc("is_super_admin", { uid: actor.id });
+    // Check super admin privilege via RPC
+    const { data: isSuperAdmin, error: saErr } = await userClient.rpc("is_super_admin", { uid: userData.user.id });
     if (saErr) {
       return new Response(JSON.stringify({ error: "Privilege check failed", details: saErr.message }), {
         status: 500,
@@ -67,8 +70,8 @@ serve(async (req) => {
       });
     }
 
-    // Confirm target user's email
-    const { data: updated, error: updErr } = await supabase.auth.admin.updateUserById(user_id, {
+    // Confirm target user's email using Admin API
+    const { data: updated, error: updErr } = await adminClient.auth.admin.updateUserById(user_id, {
       email_confirm: true,
     });
 
