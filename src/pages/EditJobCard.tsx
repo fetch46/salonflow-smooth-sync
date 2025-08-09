@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { Receipt } from "lucide-react";
+import { createReceiptWithFallback, getReceiptsWithFallback } from "@/utils/mockDatabase";
 
 interface Staff {
   id: string;
@@ -69,6 +71,7 @@ export default function EditJobCard() {
   const [clients, setClients] = useState<Client[]>([]);
 
   const [jobCard, setJobCard] = useState<JobCardRecord | null>(null);
+  const [hasReceipt, setHasReceipt] = useState<boolean>(false);
 
   // Local form state
   const [clientId, setClientId] = useState<string | "">("");
@@ -105,6 +108,20 @@ export default function EditJobCard() {
           setEndTime(toInputDateTimeLocal(cardRes.data.end_time));
           setTotalAmount(String(cardRes.data.total_amount ?? 0));
         }
+
+        // Check if a receipt already exists for this job card (fallback aware)
+        try {
+          const { data: rData, error: rErr } = await supabase
+            .from('receipts')
+            .select('id')
+            .eq('job_card_id', id)
+            .limit(1);
+          if (rErr) throw rErr;
+          setHasReceipt((rData || []).length > 0);
+        } catch {
+          const receipts = await getReceiptsWithFallback(supabase as any);
+          setHasReceipt((receipts || []).some((r: any) => r.job_card_id === id));
+        }
       } catch (e: any) {
         console.error("Failed to load job card:", e);
         toast.error(e?.message ? `Failed to load: ${e.message}` : "Failed to load job card");
@@ -122,6 +139,51 @@ export default function EditJobCard() {
     if (totalAmount === "" || isNaN(Number(totalAmount))) return false;
     return true;
   }, [jobCard, status, totalAmount]);
+
+  const handleCreateReceipt = async () => {
+    if (!jobCard) return;
+    try {
+      const receiptNumber = `RCT-${Date.now().toString().slice(-6)}`;
+      const items: any[] = [];
+      // Try to populate items from job_card_services if available
+      try {
+        const { data: jobServices } = await supabase
+          .from('job_card_services')
+          .select('service_id, staff_id, quantity, unit_price, services:service_id(name)')
+          .eq('job_card_id', jobCard.id);
+        if (jobServices && jobServices.length > 0) {
+          for (const js of jobServices) {
+            items.push({
+              description: js.services?.name || 'Service',
+              quantity: js.quantity || 1,
+              unit_price: js.unit_price || 0,
+              total_price: (js.quantity || 1) * (js.unit_price || 0),
+              service_id: js.service_id || null,
+              product_id: null,
+              staff_id: js.staff_id || null,
+            });
+          }
+        }
+      } catch {}
+
+      await createReceiptWithFallback(supabase as any, {
+        receipt_number: receiptNumber,
+        customer_id: clientId || jobCard.client_id || null,
+        job_card_id: jobCard.id,
+        subtotal: Number(totalAmount) || jobCard.total_amount || 0,
+        tax_amount: 0,
+        discount_amount: 0,
+        total_amount: Number(totalAmount) || jobCard.total_amount || 0,
+        status: 'open',
+        notes: `Receipt for ${jobCard.job_number}`,
+      }, items);
+      setHasReceipt(true);
+      toast.success('Receipt created');
+    } catch (e: any) {
+      console.error('Failed to create receipt:', e);
+      toast.error(e?.message || 'Failed to create receipt');
+    }
+  };
 
   const handleSave = async () => {
     if (!id || !jobCard) return;
@@ -175,14 +237,17 @@ export default function EditJobCard() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
+    <div className="max-w-4xl mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Edit Job Card</h1>
+        <div>
+          <h1 className="text-2xl font-semibold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">Edit Job Card</h1>
+          <p className="text-sm text-muted-foreground mt-1">Update client, staff, times, and status</p>
+        </div>
         <div className="text-sm text-muted-foreground">#{jobCard.job_number}</div>
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="bg-gradient-to-r from-accent/30 to-accent/10">
           <CardTitle>Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -264,6 +329,16 @@ export default function EditJobCard() {
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4">
+            {status === 'completed' && (
+              <Button
+                variant={hasReceipt ? 'outline' : 'default'}
+                onClick={handleCreateReceipt}
+                disabled={saving || hasReceipt}
+              >
+                <Receipt className="h-4 w-4 mr-2" />
+                {hasReceipt ? 'Receipt Exists' : 'Create Receipt'}
+              </Button>
+            )}
             <Button variant="secondary" onClick={() => navigate(-1)} disabled={saving}>Cancel</Button>
             <Button onClick={handleSave} disabled={!canSave || saving}>{saving ? "Saving..." : "Save Changes"}</Button>
           </div>
