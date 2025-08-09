@@ -243,7 +243,7 @@ export default function Inventory() {
     setIsLoading(true);
     try {
       const [itemsRes, kitsRes] = await Promise.all([
-        supabase.from("inventory_items").select("*").eq("is_active", true).order("name"),
+        supabase.from("inventory_items").select("*").order("name"),
         supabase.from("service_kits").select(`*, good:inventory_items!service_kits_good_id_fkey(*)`)
       ]);
 
@@ -311,6 +311,23 @@ export default function Inventory() {
         .eq("id", item.id);
       if (error) throw error;
       toast({ title: "Updated", description: "Product marked as inactive" });
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Error", description: "Failed to update product", variant: "destructive" });
+    }
+  };
+
+  const handleActivateItem = async (item: InventoryItem) => {
+    const confirm = window.confirm(`Mark product "${item.name}" as active? It will be available in POS, Purchases, and Service Kits.`);
+    if (!confirm) return;
+    try {
+      const { error } = await supabase
+        .from("inventory_items")
+        .update({ is_active: true })
+        .eq("id", item.id);
+      if (error) throw error;
+      toast({ title: "Updated", description: "Product marked as active" });
       fetchData();
     } catch (err) {
       console.error(err);
@@ -399,15 +416,25 @@ export default function Inventory() {
                           <TableCell>{item.unit}</TableCell>
                           <TableCell>{item.reorder_point}</TableCell>
                           <TableCell>
-                            <Badge variant="secondary">Active</Badge>
+                            {item.is_active ? (
+                              <Badge variant="secondary">Active</Badge>
+                            ) : (
+                              <Badge variant="outline">Inactive</Badge>
+                            )}
                           </TableCell>
                           <TableCell className="text-right">
                             <Button variant="ghost" size="sm" onClick={() => handleEditItem(item)}>
                               <Edit className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDeactivateItem(item)}>
-                              <Trash2 className="w-4 h-4 text-red-600" />
-                            </Button>
+                            {item.is_active ? (
+                              <Button variant="ghost" size="sm" onClick={() => handleDeactivateItem(item)}>
+                                <Trash2 className="w-4 h-4 text-red-600" />
+                              </Button>
+                            ) : (
+                              <Button variant="ghost" size="sm" onClick={() => handleActivateItem(item)}>
+                                Activate
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       );
