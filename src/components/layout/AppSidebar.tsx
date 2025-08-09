@@ -134,7 +134,7 @@ const menuItems: MenuItem[] = [
          feature: "accounting",
        },
         {
-          title: "Accounts",
+          title: "Chart of Accounts",
           url: "/accounts",
           icon: Calculator,
           feature: "accounting",
