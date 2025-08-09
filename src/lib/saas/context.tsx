@@ -18,25 +18,26 @@ import type {
 } from './types'
 
 import {
-  OrganizationService,
-  SubscriptionService,
-  UserService,
-  SuperAdminService,
-  UsageService,
-  AnalyticsService,
-  CacheService,
+   OrganizationService,
+   SubscriptionService,
+   UserService,
+   SuperAdminService,
+   UsageService,
+   AnalyticsService,
+   CacheService,
 } from './services'
 
-import {
-  hasMinimumRole,
-  canPerformAction,
-  isSubscriptionActive,
-  isSubscriptionTrialing,
-  calculateTrialDaysRemaining,
-  calculateFeatureAccess,
-  getErrorMessage,
-  createCacheKey,
-} from './utils'
+ import {
+   hasMinimumRole,
+   canPerformAction,
+   isSubscriptionActive,
+   isSubscriptionTrialing,
+   calculateTrialDaysRemaining,
+   calculateFeatureAccess,
+   getErrorMessage,
+   createCacheKey,
+   createSlugFromName,
+ } from './utils'
 
 import { PLAN_FEATURES } from '@/lib/features'
 import { STORAGE_KEYS, CACHE_KEYS } from './constants'
@@ -188,35 +189,80 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Cache the result
       CacheService.set(cacheKey, orgUsers)
 
-      if (orgUsers.length > 0) {
-        const orgs = orgUsers.map(ou => ou.organizations).filter(Boolean) as Organization[]
-        const roles: Record<string, UserRole> = {}
-        
-        orgUsers.forEach(ou => {
-          if (ou.organizations) {
-            roles[ou.organization_id] = ou.role
-          }
-        })
-
-        dispatch({ type: 'SET_ORGANIZATIONS', payload: orgs })
-        dispatch({ type: 'SET_USER_ROLES', payload: roles })
-
-        // Set active organization
-        const savedOrgId = localStorage.getItem(STORAGE_KEYS.ACTIVE_ORGANIZATION)
-        const activeOrg = savedOrgId 
-          ? orgs.find(org => org.id === savedOrgId) || orgs[0]
-          : orgs[0]
-
-        if (activeOrg) {
-          await setActiveOrganization(activeOrg, roles[activeOrg.id], silent)
-        }
-      } else {
-        // User has no organizations
-        dispatch({ type: 'SET_ORGANIZATIONS', payload: [] })
-        dispatch({ type: 'SET_USER_ROLES', payload: {} })
-        dispatch({ type: 'SET_ORGANIZATION', payload: null })
-        dispatch({ type: 'SET_ORGANIZATION_ROLE', payload: null })
-      }
+       if (orgUsers.length > 0) {
+         const orgs = orgUsers.map(ou => ou.organizations).filter(Boolean) as Organization[]
+         const roles: Record<string, UserRole> = {}
+         
+         orgUsers.forEach(ou => {
+           if (ou.organizations) {
+             roles[ou.organization_id] = ou.role
+           }
+         })
+ 
+         dispatch({ type: 'SET_ORGANIZATIONS', payload: orgs })
+         dispatch({ type: 'SET_USER_ROLES', payload: roles })
+ 
+         // Set active organization
+         const savedOrgId = localStorage.getItem(STORAGE_KEYS.ACTIVE_ORGANIZATION)
+         const activeOrg = savedOrgId 
+           ? orgs.find(org => org.id === savedOrgId) || orgs[0]
+           : orgs[0]
+ 
+         if (activeOrg) {
+           await setActiveOrganization(activeOrg, roles[activeOrg.id], silent)
+         }
+       } else {
+         // User has no organizations - try auto-creating from pending registration info
+         const pending = localStorage.getItem('pendingBusinessInfo')
+         if (pending) {
+           try {
+             const info = JSON.parse(pending)
+             const orgName: string = info.businessName || 'My Business'
+             const slug = createSlugFromName(orgName)
+             await OrganizationService.createOrganization({
+               name: orgName,
+               slug,
+               settings: {
+                 business_type: info.businessType,
+                 description: info.businessDescription,
+                 address: info.address,
+                 city: info.city,
+                 state: info.state,
+                 zip_code: info.zipCode,
+                 country: info.country,
+               }
+             }, userId)
+             localStorage.removeItem('pendingBusinessInfo')
+ 
+             // Fetch again after creation
+             const createdOrgUsers = await OrganizationService.getUserOrganizations(userId)
+             if (createdOrgUsers.length > 0) {
+               const orgs = createdOrgUsers.map(ou => ou.organizations).filter(Boolean) as Organization[]
+               const roles: Record<string, UserRole> = {}
+               createdOrgUsers.forEach(ou => {
+                 if (ou.organizations) {
+                   roles[ou.organization_id] = ou.role
+                 }
+               })
+               dispatch({ type: 'SET_ORGANIZATIONS', payload: orgs })
+               dispatch({ type: 'SET_USER_ROLES', payload: roles })
+               const activeOrg = orgs[0]
+               if (activeOrg) {
+                 await setActiveOrganization(activeOrg, roles[activeOrg.id], silent)
+               }
+               return
+             }
+           } catch (e) {
+             console.error('Auto-organization setup failed:', e)
+           }
+         }
+ 
+         // Fallback to empty state
+         dispatch({ type: 'SET_ORGANIZATIONS', payload: [] })
+         dispatch({ type: 'SET_USER_ROLES', payload: {} })
+         dispatch({ type: 'SET_ORGANIZATION', payload: null })
+         dispatch({ type: 'SET_ORGANIZATION_ROLE', payload: null })
+       }
     } catch (error) {
       handleError(error, 'Failed to load organizations')
       
@@ -506,45 +552,52 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let mounted = true
 
-    const initializeAuth = async () => {
-      try {
-        // Get initial session
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        if (!mounted) return
-
-        if (session?.user) {
-          dispatch({ type: 'SET_USER', payload: session.user })
-          await loadUserOrganizations(session.user.id)
-        } else {
-          dispatch({ type: 'SET_LOADING', payload: false })
-        }
-      } catch (error) {
-        if (mounted) {
-          handleError(error, 'Failed to initialize authentication')
-          dispatch({ type: 'SET_LOADING', payload: false })
-        }
-      }
-    }
+     const initializeAuth = async () => {
+       try {
+         // Get initial session
+         const { data: { session } } = await supabase.auth.getSession()
+         
+         if (!mounted) return
+ 
+         if (session?.user) {
+           dispatch({ type: 'SET_USER', payload: session.user })
+           // Defer data fetching to avoid potential deadlocks
+           setTimeout(() => {
+             loadUserOrganizations(session.user!.id, true)
+               .finally(() => dispatch({ type: 'SET_LOADING', payload: false }))
+           }, 0)
+         } else {
+           dispatch({ type: 'SET_LOADING', payload: false })
+         }
+       } catch (error) {
+         if (mounted) {
+           handleError(error, 'Failed to initialize authentication')
+           dispatch({ type: 'SET_LOADING', payload: false })
+         }
+       }
+     }
 
     initializeAuth()
 
     // Listen for auth changes
-    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return
-
-        if (session?.user) {
-          dispatch({ type: 'SET_USER', payload: session.user })
-          await loadUserOrganizations(session.user.id)
-        } else {
-          dispatch({ type: 'RESET_STATE' })
-          // Clear cache on logout
-          CacheService.clear()
-          localStorage.removeItem(STORAGE_KEYS.ACTIVE_ORGANIZATION)
-        }
-      }
-    )
+     const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
+       (event, session) => {
+         if (!mounted) return
+ 
+         if (session?.user) {
+           dispatch({ type: 'SET_USER', payload: session.user })
+           // Defer supabase calls to prevent deadlocks
+           setTimeout(() => {
+             loadUserOrganizations(session.user!.id, true)
+           }, 0)
+         } else {
+           dispatch({ type: 'RESET_STATE' })
+           // Clear cache on logout
+           CacheService.clear()
+           localStorage.removeItem(STORAGE_KEYS.ACTIVE_ORGANIZATION)
+         }
+       }
+     )
 
     // Cleanup timeout
     const timeoutId = setTimeout(() => {

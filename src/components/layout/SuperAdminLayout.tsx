@@ -19,8 +19,15 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps = {
   const { user } = useSaas();
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate('/login');
+    try {
+      const { cleanupAuthState } = await import('@/utils/authUtils');
+      cleanupAuthState();
+      try {
+        await supabase.auth.signOut({ scope: 'global' } as any);
+      } catch (err) {}
+    } finally {
+      window.location.href = '/login';
+    }
   };
 
   const handleBackToApp = () => {

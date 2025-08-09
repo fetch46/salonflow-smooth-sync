@@ -30,8 +30,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps = {})
   } = useSaas();
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate('/login');
+    try {
+      // Clean up auth state to avoid limbo
+      const { cleanupAuthState } = await import('@/utils/authUtils');
+      cleanupAuthState();
+      try {
+        await supabase.auth.signOut({ scope: 'global' } as any);
+      } catch (err) {
+        // ignore
+      }
+    } finally {
+      // Force full reload to ensure clean state
+      window.location.href = '/login';
+    }
   };
 
   const getSubscriptionBadge = () => {
