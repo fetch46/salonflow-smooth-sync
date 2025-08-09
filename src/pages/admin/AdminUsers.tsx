@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Plus, Edit, Trash2, Search, Building, Shield, KeyRound } from "lucide-react";
+import { Users, Plus, Edit, Trash2, Search, Building, Shield, KeyRound, Check } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
@@ -240,6 +240,22 @@ const AdminUsers = () => {
     }
   };
 
+  const confirmUser = async (userId: string) => {
+    try {
+      const { error } = await supabase.functions.invoke('confirm-user', {
+        body: { user_id: userId },
+      });
+      if (error) throw error;
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, email_confirmed_at: new Date().toISOString() } : u))
+      );
+      toast.success('User email confirmed');
+    } catch (error) {
+      console.error('Error confirming user:', error);
+      toast.error('Failed to confirm user');
+    }
+  };
+
   const openEditOrgUserDialog = (orgUser: OrganizationUser) => {
     setSelectedOrgUser(orgUser);
     setNewOrgUser({
@@ -392,14 +408,24 @@ const AdminUsers = () => {
                             {format(new Date(user.created_at), 'MMM dd, yyyy')}
                           </TableCell>
                           <TableCell>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => sendPasswordReset(user.email)}
-                              title="Send password reset"
-                            >
-                              <KeyRound className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => confirmUser(user.id)}
+                                title="Confirm email"
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => sendPasswordReset(user.email)}
+                                title="Send password reset"
+                              >
+                                <KeyRound className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
