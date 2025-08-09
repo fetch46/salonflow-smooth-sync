@@ -67,7 +67,9 @@ export function AppTopbar() {
     try {
       await supabase.rpc('mark_all_notifications_read', { org_id: organization?.id || null })
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
-    } catch (_) {}
+    } catch (error) {
+      console.debug('Failed to mark notifications read', error)
+    }
   }
 
   const unreadCount = notifications.filter(n => !n.is_read).length
@@ -228,7 +230,9 @@ export function SuperAdminTopbar() {
     try {
       await supabase.rpc('mark_all_notifications_read', { org_id: null })
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
-    } catch (_) {}
+    } catch (error) {
+      console.debug('Failed to mark notifications read (super admin)', error)
+    }
   }
 
   const unreadCount = notifications.filter(n => !n.is_read).length

@@ -276,14 +276,14 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dispatch({ type: 'SET_LOADING', payload: false })
       }
     }
-  }, [handleError])
-
-  // Set active organization
-  const setActiveOrganization = useCallback(async (
-    organization: Organization, 
-    role: UserRole, 
-    silent = false
-  ) => {
+    }, [handleError])
+ 
+   // Set active organization
+   const setActiveOrganization = useCallback(async (
+     organization: Organization, 
+     role: UserRole, 
+     silent = false
+   ) => {
     try {
       dispatch({ type: 'SET_ORGANIZATION', payload: organization })
       dispatch({ type: 'SET_ORGANIZATION_ROLE', payload: role })
