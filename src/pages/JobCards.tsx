@@ -57,6 +57,7 @@ import {
 } from "lucide-react";
 import { format, subDays, isToday, isYesterday, differenceInMinutes, addDays } from "date-fns";
 import { toast } from "sonner";
+import { getReceiptsWithFallback } from "@/utils/mockDatabase";
 
 interface JobCard {
   id: string;
@@ -149,16 +150,31 @@ export default function JobCards() {
   const fetchJobCards = useCallback(async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("job_cards")
-        .select(`
-          id, job_number, start_time, end_time, status, total_amount, created_at, updated_at,
-          staff:staff_id (id, full_name),
-          client:client_id (id, full_name, email, phone)
-        `)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
+      let data: any[] | null = null;
+      try {
+        const res = await supabase
+          .from("job_cards")
+          .select(`
+            id, job_number, start_time, end_time, status, total_amount, created_at, updated_at,
+            staff:staff_id (id, full_name),
+            client:client_id (id, full_name, email, phone)
+          `)
+          .order("created_at", { ascending: false });
+        if (res.error) throw res.error;
+        data = res.data as any[];
+      } catch (relErr) {
+        console.warn('Relational select failed, falling back to basic select', relErr);
+        const fallback = await supabase
+          .from('job_cards')
+          .select('id, job_number, start_time, end_time, status, total_amount, created_at, updated_at, staff_id, client_id')
+          .order('created_at', { ascending: false });
+        if (fallback.error) throw fallback.error;
+        data = (fallback.data || []).map((row: any) => ({
+          ...row,
+          staff: null,
+          client: null,
+        }));
+      }
       
       const enrichedData = (data || []).map((card: any) => ({
         ...card,
@@ -173,18 +189,31 @@ export default function JobCards() {
       
       setJobCards(enrichedData as any);
 
-      // Build a lookup of job cards that have at least one receipt
+      // Build a lookup of job cards that have at least one receipt, with fallback to local storage
       const jobIds = (data || []).map((c: any) => c.id);
       if (jobIds.length > 0) {
-        const { data: receiptsData, error: receiptsError } = await supabase
-          .from('receipts')
-          .select('job_card_id')
-          .in('job_card_id', jobIds as string[]);
-        if (receiptsError) throw receiptsError;
-        const idsWithReceipts = new Set<string>((receiptsData || [])
-          .map((r: any) => r.job_card_id)
-          .filter(Boolean));
-        setJobCardsWithReceipts(idsWithReceipts);
+        try {
+          // Prefer live DB when available
+          const { data: receiptsData, error: receiptsError } = await supabase
+            .from('receipts')
+            .select('job_card_id')
+            .in('job_card_id', jobIds as string[]);
+
+          if (receiptsError) throw receiptsError;
+          const idsWithReceipts = new Set<string>((receiptsData || [])
+            .map((r: any) => r.job_card_id)
+            .filter(Boolean));
+          setJobCardsWithReceipts(idsWithReceipts);
+        } catch {
+          // Fallback path (table missing or RLS denies select)
+          const allReceipts = await getReceiptsWithFallback(supabase as any);
+          const idsWithReceipts = new Set<string>(
+            (allReceipts || [])
+              .map((r: any) => r.job_card_id)
+              .filter(Boolean)
+          );
+          setJobCardsWithReceipts(idsWithReceipts);
+        }
       } else {
         setJobCardsWithReceipts(new Set());
       }
@@ -319,6 +348,13 @@ export default function JobCards() {
           .insert(items);
         if (itemsError) throw itemsError;
       }
+
+      // Mark this job card as having a receipt without a full refetch
+      setJobCardsWithReceipts(prev => {
+        const next = new Set(prev);
+        next.add(card.id);
+        return next;
+      });
 
       toast.success('Receipt created');
     } catch (e: any) {
@@ -774,6 +810,18 @@ export default function JobCards() {
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
+
+                        {jobCard.status === 'completed' && !jobCardsWithReceipts.has(jobCard.id) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => createReceiptFromJobCard(jobCard)}
+                            className="h-8"
+                          >
+                            <Receipt className="w-4 h-4 mr-2" />
+                            Create Receipt
+                          </Button>
+                        )}
                         
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
