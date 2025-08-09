@@ -19,10 +19,13 @@ export default function ReceiptView() {
     (async () => {
       setLoading(true);
       try {
-        const [{ data: r }, { data: it }, { data: pays }] = await Promise.all([
+        const [{ data: r }, { data: it }, pays] = await Promise.all([
           supabase.from('receipts').select('*').eq('id', id).maybeSingle(),
           supabase.from('receipt_items').select('*').eq('receipt_id', id),
-          supabase.from('receipt_payments').select('*').eq('receipt_id', id).order('payment_date', { ascending: false }),
+          (async () => {
+            const { getReceiptPaymentsWithFallback } = await import('@/utils/mockDatabase');
+            return await getReceiptPaymentsWithFallback(supabase, String(id));
+          })(),
         ] as any);
         setReceipt(r);
         setItems(it || []);

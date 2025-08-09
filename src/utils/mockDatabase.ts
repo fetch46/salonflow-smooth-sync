@@ -156,6 +156,61 @@ export async function getReceiptsWithFallback(supabase: any) {
   }
 }
 
+// Helper to record a receipt payment with fallback to local storage
+export async function recordReceiptPaymentWithFallback(
+  supabase: any,
+  payment: { receipt_id: string; amount: number; method: string; reference_number?: string | null; payment_date?: string }
+): Promise<boolean> {
+  try {
+    const payload = {
+      receipt_id: payment.receipt_id,
+      amount: payment.amount,
+      method: payment.method,
+      reference_number: payment.reference_number || null,
+      payment_date: payment.payment_date || new Date().toISOString().slice(0, 10),
+    } as any;
+    const { error } = await supabase.from('receipt_payments').insert([payload]);
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.log('Using mock database for receipt payments');
+    const storage = getStorage();
+    const nowIso = new Date().toISOString();
+    const localPay = {
+      id: `pay_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      receipt_id: payment.receipt_id,
+      payment_date: (payment.payment_date || nowIso).slice(0, 10),
+      amount: payment.amount,
+      method: payment.method,
+      reference_number: payment.reference_number || null,
+      created_at: nowIso,
+      updated_at: nowIso,
+    };
+    storage.receipt_payments = storage.receipt_payments || [];
+    storage.receipt_payments.push(localPay);
+    setStorage(storage);
+    return true;
+  }
+}
+
+// Helper to fetch receipt payments with fallback to local storage
+export async function getReceiptPaymentsWithFallback(supabase: any, receiptId: string): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from('receipt_payments')
+      .select('*')
+      .eq('receipt_id', receiptId)
+      .order('payment_date', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.log('Using mock database for fetching receipt payments');
+    const storage = getStorage();
+    const pays = (storage.receipt_payments || []).filter((p: any) => p.receipt_id === receiptId);
+    return pays.sort((a: any, b: any) => String(b.payment_date).localeCompare(String(a.payment_date)));
+  }
+}
+
 // Helper function to check if table exists in Supabase
 export async function tableExists(supabase: any, tableName: string): Promise<boolean> {
   try {
