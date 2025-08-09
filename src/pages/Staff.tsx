@@ -123,12 +123,8 @@ export default function Staff() {
     hire_date: "",
     is_active: true,
   });
-
-    useEffect(() => {
-    fetchStaff();
-  }, [fetchStaff]);
  
-   const fetchStaff = useCallback(async () => {
+  const fetchStaff = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -149,6 +145,10 @@ export default function Staff() {
       setLoading(false);
     }
   }, [toast]);
+
+  useEffect(() => {
+    fetchStaff();
+  }, [fetchStaff]);
 
   const refreshData = async () => {
     try {
