@@ -82,35 +82,18 @@ const AdminUsers = () => {
 
   const fetchUsers = async () => {
     try {
-      // Get users with organization count
       const { data, error } = await supabase
         .from('profiles')
-        .select(`
-          id,
-          email,
-          created_at
-        `);
+        .select('user_id, email, created_at');
 
       if (error) throw error;
 
-      // Also get auth users data
-      const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
-      
-      if (authError) throw authError;
-
-      const authUsers = (authData as any)?.users as any[] | undefined;
-
-      // Combine profile and auth data
-      const transformedData = data?.map((profile: any) => {
-        const authUser = authUsers?.find((u: any) => u?.id === profile.id);
-        return {
-          ...profile,
-          email: profile.email || authUser?.email,
-          last_sign_in_at: authUser?.last_sign_in_at,
-          email_confirmed_at: authUser?.email_confirmed_at,
-          organization_count: profile.organization_users?.[0]?.count || 0
-        };
-      }) || [];
+      const transformedData = (data || []).map((p: any) => ({
+        id: p.user_id,
+        email: p.email,
+        created_at: p.created_at,
+        organization_count: 0,
+      }));
 
       setUsers(transformedData);
     } catch (error) {
