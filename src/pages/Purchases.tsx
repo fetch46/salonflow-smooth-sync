@@ -51,10 +51,16 @@ interface StorageLocation {
   name: string;
 }
 
+interface SupplierOption {
+  id: string;
+  name: string;
+}
+
 export default function Purchases() {
   const { organization } = useSaas();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -138,6 +144,21 @@ export default function Purchases() {
       setInventoryItems(data || []);
     } catch (error) {
       console.error("Error fetching inventory items:", error);
+    }
+  }, []);
+
+  const fetchSuppliers = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("suppliers")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name");
+      if (error) throw error;
+      setSuppliers((data || []) as SupplierOption[]);
+    } catch (err) {
+      console.warn("Failed to load suppliers", err);
+      setSuppliers([]);
     }
   }, []);
 
@@ -259,7 +280,8 @@ export default function Purchases() {
   useEffect(() => {
     fetchPurchases();
     fetchInventoryItems();
-  }, [fetchPurchases, fetchInventoryItems]);
+    fetchSuppliers();
+  }, [fetchPurchases, fetchInventoryItems, fetchSuppliers]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -495,14 +517,18 @@ export default function Purchases() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="vendor_name">Vendor Name</Label>
-                    <Input
-                      id="vendor_name"
-                      placeholder="Enter vendor name"
-                      value={formData.vendor_name}
-                      onChange={(e) => setFormData({ ...formData, vendor_name: e.target.value })}
-                      required
-                    />
+                    <Label htmlFor="vendor_name">Vendor</Label>
+                    <Select value={formData.vendor_name} onValueChange={(value) => setFormData({ ...formData, vendor_name: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select vendor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {/* Populated from suppliers table */}
+                        {suppliers.map((s) => (
+                          <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -735,38 +761,40 @@ export default function Purchases() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Purchase #</TableHead>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Total Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredPurchases.map((purchase) => (
-                  <TableRow key={purchase.id}>
-                    <TableCell className="font-medium">{purchase.purchase_number}</TableCell>
-                    <TableCell>{purchase.vendor_name}</TableCell>
-                    <TableCell>{format(new Date(purchase.created_at), 'MMM dd, yyyy')}</TableCell>
-                    <TableCell>{formatMoney(purchase.total_amount)}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusBadge(purchase.status).props.className}>{purchase.status.toUpperCase()}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => handleEdit(purchase)}>Edit</Button>
-                        <Button variant="outline" size="sm" onClick={() => openReceiveDialog(purchase.id)}>Receive</Button>
-                        <Button variant="outline" size="sm" className="text-red-600" onClick={() => handleDelete(purchase.id)}>Delete</Button>
-                      </div>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[900px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Purchase #</TableHead>
+                    <TableHead>Vendor</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Total Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredPurchases.map((purchase) => (
+                    <TableRow key={purchase.id}>
+                      <TableCell className="font-medium">{purchase.purchase_number}</TableCell>
+                      <TableCell>{purchase.vendor_name}</TableCell>
+                      <TableCell>{format(new Date(purchase.created_at), 'MMM dd, yyyy')}</TableCell>
+                      <TableCell>{formatMoney(purchase.total_amount)}</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusBadge(purchase.status).props.className}>{purchase.status.toUpperCase()}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => handleEdit(purchase)}>Edit</Button>
+                          <Button variant="outline" size="sm" onClick={() => openReceiveDialog(purchase.id)}>Receive</Button>
+                          <Button variant="outline" size="sm" className="text-red-600" onClick={() => handleDelete(purchase.id)}>Delete</Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
 

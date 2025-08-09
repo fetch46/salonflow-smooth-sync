@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Label } from '@/components/ui/label';
 import {
   BarChart3,
@@ -47,6 +48,7 @@ const Reports = () => {
   });
   const [endDate, setEndDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [recalcLoading, setRecalcLoading] = useState(false);
+  const [density, setDensity] = useState<'compact' | 'comfortable'>('comfortable');
 
   useEffect(() => {
     const tab = searchParams.get('tab') || 'overview';
@@ -248,6 +250,10 @@ const Reports = () => {
         </div>
         
         <div className="flex items-center gap-3">
+          <ToggleGroup type="single" value={density} onValueChange={(v) => v && setDensity(v as any)}>
+            <ToggleGroupItem value="compact">Compact</ToggleGroupItem>
+            <ToggleGroupItem value="comfortable">Comfortable</ToggleGroupItem>
+          </ToggleGroup>
           <div className="flex items-center gap-2">
             <div className="space-y-1">
               <div className="text-xs text-slate-600">Start</div>
@@ -293,7 +299,7 @@ const Reports = () => {
 
       {/* Main Content with vertical tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
           <aside className="lg:col-span-3 xl:col-span-2">
             <TabsList className="flex flex-col w-full items-stretch">
               <TabsTrigger value="overview" className="justify-start flex items-center gap-2">
@@ -346,7 +352,7 @@ const Reports = () => {
             </TabsList>
           </aside>
 
-          <main className="lg:col-span-9 xl:col-span-10 space-y-6">
+          <main className="xl:col-span-10 space-y-6">
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
               {/* Key Metrics */}
@@ -629,66 +635,70 @@ const Reports = () => {
 
                   {activeSubTab.commissions === 'summary' && (
                     <div className="space-y-4">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Staff</TableHead>
-                            <TableHead className="text-right">Gross</TableHead>
-                            <TableHead className="text-right">Rate %</TableHead>
-                            <TableHead className="text-right">Commission</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {Object.values(commissionSummary).map(row => (
-                            <TableRow key={row.staffId}>
-                              <TableCell>{row.staffName}</TableCell>
-                              <TableCell className="text-right">${row.gross.toFixed(2)}</TableCell>
-                              <TableCell className="text-right">{row.commissionRate.toFixed(2)}</TableCell>
-                              <TableCell className="text-right">${row.commission.toFixed(2)}</TableCell>
+                      <div className="overflow-x-auto">
+                        <Table className={`min-w-[720px] ${density === 'compact' ? 'overflow-hidden' : ''}`}>
+                          <TableHeader className={`${density === 'compact' ? 'text-xs' : ''}`}>
+                            <TableRow>
+                              <TableHead className={`${density === 'compact' ? 'px-2 py-1' : ''}`}>Staff</TableHead>
+                              <TableHead className="text-right text-sm">Gross</TableHead>
+                              <TableHead className="text-right text-sm">Rate %</TableHead>
+                              <TableHead className="text-right text-sm">Commission</TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                          </TableHeader>
+                          <TableBody className={`${density === 'compact' ? 'text-xs' : ''}`}>
+                            {Object.values(commissionSummary).map(row => (
+                              <TableRow key={row.staffId}>
+                                <TableCell className={`${density === 'compact' ? 'px-2 py-1' : ''}`}>{row.staffName}</TableCell>
+                                <TableCell className="text-right">${row.gross.toFixed(2)}</TableCell>
+                                <TableCell className="text-right">{row.commissionRate.toFixed(2)}</TableCell>
+                                <TableCell className="text-right">${row.commission.toFixed(2)}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
                     </div>
                   )}
 
                   {activeSubTab.commissions === 'detailed' && (
                     <div className="space-y-4">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Service</TableHead>
-                            <TableHead>Staff</TableHead>
-                            <TableHead className="text-right">Qty</TableHead>
-                            <TableHead className="text-right">Unit Price</TableHead>
-                            <TableHead className="text-right">Gross</TableHead>
-                            <TableHead className="text-right">Rate %</TableHead>
-                            <TableHead className="text-right">Commission</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {commissionRows.map((r: any) => {
-                            const qty = Number(r.quantity || 1);
-                            const unit = Number(r.unit_price || 0);
-                            const gross = qty * unit;
-                            const rate = (r.service?.commission_percentage ?? r.staff?.commission_rate ?? 0) as number;
-                            const comm = gross * (Number(rate) || 0) / 100;
-                            return (
-                              <TableRow key={r.id}>
-                                <TableCell>{(r.created_at || r.receipt?.created_at || '').split('T')[0]}</TableCell>
-                                <TableCell>{r.service?.name || r.description}</TableCell>
-                                <TableCell>{r.staff?.full_name || 'Unassigned'}</TableCell>
-                                <TableCell className="text-right">{qty}</TableCell>
-                                <TableCell className="text-right">${unit.toFixed(2)}</TableCell>
-                                <TableCell className="text-right">${gross.toFixed(2)}</TableCell>
-                                <TableCell className="text-right">{Number(rate).toFixed(2)}</TableCell>
-                                <TableCell className="text-right">${comm.toFixed(2)}</TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
+                      <div className="overflow-x-auto">
+                        <Table className={`min-w-[900px] ${density === 'compact' ? 'overflow-hidden' : ''}`}>
+                          <TableHeader className={`${density === 'compact' ? 'text-xs' : ''}`}>
+                            <TableRow>
+                              <TableHead className={`${density === 'compact' ? 'px-2 py-1' : ''}`}>Date</TableHead>
+                              <TableHead className={`${density === 'compact' ? 'px-2 py-1' : ''}`}>Service</TableHead>
+                              <TableHead className={`${density === 'compact' ? 'px-2 py-1' : ''}`}>Staff</TableHead>
+                              <TableHead className="text-right text-sm">Qty</TableHead>
+                              <TableHead className="text-right text-sm">Unit Price</TableHead>
+                              <TableHead className="text-right text-sm">Gross</TableHead>
+                              <TableHead className="text-right text-sm">Rate %</TableHead>
+                              <TableHead className="text-right text-sm">Commission</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody className={`${density === 'compact' ? 'text-xs' : ''}`}>
+                            {commissionRows.map((r: any) => {
+                              const qty = Number(r.quantity || 1);
+                              const unit = Number(r.unit_price || 0);
+                              const gross = qty * unit;
+                              const rate = Number(r.service?.commission_percentage ?? r.staff?.commission_rate ?? 0);
+                              const comm = gross * (Number(rate) || 0) / 100;
+                              return (
+                                <TableRow key={r.id}>
+                                  <TableCell className={`${density === 'compact' ? 'px-2 py-1' : ''}`}>{(r.created_at || r.receipt?.created_at || '').split('T')[0]}</TableCell>
+                                  <TableCell className={`${density === 'compact' ? 'px-2 py-1' : ''}`}>{r.service?.name || r.description}</TableCell>
+                                  <TableCell className={`${density === 'compact' ? 'px-2 py-1' : ''}`}>{r.staff?.full_name || 'Unassigned'}</TableCell>
+                                  <TableCell className="text-right">{qty}</TableCell>
+                                  <TableCell className="text-right">${unit.toFixed(2)}</TableCell>
+                                  <TableCell className="text-right">${gross.toFixed(2)}</TableCell>
+                                  <TableCell className="text-right">{Number(rate).toFixed(2)}</TableCell>
+                                  <TableCell className="text-right">${comm.toFixed(2)}</TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
                     </div>
                   )}
                 </CardContent>

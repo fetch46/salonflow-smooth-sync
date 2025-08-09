@@ -170,6 +170,14 @@ export default function Clients() {
   const [viewMode, setViewMode] = useState<"cards" | "table">("table");
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('create') === '1') {
+      setEditingClient(null);
+      setIsModalOpen(true);
+    }
+  }, []);
+
   const handleViewProfile = (id: string) => navigate(`/clients/${id}`);
   const handleBookAppointment = (c: Client) => {
     const params = new URLSearchParams({
