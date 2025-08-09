@@ -231,12 +231,22 @@ const Reports = () => {
           if (!summary[staffId]) summary[staffId] = { staffId, staffName, gross: 0, commissionRate: 0, commission: 0 };
           summary[staffId].gross += gross;
         }
-        setCommissionSummary(summary);
-      } catch {}
-    } finally {
-      setLoading(false);
-    }
-  };
+                setCommissionSummary(summary);
+       } catch (err2) {
+         console.error('Commission fallback error', err2);
+       }
+     } finally {
+       setLoading(false);
+     }
+   };
+
+   // Automatically refresh commissions when tab or filters change
+   useEffect(() => {
+     if (activeTab === 'commissions') {
+       loadCommissions();
+     }
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [activeTab, startDate, endDate, commissionStaffFilter]);
 
   // Mock data for reports
   const mockData = {
