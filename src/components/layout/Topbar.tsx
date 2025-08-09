@@ -43,6 +43,7 @@ export function AppTopbar() {
 
   return (
     <header className="sticky top-0 z-40 h-16 border-b bg-card/60 backdrop-blur-xl supports-[backdrop-filter]:bg-card/50">
+      <div className="absolute inset-0 bg-gradient-to-r from-purple-50/60 to-violet-50/60 pointer-events-none" />
       <div className="flex h-full items-center justify-between px-4 md:px-6">
         <div className="flex items-center gap-3 md:gap-4">
           <SidebarTrigger className="md:hidden" />
@@ -94,6 +95,11 @@ export function AppTopbar() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80">
+              <div className="flex items-center justify-between px-2 py-1">
+                <button className="text-xs text-muted-foreground hover:underline" onClick={(e) => { e.preventDefault(); /* TODO: wire to notifications API */ }}>
+                  Mark all as read
+                </button>
+              </div>
               <DropdownMenuLabel>Notifications</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="flex flex-col items-start p-4">
@@ -113,10 +119,10 @@ export function AppTopbar() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                  {user?.email?.[0].toUpperCase()}
+                  {(user as any)?.user_metadata?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
                 </div>
                 <div className="hidden md:block text-left">
-                  <div className="text-sm font-medium leading-tight">{user?.email}</div>
+                  <div className="text-sm font-medium leading-tight">{(user as any)?.user_metadata?.full_name || user?.email}</div>
                   <RoleBadge role={organizationRole} />
                 </div>
                 <ChevronDown className="w-4 h-4" />
@@ -125,7 +131,7 @@ export function AppTopbar() {
             <DropdownMenuContent align="end" className="w-64">
               <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
-                  <div className="font-medium">{user?.email}</div>
+                  <div className="font-medium">{(user as any)?.user_metadata?.full_name || user?.email}</div>
                   {organization && (
                     <div className="flex items-center justify-between">
                       <div className="text-sm text-muted-foreground">{organization.name}</div>
@@ -142,7 +148,7 @@ export function AppTopbar() {
                 Settings
               </DropdownMenuItem>
               {isTrialing && (
-                <DropdownMenuItem onClick={() => navigate("/settings")}>
+                <DropdownMenuItem onClick={() => navigate("/upgrade-plan")}>
                   <CreditCard className="w-4 h-4 mr-2" />
                   Upgrade Plan
                 </DropdownMenuItem>
@@ -191,6 +197,11 @@ export function SuperAdminTopbar() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80">
+              <div className="flex items-center justify-between px-2 py-1">
+                <button className="text-xs text-muted-foreground hover:underline" onClick={(e) => { e.preventDefault(); /* TODO: wire to notifications API */ }}>
+                  Mark all as read
+                </button>
+              </div>
               <DropdownMenuLabel>System Notifications</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="flex flex-col items-start p-4">
@@ -210,10 +221,10 @@ export function SuperAdminTopbar() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="flex items-center gap-2 text-white hover:bg-white/10">
                 <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                  {user?.email?.[0].toUpperCase()}
+                  {(user as any)?.user_metadata?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
                 </div>
                 <div className="hidden md:block text-left">
-                  <div className="text-sm font-medium leading-tight">{user?.email}</div>
+                  <div className="text-sm font-medium leading-tight">{(user as any)?.user_metadata?.full_name || user?.email}</div>
                   <div className="text-xs text-white/80 flex items-center gap-1">
                     <Crown className="w-3 h-3" /> Super Admin
                   </div>
@@ -224,7 +235,7 @@ export function SuperAdminTopbar() {
             <DropdownMenuContent align="end" className="w-64">
               <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
-                  <div className="font-medium">{user?.email}</div>
+                  <div className="font-medium">{(user as any)?.user_metadata?.full_name || user?.email}</div>
                   <div className="flex items-center gap-1 text-sm text-purple-600">
                     <Crown className="w-3 h-3" /> Super Administrator
                   </div>

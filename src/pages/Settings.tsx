@@ -22,10 +22,8 @@ export default function Settings() {
     name: "SalonSync Demo",
     address: "123 Beauty Street",
     city: "New York",
-    state: "NY",
-    zip: "10001",
-    country: "US",
-    phone: "+1 (555) 123-4567",
+        country: "US",
+phone: "+1 (555) 123-4567",
     email: "info@salonsync.demo",
     website: "www.salonsync.demo",
     tax_id: "123-45-6789",
@@ -38,6 +36,8 @@ export default function Settings() {
   const { organization, updateOrganization } = useOrganization();
   const [currencies, setCurrencies] = useState<{ id: string; code: string; name: string; symbol: string; is_active: boolean; }[]>([]);
   const [selectedCurrencyId, setSelectedCurrencyId] = useState<string>("");
+  const [countries, setCountries] = useState<{ id: string; code: string; name: string; is_active: boolean }[]>([])
+  const [selectedCountryCode, setSelectedCountryCode] = useState<string>("US")
 
   // Users & Roles State
   const [users] = useState([
@@ -92,6 +92,12 @@ export default function Settings() {
         .eq('is_active', true)
         .order('code')
       setCurrencies(data || [])
+      const { data: countryData } = await supabase
+        .from('countries')
+        .select('*')
+        .eq('is_active', true)
+        .order('name')
+      setCountries(countryData || [])
     })()
   }, [])
 
@@ -103,17 +109,14 @@ export default function Settings() {
         name: organization.name || prev.name,
         address: s.address || prev.address,
         city: s.city || prev.city,
-        state: s.state || prev.state,
-        zip: s.zip || prev.zip,
         country: s.country || prev.country,
         phone: s.phone || prev.phone,
         email: s.email || prev.email,
         website: s.website || prev.website,
-        tax_id: s.tax_id || prev.tax_id,
-        logo_url: organization.logo_url || prev.logo_url,
         timezone: s.timezone || prev.timezone,
       }))
       setSelectedCurrencyId((organization as any).currency_id || "")
+      setSelectedCountryCode(s.country || "US")
     }
   }, [organization])
 
@@ -132,13 +135,10 @@ export default function Settings() {
           ...(organization.settings as any),
           address: companyData.address,
           city: companyData.city,
-          state: companyData.state,
-          zip: companyData.zip,
-          country: companyData.country,
+          country: selectedCountryCode,
           phone: companyData.phone,
           email: companyData.email,
           website: companyData.website,
-          tax_id: companyData.tax_id,
           timezone: companyData.timezone,
         },
       } as any)
@@ -222,121 +222,61 @@ export default function Settings() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleCompanySubmit} className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="company_name">Company Name *</Label>
-                    <Input
-                      id="company_name"
-                      value={companyData.name}
-                      onChange={(e) => setCompanyData({ ...companyData, name: e.target.value })}
-                      required
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Business Name</Label>
+                    <Input id="name" value={companyData.name} onChange={(e) => setCompanyData({ ...companyData, name: e.target.value })} />
                   </div>
-                  <div>
-                    <Label htmlFor="email">Email *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={companyData.email}
-                      onChange={(e) => setCompanyData({ ...companyData, email: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input
-                      id="phone"
-                      value={companyData.phone}
-                      onChange={(e) => setCompanyData({ ...companyData, phone: e.target.value })}
-                    />
-                  </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="website">Website</Label>
-                    <Input
-                      id="website"
-                      value={companyData.website}
-                      onChange={(e) => setCompanyData({ ...companyData, website: e.target.value })}
-                    />
+                    <Input id="website" value={companyData.website} onChange={(e) => setCompanyData({ ...companyData, website: e.target.value })} />
                   </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="address">Address</Label>
-                  <Input
-                    id="address"
-                    value={companyData.address}
-                    onChange={(e) => setCompanyData({ ...companyData, address: e.target.value })}
-                  />
-                </div>
-
-                <div className="grid grid-cols-4 gap-4">
-                  <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="address">Address</Label>
+                    <Input id="address" value={companyData.address} onChange={(e) => setCompanyData({ ...companyData, address: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="city">City</Label>
-                    <Input
-                      id="city"
-                      value={companyData.city}
-                      onChange={(e) => setCompanyData({ ...companyData, city: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="state">State</Label>
-                    <Input
-                      id="state"
-                      value={companyData.state}
-                      onChange={(e) => setCompanyData({ ...companyData, state: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="zip">ZIP Code</Label>
-                    <Input
-                      id="zip"
-                      value={companyData.zip}
-                      onChange={(e) => setCompanyData({ ...companyData, zip: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="country">Country</Label>
-                    <Select value={companyData.country} onValueChange={(value) => setCompanyData({ ...companyData, country: value })}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="US">United States</SelectItem>
-                        <SelectItem value="CA">Canada</SelectItem>
-                        <SelectItem value="UK">United Kingdom</SelectItem>
-                        <SelectItem value="AU">Australia</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Input id="city" value={companyData.city} onChange={(e) => setCompanyData({ ...companyData, city: e.target.value })} />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="tax_id">Tax ID</Label>
-                    <Input
-                      id="tax_id"
-                      value={companyData.tax_id}
-                      onChange={(e) => setCompanyData({ ...companyData, tax_id: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="timezone">Timezone</Label>
-                    <Select value={companyData.timezone} onValueChange={(value) => setCompanyData({ ...companyData, timezone: value })}>
-                      <SelectTrigger>
-                        <SelectValue />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="country">Country</Label>
+                    <Select value={selectedCountryCode} onValueChange={setSelectedCountryCode}>
+                      <SelectTrigger id="country">
+                        <SelectValue placeholder="Select country" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="America/New_York">Eastern Time</SelectItem>
-                        <SelectItem value="America/Chicago">Central Time</SelectItem>
-                        <SelectItem value="America/Denver">Mountain Time</SelectItem>
-                        <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
+                        {countries.map((c) => (
+                          <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input id="phone" value={companyData.phone} onChange={(e) => setCompanyData({ ...companyData, phone: e.target.value })} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" value={companyData.email} onChange={(e) => setCompanyData({ ...companyData, email: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="timezone">Timezone</Label>
+                    <Input id="timezone" value={companyData.timezone} onChange={(e) => setCompanyData({ ...companyData, timezone: e.target.value })} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
                     <Label htmlFor="currency">Currency</Label>
                     <Select value={selectedCurrencyId} onValueChange={setSelectedCurrencyId}>
                       <SelectTrigger>
@@ -345,28 +285,20 @@ export default function Settings() {
                       <SelectContent>
                         {currencies.map((c) => (
                           <SelectItem key={c.id} value={c.id}>
-                            {c.code} ({c.symbol}) — {c.name}
+                            {c.code} — {c.name} ({c.symbol})
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="logo_url">Logo URL</Label>
-                  <Input
-                    id="logo_url"
-                    value={companyData.logo_url}
-                    onChange={(e) => setCompanyData({ ...companyData, logo_url: e.target.value })}
-                    placeholder="https://example.com/logo.png"
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="logo_url">Logo URL</Label>
+                    <Input id="logo_url" value={companyData.logo_url} onChange={(e) => setCompanyData({ ...companyData, logo_url: e.target.value })} />
+                  </div>
                 </div>
 
                 <div className="flex justify-end">
-                  <Button type="submit" className="bg-gradient-to-r from-pink-500 to-purple-600">
-                    Save Company Settings
-                  </Button>
+                  <Button type="submit">Save Changes</Button>
                 </div>
               </form>
             </CardContent>

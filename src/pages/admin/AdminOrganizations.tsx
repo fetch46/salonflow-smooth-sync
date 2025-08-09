@@ -219,10 +219,10 @@ const AdminOrganizations = () => {
     }
 
     try {
-      const { error } = await supabase
-        .from('organizations')
-        .delete()
-        .eq('id', id);
+      // Prefer soft delete through service to maintain referential integrity
+      const { OrganizationService } = await import("@/lib/saas/services");
+      await OrganizationService.deleteOrganization(id);
+      const error = null as any;
 
       if (error) throw error;
 

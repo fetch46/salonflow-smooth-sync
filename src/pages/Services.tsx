@@ -60,6 +60,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import ServicesTable from "@/components/services/ServicesTable";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 
 interface Service {
   id: string;
@@ -146,6 +147,8 @@ export default function Services() {
   const [serviceKits, setServiceKits] = useState<ServiceKit[]>([]);
   const [viewMode, setViewMode] = useState<"cards" | "table">("table");
  
+  const { format: formatCurrency } = useOrganizationCurrency();
+
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -394,8 +397,7 @@ export default function Services() {
     }
   };
 
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(price);
+  const formatPrice = (price: number) => formatCurrency(price);
 
   const formatDuration = (minutes: number) => {
     const h = Math.floor(minutes / 60);

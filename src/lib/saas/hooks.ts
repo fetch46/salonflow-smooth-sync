@@ -376,3 +376,49 @@ export const useFeatureGuard = (feature: string) => {
   
   return hasFeature(feature)
 }
+
+export const useOrganizationCurrency = () => {
+  const { organization } = useSaas()
+  const [currency, setCurrency] = useState<{ id: string; code: string; symbol: string } | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    let isMounted = true
+    ;(async () => {
+      if (!organization || !(organization as any).currency_id) {
+        if (isMounted) setCurrency(null)
+        return
+      }
+      try {
+        setLoading(true)
+        const { supabase } = await import('@/integrations/supabase/client')
+        const { data, error } = await supabase
+          .from('currencies')
+          .select('id, code, symbol')
+          .eq('id', (organization as any).currency_id)
+          .maybeSingle()
+        if (error) throw error
+        if (isMounted) setCurrency(data as any)
+      } catch (_) {
+        if (isMounted) setCurrency(null)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    })()
+    return () => {
+      isMounted = false
+    }
+  }, [organization])
+
+  const format = useCallback(
+    (amount: number | null | undefined, opts?: { decimals?: number }) => {
+      const n = typeof amount === 'number' ? amount : 0
+      const decimals = opts?.decimals ?? 2
+      const sym = currency?.symbol ?? '$'
+      return `${sym}${n.toFixed(decimals)}`
+    },
+    [currency]
+  )
+
+  return { currency, symbol: currency?.symbol ?? '$', code: currency?.code ?? 'USD', loading, format }
+}

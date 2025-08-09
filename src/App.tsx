@@ -37,6 +37,9 @@ import Booking from "@/pages/Booking";
 import NotFound from "@/pages/NotFound";
 import Landing from "@/pages/Landing";
 import Reports from "@/pages/Reports";
+import BillingHistory from "@/pages/BillingHistory";
+import PaymentMethod from "@/pages/PaymentMethod";
+import UpgradePlan from "@/pages/UpgradePlan";
 import Profile from "@/pages/Profile";
 import Help from "@/pages/Help";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -148,7 +151,10 @@ const AppRoutes = () => {
         
         
         {/* Settings & Support */}
-        <Route path="settings" element={<Settings />} />
+                 <Route path="settings" element={<Settings />} />
+        <Route path="billing-history" element={<BillingHistory />} />
+        <Route path="payment-method" element={<PaymentMethod />} />
+        <Route path="upgrade-plan" element={<UpgradePlan />} />
         <Route path="profile" element={<Profile />} />
         <Route path="reports" element={<Reports />} />
         <Route path="help" element={<Help />} />

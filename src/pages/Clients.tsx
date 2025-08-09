@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -180,7 +181,8 @@ export default function Clients() {
     navigate(`/appointments?${params.toString()}`);
   };
 
-  const formatMoney = (n: number) => `$${(n || 0).toFixed(2)}`;
+  const { symbol, format } = useOrganizationCurrency();
+  const formatMoney = (n: number) => format(n || 0);
   const formatLastVisit = (d?: string) => getDaysSinceLastVisit(d);
 
 
@@ -680,7 +682,7 @@ export default function Clients() {
             <DollarSign className="h-4 w-4 text-white/80" />
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">${stats.totalRevenue.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-white">{symbol}{stats.totalRevenue.toLocaleString()}</div>
             <p className="text-xs text-white/80">
               From all clients
             </p>
@@ -694,7 +696,7 @@ export default function Clients() {
             <Target className="h-4 w-4 text-white/80" />
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">${stats.averageSpent.toFixed(0)}</div>
+            <div className="text-2xl font-bold text-white">{symbol}{stats.averageSpent.toFixed(0)}</div>
             <p className="text-xs text-white/80">
               Per client
             </p>
@@ -984,7 +986,7 @@ export default function Clients() {
                   onEdit={(c) => handleEdit(c as any)}
                   onDelete={handleDelete}
                   getStatusBadge={(s) => getStatusBadge(s)}
-                  formatMoney={(n) => `$${(n || 0).toFixed(2)}`}
+                  formatMoney={(n) => format(n)}
                   formatLastVisit={(d) => getDaysSinceLastVisit(d)}
                 />
               </div>
@@ -1075,7 +1077,7 @@ export default function Clients() {
                           <div className="space-y-2">
                             <div className="flex items-center text-slate-600">
                               <DollarSign className="w-4 h-4 mr-2" />
-                              ${(client.total_spent || 0).toLocaleString()}
+                              {symbol}{(client.total_spent || 0).toLocaleString()}
                             </div>
                             <div className="flex items-center text-slate-600">
                               <Calendar className="w-4 h-4 mr-2" />
