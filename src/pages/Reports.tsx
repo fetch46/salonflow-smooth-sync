@@ -375,7 +375,7 @@ const Reports = () => {
                   <button className={`text-left ${activeSubTab.clients === 'top' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, clients: 'top' })); setSearchParams({ tab: 'clients', sub: 'top' }, { replace: true }); }}>Top Clients</button>
                 </div>
               )}
-              <TabsTrigger value="pnl" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
+              <TabsList className="flex flex-col w-full items-stretch rounded-xl border bg-card shadow-sm p-1 gap-1 h-auto">
                 <DollarSign className="w-4 h-4" /> P&L
               </TabsTrigger>
               <TabsTrigger value="balancesheet" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
