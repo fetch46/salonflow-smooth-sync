@@ -68,19 +68,6 @@ export default function AdminLandingCMS() {
     load();
   }, [isSuperAdmin]);
 
-  if (!isSuperAdmin) {
-    return (
-      <div className="p-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Access Denied</CardTitle>
-            <CardDescription>Only super admins can access the landing CMS.</CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
-
   const saveSettings = async () => {
     if (!settings) return;
     setSavingSettings(true);
@@ -182,163 +169,174 @@ export default function AdminLandingCMS() {
 
   return (
     <div className="p-6 md:p-8 space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">Landing CMS</h1>
-        <p className="text-muted-foreground">Manage landing page content and business listings</p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Landing Content</CardTitle>
-          <CardDescription>Update hero text, highlights, and CTAs</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <Label>Hero Title</Label>
-              <Input value={settings?.hero_title ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), hero_title: e.target.value }))} />
-            </div>
-            <div>
-              <Label>Hero Subtitle</Label>
-              <Input value={settings?.hero_subtitle ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), hero_subtitle: e.target.value }))} />
-            </div>
-          </div>
+      {!isSuperAdmin ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Access Denied</CardTitle>
+            <CardDescription>Only super admins can access the landing CMS.</CardDescription>
+          </CardHeader>
+        </Card>
+      ) : (
+        <>
           <div>
-            <Label>Highlights (comma separated)</Label>
-            <Input value={(settings?.highlights ?? []).join(', ')} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), highlights: e.target.value.split(',').map(v => v.trim()).filter(Boolean) }))} />
+            <h1 className="text-3xl font-bold">Landing CMS</h1>
+            <p className="text-muted-foreground">Manage landing page content and business listings</p>
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <Label>Primary CTA Text</Label>
-              <Input value={settings?.cta_primary_text ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), cta_primary_text: e.target.value }))} />
-            </div>
-            <div>
-              <Label>Secondary CTA Text</Label>
-              <Input value={settings?.cta_secondary_text ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), cta_secondary_text: e.target.value }))} />
-            </div>
-          </div>
-          <div>
-            <Label>Pricing Copy</Label>
-            <Textarea value={settings?.pricing_copy ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), pricing_copy: e.target.value }))} />
-          </div>
-          <div className="flex justify-end">
-            <Button onClick={saveSettings} disabled={savingSettings}>{savingSettings ? 'Saving...' : 'Save Settings'}</Button>
-          </div>
-        </CardContent>
-      </Card>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Business Listings</CardTitle>
-              <CardDescription>Curate public directory content</CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Input placeholder="Search" value={search} onChange={(e) => setSearch(e.target.value)} className="w-64" />
-              <Button onClick={openNew}>New Listing</Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loadingListings ? (
-            <div className="text-muted-foreground">Loading...</div>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredListings.map((l) => (
-                <div key={l.id} className="border rounded-lg p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="font-medium flex items-center gap-2">
-                        {l.logo_url ? <img src={l.logo_url} className="w-6 h-6 rounded" /> : <div className="w-6 h-6 rounded bg-primary/10" />}
-                        {l.name}
-                        {!l.is_active && <Badge variant="secondary">Inactive</Badge>}
-                        {l.is_featured && <Badge>Featured</Badge>}
-                      </div>
-                      <div className="text-sm text-muted-foreground">{[l.category, [l.city, l.country].filter(Boolean).join(', ')].filter(Boolean).join(' • ')}</div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => openEdit(l)}>Edit</Button>
-                      <Button variant="destructive" size="sm" onClick={() => deleteListing(l.id)}>Delete</Button>
-                    </div>
-                  </div>
-                  {l.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{l.description}</p>}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editing?.id ? 'Edit Listing' : 'New Listing'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label>Name</Label>
-              <Input value={editing?.name ?? ''} onChange={(e) => setEditing((p) => ({ ...(p || {}), name: e.target.value }))} />
-            </div>
-            <div>
-              <Label>Description</Label>
-              <Textarea value={editing?.description ?? ''} onChange={(e) => setEditing((p) => ({ ...(p || {}), description: e.target.value }))} />
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              <div>
-                <Label>Category</Label>
-                <Input value={editing?.category ?? ''} onChange={(e) => setEditing((p) => ({ ...(p || {}), category: e.target.value }))} />
-              </div>
-              <div>
-                <Label>Website URL</Label>
-                <Input value={editing?.website_url ?? ''} onChange={(e) => setEditing((p) => ({ ...(p || {}), website_url: e.target.value }))} />
-              </div>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              <div>
-                <Label>City</Label>
-                <Input value={editing?.city ?? ''} onChange={(e) => setEditing((p) => ({ ...(p || {}), city: e.target.value }))} />
-              </div>
-              <div>
-                <Label>Country</Label>
-                <Input value={editing?.country ?? ''} onChange={(e) => setEditing((p) => ({ ...(p || {}), country: e.target.value }))} />
-              </div>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              <div>
-                <Label>Logo URL</Label>
-                <Input value={editing?.logo_url ?? ''} onChange={(e) => setEditing((p) => ({ ...(p || {}), logo_url: e.target.value }))} />
-              </div>
-              <div className="grid grid-cols-2 gap-3 items-center">
+          <Card>
+            <CardHeader>
+              <CardTitle>Landing Content</CardTitle>
+              <CardDescription>Update hero text, highlights, and CTAs</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <Label>Featured</Label>
+                  <Label>Hero Title</Label>
+                  <Input value={settings?.hero_title ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), hero_title: e.target.value }))} />
                 </div>
-                <Switch checked={!!editing?.is_featured} onCheckedChange={(v) => setEditing((p) => ({ ...(p || {}), is_featured: v }))} />
-              </div>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              <div>
-                <Label>Rating</Label>
-                <Input type="number" step="0.1" min="0" max="5" value={editing?.rating ?? ''} onChange={(e) => setEditing((p) => ({ ...(p || {}), rating: e.target.value === '' ? null : Number(e.target.value) }))} />
+                <div>
+                  <Label>Hero Subtitle</Label>
+                  <Input value={settings?.hero_subtitle ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), hero_subtitle: e.target.value }))} />
+                </div>
               </div>
               <div>
-                <Label>Review Count</Label>
-                <Input type="number" min="0" value={editing?.review_count ?? 0} onChange={(e) => setEditing((p) => ({ ...(p || {}), review_count: Number(e.target.value) }))} />
+                <Label>Highlights (comma separated)</Label>
+                <Input value={(settings?.highlights ?? []).join(', ')} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), highlights: e.target.value.split(',').map(v => v.trim()).filter(Boolean) }))} />
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3 items-center">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <Label>Primary CTA Text</Label>
+                  <Input value={settings?.cta_primary_text ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), cta_primary_text: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Secondary CTA Text</Label>
+                  <Input value={settings?.cta_secondary_text ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), cta_secondary_text: e.target.value }))} />
+                </div>
+              </div>
               <div>
-                <Label>Active</Label>
+                <Label>Pricing Copy</Label>
+                <Textarea value={settings?.pricing_copy ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), pricing_copy: e.target.value }))} />
               </div>
-              <Switch checked={editing?.is_active !== false} onCheckedChange={(v) => setEditing((p) => ({ ...(p || {}), is_active: v }))} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditModalOpen(false)}>Cancel</Button>
-            <Button onClick={saveListing}>Save</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <div className="flex justify-end">
+                <Button onClick={saveSettings} disabled={savingSettings}>{savingSettings ? 'Saving...' : 'Save Settings'}</Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Business Listings</CardTitle>
+                  <CardDescription>Curate public directory content</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input placeholder="Search" value={search} onChange={(e) => setSearch(e.target.value)} className="w-64" />
+                  <Button onClick={openNew}>New Listing</Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingListings ? (
+                <div className="text-muted-foreground">Loading...</div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {filteredListings.map((l) => (
+                    <div key={l.id} className="border rounded-lg p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="font-medium flex items-center gap-2">
+                            {l.logo_url ? <img src={l.logo_url} className="w-6 h-6 rounded" /> : <div className="w-6 h-6 rounded bg-primary/10" />}
+                            {l.name}
+                            {!l.is_active && <Badge variant="secondary">Inactive</Badge>}
+                            {l.is_featured && <Badge>Featured</Badge>}
+                          </div>
+                          <div className="text-sm text-muted-foreground">{[l.category, [l.city, l.country].filter(Boolean).join(', ')].filter(Boolean).join(' • ')}</div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => openEdit(l)}>Edit</Button>
+                          <Button variant="destructive" size="sm" onClick={() => deleteListing(l.id)}>Delete</Button>
+                        </div>
+                      </div>
+                      {l.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{l.description}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editing?.id ? 'Edit Listing' : 'New Listing'}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div>
+                  <Label>Name</Label>
+                  <Input value={editing?.name ?? ''} onChange={(e) => setEditing((p) => ({ ...(p || {}), name: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Description</Label>
+                  <Textarea value={editing?.description ?? ''} onChange={(e) => setEditing((p) => ({ ...(p || {}), description: e.target.value }))} />
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <Label>Category</Label>
+                    <Input value={editing?.category ?? ''} onChange={(e) => setEditing((p) => ({ ...(p || {}), category: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label>Website URL</Label>
+                    <Input value={editing?.website_url ?? ''} onChange={(e) => setEditing((p) => ({ ...(p || {}), website_url: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <Label>City</Label>
+                    <Input value={editing?.city ?? ''} onChange={(e) => setEditing((p) => ({ ...(p || {}), city: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label>Country</Label>
+                    <Input value={editing?.country ?? ''} onChange={(e) => setEditing((p) => ({ ...(p || {}), country: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <Label>Logo URL</Label>
+                    <Input value={editing?.logo_url ?? ''} onChange={(e) => setEditing((p) => ({ ...(p || {}), logo_url: e.target.value }))} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 items-center">
+                    <div>
+                      <Label>Featured</Label>
+                    </div>
+                    <Switch checked={!!editing?.is_featured} onCheckedChange={(v) => setEditing((p) => ({ ...(p || {}), is_featured: v }))} />
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <Label>Rating</Label>
+                    <Input type="number" step="0.1" min="0" max="5" value={editing?.rating ?? ''} onChange={(e) => setEditing((p) => ({ ...(p || {}), rating: e.target.value === '' ? null : Number(e.target.value) }))} />
+                  </div>
+                  <div>
+                    <Label>Review Count</Label>
+                    <Input type="number" min="0" value={editing?.review_count ?? 0} onChange={(e) => setEditing((p) => ({ ...(p || {}), review_count: Number(e.target.value) }))} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 items-center">
+                  <div>
+                    <Label>Active</Label>
+                  </div>
+                  <Switch checked={editing?.is_active !== false} onCheckedChange={(v) => setEditing((p) => ({ ...(p || {}), is_active: v }))} />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditModalOpen(false)}>Cancel</Button>
+                <Button onClick={saveListing}>Save</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
     </div>
   );
 }
