@@ -45,6 +45,9 @@ import AdminSubscriptionPlans from "@/pages/admin/AdminSubscriptionPlans";
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminInvitations from "@/pages/admin/AdminInvitations";
 import AdminBusinessData from "@/pages/admin/AdminBusinessData";
+import AdminSuperAdmins from "@/pages/admin/AdminSuperAdmins";
+import AdminActivity from "@/pages/admin/AdminActivity";
+import AdminSystemSettings from "@/pages/admin/AdminSystemSettings";
 
 // SAAS-specific wrapper component to handle routing logic
 const AppRoutes = () => {
@@ -97,6 +100,9 @@ const AppRoutes = () => {
       <Route path="/admin/users" element={<AdminUsers />} />
       <Route path="/admin/invitations" element={<AdminInvitations />} />
       <Route path="/admin/business-data" element={<AdminBusinessData />} />
+      <Route path="/super-admin/super-admins" element={<AdminSuperAdmins />} />
+      <Route path="/super-admin/activity" element={<AdminActivity />} />
+      <Route path="/super-admin/settings" element={<AdminSystemSettings />} />
       
       {/* Redirect auth pages if already logged in */}
       <Route path="/login" element={<Navigate to="/dashboard" replace />} />
