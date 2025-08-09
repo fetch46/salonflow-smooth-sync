@@ -15,7 +15,6 @@ interface Account {
   account_code: string;
   account_name: string;
   account_type: string;
-  account_subtype?: string | null;
   normal_balance?: string | null;
   description?: string | null;
   balance?: number | null;
@@ -34,7 +33,7 @@ export default function Accounts() {
     account_code: "",
     account_name: "",
     account_type: "Asset",
-    account_subtype: "",
+    normal_balance: "debit",
     description: "",
     parent_account_id: "",
   });
@@ -48,7 +47,7 @@ export default function Accounts() {
       setLoading(true);
       const { data, error } = await supabase
         .from("accounts")
-        .select("id, account_code, account_name, account_type, account_subtype, description, parent_account_id")
+        .select("id, account_code, account_name, account_type, normal_balance, description, parent_account_id")
         .order("account_code", { ascending: true });
       if (error) throw error;
       setAccounts(data || []);
@@ -72,7 +71,7 @@ export default function Accounts() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ account_code: "", account_name: "", account_type: "Asset", account_subtype: "", description: "", parent_account_id: "" });
+    setForm({ account_code: "", account_name: "", account_type: "Asset", normal_balance: "debit", description: "", parent_account_id: "" });
     setIsModalOpen(true);
   };
 
@@ -82,11 +81,17 @@ export default function Accounts() {
       account_code: acc.account_code,
       account_name: acc.account_name,
       account_type: acc.account_type,
-      account_subtype: acc.account_subtype || "",
+      normal_balance: acc.normal_balance || "debit",
       description: acc.description || "",
       parent_account_id: acc.parent_account_id || "",
     });
     setIsModalOpen(true);
+  };
+
+  const handleAccountTypeChange = (nextType: string) => {
+    // Sensible default: Asset/Expense -> debit, others -> credit
+    const inferredNormal = nextType === "Asset" || nextType === "Expense" ? "debit" : "credit";
+    setForm({ ...form, account_type: nextType, normal_balance: inferredNormal });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -99,7 +104,7 @@ export default function Accounts() {
             account_code: form.account_code,
             account_name: form.account_name,
             account_type: form.account_type,
-            account_subtype: form.account_subtype || null,
+            normal_balance: form.normal_balance,
             description: form.description || null,
             parent_account_id: form.parent_account_id || null,
           })
@@ -114,7 +119,7 @@ export default function Accounts() {
               account_code: form.account_code,
               account_name: form.account_name,
               account_type: form.account_type,
-              account_subtype: form.account_subtype || null,
+              normal_balance: form.normal_balance,
               description: form.description || null,
               parent_account_id: form.parent_account_id || null,
             },
@@ -137,7 +142,7 @@ export default function Accounts() {
       a.account_code.toLowerCase().includes(s) ||
       a.account_name.toLowerCase().includes(s) ||
       a.account_type.toLowerCase().includes(s) ||
-      (a.account_subtype || '').toLowerCase().includes(s)
+      (a.normal_balance || "").toLowerCase().includes(s)
     );
   }, [accounts, search]);
 
@@ -187,7 +192,7 @@ export default function Accounts() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Type</Label>
-                    <select className="border rounded px-3 py-2 w-full" value={form.account_type} onChange={(e) => setForm({ ...form, account_type: e.target.value })}>
+                    <select className="border rounded px-3 py-2 w-full" value={form.account_type} onChange={(e) => handleAccountTypeChange(e.target.value)}>
                       <option>Asset</option>
                       <option>Income</option>
                       <option>Liability</option>
@@ -196,8 +201,11 @@ export default function Accounts() {
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Subtype</Label>
-                    <Input value={form.account_subtype} onChange={(e) => setForm({ ...form, account_subtype: e.target.value })} placeholder="e.g., Cash, Bank, Accounts Receivable" />
+                    <Label>Normal Balance</Label>
+                    <select className="border rounded px-3 py-2 w-full" value={form.normal_balance} onChange={(e) => setForm({ ...form, normal_balance: e.target.value })}>
+                      <option value="debit">debit</option>
+                      <option value="credit">credit</option>
+                    </select>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -229,7 +237,7 @@ export default function Accounts() {
                 <TableHead>Code</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead>Subtype</TableHead>
+                <TableHead>Normal Balance</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -240,7 +248,7 @@ export default function Accounts() {
                   <TableCell className="font-medium">{acc.account_code}</TableCell>
                   <TableCell>{acc.account_name}</TableCell>
                   <TableCell>{acc.account_type}</TableCell>
-                  <TableCell>{acc.account_subtype || "—"}</TableCell>
+                  <TableCell>{acc.normal_balance || "—"}</TableCell>
                   <TableCell>{acc.description || "—"}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="outline" size="sm" onClick={() => openEdit(acc)}>Edit</Button>
