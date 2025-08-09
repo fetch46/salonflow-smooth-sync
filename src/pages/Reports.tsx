@@ -41,7 +41,7 @@ const Reports = () => {
   const [commissionRows, setCommissionRows] = useState<Array<any>>([]);
   const [commissionSummary, setCommissionSummary] = useState<Record<string, { staffId: string; staffName: string; gross: number; commissionRate: number; commission: number }>>({});
   const [commissionStaffFilter, setCommissionStaffFilter] = useState<string>('all');
-  const [pl, setPl] = useState<{ income: number; cogs: number; expenses: number; grossProfit: number; netProfit: number }>({ income: 0, cogs: 0, expenses: 0, grossProfit: 0, netProfit: 0 });
+  const [pl, setPl] = useState<{ income: number; cogs: number; expenses: number; grossProfit: number; netProfit: number; breakdown?: { income: Record<string, number>; expense: Record<string, number> } }>({ income: 0, cogs: 0, expenses: 0, grossProfit: 0, netProfit: 0 });
   const [bs, setBs] = useState<{ assets: number; liabilities: number; equity: number } >({ assets: 0, liabilities: 0, equity: 0 });
   const [startDate, setStartDate] = useState<string>(() => {
     const now = new Date();
@@ -79,31 +79,61 @@ const Reports = () => {
   const recalcFinancials = useCallback(async () => {
     setRecalcLoading(true);
     try {
-      const { data: txns, error } = await supabase
-        .from('account_transactions')
-        .select('account_id, transaction_date, debit_amount, credit_amount, accounts:account_id (account_type, account_code)')
-        .gte('transaction_date', startDate)
-        .lte('transaction_date', endDate);
-      if (error) throw error;
-      const transactions = txns || [];
+      // Cash-basis: derive income from receipt_payments and expenses from expenses with status paid within date range
+      const [{ data: payments }, { data: paidExpenses }, { data: txns } ] = await Promise.all([
+        supabase
+          .from('receipt_payments')
+          .select('amount, payment_date')
+          .gte('payment_date', startDate)
+          .lte('payment_date', endDate),
+        supabase
+          .from('expenses')
+          .select('amount, expense_date, category')
+          .eq('status', 'paid')
+          .gte('expense_date', startDate)
+          .lte('expense_date', endDate),
+        supabase
+          .from('account_transactions')
+          .select('account_id, transaction_date, debit_amount, credit_amount, description, accounts:account_id (account_type, account_code, account_subtype)')
+          .gte('transaction_date', startDate)
+          .lte('transaction_date', endDate),
+      ]);
 
+      const paymentsIncome = (payments || []).reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+      const expenseCash = (paidExpenses || []).reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0);
+
+      // Optional: COGS from account transactions tagged to COGS account (5001)
+      const transactions = txns || [];
+      const cogs = transactions
+        .filter((t: any) => t.accounts?.account_code === '5001')
+        .reduce((sum: number, t: any) => sum + (Number(t.debit_amount) || 0) - (Number(t.credit_amount) || 0), 0);
+
+      // Breakdown by subtype
+      const incomeBreakdown: Record<string, number> = {};
+      const expenseBreakdown: Record<string, number> = {};
+      for (const t of transactions as any[]) {
+        if (t.accounts?.account_type === 'Income') {
+          const key = t.accounts?.account_subtype || 'Income';
+          incomeBreakdown[key] = (incomeBreakdown[key] || 0) + ((Number(t.credit_amount) || 0) - (Number(t.debit_amount) || 0));
+        } else if (t.accounts?.account_type === 'Expense') {
+          const key = t.accounts?.account_subtype || 'Expense';
+          expenseBreakdown[key] = (expenseBreakdown[key] || 0) + ((Number(t.debit_amount) || 0) - (Number(t.credit_amount) || 0));
+        }
+      }
+
+      const income = paymentsIncome; // cash-basis income
+      const expenses = Math.max(0, expenseCash); // cash-basis expenses
+      const grossProfit = income - cogs;
+      const netProfit = grossProfit - expenses;
+      setPl({ income, cogs, expenses, grossProfit, netProfit, breakdown: { income: incomeBreakdown, expense: expenseBreakdown } });
+
+      // Balance Sheet snapshot using ledger by type within range
       const sumByType = (type: string) => transactions
         .filter((t: any) => t.accounts?.account_type === type)
         .reduce((sum: number, t: any) => sum + (Number(t.debit_amount) || 0) - (Number(t.credit_amount) || 0), 0);
       const sumByTypeCreditMinusDebit = (type: string) => transactions
         .filter((t: any) => t.accounts?.account_type === type)
         .reduce((sum: number, t: any) => sum + (Number(t.credit_amount) || 0) - (Number(t.debit_amount) || 0), 0);
-
-      const income = sumByTypeCreditMinusDebit('Income');
-      const cogs = transactions
-        .filter((t: any) => t.accounts?.account_code === '5001')
-        .reduce((sum: number, t: any) => sum + (Number(t.debit_amount) || 0) - (Number(t.credit_amount) || 0), 0);
-      const expenses = transactions
-        .filter((t: any) => t.accounts?.account_type === 'Expense' && t.accounts?.account_code !== '5001')
-        .reduce((sum: number, t: any) => sum + (Number(t.debit_amount) || 0) - (Number(t.credit_amount) || 0), 0);
-      const grossProfit = income - cogs;
-      const netProfit = grossProfit - expenses;
-      setPl({ income, cogs, expenses, grossProfit, netProfit });
 
       const assets = sumByType('Asset');
       const liabilities = sumByTypeCreditMinusDebit('Liability');
@@ -635,7 +665,7 @@ const Reports = () => {
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <div className="text-center p-4 bg-green-50 rounded-lg">
                       <div className="text-2xl font-bold text-green-700">${pl.income.toFixed(2)}</div>
-                      <div className="text-sm text-green-700">Income</div>
+                      <div className="text-sm text-green-700">Income (Cash-basis)</div>
                     </div>
                     <div className="text-center p-4 bg-amber-50 rounded-lg">
                       <div className="text-2xl font-bold text-amber-700">${pl.cogs.toFixed(2)}</div>
@@ -643,7 +673,7 @@ const Reports = () => {
                     </div>
                     <div className="text-center p-4 bg-red-50 rounded-lg">
                       <div className="text-2xl font-bold text-red-700">${pl.expenses.toFixed(2)}</div>
-                      <div className="text-sm text-red-700">Expenses</div>
+                      <div className="text-sm text-red-700">Expenses (Cash-basis)</div>
                     </div>
                     <div className="text-center p-4 bg-blue-50 rounded-lg">
                       <div className="text-2xl font-bold text-blue-700">${pl.grossProfit.toFixed(2)}</div>
@@ -654,6 +684,32 @@ const Reports = () => {
                     <div className="text-3xl font-bold text-indigo-700">${pl.netProfit.toFixed(2)}</div>
                     <div className="text-sm text-indigo-700">Net Profit</div>
                   </div>
+                  {pl.breakdown && (
+                    <div className="grid gap-6 md:grid-cols-2 mt-6">
+                      <div>
+                        <div className="font-semibold mb-2">Income Breakdown</div>
+                        <Table>
+                          <TableHeader><TableRow><TableHead>Subtype</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
+                          <TableBody>
+                            {Object.entries(pl.breakdown.income).map(([k,v]) => (
+                              <TableRow key={k}><TableCell>{k}</TableCell><TableCell className="text-right">${Number(v).toFixed(2)}</TableCell></TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                      <div>
+                        <div className="font-semibold mb-2">Expense Breakdown</div>
+                        <Table>
+                          <TableHeader><TableRow><TableHead>Subtype</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
+                          <TableBody>
+                            {Object.entries(pl.breakdown.expense).map(([k,v]) => (
+                              <TableRow key={k}><TableCell>{k}</TableCell><TableCell className="text-right">${Number(v).toFixed(2)}</TableCell></TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

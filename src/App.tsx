@@ -25,6 +25,8 @@ import Expenses from "@/pages/Expenses";
 import Purchases from "@/pages/Purchases";
 import Suppliers from "@/pages/Suppliers";
 import Accounts from "@/pages/Accounts";
+import AccountCreate from "@/pages/AccountCreate";
+import AccountEdit from "@/pages/AccountEdit";
 import POS from "@/pages/POS";
 import InventoryAdjustments from "@/pages/InventoryAdjustments";
 import Settings from "@/pages/Settings";
@@ -149,6 +151,8 @@ const AppRoutes = () => {
         <Route path="purchases" element={<Purchases />} />
         <Route path="suppliers" element={<Suppliers />} />
         <Route path="accounts" element={<Accounts />} />
+        <Route path="accounts/new" element={<AccountCreate />} />
+        <Route path="accounts/:id/edit" element={<AccountEdit />} />
         <Route path="payments" element={<Payments />} />
         
                  {/* Operations */}
