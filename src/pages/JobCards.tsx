@@ -132,6 +132,7 @@ export default function JobCards() {
   const [dateFilter, setDateFilter] = useState("all_time");
   const [activeTab, setActiveTab] = useState("all");
   const navigate = useNavigate();
+  const [jobCardsWithReceipts, setJobCardsWithReceipts] = useState<Set<string>>(new Set());
 
   // Mock data for additional fields - in a real app, this would come from the database
   const enrichJobCards = (cards: JobCard[]): JobCard[] => {
@@ -171,6 +172,22 @@ export default function JobCards() {
       }));
       
       setJobCards(enrichedData as any);
+
+      // Build a lookup of job cards that have at least one receipt
+      const jobIds = (data || []).map((c: any) => c.id);
+      if (jobIds.length > 0) {
+        const { data: receiptsData, error: receiptsError } = await supabase
+          .from('receipts')
+          .select('job_card_id')
+          .in('job_card_id', jobIds as string[]);
+        if (receiptsError) throw receiptsError;
+        const idsWithReceipts = new Set<string>((receiptsData || [])
+          .map((r: any) => r.job_card_id)
+          .filter(Boolean));
+        setJobCardsWithReceipts(idsWithReceipts);
+      } else {
+        setJobCardsWithReceipts(new Set());
+      }
     } catch (error) {
       console.error("Error fetching job cards:", error);
       toast.error("Failed to fetch job cards");
@@ -195,9 +212,21 @@ export default function JobCards() {
   };
 
   const handleDeleteJobCard = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this job card?')) return;
-    
     try {
+      // Guard: block deletion if a receipt exists for this job card
+      const { data: existingRcpt, error: rcptErr } = await supabase
+        .from('receipts')
+        .select('id')
+        .eq('job_card_id', id)
+        .limit(1);
+      if (rcptErr) throw rcptErr;
+      if (existingRcpt && existingRcpt.length > 0) {
+        toast.error('Cannot delete job card: a receipt has been created for this job');
+        return;
+      }
+
+      if (!confirm('Are you sure you want to delete this job card?')) return;
+
       const { error } = await supabase
         .from('job_cards')
         .delete()
@@ -768,7 +797,9 @@ export default function JobCards() {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               onClick={() => handleDeleteJobCard(jobCard.id)}
-                              className="text-red-600 focus:text-red-600"
+                              disabled={jobCardsWithReceipts.has(jobCard.id)}
+                              className={`focus:text-red-600 ${jobCardsWithReceipts.has(jobCard.id) ? 'text-slate-400' : 'text-red-600'}`}
+                              title={jobCardsWithReceipts.has(jobCard.id) ? 'Cannot delete: receipt exists for this job card' : undefined}
                             >
                               <Trash2 className="w-4 h-4 mr-2" />
                               Delete

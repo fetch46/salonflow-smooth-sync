@@ -71,6 +71,7 @@ export default function Appointments() {
   const navigate = useNavigate();
   
   const [appointmentServicesById, setAppointmentServicesById] = useState<Record<string, AppointmentServiceItem[]>>({});
+  const [appointmentsWithJobcards, setAppointmentsWithJobcards] = useState<Set<string>>(new Set());
 
   const [form, setForm] = useState({
     customer_name: "",
@@ -145,8 +146,20 @@ export default function Appointments() {
           });
         });
         setAppointmentServicesById(grouped);
+
+        // Build set of appointment IDs that already have job cards
+        const { data: apptJobcards, error: apptJobcardsErr } = await supabase
+          .from('job_cards')
+          .select('appointment_id')
+          .in('appointment_id', appointmentIds as string[]);
+        if (apptJobcardsErr) throw apptJobcardsErr;
+        const apptIdsWithJc = new Set<string>((apptJobcards || [])
+          .map((r: any) => r.appointment_id)
+          .filter(Boolean));
+        setAppointmentsWithJobcards(apptIdsWithJc);
       } else {
         setAppointmentServicesById({});
+        setAppointmentsWithJobcards(new Set());
       }
     } catch (error: any) {
       toast.error(error?.message ? `Error fetching appointments: ${error.message}` : "Error fetching data");
@@ -436,20 +449,32 @@ export default function Appointments() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this appointment?")) {
-      try {
-        const { error } = await supabase
-          .from("appointments")
-          .delete()
-          .eq("id", id);
-        
-        if (error) throw error;
-        toast.success("Appointment deleted successfully!");
-        fetchData();
-      } catch (error) {
-        toast.error("Error deleting appointment");
-        console.error(error);
+    try {
+      // Guard: prevent deletion if a job card exists for this appointment
+      const { data: existingJc, error: jcErr } = await supabase
+        .from('job_cards')
+        .select('id')
+        .eq('appointment_id', id)
+        .limit(1);
+      if (jcErr) throw jcErr;
+      if (existingJc && existingJc.length > 0) {
+        toast.error('Cannot delete appointment: a job card has been created for this appointment');
+        return;
       }
+
+      if (!confirm("Are you sure you want to delete this appointment?")) return;
+
+      const { error } = await supabase
+        .from("appointments")
+        .delete()
+        .eq("id", id);
+      
+      if (error) throw error;
+      toast.success("Appointment deleted successfully!");
+      fetchData();
+    } catch (error) {
+      toast.error("Error deleting appointment");
+      console.error(error);
     }
   };
   
@@ -690,7 +715,12 @@ export default function Appointments() {
                             <Edit2 className="mr-2 h-4 w-4" />
                             Edit Appointment
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDelete(appointment.id)}>
+                          <DropdownMenuItem 
+                            onClick={() => handleDelete(appointment.id)}
+                            disabled={appointmentsWithJobcards.has(appointment.id)}
+                            className={appointmentsWithJobcards.has(appointment.id) ? 'text-slate-400' : ''}
+                            title={appointmentsWithJobcards.has(appointment.id) ? 'Cannot delete: job card exists for this appointment' : undefined}
+                          >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete Appointment
                           </DropdownMenuItem>
