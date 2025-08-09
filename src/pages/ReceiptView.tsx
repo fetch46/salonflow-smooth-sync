@@ -36,6 +36,10 @@ export default function ReceiptView() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<{ status: string; notes: string; receipt_number: string }>({ status: 'open', notes: '', receipt_number: '' });
 
+  // Internal: job services and staff for commissions
+  const [jobServices, setJobServices] = useState<any[]>([]);
+  const [staffById, setStaffById] = useState<Record<string, { id: string; full_name: string }>>({});
+
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -63,6 +67,43 @@ export default function ReceiptView() {
         setItems((it || []).filter((x: any) => x.service_id || !x.product_id));
         setPayments(pays || []);
         setCustomerInfo(customer);
+
+        // Load job card services for commission and staff mapping
+        try {
+          const jobCardId = (rec as any)?.job_card_id;
+          if (jobCardId) {
+            const { data: jcs } = await supabase
+              .from('job_card_services')
+              .select('service_id, staff_id, commission_percentage, services:service_id(name), staff:staff_id(full_name)')
+              .eq('job_card_id', jobCardId);
+            setJobServices(jcs || []);
+            // Build staff map from jcs
+            const initialStaff: Record<string, { id: string; full_name: string }> = {};
+            (jcs || []).forEach((r: any) => {
+              if (r.staff_id) initialStaff[r.staff_id] = { id: r.staff_id, full_name: r.staff?.full_name || 'Staff' };
+            });
+            // Ensure we also include staff referenced by receipt items but not in jcs
+            const itemStaffIds = Array.from(new Set((it || []).map((x: any) => x.staff_id).filter(Boolean)));
+            const missing = itemStaffIds.filter((sid: string) => !initialStaff[sid]);
+            if (missing.length > 0) {
+              const { data: extraStaff } = await supabase.from('staff').select('id, full_name').in('id', missing as any);
+              (extraStaff || []).forEach((s: any) => { initialStaff[s.id] = s; });
+            }
+            setStaffById(initialStaff);
+          } else {
+            // No job card: still build staff map from items
+            const itemStaffIds = Array.from(new Set((it || []).map((x: any) => x.staff_id).filter(Boolean)));
+            if (itemStaffIds.length > 0) {
+              const { data: extraStaff } = await supabase.from('staff').select('id, full_name').in('id', itemStaffIds as any);
+              const map: Record<string, { id: string; full_name: string }> = {};
+              (extraStaff || []).forEach((s: any) => { map[s.id] = s; });
+              setStaffById(map);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to load job services/staff', err);
+          setJobServices([]);
+        }
       } catch (e) {
         console.error(e);
         toast.error('Failed to load receipt');
@@ -159,6 +200,43 @@ export default function ReceiptView() {
   const orgAddress = [orgSettings.address, orgSettings.city, orgSettings.state, orgSettings.zip_code, orgSettings.country]
     .filter(Boolean)
     .join(', ');
+
+  // Build commission mappings
+  const commissionIndex = useMemo(() => {
+    const map = new Map<string, number | null>();
+    for (const js of jobServices || []) {
+      const key = `${js.service_id || ''}::${js.staff_id || ''}`;
+      // Prefer explicit mapping by service+staff
+      if (!map.has(key)) map.set(key, js.commission_percentage);
+      // Also store a fallback by service only if not already set
+      const svcKey = `${js.service_id || ''}::`;
+      if (!map.has(svcKey)) map.set(svcKey, js.commission_percentage);
+    }
+    return map;
+  }, [jobServices]);
+
+  const itemsWithCommission = useMemo(() => {
+    return (items || []).map((it: any) => {
+      const key = `${it.service_id || ''}::${it.staff_id || ''}`;
+      const svcKey = `${it.service_id || ''}::`;
+      const pct = commissionIndex.get(key) ?? commissionIndex.get(svcKey) ?? 0;
+      const commissionAmount = Number(((Number(pct || 0) / 100) * Number(it.total_price || 0)).toFixed(2));
+      const staffName = it.staff_id ? (staffById[it.staff_id]?.full_name || 'Staff') : '—';
+      return { ...it, commission_percentage: pct || 0, commission_amount: commissionAmount, staff_name: staffName };
+    });
+  }, [items, commissionIndex, staffById]);
+
+  const commissionByStaff = useMemo(() => {
+    const out: Record<string, { staff_id: string; staff_name: string; commission_due: number }> = {};
+    for (const it of itemsWithCommission) {
+      const sid = it.staff_id || 'unassigned';
+      const sname = it.staff_id ? (staffById[it.staff_id]?.full_name || 'Staff') : 'Unassigned';
+      const curr = out[sid] || { staff_id: sid, staff_name: sname, commission_due: 0 };
+      curr.commission_due += Number(it.commission_amount || 0);
+      out[sid] = curr;
+    }
+    return Object.values(out).sort((a, b) => b.commission_due - a.commission_due);
+  }, [itemsWithCommission, staffById]);
 
   return (
     <div className={`p-6 space-y-6 ${isPrintMode ? 'bg-white' : ''}`}>
@@ -381,6 +459,72 @@ export default function ReceiptView() {
             </Button>
           </div>
         </div>
+      )}
+
+      {/* Internal: Services, Staff & Commissions (hidden in print/PDF) */}
+      {!isPrintMode && (
+        <Card className="print:hidden border-dashed">
+          <CardHeader>
+            <CardTitle className="text-base">Internal: Services, Staff & Commissions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="text-sm text-muted-foreground">This section is internal-only and will not appear on printed or customer receipts.</div>
+            <div className="overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Service</TableHead>
+                    <TableHead>Staff</TableHead>
+                    <TableHead>Qty</TableHead>
+                    <TableHead>Unit</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead>Commission %</TableHead>
+                    <TableHead>Commission Due</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {itemsWithCommission.map((it: any) => (
+                    <TableRow key={`c_${it.id}`}>
+                      <TableCell className="font-medium">{it.description}</TableCell>
+                      <TableCell>{it.staff_name}</TableCell>
+                      <TableCell>{it.quantity}</TableCell>
+                      <TableCell>{symbol}{Number(it.unit_price).toFixed(2)}</TableCell>
+                      <TableCell>{symbol}{Number(it.total_price).toFixed(2)}</TableCell>
+                      <TableCell>{Number(it.commission_percentage || 0).toFixed(2)}%</TableCell>
+                      <TableCell className="font-semibold">{symbol}{Number(it.commission_amount || 0).toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <Separator />
+
+            <div>
+              <div className="text-sm font-semibold mb-2">Commission Summary by Staff</div>
+              {commissionByStaff.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No staff commissions to display.</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Staff</TableHead>
+                      <TableHead>Commission Due</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {commissionByStaff.map((row) => (
+                      <TableRow key={`s_${row.staff_id}`}>
+                        <TableCell className="font-medium">{row.staff_name}</TableCell>
+                        <TableCell className="font-semibold">{symbol}{row.commission_due.toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
