@@ -291,9 +291,9 @@ const Reports = () => {
   };
 
   return (
-    <div className="flex-1 space-y-6 p-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen">
+    <div className="flex-1 w-full space-y-6 px-4 sm:px-6 py-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 md:gap-6 flex-wrap">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-lg">
@@ -306,7 +306,7 @@ const Reports = () => {
           </div>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3 flex-wrap">
           <ToggleGroup type="single" value={density} onValueChange={(v) => v && setDensity(v as any)}>
             <ToggleGroupItem value="compact">Compact</ToggleGroupItem>
             <ToggleGroupItem value="comfortable">Comfortable</ToggleGroupItem>
@@ -356,10 +356,28 @@ const Reports = () => {
 
       {/* Main Content with vertical tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-          <aside className="lg:col-span-3 xl:col-span-2">
-            <TabsList className="flex flex-col w-full items-stretch">
-              <TabsTrigger value="overview" className="justify-start flex items-center gap-2">
+        {/* Mobile tab selector */}
+        <div className="lg:hidden">
+          <Select value={activeTab} onValueChange={setActiveTab}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select report section" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="overview">Overview</SelectItem>
+              <SelectItem value="revenue">Revenue</SelectItem>
+              <SelectItem value="services">Services</SelectItem>
+              <SelectItem value="clients">Clients</SelectItem>
+              <SelectItem value="pnl">P&L</SelectItem>
+              <SelectItem value="balancesheet">Balance Sheet</SelectItem>
+              <SelectItem value="commissions">Commissions</SelectItem>
+              <SelectItem value="product_usage">Product Usage</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <aside className="lg:col-span-3 xl:col-span-2 lg:sticky lg:top-24 self-start max-h-[calc(100vh-7rem)] overflow-y-auto">
+            <TabsList className="flex flex-col w-full items-stretch rounded-xl border bg-card shadow-sm p-1 gap-1">
+              <TabsTrigger value="overview" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
                 <Activity className="w-4 h-4" /> Overview
               </TabsTrigger>
               {activeTab === 'overview' && (
@@ -367,7 +385,7 @@ const Reports = () => {
                   <button className={`text-left ${activeSubTab.overview === 'summary' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, overview: 'summary' })); setSearchParams({ tab: 'overview', sub: 'summary' }, { replace: true }); }}>Summary</button>
                 </div>
               )}
-              <TabsTrigger value="revenue" className="justify-start flex items-center gap-2">
+              <TabsTrigger value="revenue" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
                 <DollarSign className="w-4 h-4" /> Revenue
               </TabsTrigger>
               {activeTab === 'revenue' && (
@@ -375,7 +393,7 @@ const Reports = () => {
                   <button className={`text-left ${activeSubTab.revenue === 'summary' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, revenue: 'summary' })); setSearchParams({ tab: 'revenue', sub: 'summary' }, { replace: true }); }}>Summary</button>
                 </div>
               )}
-              <TabsTrigger value="services" className="justify-start flex items-center gap-2">
+              <TabsTrigger value="services" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
                 <Target className="w-4 h-4" /> Services
               </TabsTrigger>
               {activeTab === 'services' && (
@@ -383,7 +401,7 @@ const Reports = () => {
                   <button className={`text-left ${activeSubTab.services === 'top' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, services: 'top' })); setSearchParams({ tab: 'services', sub: 'top' }, { replace: true }); }}>Top Services</button>
                 </div>
               )}
-              <TabsTrigger value="clients" className="justify-start flex items-center gap-2">
+              <TabsTrigger value="clients" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
                 <Users className="w-4 h-4" /> Clients
               </TabsTrigger>
               {activeTab === 'clients' && (
@@ -391,13 +409,13 @@ const Reports = () => {
                   <button className={`text-left ${activeSubTab.clients === 'top' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, clients: 'top' })); setSearchParams({ tab: 'clients', sub: 'top' }, { replace: true }); }}>Top Clients</button>
                 </div>
               )}
-              <TabsTrigger value="pnl" className="justify-start flex items-center gap-2">
+              <TabsTrigger value="pnl" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
                 <DollarSign className="w-4 h-4" /> P&L
               </TabsTrigger>
-              <TabsTrigger value="balancesheet" className="justify-start flex items-center gap-2">
+              <TabsTrigger value="balancesheet" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
                 <PieChart className="w-4 h-4" /> Balance Sheet
               </TabsTrigger>
-              <TabsTrigger value="commissions" className="justify-start flex items-center gap-2">
+              <TabsTrigger value="commissions" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
                 <DollarSign className="w-4 h-4" /> Commissions
               </TabsTrigger>
               {activeTab === 'commissions' && (
@@ -406,7 +424,7 @@ const Reports = () => {
                   <button className={`text-left ${activeSubTab.commissions === 'detailed' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, commissions: 'detailed' })); setSearchParams({ tab: 'commissions', sub: 'detailed' }, { replace: true }); }}>Detailed</button>
                 </div>
               )}
-              <TabsTrigger value="product_usage" className="justify-start flex items-center gap-2">
+              <TabsTrigger value="product_usage" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
                 <Package className="w-4 h-4" /> Product Usage
               </TabsTrigger>
               {activeTab === 'product_usage' && (
@@ -417,7 +435,7 @@ const Reports = () => {
             </TabsList>
           </aside>
 
-          <main className="xl:col-span-10 space-y-6">
+          <main className="lg:col-span-9 xl:col-span-10 space-y-6">
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
               {/* Key Metrics */}
