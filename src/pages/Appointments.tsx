@@ -635,7 +635,7 @@ export default function Appointments() {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <Card className="w-full max-w-5xl max-h-[90vh] overflow-y-auto">
             <CardHeader>
               <CardTitle>
                 {editingAppointment ? "Edit Appointment" : "Create New Appointment"}
