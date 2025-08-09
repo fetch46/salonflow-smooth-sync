@@ -222,27 +222,76 @@ export default function CreateJobCard() {
     }
   };
 
-  const loadAppointmentData = useCallback((appointmentId: string) => {
+  const loadAppointmentData = useCallback(async (appointmentId: string) => {
     const appointment = appointments.find(apt => apt.id === appointmentId);
-    if (appointment) {
-      setSelectedAppointment(appointment);
-      
-      const client = clients.find(c => c.id === appointment.client_id);
-      if (client) setSelectedClient(client);
-      
-      const staffMember = staff.find(s => s.id === appointment.staff_id);
-      if (staffMember) setSelectedStaff(staffMember);
-      
-      const service = services.find(s => s.id === appointment.service_id);
+    if (!appointment) return;
+
+    // Avoid redundant state churn
+    setSelectedAppointment(prev => (prev?.id === appointment.id ? prev : appointment));
+
+    const client = clients.find(c => c.id === appointment.client_id);
+    if (client) setSelectedClient(client);
+
+    try {
+      // Load multi-service details from appointment_services with joined service records
+      const { data: apptServices, error } = await supabase
+        .from("appointment_services")
+        .select(`
+          service_id,
+          staff_id,
+          services ( id, name, description, price, duration_minutes, category )
+        `)
+        .eq("appointment_id", appointment.id);
+
+      if (error) throw error;
+
+      if (apptServices && apptServices.length > 0) {
+        // Build selected services from join
+        const svcList: Service[] = apptServices
+          .map((row: any) => row.services)
+          .filter(Boolean) as Service[];
+        setSelectedServices(svcList);
+
+        // Build service -> staff assignment map
+        const assignmentMap: Record<string, string> = {};
+        for (const row of apptServices as any[]) {
+          if (row.service_id && row.staff_id) assignmentMap[row.service_id] = row.staff_id;
+        }
+        setServiceStaffMap(assignmentMap);
+
+        // Pick a primary staff for backward compatibility
+        const firstStaffId = (apptServices.find((r: any) => !!r.staff_id) as any)?.staff_id as string | undefined;
+        if (firstStaffId) {
+          const staffMember = staff.find(s => s.id === firstStaffId) || null;
+          setSelectedStaff(staffMember);
+        }
+
+        setJobCardData(prev => ({
+          ...prev,
+          appointment_id: appointment.id,
+          client_id: appointment.client_id || undefined,
+          staff_id: firstStaffId || undefined,
+          services: svcList.map(s => s.id)
+        }));
+        return;
+      }
+
+      // Fallback to single service/staff on appointment if no rows
+      const service = services.find(s => s.id === appointment.service_id) || null;
       if (service) setSelectedServices([service]);
-      
+      if (appointment.staff_id) setServiceStaffMap({ [service?.id as string]: appointment.staff_id });
+      const fallbackStaff = staff.find(s => s.id === appointment.staff_id) || null;
+      if (fallbackStaff) setSelectedStaff(fallbackStaff);
+
       setJobCardData(prev => ({
         ...prev,
         appointment_id: appointment.id,
-        client_id: appointment.client_id,
-        staff_id: appointment.staff_id,
+        client_id: appointment.client_id || undefined,
+        staff_id: appointment.staff_id || undefined,
         services: service ? [service.id] : []
       }));
+    } catch (err) {
+      console.error("Error loading appointment services:", err);
     }
   }, [appointments, clients, services, staff]);
 
@@ -282,21 +331,32 @@ export default function CreateJobCard() {
   // Once initial data is loaded, if an appointment query param is present, prefill from it
   useEffect(() => {
     if (!loading && appointmentId) {
+      // call async loader and ignore result
       loadAppointmentData(appointmentId);
     }
   }, [loading, appointmentId, loadAppointmentData]);
+
+  // If a user selects an appointment in step 1 (no URL param), auto load its services and staff
+  useEffect(() => {
+    if (!loading && selectedAppointment?.id) {
+      loadAppointmentData(selectedAppointment.id);
+    }
+  }, [loading, selectedAppointment, loadAppointmentData]);
 
   // Bridge to allow child step to set serviceStaffMap locally without prop drilling refactors
   useEffect(() => {
     (window as any).__setServiceStaffMap = (map: Record<string, string>) => {
       setServiceStaffMap(map);
     };
+    // Expose current map for Step 2 initialization
+    (window as any).__currentServiceStaffMap = serviceStaffMap;
     return () => {
       try {
         delete (window as any).__setServiceStaffMap;
+        delete (window as any).__currentServiceStaffMap;
       } catch { /* ignore cleanup errors */ }
     };
-  }, []);
+  }, [serviceStaffMap]);
 
   useEffect(() => {
     // Calculate totals when services change
@@ -968,6 +1028,21 @@ function StepServicesStaff({
   const [serviceSearch, setServiceSearch] = useState("");
   const [staffSearch, setStaffSearch] = useState("");
   const [localAssignments, setLocalAssignments] = useState<Record<string, string>>({});
+
+  // Initialize local assignments from parent-provided map on first render or when selected services change
+  useEffect(() => {
+    // Pull initial map from parent state via global bridge if available, otherwise derive from selectedStaff
+    const parentMap = (window as any).__currentServiceStaffMap as Record<string, string> | undefined;
+    const initial: Record<string, string> = {};
+    for (const svc of selectedServices) {
+      if (parentMap && parentMap[svc.id]) {
+        initial[svc.id] = parentMap[svc.id];
+      } else if (selectedStaff) {
+        initial[svc.id] = selectedStaff.id;
+      }
+    }
+    setLocalAssignments(initial);
+  }, [selectedServices, selectedStaff]);
 
   // Sync local assignments with outer state via window callback
   useEffect(() => {
