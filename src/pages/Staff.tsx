@@ -789,16 +789,30 @@ export default function Staff() {
                           <TableCell>{member.is_active ? <Badge>Active</Badge> : <Badge variant="secondary">Inactive</Badge>}</TableCell>
                           <TableCell>{typeof member.commission_rate === 'number' ? `${member.commission_rate}%` : '—'}</TableCell>
                           <TableCell>{member.hire_date || '—'}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex gap-2 justify-end">
-                              <Button size="sm" variant="outline" onClick={() => handleEdit(member)}>
-                                Edit
-                              </Button>
-                              <Button size="sm" variant="outline" className="text-red-600" onClick={() => handleDelete(member.id)}>
-                                Delete
-                              </Button>
-                            </div>
-                          </TableCell>
+                                                    <TableCell className="text-right">
+                             <DropdownMenu>
+                               <DropdownMenuTrigger asChild>
+                                 <Button variant="ghost" size="icon" className="h-8 w-8">
+                                   <MoreHorizontal className="w-4 h-4" />
+                                 </Button>
+                               </DropdownMenuTrigger>
+                               <DropdownMenuContent align="end" className="w-48">
+                                 <DropdownMenuItem onClick={() => navigate(`/staff/${member.id}`)}>
+                                   <Eye className="w-4 h-4 mr-2" />
+                                   View Profile
+                                 </DropdownMenuItem>
+                                 <DropdownMenuItem onClick={() => handleEdit(member)}>
+                                   <Edit2 className="w-4 h-4 mr-2" />
+                                   Edit Details
+                                 </DropdownMenuItem>
+                                 <DropdownMenuSeparator />
+                                 <DropdownMenuItem onClick={() => handleDelete(member.id)} className="text-red-600 focus:text-red-600">
+                                   <Trash2 className="w-4 h-4 mr-2" />
+                                   Delete
+                                 </DropdownMenuItem>
+                               </DropdownMenuContent>
+                             </DropdownMenu>
+                           </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
