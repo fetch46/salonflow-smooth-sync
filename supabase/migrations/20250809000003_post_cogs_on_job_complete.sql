@@ -7,8 +7,12 @@ DECLARE
   total_cost NUMERIC;
 BEGIN
   IF NEW.status = 'completed' AND (OLD.status IS DISTINCT FROM NEW.status) THEN
-    SELECT id INTO cogs_account FROM public.accounts WHERE account_code = '5001' LIMIT 1;
-    SELECT id INTO inventory_account FROM public.accounts WHERE account_code = '1200' LIMIT 1;
+    SELECT id INTO cogs_account FROM public.accounts 
+    WHERE account_code = '5001' AND organization_id = NEW.organization_id
+    LIMIT 1;
+    SELECT id INTO inventory_account FROM public.accounts 
+    WHERE account_code = '1200' AND organization_id = NEW.organization_id
+    LIMIT 1;
 
     SELECT COALESCE(SUM(total_cost),0) INTO total_cost FROM public.job_card_products WHERE job_card_id = NEW.id;
 
