@@ -220,24 +220,33 @@ export async function createSaleWithFallback(supabase: any, saleData: any, items
 // Wrapper function for Invoice operations
 export async function createInvoiceWithFallback(supabase: any, invoiceData: any, items: any[]) {
   try {
-    // Try to use real database first
+    // Build payload with only existing DB columns
+    const dbInvoice = {
+      invoice_number: invoiceData.invoice_number,
+      client_id: invoiceData.customer_id || invoiceData.client_id || null,
+      issue_date: invoiceData.issue_date || new Date().toISOString().split('T')[0],
+      due_date: invoiceData.due_date || null,
+      subtotal: invoiceData.subtotal ?? 0,
+      tax_amount: invoiceData.tax_amount ?? 0,
+      total_amount: invoiceData.total_amount ?? 0,
+      status: invoiceData.status || 'draft',
+      notes: invoiceData.notes || null,
+    };
+
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
-      .insert([invoiceData])
-      .select()
-      .single();
+      .insert([dbInvoice])
+      .select('id')
+      .maybeSingle();
 
     if (invoiceError) throw invoiceError;
+    if (!invoice?.id) throw new Error('Invoice created but no ID returned');
 
-    const itemsData = items.map(item => ({
+    const itemsData = items.map((item: any) => ({
       invoice_id: invoice.id,
-      service_id: item.service_id || null,
       description: item.description,
       quantity: item.quantity,
       unit_price: item.unit_price,
-      discount_percentage: item.discount_percentage,
-      staff_id: item.staff_id || null,
-      commission_percentage: item.commission_percentage,
       total_price: item.total_price,
     }));
 
@@ -251,16 +260,31 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
   } catch (error) {
     console.log('Using mock database for invoices');
     // Fallback to mock database
-    const invoice = await mockDb.createInvoice(invoiceData);
-    await mockDb.createInvoiceItems(items.map(item => ({
+    const invoice = await mockDb.createInvoice({
+      invoice_number: invoiceData.invoice_number,
+      customer_id: invoiceData.customer_id || null,
+      customer_name: invoiceData.customer_name || '',
+      customer_email: invoiceData.customer_email || null,
+      customer_phone: invoiceData.customer_phone || null,
+      subtotal: invoiceData.subtotal ?? 0,
+      tax_amount: invoiceData.tax_amount ?? 0,
+      discount_amount: invoiceData.discount_amount ?? 0,
+      total_amount: invoiceData.total_amount ?? 0,
+      status: invoiceData.status || 'draft',
+      due_date: invoiceData.due_date || null,
+      payment_method: invoiceData.payment_method || null,
+      notes: invoiceData.notes || null,
+      jobcard_id: invoiceData.jobcard_id || null,
+    });
+    await mockDb.createInvoiceItems(items.map((item: any) => ({
       invoice_id: invoice.id,
       service_id: item.service_id || null,
       description: item.description,
       quantity: item.quantity,
       unit_price: item.unit_price,
-      discount_percentage: item.discount_percentage,
+      discount_percentage: item.discount_percentage || 0,
       staff_id: item.staff_id || null,
-      commission_percentage: item.commission_percentage,
+      commission_percentage: item.commission_percentage || 0,
       total_price: item.total_price,
     })));
     return invoice;
@@ -271,11 +295,34 @@ export async function getInvoicesWithFallback(supabase: any) {
   try {
     const { data, error } = await supabase
       .from('invoices')
-      .select('*')
+      .select(`
+        id, invoice_number, client_id, issue_date, due_date, subtotal, tax_amount, total_amount, status, notes, created_at, updated_at,
+        client:client_id (id, full_name, email, phone)
+      `)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+
+    // Map to the shape expected by the UI (with customer_*)
+    return (data || []).map((inv: any) => ({
+      id: inv.id,
+      invoice_number: inv.invoice_number,
+      customer_id: inv.client_id,
+      customer_name: inv.client?.full_name || '',
+      customer_email: inv.client?.email || null,
+      customer_phone: inv.client?.phone || null,
+      subtotal: inv.subtotal,
+      tax_amount: inv.tax_amount,
+      discount_amount: 0,
+      total_amount: inv.total_amount,
+      status: inv.status,
+      due_date: inv.due_date,
+      payment_method: null,
+      notes: inv.notes,
+      jobcard_id: null,
+      created_at: inv.created_at,
+      updated_at: inv.updated_at,
+    }));
   } catch (error) {
     console.log('Using mock database for invoices');
     return await mockDb.getInvoices();
@@ -284,9 +331,14 @@ export async function getInvoicesWithFallback(supabase: any) {
 
 export async function updateInvoiceWithFallback(supabase: any, id: string, updates: any) {
   try {
+    const allowed: any = {};
+    if (typeof updates.status !== 'undefined') allowed.status = updates.status;
+    if (typeof updates.due_date !== 'undefined') allowed.due_date = updates.due_date;
+    if (typeof updates.notes !== 'undefined') allowed.notes = updates.notes;
+
     const { error } = await supabase
       .from('invoices')
-      .update(updates)
+      .update(allowed)
       .eq('id', id);
 
     if (error) throw error;
@@ -299,6 +351,9 @@ export async function updateInvoiceWithFallback(supabase: any, id: string, updat
 
 export async function deleteInvoiceWithFallback(supabase: any, id: string) {
   try {
+    // Delete items first (safeguard)
+    await supabase.from('invoice_items').delete().eq('invoice_id', id);
+
     const { error } = await supabase
       .from('invoices')
       .delete()
@@ -316,11 +371,25 @@ export async function getInvoiceItemsWithFallback(supabase: any, invoiceId: stri
   try {
     const { data, error } = await supabase
       .from('invoice_items')
-      .select('*')
+      .select('id, invoice_id, description, quantity, unit_price, total_price')
       .eq('invoice_id', invoiceId);
 
     if (error) throw error;
-    return data || [];
+
+    return (data || []).map((it: any) => ({
+      id: it.id,
+      invoice_id: it.invoice_id,
+      service_id: null,
+      product_id: null,
+      description: it.description,
+      quantity: it.quantity,
+      unit_price: it.unit_price,
+      discount_percentage: 0,
+      staff_id: null,
+      commission_percentage: 0,
+      commission_amount: 0,
+      total_price: it.total_price,
+    }));
   } catch (error) {
     console.log('Using mock database for invoice items');
     return await mockDb.getInvoiceItems(invoiceId);
