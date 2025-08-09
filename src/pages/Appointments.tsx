@@ -116,12 +116,19 @@ export default function Appointments() {
       if (appointmentsRes.error) throw appointmentsRes.error;
       if (staffRes.error) throw staffRes.error;
       if (servicesRes.error) throw servicesRes.error;
-      if ((accountsRes as any).error) throw (accountsRes as any).error;
 
       setAppointments(appointmentsRes.data || []);
       setStaff(staffRes.data || []);
       setServices(servicesRes.data || []);
-      setAccounts(((accountsRes as any).data || []) as Array<{ id: string; account_code: string; account_name: string }>);
+
+      const accErr = (accountsRes as any)?.error;
+      const accData = (accountsRes as any)?.data;
+      if (accErr) {
+        console.warn('Accounts fetch failed, continuing without accounts', accErr);
+        setAccounts([]);
+      } else {
+        setAccounts((accData || []) as Array<{ id: string; account_code: string; account_name: string }>);
+      }
 
       // Fetch appointment services for the loaded appointments
       const appointmentIds = (appointmentsRes.data || []).map(a => a.id);
