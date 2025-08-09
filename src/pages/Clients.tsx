@@ -259,7 +259,7 @@ export default function Clients() {
         phone: trimmedPhone || null,
         address: formData.address || null,
         notes: formData.notes || null,
-      } as const;
+      };
 
       if (editingClient) {
         const updatePayload = {
@@ -1149,14 +1149,7 @@ export default function Clients() {
                           </div>
                         )}
                         
-                        {client.anniversary_date && (
-                          <div className="flex items-center text-slate-600 text-sm pt-2 border-t">
-                            <CalendarClock className="w-4 h-4 mr-2" />
-                            <span>
-                              {formatDate(new Date(client.anniversary_date), "MMM dd")} anniversary
-                            </span>
-                          </div>
-                        )}
+                        
                         
                         {client.preferences && (
                           <div className="pt-2 border-t">
