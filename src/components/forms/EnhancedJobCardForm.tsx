@@ -47,6 +47,8 @@ interface Service {
   id: string;
   name: string;
   category?: string;
+  price?: number;
+  duration_minutes?: number;
 }
 
 interface InventoryItem {
@@ -84,12 +86,12 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
       const [staffRes, clientsRes, servicesRes] = await Promise.all([
         supabase.from("staff").select("id, full_name").eq("is_active", true),
         supabase.from("clients").select("id, full_name, phone, email").eq("is_active", true),
-        supabase.from("services").select("id, name, category").eq("is_active", true)
+        supabase.from("services").select("id, name, category, price, duration_minutes").eq("is_active", true)
       ]);
 
       if (staffRes.data) setStaff(staffRes.data);
       if (clientsRes.data) setClients(clientsRes.data);
-      if (servicesRes.data) setServices(servicesRes.data);
+      if (servicesRes.data) setServices(servicesRes.data as any);
     } catch (error) {
       console.error("Error fetching initial data:", error);
     }
@@ -207,6 +209,25 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
         .single();
       
       if (jobCardError) throw jobCardError;
+
+      // Persist selected services into job_card_services using actual service records
+      const selectedNames = Array.isArray(data.services) ? (data.services as string[]) : [];
+      if (selectedNames.length > 0) {
+        // Map selected names to DB services by name
+        const matched = services.filter((s) => selectedNames.includes(s.name));
+        if (matched.length > 0) {
+          const rows = matched.map((svc) => ({
+            job_card_id: (jobCard as any).id,
+            service_id: svc.id,
+            staff_id: (data.staffId as string) || null,
+            quantity: 1,
+            unit_price: Number(svc.price || 0),
+            duration_minutes: svc.duration_minutes || null,
+          }));
+          const { error: jcsError } = await supabase.from("job_card_services").insert(rows as any);
+          if (jcsError) throw jcsError;
+        }
+      }
 
       // Insert product usage records
       if (serviceKits.length > 0) {
@@ -385,7 +406,17 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
               <div className="grid grid-cols-2 gap-4">
                 {servicesList.map((service) => (
                   <div key={service} className="flex items-center space-x-2">
-                    <Checkbox value={service} />
+                    <Checkbox
+                      checked={Array.isArray(selectedServices) ? selectedServices.includes(service) : false}
+                      onCheckedChange={(checked) => {
+                        const current = Array.isArray(selectedServices) ? selectedServices : [];
+                        if (checked) {
+                          setValue("services", [...current, service]);
+                        } else {
+                          setValue("services", current.filter((s: string) => s !== service));
+                        }
+                      }}
+                    />
                     <Label className="text-sm">{service}</Label>
                   </div>
                 ))}

@@ -142,9 +142,31 @@ export function JobCardForm({ clientId, appointmentId, onSuccess }: JobCardFormP
         })
       };
 
-      const { error } = await supabase.from("job_cards").insert(jobCardData);
+      const { data: created, error } = await supabase.from("job_cards").insert(jobCardData).select().single();
       
       if (error) throw error;
+
+      // Persist selected services to job_card_services by mapping names -> service records
+      const selectedNames = Array.isArray(data.services) ? (data.services as string[]) : [];
+      if (selectedNames.length > 0) {
+        // Load matching services by name to get ids and prices
+        const { data: svcRows } = await supabase
+          .from('services')
+          .select('id, name, price, duration_minutes')
+          .in('name', selectedNames);
+        const rows = (svcRows || []).map((svc: any) => ({
+          job_card_id: (created as any).id,
+          service_id: svc.id,
+          staff_id: (data.staffId as string) || null,
+          quantity: 1,
+          unit_price: Number(svc.price || 0),
+          duration_minutes: svc.duration_minutes || null,
+        }));
+        if (rows.length > 0) {
+          const { error: jcsError } = await supabase.from('job_card_services').insert(rows);
+          if (jcsError) throw jcsError;
+        }
+      }
       
       onSuccess?.();
     } catch (error) {
@@ -324,6 +346,7 @@ export function JobCardForm({ clientId, appointmentId, onSuccess }: JobCardFormP
                   <div key={service} className="flex items-center space-x-2 p-3 rounded-lg border hover:bg-accent/20 transition-colors">
                     <Checkbox 
                       value={service}
+                      checked={(selectedServices || []).includes(service)}
                       onCheckedChange={(checked) => {
                         const current = selectedServices || [];
                         if (checked) {
