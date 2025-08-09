@@ -294,9 +294,12 @@ export default function Services() {
         const { data, error } = await supabase
           .from("services")
           .insert([payload])
-          .select()
-          .single();
+          .select('id')
+          .maybeSingle();
         if (error) throw error;
+        if (!data?.id) {
+          throw new Error('Service was created but no ID was returned');
+        }
         serviceId = data.id;
       }
 
