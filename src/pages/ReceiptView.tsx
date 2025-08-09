@@ -34,22 +34,25 @@ export default function ReceiptView() {
     (async () => {
       setLoading(true);
       try {
-        const [{ data: r }, { data: it }, pays, customer] = await Promise.all([
-          supabase.from('receipts').select('*').eq('id', id).maybeSingle(),
-          supabase.from('receipt_items').select('*').eq('receipt_id', id),
-          (async () => {
-            const { getReceiptPaymentsWithFallback } = await import('@/utils/mockDatabase');
-            return await getReceiptPaymentsWithFallback(supabase, String(id));
-          })(),
-          (async () => {
-            const rec = await supabase.from('receipts').select('customer_id').eq('id', id).maybeSingle();
-            const cid = (rec as any)?.data?.customer_id;
-            if (!cid) return null;
-            const { data } = await supabase.from('clients').select('id, full_name, email, phone').eq('id', cid).maybeSingle();
-            return data;
-          })(),
-        ] as any);
-        setReceipt(r);
+        const { getReceiptByIdWithFallback, getReceiptItemsWithFallback, getReceiptPaymentsWithFallback } = await import('@/utils/mockDatabase');
+        const rec = await getReceiptByIdWithFallback(supabase, String(id));
+        const it = await getReceiptItemsWithFallback(supabase, String(id));
+        const pays = await getReceiptPaymentsWithFallback(supabase, String(id));
+
+        let customer = null as any;
+        try {
+          const cid = (rec as any)?.customer_id;
+          if (cid) {
+            const { data } = await supabase
+              .from('clients')
+              .select('id, full_name, email, phone')
+              .eq('id', cid)
+              .maybeSingle();
+            customer = data || null;
+          }
+        } catch {}
+
+        setReceipt(rec);
         setItems(it || []);
         setPayments(pays || []);
         setCustomerInfo(customer);

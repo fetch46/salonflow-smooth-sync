@@ -180,6 +180,56 @@ export async function getReceiptsWithFallback(supabase: any) {
   }
 }
 
+export async function getReceiptByIdWithFallback(supabase: any, id: string): Promise<any | null> {
+  try {
+    const { data, error } = await supabase
+      .from('receipts')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw error;
+    return data || null;
+  } catch (err) {
+    console.log('Using mock database for fetching single receipt');
+    const storage = getStorage();
+    const r = (storage.receipts || []).find((x: any) => x.id === id) || null;
+    if (!r) return null;
+    const paid = (storage.receipt_payments || [])
+      .filter((p: any) => p.receipt_id === id)
+      .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+    return { ...r, amount_paid: paid };
+  }
+}
+
+export async function getReceiptItemsWithFallback(supabase: any, receiptId: string): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from('receipt_items')
+      .select('id, receipt_id, description, quantity, unit_price, total_price')
+      .eq('receipt_id', receiptId);
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.log('Using mock database for fetching receipt items');
+    const storage = getStorage();
+    return (storage.receipt_items || [])
+      .filter((it: any) => it.receipt_id === receiptId)
+      .map((it: any) => ({
+        id: it.id,
+        receipt_id: it.receipt_id,
+        description: it.description || 'Item',
+        quantity: it.quantity || 1,
+        unit_price: it.unit_price || 0,
+        total_price: it.total_price || ((it.quantity || 1) * (it.unit_price || 0)),
+        service_id: it.service_id || null,
+        product_id: it.product_id || null,
+        staff_id: it.staff_id || null,
+        created_at: it.created_at,
+        updated_at: it.updated_at,
+      }));
+  }
+}
+
 // Helper to record a receipt payment with fallback to local storage
 export async function recordReceiptPaymentWithFallback(
   supabase: any,
