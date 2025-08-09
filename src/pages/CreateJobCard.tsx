@@ -160,6 +160,7 @@ export default function CreateJobCard() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
+  const [serviceStaffMap, setServiceStaffMap] = useState<Record<string, string>>({});
   const [totalDuration, setTotalDuration] = useState(0);
   const [totalCost, setTotalCost] = useState(0);
   const [productCosts, setProductCosts] = useState(0);
@@ -276,6 +277,18 @@ export default function CreateJobCard() {
     fetchInitialData();
   }, []);
 
+  // Bridge to allow child step to set serviceStaffMap locally without prop drilling refactors
+  useEffect(() => {
+    (window as any).__setServiceStaffMap = (map: Record<string, string>) => {
+      setServiceStaffMap(map);
+    };
+    return () => {
+      try {
+        delete (window as any).__setServiceStaffMap;
+      } catch {}
+    };
+  }, []);
+
   useEffect(() => {
     // Calculate totals when services change
     const serviceCost = selectedServices.reduce((sum, service) => sum + service.price, 0);
@@ -284,6 +297,14 @@ export default function CreateJobCard() {
     setTotalCost(serviceCost);
     setTotalDuration(duration);
     setJobCardData(prev => ({ ...prev, service_charge: serviceCost }));
+    // Ensure serviceStaffMap stays in sync with selected services
+    setServiceStaffMap(prev => {
+      const next: Record<string, string> = {};
+      for (const s of selectedServices) {
+        if (prev[s.id]) next[s.id] = prev[s.id];
+      }
+      return next;
+    });
   }, [selectedServices]);
 
   useEffect(() => {
@@ -327,8 +348,15 @@ export default function CreateJobCard() {
   };
 
   const handleSubmit = async () => {
-    if (!selectedClient || !selectedStaff || selectedServices.length === 0) {
+    if (!selectedClient || selectedServices.length === 0) {
       toast.error("Please complete all required fields");
+      return;
+    }
+
+    // Validate that every selected service has a staff assigned
+    const missingAssignments = selectedServices.filter(s => !serviceStaffMap[s.id]);
+    if (missingAssignments.length > 0) {
+      toast.error("Assign a staff member for each selected service");
       return;
     }
 
@@ -341,13 +369,15 @@ export default function CreateJobCard() {
     try {
       const jobNumber = generateJobNumber();
       const now = new Date().toISOString();
+      // Pick a primary staff for the job card (first assigned) for backward compatibility
+      const primaryStaffId = serviceStaffMap[selectedServices[0].id];
       
       const { data: jobCard, error: jobError } = await supabase
         .from("job_cards")
         .insert([{
           job_number: jobNumber,
           client_id: selectedClient.id,
-          staff_id: selectedStaff.id,
+          staff_id: primaryStaffId || null,
           start_time: jobCardData.start_time || now,
           end_time: jobCardData.end_time,
           total_amount: jobCardData.service_charge,
@@ -357,6 +387,21 @@ export default function CreateJobCard() {
         .single();
 
       if (jobError) throw jobError;
+
+      // Save service assignments to job_card_services
+      if (selectedServices.length > 0) {
+        const serviceRows = selectedServices.map(svc => ({
+          job_card_id: jobCard.id,
+          service_id: svc.id,
+          staff_id: serviceStaffMap[svc.id],
+          quantity: 1,
+          unit_price: svc.price,
+          duration_minutes: svc.duration_minutes,
+          // commission_percentage will be filled by DB default or used at reporting time
+        }));
+        const { error: jcsError } = await supabase.from("job_card_services").insert(serviceRows);
+        if (jcsError) throw jcsError;
+      }
 
       // Save job card products
       if (Object.keys(jobCardData.products_used).length > 0) {
@@ -409,11 +454,11 @@ export default function CreateJobCard() {
       case 2:
         return selectedClient !== null;
       case 3:
-        return selectedClient && selectedStaff && selectedServices.length > 0;
+        return selectedClient && selectedServices.length > 0 && selectedServices.every(s => !!serviceStaffMap[s.id]);
       case 4:
-        return selectedClient && selectedStaff && selectedServices.length > 0;
+        return selectedClient && selectedServices.length > 0 && selectedServices.every(s => !!serviceStaffMap[s.id]);
       case 5:
-        return selectedClient && selectedStaff && selectedServices.length > 0;
+        return selectedClient && selectedServices.length > 0 && selectedServices.every(s => !!serviceStaffMap[s.id]);
       default:
         return true;
     }
@@ -810,6 +855,12 @@ function StepServicesStaff({
 }: StepServicesStaffProps) {
   const [serviceSearch, setServiceSearch] = useState("");
   const [staffSearch, setStaffSearch] = useState("");
+  const [localAssignments, setLocalAssignments] = useState<Record<string, string>>({});
+
+  // Sync local assignments with outer state via window callback
+  useEffect(() => {
+    // This component will read and write via custom events to parent state
+  }, []);
 
   const filteredServices = services.filter(service =>
     service.name.toLowerCase().includes(serviceSearch.toLowerCase()) ||
@@ -830,7 +881,7 @@ function StepServicesStaff({
     }
   };
 
-  const canProceed = selectedServices.length > 0 && selectedStaff;
+  const canProceed = selectedServices.length > 0 && selectedServices.every(s => !!localAssignments[s.id]);
 
   return (
     <div className="space-y-8">
@@ -916,75 +967,47 @@ function StepServicesStaff({
           </CardContent>
         </Card>
 
-        {/* Staff Selection */}
+        {/* Staff Assignment per Service */}
         <Card className="shadow-lg border-slate-200">
           <CardHeader className="bg-gradient-to-r from-orange-50 to-amber-50 border-b">
             <CardTitle className="flex items-center gap-2 text-orange-800">
               <Users className="w-5 h-5" />
-              Assign Staff Member
+              Assign Staff to Selected Services
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4">
             <div className="space-y-4">
-              <div className="relative">
-                <Input
-                  placeholder="Search staff..."
-                  value={staffSearch}
-                  onChange={(e) => setStaffSearch(e.target.value)}
-                  className="pl-10"
-                />
-                <User className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
-              </div>
-
-              <div className="max-h-80 overflow-y-auto space-y-3">
-                {filteredStaff.map((member) => {
-                  const isSelected = selectedStaff?.id === member.id;
-                  
-                  return (
-                    <div
-                      key={member.id}
-                      onClick={() => onStaffSelect(isSelected ? null : member)}
-                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                        isSelected 
-                          ? 'border-orange-500 bg-orange-50' 
-                          : 'border-slate-200 hover:border-orange-300 hover:bg-orange-25'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-12 h-12">
-                          <AvatarImage src={member.profile_image} />
-                          <AvatarFallback className="bg-orange-100 text-orange-600">
-                            {member.full_name.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="font-medium text-slate-900">{member.full_name}</div>
-                          {member.specialties && (
-                            <div className="text-sm text-slate-600 mt-1">{member.specialties}</div>
-                          )}
-                          <div className="flex items-center gap-3 mt-2 text-sm text-slate-500">
-                            {member.email && (
-                              <span className="flex items-center gap-1">
-                                <Mail className="w-3 h-3" />
-                                {member.email}
-                              </span>
-                            )}
-                            {member.commission_rate && (
-                              <Badge variant="outline" className="text-xs">
-                                {member.commission_rate}% commission
-                              </Badge>
-                            )}
-                          </div>
+              {selectedServices.length === 0 && (
+                <div className="text-sm text-slate-500">Select at least one service on the left.</div>
+              )}
+              <div className="space-y-3">
+                {selectedServices.map((svc) => (
+                  <div key={svc.id} className="p-3 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">{svc.name}</div>
+                        <div className="text-xs text-slate-500">
+                          {svc.duration_minutes} min • ${svc.price}
                         </div>
-                        {isSelected && (
-                          <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center">
-                            <Check className="w-4 h-4 text-white" />
-                          </div>
-                        )}
+                      </div>
+                      <div className="w-64">
+                        <Select onValueChange={(value) => {
+                          setLocalAssignments(prev => ({ ...prev, [svc.id]: value }));
+                          // lift to parent via window dispatch (handled below in Continue click)
+                        }} value={localAssignments[svc.id] || ""}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Assign staff" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {filteredStaff.map(member => (
+                              <SelectItem key={member.id} value={member.id}>{member.full_name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             </div>
           </CardContent>
@@ -1003,6 +1026,11 @@ function StepServicesStaff({
                   {selectedServices.map(service => (
                     <div key={service.id} className="text-sm text-blue-700">
                       {service.name} - ${service.price}
+                      {localAssignments[service.id] && (
+                        <span className="ml-2 text-xs text-blue-600">[
+                          {staff.find(s => s.id === localAssignments[service.id])?.full_name}
+                        ]</span>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1010,7 +1038,7 @@ function StepServicesStaff({
               <div>
                 <Label className="text-blue-800">Assigned Staff</Label>
                 <div className="mt-2 text-sm text-blue-700">
-                  {selectedStaff ? selectedStaff.full_name : 'None selected'}
+                  {selectedServices.every(s => !!localAssignments[s.id]) ? 'All services assigned' : 'Pending assignments'}
                 </div>
               </div>
               <div>
@@ -1032,7 +1060,12 @@ function StepServicesStaff({
           Previous
         </Button>
         <Button 
-          onClick={onNext} 
+          onClick={() => {
+            // Lift local assignments up via a custom event the parent listens to by updating state directly
+            // We cannot directly access setServiceStaffMap here; use window callback pattern
+            (window as any).__setServiceStaffMap?.(localAssignments);
+            onNext();
+          }} 
           disabled={!canProceed}
           className="bg-blue-600 hover:bg-blue-700"
         >

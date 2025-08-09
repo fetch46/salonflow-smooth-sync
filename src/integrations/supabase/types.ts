@@ -658,6 +658,70 @@ export type Database = {
           },
         ]
       }
+      job_card_services: {
+        Row: {
+          id: string
+          job_card_id: string
+          service_id: string
+          staff_id: string | null
+          quantity: number
+          unit_price: number
+          commission_percentage: number | null
+          duration_minutes: number | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          job_card_id: string
+          service_id: string
+          staff_id?: string | null
+          quantity?: number
+          unit_price?: number
+          commission_percentage?: number | null
+          duration_minutes?: number | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          job_card_id?: string
+          service_id?: string
+          staff_id?: string | null
+          quantity?: number
+          unit_price?: number
+          commission_percentage?: number | null
+          duration_minutes?: number | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_card_services_job_card_id_fkey"
+            columns: ["job_card_id"]
+            isOneToOne: false
+            referencedRelation: "job_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_card_services_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_card_services_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_cards: {
         Row: {
           appointment_id: string | null
