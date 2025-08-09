@@ -14,6 +14,9 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import ClientsTable from "@/components/clients/ClientsTable";
 import {
   Plus,
   Search,
@@ -58,8 +61,10 @@ import {
   Zap,
   UserCheck,
   Timer,
-  Sparkles
-} from "lucide-react";
+  Sparkles,
+  LayoutGrid,
+  Table as TableIcon
+ } from "lucide-react";
 import { format, subDays, isThisMonth, isThisYear, differenceInDays } from "date-fns";
 
 interface Client {
@@ -158,6 +163,25 @@ export default function Clients() {
     preferences: "",
     referral_source: ""
   });
+
+  // View mode toggle (cards | table)
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const navigate = useNavigate();
+
+  const handleViewProfile = (id: string) => navigate(`/clients/${id}`);
+  const handleBookAppointment = (c: Client) => {
+    const params = new URLSearchParams({
+      create: "1",
+      name: c.full_name || "",
+      email: c.email || "",
+      phone: c.phone || "",
+    });
+    navigate(`/appointments?${params.toString()}`);
+  };
+
+  const formatMoney = (n: number) => `$${(n || 0).toFixed(2)}`;
+  const formatLastVisit = (d?: string) => getDaysSinceLastVisit(d);
+
 
   useEffect(() => {
     fetchClients();
@@ -861,47 +885,61 @@ export default function Clients() {
               </TabsList>
             </Tabs>
 
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="Search clients..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 w-64"
-                />
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Search clients..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9 w-64"
+                  />
+                </div>
+                
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    {CLIENT_STATUSES.map((status) => (
+                      <SelectItem key={status.value} value={status.value}>
+                        <div className="flex items-center gap-2">
+                          <status.icon className="w-4 h-4" />
+                          {status.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SORT_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <ToggleGroup
+                  type="single"
+                  value={viewMode}
+                  onValueChange={(v) => v && setViewMode(v as "cards" | "table")}
+                  aria-label="Select view mode"
+                >
+                  <ToggleGroupItem value="cards" aria-label="Card view">
+                    <LayoutGrid className="w-4 h-4" />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="table" aria-label="Table view">
+                    <TableIcon className="w-4 h-4" />
+                  </ToggleGroupItem>
+                </ToggleGroup>
               </div>
-              
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-32">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  {CLIENT_STATUSES.map((status) => (
-                    <SelectItem key={status.value} value={status.value}>
-                      <div className="flex items-center gap-2">
-                        <status.icon className="w-4 h-4" />
-                        {status.label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-32">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SORT_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </CardHeader>
         
@@ -933,125 +971,140 @@ export default function Clients() {
               )}
             </div>
           ) : (
-            <div className="grid gap-4 p-6 md:grid-cols-2 lg:grid-cols-3">
-              {currentClients.map((client) => {
-                const tier = getLoyaltyTier(client.total_spent || 0);
-                const initials = getInitials(client.full_name);
-                return (
-                  <Card key={client.id} className="group hover:shadow-lg transition-all duration-300 border-slate-200">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${tier.color} flex items-center justify-center text-white font-semibold`}>
-                            {initials}
+            {viewMode === "table" ? (
+              <div className="p-6">
+                <ClientsTable
+                  clients={currentClients}
+                  onViewProfile={handleViewProfile}
+                  onBookAppointment={handleBookAppointment as any}
+                  onEdit={(c) => handleEdit(c as any)}
+                  onDelete={handleDelete}
+                  getStatusBadge={(s) => getStatusBadge(s)}
+                  formatMoney={(n) => `$${(n || 0).toFixed(2)}`}
+                  formatLastVisit={(d) => getDaysSinceLastVisit(d)}
+                />
+              </div>
+            ) : (
+              <div className="grid gap-4 p-6 md:grid-cols-2 lg:grid-cols-3">
+                {currentClients.map((client) => {
+                  const tier = getLoyaltyTier(client.total_spent || 0);
+                  const initials = getInitials(client.full_name);
+                  return (
+                    <Card key={client.id} className="group hover:shadow-lg transition-all duration-300 border-slate-200">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${tier.color} flex items-center justify-center text-white font-semibold`}>
+                              {initials}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-slate-900 truncate">{client.full_name}</h3>
+                              <div className="flex items-center gap-2 mt-1">
+                                {getStatusBadge(client.client_status || "active")}
+                                <Badge className={`text-xs bg-gradient-to-r ${tier.color} text-white`}>
+                                  {tier.name}
+                                </Badge>
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-slate-900 truncate">{client.full_name}</h3>
-                            <div className="flex items-center gap-2 mt-1">
-                              {getStatusBadge(client.client_status || "active")}
-                              <Badge className={`text-xs bg-gradient-to-r ${tier.color} text-white`}>
-                                {tier.name}
-                              </Badge>
+                          
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => handleViewProfile(client.id)}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Profile
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEdit(client)}>
+                                <Edit2 className="mr-2 h-4 w-4" />
+                                Edit Client
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleBookAppointment(client)}>
+                                <CalendarClock className="mr-2 h-4 w-4" />
+                                Book Appointment
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <MessageSquare className="mr-2 h-4 w-4" />
+                                Send Message
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(client.id)}
+                                className="text-red-600 focus:text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </CardHeader>
+                      
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div className="space-y-2">
+                            {client.email && (
+                              <div className="flex items-center text-slate-600 truncate">
+                                <Mail className="w-4 h-4 mr-2 flex-shrink-0" />
+                                <span className="truncate">{client.email}</span>
+                              </div>
+                            )}
+                            {client.phone && (
+                              <div className="flex items-center text-slate-600">
+                                <Phone className="w-4 h-4 mr-2 flex-shrink-0" />
+                                <span>{client.phone}</span>
+                              </div>
+                            )}
+                            {client.address && (
+                              <div className="flex items-center text-slate-600">
+                                <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
+                                <span className="truncate">{client.address}</span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <div className="flex items-center text-slate-600">
+                              <DollarSign className="w-4 h-4 mr-2" />
+                              ${(client.total_spent || 0).toLocaleString()}
+                            </div>
+                            <div className="flex items-center text-slate-600">
+                              <Calendar className="w-4 h-4 mr-2" />
+                              {client.total_visits || 0} visits
+                            </div>
+                            <div className="flex items-center text-slate-600">
+                              <Clock className="w-4 h-4 mr-2" />
+                              {getDaysSinceLastVisit(client.last_visit_date)}
                             </div>
                           </div>
                         </div>
                         
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem onClick={() => console.log("View profile", client.id)}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Profile
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEdit(client)}>
-                              <Edit2 className="mr-2 h-4 w-4" />
-                              Edit Client
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem>
-                              <CalendarClock className="mr-2 h-4 w-4" />
-                              Book Appointment
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <MessageSquare className="mr-2 h-4 w-4" />
-                              Send Message
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(client.id)}
-                              className="text-red-600 focus:text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </CardHeader>
-                    
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div className="space-y-2">
-                          {client.email && (
-                            <div className="flex items-center text-slate-600 truncate">
-                              <Mail className="w-4 h-4 mr-2 flex-shrink-0" />
-                              <span className="truncate">{client.email}</span>
-                            </div>
-                          )}
-                          {client.phone && (
-                            <div className="flex items-center text-slate-600">
-                              <Phone className="w-4 h-4 mr-2 flex-shrink-0" />
-                              <span>{client.phone}</span>
-                            </div>
-                          )}
-                          {client.address && (
-                            <div className="flex items-center text-slate-600">
-                              <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
-                              <span className="truncate">{client.address}</span>
-                            </div>
-                          )}
-                        </div>
+                        {client.date_of_birth && (
+                          <div className="flex items-center text-slate-600 text-sm pt-2 border-t">
+                            <Cake className="w-4 h-4 mr-2" />
+                            <span>
+                              {format(new Date(client.date_of_birth), "MMM dd")} birthday
+                            </span>
+                          </div>
+                        )}
                         
-                        <div className="space-y-2">
-                          <div className="flex items-center text-slate-600">
-                            <DollarSign className="w-4 h-4 mr-2" />
-                            ${(client.total_spent || 0).toLocaleString()}
+                        {client.preferences && (
+                          <div className="pt-2 border-t">
+                            <div className="text-xs text-slate-500 font-medium mb-1">Preferences:</div>
+                            <div className="text-xs text-slate-600 line-clamp-2">{client.preferences}</div>
                           </div>
-                          <div className="flex items-center text-slate-600">
-                            <Calendar className="w-4 h-4 mr-2" />
-                            {client.total_visits || 0} visits
-                          </div>
-                          <div className="flex items-center text-slate-600">
-                            <Clock className="w-4 h-4 mr-2" />
-                            {getDaysSinceLastVisit(client.last_visit_date)}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {client.date_of_birth && (
-                        <div className="flex items-center text-slate-600 text-sm pt-2 border-t">
-                          <Cake className="w-4 h-4 mr-2" />
-                          <span>
-                            {format(new Date(client.date_of_birth), "MMM dd")} birthday
-                          </span>
-                        </div>
-                      )}
-                      
-                      {client.preferences && (
-                        <div className="pt-2 border-t">
-                          <div className="text-xs text-slate-500 font-medium mb-1">Preferences:</div>
-                          <div className="text-xs text-slate-600 line-clamp-2">{client.preferences}</div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
           )}
         </CardContent>
       </Card>
