@@ -1,17 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { useOrganizationCurrency } from '@/lib/saas/hooks';
+import { useOrganizationCurrency, useOrganization } from '@/lib/saas/hooks';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { 
   Users, Mail, Phone, Receipt as ReceiptIcon, FileText, Download, Printer, MessageSquare, Edit2, DollarSign
 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export default function ReceiptView() {
   const { id } = useParams();
@@ -22,7 +24,11 @@ export default function ReceiptView() {
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { symbol } = useOrganizationCurrency();
+  const { organization } = useOrganization();
   const isPrintMode = useMemo(() => new URLSearchParams(location.search).get('print') === '1', [location.search]);
+
+  const [customerInfo, setCustomerInfo] = useState<any | null>(null);
+  const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -36,7 +42,6 @@ export default function ReceiptView() {
             return await getReceiptPaymentsWithFallback(supabase, String(id));
           })(),
           (async () => {
-            // fetch customer for display if available on receipt
             const rec = await supabase.from('receipts').select('customer_id').eq('id', id).maybeSingle();
             const cid = (rec as any)?.data?.customer_id;
             if (!cid) return null;
@@ -59,182 +64,250 @@ export default function ReceiptView() {
 
   useEffect(() => {
     if (!loading && isPrintMode) {
-      // Defer to allow render
       setTimeout(() => {
         window.print();
       }, 100);
     }
   }, [loading, isPrintMode]);
 
-  const [customerInfo, setCustomerInfo] = useState<any | null>(null);
+  const handleDownloadPdf = async () => {
+    try {
+      if (!printRef.current) return;
+      const element = printRef.current;
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      const imgData = canvas.toDataURL('image/png');
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      const fileName = `receipt_${receipt?.receipt_number || id}.pdf`;
+      pdf.save(fileName);
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to generate PDF');
+    }
+  };
 
   if (loading) return <div className="p-6">Loading...</div>;
   if (!receipt) return <div className="p-6">Receipt not found</div>;
 
   const outstanding = Math.max(0, (receipt.total_amount || 0) - (receipt.amount_paid || 0));
 
+  const orgName = organization?.name || 'Your Business';
+  const orgSettings = (organization?.settings as any) || {};
+  const orgAddress = [orgSettings.address, orgSettings.city, orgSettings.state, orgSettings.zip_code, orgSettings.country]
+    .filter(Boolean)
+    .join(', ');
+
   return (
     <div className={`p-6 space-y-6 ${isPrintMode ? 'bg-white' : ''}`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Receipt {receipt.receipt_number}</h2>
-          <div className="text-sm text-slate-500">Created {format(new Date(receipt.created_at), 'MMM dd, yyyy')}</div>
-        </div>
-        <Badge variant={receipt.status === 'paid' ? 'default' : receipt.status === 'partial' ? 'outline' : 'secondary'}>
-          {receipt.status.toUpperCase()}
-        </Badge>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="bg-blue-50 border-blue-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm text-blue-700 flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Customer
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="font-semibold">{customerInfo?.full_name || 'Walk-in'}</div>
-            {customerInfo?.email && (
-              <div className="text-sm text-slate-600 flex items-center gap-2">
-                <Mail className="w-3 h-3" />
-                {customerInfo.email}
+      {/* Printable area */}
+      <div ref={printRef} className="space-y-6 bg-white rounded-xl shadow-sm print:shadow-none print:bg-white">
+        {/* Fancy Header */}
+        <div className="rounded-xl overflow-hidden border">
+          <div className="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-pink-500 p-6 text-white">
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+              <div>
+                <div className="text-2xl font-extrabold tracking-tight">{orgName}</div>
+                {orgAddress && (
+                  <div className="text-sm/6 opacity-90 mt-1">{orgAddress}</div>
+                )}
               </div>
-            )}
-            {customerInfo?.phone && (
-              <div className="text-sm text-slate-600 flex items-center gap-2">
-                <Phone className="w-3 h-3" />
-                {customerInfo.phone}
+              <div className="text-right">
+                <div className="text-xs uppercase opacity-90">Receipt</div>
+                <div className="text-lg font-semibold">{receipt.receipt_number}</div>
+                <div className="text-xs opacity-90">{format(new Date(receipt.created_at), 'MMM dd, yyyy')}</div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="bg-violet-50 border-violet-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm text-violet-700 flex items-center gap-2">
-              <ReceiptIcon className="w-4 h-4" />
-              Receipt Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-slate-600">Date:</span>
-              <span className="font-medium">{format(new Date(receipt.created_at), 'MMM dd, yyyy')}</span>
             </div>
-            {receipt.payment_method && (
-              <div className="flex justify-between">
-                <span className="text-slate-600">Payment:</span>
-                <span className="font-medium">{receipt.payment_method}</span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            Items
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {items.length === 0 ? (
-            <div className="text-center py-8 space-y-2">
-              <FileText className="w-8 h-8 text-slate-300 mx-auto" />
-              <p className="text-slate-500">No items found for this receipt</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Qty</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead>Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((it) => (
-                  <TableRow key={it.id}>
-                    <TableCell className="font-medium">{it.description}</TableCell>
-                    <TableCell>{it.quantity}</TableCell>
-                    <TableCell>${Number(it.unit_price).toFixed(2)}</TableCell>
-                    <TableCell className="font-semibold">{symbol}{Number(it.total_price).toFixed(2)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Payments</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {payments.length === 0 ? (
-            <div className="text-sm text-muted-foreground">No payments</div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Method</TableHead>
-                  <TableHead>Reference</TableHead>
-                  <TableHead>Amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {payments.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell>{format(new Date(p.payment_date), 'MMM dd, yyyy')}</TableCell>
-                    <TableCell>{p.method}</TableCell>
-                    <TableCell>{p.reference_number || '—'}</TableCell>
-                    <TableCell>${Number(p.amount).toFixed(2)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-          <div className="mt-4 text-sm">
-            <div>Total: ${Number(receipt.total_amount).toFixed(2)}</div>
-            <div>Paid: ${Number(receipt.amount_paid || 0).toFixed(2)}</div>
-            <div>Outstanding: ${Number(outstanding).toFixed(2)}</div>
           </div>
-        </CardContent>
-      </Card>
+          <div className="px-6 py-4 bg-slate-50 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-slate-700">
+              <ReceiptIcon className="w-4 h-4" />
+              <span className="text-sm">Receipt Details</span>
+            </div>
+            <Badge variant={receipt.status === 'paid' ? 'default' : receipt.status === 'partial' ? 'outline' : 'secondary'}>
+              {receipt.status.toUpperCase()}
+            </Badge>
+          </div>
+        </div>
 
-      <Card className="bg-slate-50">
-        <CardContent className="p-4">
-          <div className="flex justify-end">
-            <div className="w-64 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Subtotal:</span>
-                <span className="font-semibold">${Number(receipt.subtotal || 0).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Tax:</span>
-                <span className="font-semibold">${Number(receipt.tax_amount || 0).toFixed(2)}</span>
-              </div>
-              {Number(receipt.discount_amount || 0) > 0 && (
-                <div className="flex justify-between text-sm text-red-600">
-                  <span>Discount:</span>
-                  <span className="font-semibold">-{symbol}{Number(receipt.discount_amount).toFixed(2)}</span>
+        {/* Parties */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card className="border-blue-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm text-blue-700 flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Customer
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="font-semibold">{customerInfo?.full_name || 'Walk-in'}</div>
+              {customerInfo?.email && (
+                <div className="text-sm text-slate-600 flex items-center gap-2">
+                  <Mail className="w-3 h-3" />
+                  {customerInfo.email}
                 </div>
               )}
-              <Separator />
-              <div className="flex justify-between text-lg font-bold">
-                <span>Total:</span>
-                <span className="text-violet-600">${Number(receipt.total_amount || 0).toFixed(2)}</span>
+              {customerInfo?.phone && (
+                <div className="text-sm text-slate-600 flex items-center gap-2">
+                  <Phone className="w-3 h-3" />
+                  {customerInfo.phone}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-violet-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm text-violet-700 flex items-center gap-2">
+                <ReceiptIcon className="w-4 h-4" />
+                Receipt Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-600">Date:</span>
+                <span className="font-medium">{format(new Date(receipt.created_at), 'MMM dd, yyyy')}</span>
+              </div>
+              {receipt.payment_method && (
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Payment:</span>
+                  <span className="font-medium">{receipt.payment_method}</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Items */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Items
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {items.length === 0 ? (
+              <div className="text-center py-8 space-y-2">
+                <FileText className="w-8 h-8 text-slate-300 mx-auto" />
+                <p className="text-slate-500">No items found for this receipt</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Qty</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((it) => (
+                    <TableRow key={it.id}>
+                      <TableCell className="font-medium">{it.description}</TableCell>
+                      <TableCell>{it.quantity}</TableCell>
+                      <TableCell>{symbol}{Number(it.unit_price).toFixed(2)}</TableCell>
+                      <TableCell className="font-semibold">{symbol}{Number(it.total_price).toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Payments */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Payments</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {payments.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No payments</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Method</TableHead>
+                    <TableHead>Reference</TableHead>
+                    <TableHead>Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {payments.map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell>{format(new Date(p.payment_date), 'MMM dd, yyyy')}</TableCell>
+                      <TableCell>{p.method}</TableCell>
+                      <TableCell>{p.reference_number || '—'}</TableCell>
+                      <TableCell>{symbol}{Number(p.amount).toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+            <div className="mt-4 text-sm">
+              <div>Total: {symbol}{Number(receipt.total_amount).toFixed(2)}</div>
+              <div>Paid: {symbol}{Number(receipt.amount_paid || 0).toFixed(2)}</div>
+              <div>Outstanding: {symbol}{Number(outstanding).toFixed(2)}</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Summary */}
+        <Card className="bg-slate-50">
+          <CardContent className="p-4">
+            <div className="flex justify-end">
+              <div className="w-64 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Subtotal:</span>
+                  <span className="font-semibold">{symbol}{Number(receipt.subtotal || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Tax:</span>
+                  <span className="font-semibold">{symbol}{Number(receipt.tax_amount || 0).toFixed(2)}</span>
+                </div>
+                {Number(receipt.discount_amount || 0) > 0 && (
+                  <div className="flex justify-between text-sm text-red-600">
+                    <span>Discount:</span>
+                    <span className="font-semibold">-{symbol}{Number(receipt.discount_amount).toFixed(2)}</span>
+                  </div>
+                )}
+                <Separator />
+                <div className="flex justify-between text-lg font-bold">
+                  <span>Total:</span>
+                  <span className="text-violet-600">{symbol}{Number(receipt.total_amount || 0).toFixed(2)}</span>
+                </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
+        {/* Footer note */}
+        <div className="text-center text-xs text-slate-500">
+          Thank you for your business!
+        </div>
+      </div>
+
+      {/* Actions - hidden in print */}
       {!isPrintMode && (
         <div className="flex justify-between items-center pt-2 print:hidden">
           <Button variant="outline" onClick={() => navigate(-1)}>Back</Button>
@@ -249,7 +322,7 @@ export default function ReceiptView() {
               <Printer className="w-4 h-4 mr-2" />
               Print
             </Button>
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleDownloadPdf}>
               <Download className="w-4 h-4 mr-2" />
               Download PDF
             </Button>
