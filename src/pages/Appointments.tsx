@@ -48,6 +48,13 @@ interface Service {
   category: string;
 }
 
+interface ClientRow {
+  id: string;
+  full_name: string;
+  phone?: string | null;
+  email?: string | null;
+}
+
 interface AppointmentServiceItem {
   id?: string;
   appointment_id?: string;
@@ -72,6 +79,10 @@ export default function Appointments() {
   
   const [appointmentServicesById, setAppointmentServicesById] = useState<Record<string, AppointmentServiceItem[]>>({});
   const [appointmentsWithJobcards, setAppointmentsWithJobcards] = useState<Set<string>>(new Set());
+
+  const [clientsList, setClientsList] = useState<ClientRow[]>([]);
+  const [clientSearch, setClientSearch] = useState<string>("");
+  const [selectedClientId, setSelectedClientId] = useState<string>("");
 
   const [form, setForm] = useState({
     customer_name: "",
@@ -195,8 +206,75 @@ export default function Appointments() {
     }
   }, []);
 
+  // Helper to get dial code from organization country
+  const getDialCode = (country: string): string => {
+    const c = String(country || '').toLowerCase();
+    const map: Record<string, string> = {
+      ke: '+254', kenya: '+254',
+      ug: '+256', uganda: '+256',
+      tz: '+255', tanzania: '+255',
+      us: '+1', usa: '+1', 'united states': '+1', 'united states of america': '+1',
+      uk: '+44', gb: '+44', 'united kingdom': '+44',
+      in: '+91', india: '+91',
+      za: '+27', 'south africa': '+27',
+      ae: '+971', 'united arab emirates': '+971',
+      ca: '+1', canada: '+1',
+      au: '+61', australia: '+61',
+    };
+    return map[c] || '';
+  };
+
+  const handleSelectExistingClient = (clientId: string) => {
+    setSelectedClientId(clientId);
+    const c = clientsList.find(x => x.id === clientId);
+    if (c) {
+      setForm(prev => ({
+        ...prev,
+        customer_name: c.full_name || prev.customer_name,
+        customer_email: c.email || prev.customer_email,
+        customer_phone: c.phone || prev.customer_phone,
+      }));
+    }
+  };
+
+  useEffect(() => {
+    const loadClientsAndPrefill = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('clients')
+          .select('id, full_name, phone, email')
+          .order('full_name', { ascending: true });
+        if (error) throw error;
+        setClientsList(data || []);
+      } catch (err) {
+        console.error('Error loading clients:', err);
+      }
+
+      // Prefill phone dial code based on organization country
+      const settings = (organization?.settings || {}) as any;
+      const country = settings?.country || settings?.address?.country || settings?.business_country || null;
+      const dial = country ? getDialCode(country) : '';
+      setForm(prev => {
+        if (!prev.customer_phone && dial) {
+          return { ...prev, customer_phone: dial };
+        }
+        return prev;
+      });
+    };
+
+    if (isModalOpen) {
+      loadClientsAndPrefill();
+    } else {
+      setSelectedClientId("");
+      setClientSearch("");
+    }
+  }, [isModalOpen, organization]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    if (name === 'customer_phone') {
+      setSelectedClientId("");
+    }
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
@@ -287,6 +365,50 @@ export default function Appointments() {
         return;
       }
 
+      // Require mobile number
+      if (!form.customer_phone || !form.customer_phone.trim()) {
+        toast.error("Mobile number is required");
+        return;
+      }
+
+      // Resolve client (prevent duplicates by phone)
+      let resolvedClientId: string | null = selectedClientId || null;
+      const phoneValue = form.customer_phone.trim();
+      try {
+        if (!resolvedClientId) {
+          const { data: existingClient, error: findClientError } = await supabase
+            .from('clients')
+            .select('id, phone')
+            .eq('phone', phoneValue)
+            .maybeSingle();
+          if (findClientError && (findClientError as any).code !== 'PGRST116') {
+            throw findClientError;
+          }
+          if (existingClient?.id) {
+            resolvedClientId = existingClient.id;
+          } else {
+            const clientInsert: any = {
+              full_name: form.customer_name || '(No name)',
+              email: form.customer_email || null,
+              phone: phoneValue,
+            };
+            if (organization?.id) {
+              (clientInsert as any).organization_id = organization.id;
+            }
+            const { data: insertedClient, error: insertClientError } = await supabase
+              .from('clients')
+              .insert([clientInsert])
+              .select('id')
+              .single();
+            if (insertClientError) throw insertClientError;
+            resolvedClientId = insertedClient?.id || null;
+          }
+        }
+      } catch (resolveErr: any) {
+        toast.error(resolveErr?.message || 'Failed to resolve client');
+        return;
+      }
+
       // Compute aggregates
       const totalDuration = form.serviceItems.reduce((sum, it) => sum + (it.duration_minutes || 0), 0);
       const totalPrice = form.serviceItems.reduce((sum, it) => sum + (it.price || 0), 0);
@@ -299,6 +421,7 @@ export default function Appointments() {
         customer_name: form.customer_name,
         customer_email: form.customer_email || null,
         customer_phone: form.customer_phone || null,
+        client_id: resolvedClientId,
         service_name: serviceNames || "",
         staff_id: form.serviceItems.length === 1 ? (form.serviceItems[0].staff_id || null) : null,
         appointment_date: form.appointment_date,
@@ -753,6 +876,35 @@ export default function Appointments() {
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2 border rounded-md p-3 space-y-2">
+                    <Label>Select Existing Client (optional)</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <Input
+                        placeholder="Search by name or phone"
+                        value={clientSearch}
+                        onChange={(e) => setClientSearch(e.target.value)}
+                      />
+                      <Select value={selectedClientId} onValueChange={handleSelectExistingClient}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose client" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(clientsList.filter(c =>
+                            c.full_name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                            (c.phone || '').includes(clientSearch)
+                          )).map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.full_name}{c.phone ? ` · ${c.phone}` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button type="button" variant="outline" onClick={() => { setSelectedClientId(""); setClientSearch(""); }}>
+                        Clear
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Selecting a client will auto-fill the details below.</p>
+                  </div>
                   <div>
                     <Label htmlFor="customer_name">Customer Name</Label>
                     <Input
@@ -774,12 +926,13 @@ export default function Appointments() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="customer_phone">Customer Phone</Label>
+                    <Label htmlFor="customer_phone">Customer Phone<span className="text-red-500">*</span></Label>
                     <Input
                       id="customer_phone"
                       name="customer_phone"
                       value={form.customer_phone}
                       onChange={handleInputChange}
+                      required
                     />
                   </div>
 
