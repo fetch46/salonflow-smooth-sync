@@ -31,6 +31,7 @@ export default function Receipts() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<string>("all");
   const [isPayOpen, setIsPayOpen] = useState(false);
   const [selected, setSelected] = useState<Receipt | null>(null);
   const [payment, setPayment] = useState({ amount: "", method: "cash", reference: "" });
@@ -60,10 +61,18 @@ export default function Receipts() {
 
   const filtered = useMemo(() => {
     const s = search.toLowerCase();
-    return receipts.filter(r => r.receipt_number.toLowerCase().includes(s) || (r.notes || '').toLowerCase().includes(s));
-  }, [receipts, search]);
+    return receipts
+      .filter(r => (status === 'all' ? true : r.status === status))
+      .filter(r => r.receipt_number.toLowerCase().includes(s) || (r.notes || '').toLowerCase().includes(s));
+  }, [receipts, search, status]);
 
   const outstanding = (r: Receipt) => Math.max(0, (r.total_amount || 0) - (r.amount_paid || 0));
+  const totals = useMemo(() => {
+    const total = filtered.reduce((sum, r) => sum + (r.total_amount || 0), 0);
+    const paid = filtered.reduce((sum, r) => sum + (r.amount_paid || 0), 0);
+    const due = total - paid;
+    return { total, paid, due };
+  }, [filtered]);
 
   const exportCsv = () => {
     const headers = [
@@ -147,6 +156,13 @@ export default function Receipts() {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Receipts</h2>
         <div className="flex items-center gap-2">
+          <select className="border rounded px-3 py-2" value={status} onChange={(e) => setStatus(e.target.value)}>
+            <option value="all">All</option>
+            <option value="open">Open</option>
+            <option value="partial">Partial</option>
+            <option value="paid">Paid</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
           <Input placeholder="Search receipts..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
           <Button variant="outline" onClick={exportCsv}>
             Export CSV
@@ -156,6 +172,21 @@ export default function Receipts() {
             Refresh
           </Button>
         </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Total</CardTitle></CardHeader>
+          <CardContent className="text-2xl font-semibold">${totals.total.toFixed(2)}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Paid</CardTitle></CardHeader>
+          <CardContent className="text-2xl font-semibold">${totals.paid.toFixed(2)}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Outstanding</CardTitle></CardHeader>
+          <CardContent className="text-2xl font-semibold">${totals.due.toFixed(2)}</CardContent>
+        </Card>
       </div>
 
       <Card>
