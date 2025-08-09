@@ -18,6 +18,7 @@ import ClientProfile from "@/pages/ClientProfile";
 import Staff from "@/pages/Staff";
 import Services from "@/pages/Services";
 import Inventory from "@/pages/Inventory";
+import Receipts from "@/pages/Receipts";
 import Expenses from "@/pages/Expenses";
 import Purchases from "@/pages/Purchases";
 import Suppliers from "@/pages/Suppliers";
@@ -130,7 +131,8 @@ const AppRoutes = () => {
         <Route path="inventory-adjustments" element={<InventoryAdjustments />} />
         
         {/* Financial Management */}
-        <Route path="expenses" element={<Expenses />} />
+                 <Route path="expenses" element={<Expenses />} />
+         <Route path="receipts" element={<Receipts />} />
         <Route path="purchases" element={<Purchases />} />
         <Route path="suppliers" element={<Suppliers />} />
         <Route path="accounts" element={<Accounts />} />

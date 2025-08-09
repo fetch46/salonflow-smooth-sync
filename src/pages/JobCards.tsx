@@ -245,10 +245,33 @@ export default function JobCards() {
     return `INV-${y}${m}${d}-${rand}`;
   };
 
-  // Invoicing removed in favor of receipts
-  const createInvoiceFromJobCard = async (_card: JobCard) => {
-    toast.info('Invoicing has been removed. Use Receipts via Job Cards.');
-    return;
+  // Create receipt from job card
+  const createReceiptFromJobCard = async (card: JobCard) => {
+        try {
+      const receiptNumber = `RCT-${Date.now().toString().slice(-6)}`;
+      const { data: receipt, error } = await supabase
+        .from('receipts')
+        .insert([
+          {
+            receipt_number: receiptNumber,
+            customer_id: card.client?.id || null,
+            job_card_id: card.id,
+            subtotal: card.total_amount,
+            tax_amount: 0,
+            discount_amount: 0,
+            total_amount: card.total_amount,
+            status: 'open',
+            notes: `Receipt for ${card.job_number}`,
+          },
+        ])
+        .select()
+        .single();
+      if (error) throw error;
+      toast.success('Receipt created');
+    } catch (e: any) {
+      console.error('Error creating receipt from job card:', e);
+      toast.error(e?.message || 'Failed to create receipt');
+    }
   };
 
   const getStatusBadge = (status: string) => {

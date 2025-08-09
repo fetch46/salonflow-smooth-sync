@@ -115,18 +115,24 @@ const menuItems: MenuItem[] = [
     icon: DollarSign,
     feature: "expenses", // At least one financial feature
     subItems: [
-      {
-        title: "Expenses",
-        url: "/expenses",
-        icon: Receipt,
-        feature: "expenses",
-      },
-      {
-        title: "Accounts",
-        url: "/accounts",
-        icon: Calculator,
-        feature: "accounting",
-      },
+             {
+         title: "Expenses",
+         url: "/expenses",
+         icon: Receipt,
+         feature: "expenses",
+       },
+       {
+         title: "Receipts",
+         url: "/receipts",
+         icon: FileText,
+         feature: "accounting",
+               },
+        {
+          title: "Accounts",
+          url: "/accounts",
+          icon: Calculator,
+          feature: "accounting",
+        }
     ],
   },
   {
