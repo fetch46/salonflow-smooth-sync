@@ -205,7 +205,7 @@ export async function getReceiptItemsWithFallback(supabase: any, receiptId: stri
   try {
     const { data, error } = await supabase
       .from('receipt_items')
-      .select('id, receipt_id, description, quantity, unit_price, total_price')
+      .select('id, receipt_id, description, quantity, unit_price, total_price, service_id, product_id, staff_id')
       .eq('receipt_id', receiptId);
     if (error) throw error;
     return data || [];
@@ -528,5 +528,26 @@ export async function deleteReceiptWithFallback(supabase: any, id: string) {
     storage.receipt_payments = (storage.receipt_payments || []).filter((p: any) => p.receipt_id !== id);
     setStorage(storage);
     return true;
+  }
+}
+
+export async function updateReceiptWithFallback(supabase: any, id: string, updates: any) {
+  try {
+    // Whitelist updatable fields to avoid DB errors on unknown columns
+    const allowed: any = {};
+    if (typeof updates.status !== 'undefined') allowed.status = updates.status;
+    if (typeof updates.notes !== 'undefined') allowed.notes = updates.notes;
+    if (typeof updates.receipt_number !== 'undefined') allowed.receipt_number = updates.receipt_number;
+
+    const { error } = await supabase
+      .from('receipts')
+      .update(allowed)
+      .eq('id', id);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.log('Using mock database for invoice update');
+    return await mockDb.updateInvoice(id, updates);
   }
 }

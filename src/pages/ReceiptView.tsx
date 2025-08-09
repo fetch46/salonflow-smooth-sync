@@ -14,6 +14,9 @@ import {
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 export default function ReceiptView() {
   const { id } = useParams();
@@ -29,6 +32,9 @@ export default function ReceiptView() {
 
   const [customerInfo, setCustomerInfo] = useState<any | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
+
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState<{ status: string; notes: string; receipt_number: string }>({ status: 'open', notes: '', receipt_number: '' });
 
   useEffect(() => {
     (async () => {
@@ -53,7 +59,8 @@ export default function ReceiptView() {
         } catch {}
 
         setReceipt(rec);
-        setItems(it || []);
+        // Only list services: filter out items that have product_id, keep those with service_id or no explicit product_id
+        setItems((it || []).filter((x: any) => x.service_id || !x.product_id));
         setPayments(pays || []);
         setCustomerInfo(customer);
       } catch (e) {
@@ -104,6 +111,41 @@ export default function ReceiptView() {
     } catch (e) {
       console.error(e);
       toast.error('Failed to generate PDF');
+    }
+  };
+
+  const openEdit = () => {
+    if (!receipt) return;
+    setEditForm({
+      status: receipt.status || 'open',
+      notes: receipt.notes || '',
+      receipt_number: receipt.receipt_number || ''
+    });
+    setIsEditOpen(true);
+  };
+
+  const submitEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const { updateReceiptWithFallback } = await import('@/utils/mockDatabase');
+      await updateReceiptWithFallback(supabase, String(id), {
+        status: editForm.status,
+        notes: editForm.notes,
+        receipt_number: editForm.receipt_number,
+      });
+      toast.success('Receipt updated');
+      setIsEditOpen(false);
+      // Reload
+      const { getReceiptByIdWithFallback, getReceiptItemsWithFallback, getReceiptPaymentsWithFallback } = await import('@/utils/mockDatabase');
+      const rec = await getReceiptByIdWithFallback(supabase, String(id));
+      const it = await getReceiptItemsWithFallback(supabase, String(id));
+      const pays = await getReceiptPaymentsWithFallback(supabase, String(id));
+      setReceipt(rec);
+      setItems((it || []).filter((x: any) => x.service_id || !x.product_id));
+      setPayments(pays || []);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || 'Failed to update receipt');
     }
   };
 
@@ -333,13 +375,44 @@ export default function ReceiptView() {
               <MessageSquare className="w-4 h-4 mr-2" />
               Send WhatsApp
             </Button>
-            <Button className="bg-violet-600 hover:bg-violet-700">
+            <Button className="bg-violet-600 hover:bg-violet-700" onClick={openEdit}>
               <Edit2 className="w-4 h-4 mr-2" />
               Edit Receipt
             </Button>
           </div>
         </div>
       )}
+
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Receipt</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={submitEdit} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Receipt Number</Label>
+              <Input value={editForm.receipt_number} onChange={(e) => setEditForm(prev => ({ ...prev, receipt_number: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <select className="border rounded px-3 py-2 w-full" value={editForm.status} onChange={(e) => setEditForm(prev => ({ ...prev, status: e.target.value }))}>
+                <option value="open">Open</option>
+                <option value="partial">Partial</option>
+                <option value="paid">Paid</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Input value={editForm.notes} onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))} />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
+              <Button type="submit">Save</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
