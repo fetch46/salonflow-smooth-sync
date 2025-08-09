@@ -166,8 +166,8 @@ export default function JobCards() {
         priority: card.priority || 'medium',
         service_type: card.service_type || 'general',
         notes: card.notes || '',
-        staff: Array.isArray(card.staff) ? card.staff : card.staff ? [card.staff] : [],
-        client: Array.isArray(card.client) ? card.client : card.client ? [card.client] : []
+        staff: card.staff || null,
+        client: card.client || null,
       }));
       
       setJobCards(enrichedData as any);
@@ -179,6 +179,9 @@ export default function JobCards() {
     }
   }, []);
 
+  useEffect(() => {
+    fetchJobCards();
+  }, [fetchJobCards]);
   const refreshData = async () => {
     try {
       setRefreshing(true);
@@ -391,7 +394,7 @@ export default function JobCards() {
                 <ChevronRight className="w-4 h-4 ml-2 rotate-90" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-48 z-50 bg-background">
               <DropdownMenuLabel>Export Options</DropdownMenuLabel>
               <DropdownMenuItem>
                 <FileText className="w-4 h-4 mr-2" />
@@ -687,7 +690,7 @@ export default function JobCards() {
                               <MoreHorizontal className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuContent align="end" className="w-48 z-50 bg-background">
                             <DropdownMenuItem onClick={() => navigate(`/job-cards/${jobCard.id}/edit`)}>
                               <Edit className="w-4 h-4 mr-2" />
                               Edit Job Card
