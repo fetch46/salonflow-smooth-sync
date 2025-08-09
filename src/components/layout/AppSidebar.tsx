@@ -185,6 +185,7 @@ const menuItems: MenuItem[] = [
       { title: "P&L", url: "/reports?tab=pnl", icon: Calculator, feature: "reports" },
       { title: "Balance Sheet", url: "/reports?tab=balancesheet", icon: Calculator, feature: "reports" },
       { title: "Commissions", url: "/reports?tab=commissions", icon: DollarSign, feature: "reports" },
+      { title: "Product Usage", url: "/reports?tab=product_usage", icon: Package, feature: "reports" },
     ],
   },
   {

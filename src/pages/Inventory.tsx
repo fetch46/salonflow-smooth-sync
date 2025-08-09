@@ -238,12 +238,13 @@ export default function Inventory() {
   const [isLoading, setIsLoading] = useState(true);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [itemsRes, kitsRes] = await Promise.all([
-        supabase.from("inventory_items").select("*").eq("is_active", true).order("name"),
+        supabase.from("inventory_items").select("*").order("name"),
         supabase.from("service_kits").select(`*, good:inventory_items!service_kits_good_id_fkey(*)`)
       ]);
 
@@ -301,7 +302,43 @@ export default function Inventory() {
     return false;
   };
 
-  const goodsItems = items.filter(item => item.type === 'good');
+  const handleDeactivateItem = async (item: InventoryItem) => {
+    const confirm = window.confirm(`Mark product "${item.name}" as inactive? It will no longer be available in POS, Purchases, or Service Kits.`);
+    if (!confirm) return;
+    try {
+      const { error } = await supabase
+        .from("inventory_items")
+        .update({ is_active: false })
+        .eq("id", item.id);
+      if (error) throw error;
+      toast({ title: "Updated", description: "Product marked as inactive" });
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Error", description: "Failed to update product", variant: "destructive" });
+    }
+  };
+
+  const handleActivateItem = async (item: InventoryItem) => {
+    const confirm = window.confirm(`Mark product "${item.name}" as active? It will be available in POS, Purchases, and Service Kits.`);
+    if (!confirm) return;
+    try {
+      const { error } = await supabase
+        .from("inventory_items")
+        .update({ is_active: true })
+        .eq("id", item.id);
+      if (error) throw error;
+      toast({ title: "Updated", description: "Product marked as active" });
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Error", description: "Failed to update product", variant: "destructive" });
+    }
+  };
+
+  const allGoodsItems = items.filter(item => item.type === 'good');
+  const activeGoodsItems = allGoodsItems.filter(item => item.is_active);
+  const displayedGoodsItems = statusFilter === 'all' ? allGoodsItems : statusFilter === 'active' ? activeGoodsItems : allGoodsItems.filter(item => !item.is_active);
   const serviceItems = items.filter(item => item.type === 'service');
 
   const TableSkeleton = () => (
@@ -343,7 +380,7 @@ export default function Inventory() {
         onClose={() => setIsItemDialogOpen(false)}
         onSubmit={handleItemSubmit}
         editingItem={editingItem}
-        goodsItems={goodsItems}
+        goodsItems={activeGoodsItems}
         serviceKits={serviceKits}
       />
 
@@ -359,6 +396,19 @@ export default function Inventory() {
                 <Package className="w-5 h-5 text-primary" />
                 Products Inventory
               </CardTitle>
+              <div className="flex items-center gap-3">
+                <Label className="text-sm">Status</Label>
+                <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </CardHeader>
             <CardContent>
               {isLoading ? <TableSkeleton /> : (
@@ -374,7 +424,7 @@ export default function Inventory() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {goodsItems.map((item) => {
+                    {displayedGoodsItems.map((item) => {
                       return (
                         <TableRow key={item.id}>
                           <TableCell className="font-medium">{item.name}</TableCell>
@@ -382,12 +432,25 @@ export default function Inventory() {
                           <TableCell>{item.unit}</TableCell>
                           <TableCell>{item.reorder_point}</TableCell>
                           <TableCell>
-                            <Badge variant="secondary">Active</Badge>
+                            {item.is_active ? (
+                              <Badge variant="secondary">Active</Badge>
+                            ) : (
+                              <Badge variant="outline">Inactive</Badge>
+                            )}
                           </TableCell>
                           <TableCell className="text-right">
                             <Button variant="ghost" size="sm" onClick={() => handleEditItem(item)}>
                               <Edit className="w-4 h-4" />
                             </Button>
+                            {item.is_active ? (
+                              <Button variant="ghost" size="sm" onClick={() => handleDeactivateItem(item)}>
+                                <Trash2 className="w-4 h-4 text-red-600" />
+                              </Button>
+                            ) : (
+                              <Button variant="ghost" size="sm" onClick={() => handleActivateItem(item)}>
+                                Activate
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       );
