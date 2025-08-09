@@ -444,7 +444,11 @@ export const useOrganizationCurrency = () => {
       const n = typeof amount === 'number' ? amount : 0
       const decimals = opts?.decimals ?? 2
       const sym = currency?.symbol ?? '$'
-      return `${sym}${n.toFixed(decimals)}`
+      const formatted = new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      }).format(n)
+      return `${sym}${formatted}`
     },
     [currency]
   )
@@ -463,8 +467,8 @@ export const useOrganizationCurrency = () => {
   const formatUsdCents = useCallback(
     (usdCents: number | null | undefined) => {
       const code = currency?.code ?? 'USD'
-      // Default decimals: 0 for KES/JPY-like, 2 otherwise
-      const zeroDecimalCodes = new Set(['KES', 'JPY', 'KRW'])
+      // Default decimals: 0 for truly zero-decimal currencies only
+      const zeroDecimalCodes = new Set(['JPY', 'KRW'])
       const decimals = zeroDecimalCodes.has(code) ? 0 : 2
       const major = convertUsdCentsToOrgMajor(usdCents)
       return format(major, { decimals })
