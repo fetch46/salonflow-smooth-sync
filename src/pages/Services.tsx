@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,9 +54,12 @@ import {
   TrendingDown,
   CheckCircle,
   AlertTriangle,
-  Info
+  Info,
+  LayoutGrid,
+  Table as TableIcon
 } from "lucide-react";
 import { format } from "date-fns";
+import ServicesTable from "@/components/services/ServicesTable";
 
 interface Service {
   id: string;
@@ -140,7 +144,8 @@ export default function Services() {
   const [refreshing, setRefreshing] = useState(false);
   const [availableProducts, setAvailableProducts] = useState<{ id: string; name: string; type: string; category: string | null; unit: string | null; cost_price: number | null; selling_price: number | null }[]>([]);
   const [serviceKits, setServiceKits] = useState<ServiceKit[]>([]);
-
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+ 
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -1085,6 +1090,20 @@ export default function Services() {
                   <SelectItem value="rating">Rating</SelectItem>
                 </SelectContent>
               </Select>
+
+              <ToggleGroup
+                type="single"
+                value={viewMode}
+                onValueChange={(v) => v && setViewMode(v as "cards" | "table")}
+                aria-label="Select view mode"
+              >
+                <ToggleGroupItem value="cards" aria-label="Card view">
+                  <LayoutGrid className="w-4 h-4" />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="table" aria-label="Table view">
+                  <TableIcon className="w-4 h-4" />
+                </ToggleGroupItem>
+              </ToggleGroup>
             </div>
           </div>
         </CardHeader>
@@ -1117,123 +1136,138 @@ export default function Services() {
               )}
             </div>
           ) : (
-            <div className="grid gap-4 p-6 md:grid-cols-2 lg:grid-cols-3">
-              {currentServices.map((service) => {
-                const CategoryIcon = getCategoryIcon(service.category || "");
-                return (
-                  <Card key={service.id} className="group hover:shadow-lg transition-all duration-300 border-slate-200">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg bg-gradient-to-br ${getCategoryColor(service.category || "")}`}>
-                            <CategoryIcon className="w-5 h-5 text-white" />
+            <>
+              {viewMode === "table" ? (
+                <div className="p-6">
+                <ServicesTable
+                  services={currentServices}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onToggleStatus={toggleServiceStatus}
+                  formatPrice={formatPrice}
+                  formatDuration={formatDuration}
+                />
+              </div>
+            ) : (
+              <div className="grid gap-4 p-6 md:grid-cols-2 lg:grid-cols-3">
+                {currentServices.map((service) => {
+                  const CategoryIcon = getCategoryIcon(service.category || "");
+                  return (
+                    <Card key={service.id} className="group hover:shadow-lg transition-all duration-300 border-slate-200">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg bg-gradient-to-br ${getCategoryColor(service.category || "")}`}>
+                              <CategoryIcon className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-slate-900 truncate">{service.name}</h3>
+                              {service.category && (
+                                <Badge variant="outline" className="text-xs mt-1">
+                                  {service.category}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-slate-900 truncate">{service.name}</h3>
-                            {service.category && (
-                              <Badge variant="outline" className="text-xs mt-1">
-                                {service.category}
-                              </Badge>
+                          
+                          <div className="flex items-center gap-1">
+                            <Switch
+                              checked={service.is_active}
+                              onCheckedChange={() => toggleServiceStatus(service.id, service.is_active)}
+                            />
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuItem onClick={() => console.log("View service", service.id)}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEdit(service)}>
+                                  <Edit2 className="mr-2 h-4 w-4" />
+                                  Edit Service
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleDelete(service.id)}
+                                  className="text-red-600 focus:text-red-600"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      
+                      <CardContent className="space-y-4">
+                        {service.description && (
+                          <p className="text-sm text-slate-600 line-clamp-2">{service.description}</p>
+                        )}
+                        
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div className="space-y-2">
+                            <div className="flex items-center text-slate-600">
+                              <Clock className="w-4 h-4 mr-2" />
+                              {formatDuration(service.duration_minutes)}
+                            </div>
+                            <div className="flex items-center text-slate-600">
+                              <DollarSign className="w-4 h-4 mr-2" />
+                              {formatPrice(service.price)}
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            {service.avg_rating && (
+                              <div className="flex items-center text-slate-600">
+                                <Star className="w-4 h-4 mr-2 text-amber-500" />
+                                {service.avg_rating.toFixed(1)}
+                              </div>
+                            )}
+                            {service.total_bookings && (
+                              <div className="flex items-center text-slate-600">
+                                <Users className="w-4 h-4 mr-2" />
+                                {service.total_bookings} bookings
+                              </div>
                             )}
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-1">
-                          <Switch
-                            checked={service.is_active}
-                            onCheckedChange={() => toggleServiceStatus(service.id, service.is_active)}
-                          />
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem onClick={() => console.log("View service", service.id)}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleEdit(service)}>
-                                <Edit2 className="mr-2 h-4 w-4" />
-                                Edit Service
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => handleDelete(service.id)}
-                                className="text-red-600 focus:text-red-600"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    
-                    <CardContent className="space-y-4">
-                      {service.description && (
-                        <p className="text-sm text-slate-600 line-clamp-2">{service.description}</p>
-                      )}
-                      
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div className="space-y-2">
-                          <div className="flex items-center text-slate-600">
-                            <Clock className="w-4 h-4 mr-2" />
-                            {formatDuration(service.duration_minutes)}
-                          </div>
-                          <div className="flex items-center text-slate-600">
-                            <DollarSign className="w-4 h-4 mr-2" />
-                            {formatPrice(service.price)}
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          {service.avg_rating && (
-                            <div className="flex items-center text-slate-600">
-                              <Star className="w-4 h-4 mr-2 text-amber-500" />
-                              {service.avg_rating.toFixed(1)}
-                            </div>
-                          )}
-                          {service.total_bookings && (
-                            <div className="flex items-center text-slate-600">
-                              <Users className="w-4 h-4 mr-2" />
-                              {service.total_bookings} bookings
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-between pt-2 border-t">
-                        <div className="flex items-center gap-2">
-                          <Badge 
-                            className={service.is_active 
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
-                              : "bg-red-50 text-red-700 border-red-200"
-                            }
-                          >
-                            {service.is_active ? "Active" : "Inactive"}
-                          </Badge>
-                          {service.popularity_score && service.popularity_score > 80 && (
-                            <Badge className="bg-amber-50 text-amber-700 border-amber-200">
-                              <Star className="w-3 h-3 mr-1" />
-                              Popular
+                        <div className="flex items-center justify-between pt-2 border-t">
+                          <div className="flex items-center gap-2">
+                            <Badge 
+                              className={service.is_active 
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                                : "bg-red-50 text-red-700 border-red-200"
+                              }
+                            >
+                              {service.is_active ? "Active" : "Inactive"}
                             </Badge>
+                            {service.popularity_score && service.popularity_score > 80 && (
+                              <Badge className="bg-amber-50 text-amber-700 border-amber-200">
+                                <Star className="w-3 h-3 mr-1" />
+                                Popular
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          {service.commission_rate && (
+                            <div className="text-xs text-slate-500">
+                              {service.commission_rate}% commission
+                            </div>
                           )}
                         </div>
-                        
-                        {service.commission_rate && (
-                          <div className="text-xs text-slate-500">
-                            {service.commission_rate}% commission
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </>
           )}
         </CardContent>
       </Card>
