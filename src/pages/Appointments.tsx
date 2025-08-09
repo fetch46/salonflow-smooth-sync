@@ -47,6 +47,17 @@ interface Service {
   category: string;
 }
 
+interface AppointmentServiceItem {
+  id?: string;
+  appointment_id?: string;
+  service_id: string;
+  staff_id: string;
+  duration_minutes?: number;
+  price?: number;
+  notes?: string;
+  sort_order?: number;
+}
+
 export default function Appointments() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -56,11 +67,15 @@ export default function Appointments() {
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const navigate = useNavigate();
   
+  const [appointmentServicesById, setAppointmentServicesById] = useState<Record<string, AppointmentServiceItem[]>>({});
+
   const [form, setForm] = useState({
     customer_name: "",
     customer_email: "",
     customer_phone: "",
+    // service_name will be computed from selected services
     service_name: "",
+    // staff_id kept for backward compatibility; will be left empty if multiple
     staff_id: "",
     appointment_date: "",
     appointment_time: "",
@@ -68,6 +83,7 @@ export default function Appointments() {
     status: "scheduled",
     notes: "",
     price: 0,
+    serviceItems: [] as AppointmentServiceItem[],
   });
 
   const fetchData = async () => {
@@ -86,6 +102,33 @@ export default function Appointments() {
       setAppointments(appointmentsRes.data || []);
       setStaff(staffRes.data || []);
       setServices(servicesRes.data || []);
+
+      // Fetch appointment services for the loaded appointments
+      const appointmentIds = (appointmentsRes.data || []).map(a => a.id);
+      if (appointmentIds.length > 0) {
+        const { data: apptServices, error: apptServicesError } = await supabase
+          .from("appointment_services")
+          .select("*")
+          .in("appointment_id", appointmentIds);
+        if (apptServicesError) throw apptServicesError;
+        const grouped: Record<string, AppointmentServiceItem[]> = {};
+        (apptServices || []).forEach((item: any) => {
+          if (!grouped[item.appointment_id]) grouped[item.appointment_id] = [];
+          grouped[item.appointment_id].push({
+            id: item.id,
+            appointment_id: item.appointment_id,
+            service_id: item.service_id,
+            staff_id: item.staff_id || "",
+            duration_minutes: item.duration_minutes || undefined,
+            price: item.price || undefined,
+            notes: item.notes || undefined,
+            sort_order: item.sort_order || 0,
+          });
+        });
+        setAppointmentServicesById(grouped);
+      } else {
+        setAppointmentServicesById({});
+      }
     } catch (error) {
       toast.error("Error fetching data");
       console.error(error);
@@ -106,7 +149,8 @@ export default function Appointments() {
         ...prev,
         customer_name: params.get('name') || '',
         customer_email: params.get('email') || '',
-        customer_phone: params.get('phone') || ''
+        customer_phone: params.get('phone') || '',
+        serviceItems: prev.serviceItems.length ? prev.serviceItems : [{ service_id: "", staff_id: "" }]
       }));
       setIsModalOpen(true);
     }
@@ -119,18 +163,6 @@ export default function Appointments() {
 
   const handleSelectChange = (name: string, value: string) => {
     setForm(prev => ({ ...prev, [name]: value }));
-    
-    // Auto-fill service details when service is selected
-    if (name === "service_name") {
-      const selectedService = services.find(s => s.name === value);
-      if (selectedService) {
-        setForm(prev => ({
-          ...prev,
-          duration_minutes: selectedService.duration_minutes,
-          price: selectedService.price
-        }));
-      }
-    }
   };
 
   const resetForm = () => {
@@ -146,28 +178,138 @@ export default function Appointments() {
       status: "scheduled",
       notes: "",
       price: 0,
+      serviceItems: [{ service_id: "", staff_id: "" }],
     });
     setEditingAppointment(null);
   };
 
+  const addServiceItem = () => {
+    setForm(prev => ({ ...prev, serviceItems: [...prev.serviceItems, { service_id: "", staff_id: "" }] }));
+  };
+
+  const removeServiceItem = (index: number) => {
+    setForm(prev => ({ ...prev, serviceItems: prev.serviceItems.filter((_, i) => i !== index) }));
+  };
+
+  const updateServiceItem = (index: number, field: keyof AppointmentServiceItem, value: string | number) => {
+    setForm(prev => {
+      const updated = [...prev.serviceItems];
+      const current = { ...updated[index] };
+      if (field === 'service_id') {
+        const selectedService = services.find(s => s.id === value);
+        current.service_id = String(value);
+        if (selectedService) {
+          current.duration_minutes = selectedService.duration_minutes;
+          current.price = selectedService.price;
+        }
+      } else if (field === 'staff_id') {
+        current.staff_id = String(value);
+      } else if (field === 'duration_minutes') {
+        current.duration_minutes = Number(value);
+      } else if (field === 'price') {
+        current.price = Number(value);
+      }
+      updated[index] = current;
+
+      // Recompute aggregate fields
+      const totalDuration = updated.reduce((sum, it) => sum + (it.duration_minutes || 0), 0);
+      const totalPrice = updated.reduce((sum, it) => sum + (it.price || 0), 0);
+      const serviceNames = updated
+        .map(it => services.find(s => s.id === it.service_id)?.name)
+        .filter(Boolean)
+        .join(", ");
+
+      return {
+        ...prev,
+        serviceItems: updated,
+        duration_minutes: totalDuration || prev.duration_minutes,
+        price: totalPrice || prev.price,
+        service_name: serviceNames,
+        staff_id: updated.length === 1 ? (updated[0].staff_id || "") : "",
+      };
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     try {
+      // Ensure at least one service is selected
+      if (!form.serviceItems.length || form.serviceItems.some(it => !it.service_id)) {
+        toast.error("Please select at least one service");
+        return;
+      }
+
+      // Compute aggregates
+      const totalDuration = form.serviceItems.reduce((sum, it) => sum + (it.duration_minutes || 0), 0);
+      const totalPrice = form.serviceItems.reduce((sum, it) => sum + (it.price || 0), 0);
+      const serviceNames = form.serviceItems
+        .map(it => services.find(s => s.id === it.service_id)?.name)
+        .filter(Boolean)
+        .join(", ");
+
+      const appointmentPayload: any = {
+        customer_name: form.customer_name,
+        customer_email: form.customer_email || null,
+        customer_phone: form.customer_phone || null,
+        service_name: serviceNames || "",
+        staff_id: form.serviceItems.length === 1 ? (form.serviceItems[0].staff_id || null) : null,
+        appointment_date: form.appointment_date,
+        appointment_time: form.appointment_time,
+        duration_minutes: totalDuration || form.duration_minutes,
+        status: form.status,
+        notes: form.notes || null,
+        price: totalPrice || form.price,
+      };
+
       if (editingAppointment) {
-        const { error } = await supabase
+        const { error: updateError } = await supabase
           .from("appointments")
-          .update(form)
+          .update(appointmentPayload)
           .eq("id", editingAppointment.id);
-        
-        if (error) throw error;
+        if (updateError) throw updateError;
+
+        // Replace appointment_services
+        const { error: delError } = await supabase
+          .from("appointment_services")
+          .delete()
+          .eq("appointment_id", editingAppointment.id);
+        if (delError) throw delError;
+
+        const rows = form.serviceItems.map((it, idx) => ({
+          appointment_id: editingAppointment.id,
+          service_id: it.service_id,
+          staff_id: it.staff_id || null,
+          duration_minutes: it.duration_minutes || null,
+          price: it.price || null,
+          notes: it.notes || null,
+          sort_order: idx,
+        }));
+        if (rows.length) {
+          const { error: insError } = await supabase.from("appointment_services").insert(rows);
+          if (insError) throw insError;
+        }
         toast.success("Appointment updated successfully!");
       } else {
-        const { error } = await supabase
+        const { data: inserted, error: insertError } = await supabase
           .from("appointments")
-          .insert([form]);
-        
-        if (error) throw error;
+          .insert([appointmentPayload])
+          .select("id")
+          .maybeSingle();
+        if (insertError) throw insertError;
+        const apptId = inserted?.id;
+        if (!apptId) throw new Error("Failed to create appointment");
+
+        const rows = form.serviceItems.map((it, idx) => ({
+          appointment_id: apptId,
+          service_id: it.service_id,
+          staff_id: it.staff_id || null,
+          duration_minutes: it.duration_minutes || null,
+          price: it.price || null,
+          notes: it.notes || null,
+          sort_order: idx,
+        }));
+        const { error: insError } = await supabase.from("appointment_services").insert(rows);
+        if (insError) throw insError;
         toast.success("Appointment created successfully!");
       }
       
@@ -180,19 +322,43 @@ export default function Appointments() {
     }
   };
 
-  const handleEdit = (appointment: Appointment) => {
+  const handleEdit = async (appointment: Appointment) => {
+    // Load service items for this appointment from cache or fetch
+    let items = appointmentServicesById[appointment.id];
+    if (!items) {
+      const { data: apptServices, error } = await supabase
+        .from("appointment_services")
+        .select("*")
+        .eq("appointment_id", appointment.id);
+      if (error) {
+        console.error(error);
+      } else {
+        items = (apptServices || []).map((it: any) => ({
+          id: it.id,
+          appointment_id: it.appointment_id,
+          service_id: it.service_id,
+          staff_id: it.staff_id || "",
+          duration_minutes: it.duration_minutes || undefined,
+          price: it.price || undefined,
+          notes: it.notes || undefined,
+          sort_order: it.sort_order || 0,
+        }));
+      }
+    }
+
     setForm({
       customer_name: appointment.customer_name,
       customer_email: appointment.customer_email || "",
       customer_phone: appointment.customer_phone || "",
       service_name: appointment.service_name,
-      staff_id: appointment.staff_id,
+      staff_id: appointment.staff_id || "",
       appointment_date: appointment.appointment_date,
       appointment_time: appointment.appointment_time,
       duration_minutes: appointment.duration_minutes,
       status: appointment.status,
       notes: appointment.notes || "",
       price: appointment.price,
+      serviceItems: (items && items.length) ? items : [{ service_id: "", staff_id: "" }],
     });
     setEditingAppointment(appointment);
     setIsModalOpen(true);
@@ -229,11 +395,14 @@ export default function Appointments() {
       const duration = appointment.duration_minutes || 60;
       const end = new Date(start.getTime() + duration * 60 * 1000);
 
+      const serviceItems = appointmentServicesById[appointment.id] || [];
+      const serviceIds = serviceItems.map(it => it.service_id);
+
       const payload: any = {
         appointment_id: appointment.id,
         client_id: appointment.client_id || null,
         staff_id: appointment.staff_id || null,
-        service_ids: appointment.service_id ? [appointment.service_id] : null,
+        service_ids: serviceIds.length ? serviceIds : (appointment.service_id ? [appointment.service_id] : null),
         start_time: start.toISOString(),
         end_time: end.toISOString(),
         total_amount: appointment.price || 0,
@@ -357,7 +526,7 @@ export default function Appointments() {
           ) : (
             <div className="space-y-4">
               {appointments.map((appointment) => {
-                const staffMember = staff.find(s => s.id === appointment.staff_id);
+                const items = appointmentServicesById[appointment.id] || [];
                 return (
                   <div 
                     key={appointment.id} 
@@ -385,7 +554,9 @@ export default function Appointments() {
                             <span>{appointment.appointment_time} ({appointment.duration_minutes}min)</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">{appointment.service_name}</span>
+                            <span className="font-medium">
+                              {(items.length ? items.map(it => services.find(s => s.id === it.service_id)?.name).filter(Boolean).join(', ') : appointment.service_name) || '—'}
+                            </span>
                           </div>
                         </div>
 
@@ -404,7 +575,13 @@ export default function Appointments() {
                           )}
                           <div>
                             <span className="font-medium">Staff: </span>
-                            {staffMember?.full_name || "Not assigned"}
+                            {items.length
+                              ? items.map(it => {
+                                  const srvName = services.find(s => s.id === it.service_id)?.name || 'Service';
+                                  const stfName = staff.find(s => s.id === it.staff_id)?.full_name || 'Unassigned';
+                                  return `${srvName} → ${stfName}`;
+                                }).join('; ')
+                              : (staff.find(s => s.id === appointment.staff_id)?.full_name || "Not assigned")}
                           </div>
                         </div>
 
@@ -496,42 +673,84 @@ export default function Appointments() {
                       onChange={handleInputChange}
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="service_name">Service</Label>
-                    <Select 
-                      value={form.service_name} 
-                      onValueChange={(value) => handleSelectChange("service_name", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Service" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {services.map((service) => (
-                          <SelectItem key={service.id} value={service.name}>
-                            {service.name} - ${service.price}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+
+                  <div className="md:col-span-2 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label>Services and Staff</Label>
+                      <Button type="button" variant="outline" size="sm" onClick={addServiceItem} className="gap-1">
+                        <Plus className="w-3 h-3" /> Add Service
+                      </Button>
+                    </div>
+
+                    {form.serviceItems.map((item, idx) => (
+                      <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end border rounded-md p-3">
+                        <div className="md:col-span-5">
+                          <Label>Service</Label>
+                          <Select 
+                            value={item.service_id}
+                            onValueChange={(value) => updateServiceItem(idx, 'service_id', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select Service" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {services.map((service) => (
+                                <SelectItem key={service.id} value={service.id}>
+                                  {service.name} - ${service.price}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="md:col-span-4">
+                          <Label>Staff</Label>
+                          <Select 
+                            value={item.staff_id}
+                            onValueChange={(value) => updateServiceItem(idx, 'staff_id', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Assign Staff" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {staff.map((member) => (
+                                <SelectItem key={member.id} value={member.id}>
+                                  {member.full_name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="md:col-span-2">
+                          <Label>Duration</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step={15}
+                            value={item.duration_minutes ?? ''}
+                            onChange={(e) => updateServiceItem(idx, 'duration_minutes', Number(e.target.value))}
+                          />
+                        </div>
+                        <div className="md:col-span-1">
+                          <Label>Price</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={item.price ?? ''}
+                            onChange={(e) => updateServiceItem(idx, 'price', Number(e.target.value))}
+                          />
+                        </div>
+                        <div className="md:col-span-12 flex justify-end">
+                          {form.serviceItems.length > 1 && (
+                            <Button type="button" variant="ghost" size="sm" onClick={() => removeServiceItem(idx)} className="text-red-600">
+                              <Trash2 className="w-4 h-4 mr-1" /> Remove
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div>
-                    <Label htmlFor="staff_id">Staff Member</Label>
-                    <Select 
-                      value={form.staff_id} 
-                      onValueChange={(value) => handleSelectChange("staff_id", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Staff" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {staff.map((member) => (
-                          <SelectItem key={member.id} value={member.id}>
-                            {member.full_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+
                   <div>
                     <Label htmlFor="appointment_date">Date</Label>
                     <Input
@@ -555,7 +774,7 @@ export default function Appointments() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="duration_minutes">Duration (minutes)</Label>
+                    <Label htmlFor="duration_minutes">Total Duration (minutes)</Label>
                     <Input
                       id="duration_minutes"
                       name="duration_minutes"
@@ -567,7 +786,7 @@ export default function Appointments() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="price">Price</Label>
+                    <Label htmlFor="price">Total Price</Label>
                     <Input
                       id="price"
                       name="price"
