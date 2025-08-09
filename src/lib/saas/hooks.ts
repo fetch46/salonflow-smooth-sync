@@ -137,22 +137,23 @@ export const useFeatureGating = (): UseFeatureGatingResult => {
  * Hook for permissions and role checking
  */
 export const usePermissions = (): UsePermissionsResult => {
-  const { organizationRole } = useSaas()
+  const { organizationRole, organization } = useSaas()
 
   const canPerformActionCheck = useCallback((action: string, resource: string): boolean => {
-    try {
-      const { useSaas } = require('./context')
-      const ctx = useSaas() as import('./types').SaasContextType
-      const overrides = (ctx.organization?.settings as any)?.role_permissions
-      if (overrides) {
+    const overrides = (organization?.settings as any)?.role_permissions
+    if (overrides) {
+      try {
         const { canPerformActionWithOverrides } = require('./utils') as typeof import('./utils')
         return canPerformActionWithOverrides(organizationRole, action, resource, overrides)
+      } catch (error) {
+        // Fallback to default check if override helper is unavailable
+        return canPerformAction(organizationRole, action, resource)
       }
-    } catch {}
+    }
     return canPerformAction(organizationRole, action, resource)
-  }, [organizationRole])
-
-  const hasRole = useCallback((role: UserRole): boolean => {
+    }, [organizationRole, organization])
+ 
+   const hasRole = useCallback((role: UserRole): boolean => {
     return organizationRole === role
   }, [organizationRole])
 
