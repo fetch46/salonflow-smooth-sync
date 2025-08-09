@@ -88,8 +88,7 @@ const AdminUsers = () => {
         .select(`
           id,
           email,
-          created_at,
-          organization_users(count)
+          created_at
         `);
 
       if (error) throw error;
@@ -126,20 +125,29 @@ const AdminUsers = () => {
         .from('organization_users')
         .select(`
           *,
-          organizations(name),
-          profiles!organization_users_user_id_fkey(email),
-          profiles!organization_users_invited_by_fkey(email)
+          organizations(name)
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const transformedData = data?.map(orgUser => ({
+      // Fetch user emails separately to avoid FK dependency
+      const userIds = Array.from(new Set((data || []).map((u: any) => u.user_id).filter(Boolean)));
+      let emailByUserId: Record<string, string> = {};
+      if (userIds.length > 0) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('user_id, email')
+          .in('user_id', userIds);
+        if (profilesError) throw profilesError;
+        emailByUserId = Object.fromEntries((profiles || []).map((p: any) => [p.user_id, p.email]));
+      }
+
+      const transformedData = (data || []).map((orgUser: any) => ({
         ...orgUser,
-        organization_name: orgUser.organizations?.name,
-        user_email: orgUser.profiles?.email,
-        invited_by_email: orgUser.profiles?.email
-      })) || [];
+        organization_name: (orgUser as any)?.organizations?.name,
+        user_email: emailByUserId[orgUser.user_id] || null,
+      }));
 
       setOrganizationUsers(transformedData);
     } catch (error) {
@@ -171,8 +179,7 @@ const AdminUsers = () => {
           organization_id: newOrgUser.organization_id,
           user_id: newOrgUser.user_id,
           role: newOrgUser.role,
-          is_active: newOrgUser.is_active,
-          joined_at: new Date().toISOString()
+          is_active: newOrgUser.is_active
         }]);
 
       if (error) throw error;
@@ -468,9 +475,9 @@ const AdminUsers = () => {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {orgUser.joined_at 
-                              ? format(new Date(orgUser.joined_at), 'MMM dd, yyyy')
-                              : 'Pending'
+                            {orgUser.created_at
+                              ? format(new Date(orgUser.created_at), 'MMM dd, yyyy')
+                              : '-'
                             }
                           </TableCell>
                           <TableCell>{orgUser.invited_by_email || '-'}</TableCell>
