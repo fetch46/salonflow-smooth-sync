@@ -150,7 +150,7 @@ export function SuperAdminSidebar() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-purple-800">
               <Crown className="h-5 w-5" />
-              <span className="font-semibold">Admin Panel</span>
+              <span className="font-semibold group-data-[collapsible=icon]:hidden">Admin Panel</span>
             </div>
             <SidebarTrigger className="hidden md:inline-flex text-purple-700" />
           </div>
@@ -179,11 +179,13 @@ export function SuperAdminSidebar() {
                       >
                         <item.icon className="w-4 h-4" />
                         <span className="flex-1">{item.title}</span>
-                        {isOpen ? (
-                          <ChevronDown className="w-4 h-4" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4" />
-                        )}
+                        <div className="group-data-[collapsible=icon]:hidden">
+                          {isOpen ? (
+                            <ChevronDown className="w-4 h-4" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4" />
+                          )}
+                        </div>
                       </SidebarMenuButton>
                       {isOpen && (
                         <SidebarMenuSub>
