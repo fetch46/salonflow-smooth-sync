@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Plus, Edit, Trash2, Search, Building, Shield } from "lucide-react";
+import { Users, Plus, Edit, Trash2, Search, Building, Shield, KeyRound } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
@@ -232,6 +232,24 @@ const AdminUsers = () => {
     }
   };
 
+  const sendPasswordReset = async (email?: string | null) => {
+    if (!email) {
+      toast.error('No email found for this user');
+      return;
+    }
+    try {
+      const redirectTo = `${window.location.origin}/reset-password`;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo,
+      });
+      if (error) throw error;
+      toast.success('Password reset email sent');
+    } catch (error) {
+      console.error('Error sending password reset:', error);
+      toast.error('Failed to send password reset');
+    }
+  };
+
   const openEditOrgUserDialog = (orgUser: OrganizationUser) => {
     setSelectedOrgUser(orgUser);
     setNewOrgUser({
@@ -356,6 +374,7 @@ const AdminUsers = () => {
                         <TableHead>Email Confirmed</TableHead>
                         <TableHead>Last Sign In</TableHead>
                         <TableHead>Created</TableHead>
+                        <TableHead className="w-[120px]">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -381,6 +400,16 @@ const AdminUsers = () => {
                           </TableCell>
                           <TableCell>
                             {format(new Date(user.created_at), 'MMM dd, yyyy')}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => sendPasswordReset(user.email)}
+                              title="Send password reset"
+                            >
+                              <KeyRound className="h-4 w-4" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -447,6 +476,14 @@ const AdminUsers = () => {
                           <TableCell>{orgUser.invited_by_email || '-'}</TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => sendPasswordReset(orgUser.user_email)}
+                                title="Send password reset"
+                              >
+                                <KeyRound className="h-4 w-4" />
+                              </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
