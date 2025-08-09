@@ -77,8 +77,8 @@ export function AppTopbar() {
   return (
     <header className="sticky top-0 z-40 h-16 border-b bg-card/60 backdrop-blur-xl supports-[backdrop-filter]:bg-card/50">
       <div className="absolute inset-0 bg-gradient-to-r from-purple-50/60 to-violet-50/60 pointer-events-none" />
-      <div className="flex h-full items-center justify-between px-4 md:px-6">
-        <div className="flex items-center gap-3 md:gap-4">
+      <div className="flex h-full items-center justify-between px-2 sm:px-3 md:px-6">
+        <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0">
           <SidebarTrigger className="md:hidden" />
 
           {organizations.length > 1 && (
@@ -106,7 +106,7 @@ export function AppTopbar() {
             </Select>
           )}
 
-          <div className="relative hidden sm:block w-[220px] md:w-[320px]">
+                     <div className="relative hidden sm:block w-[220px] md:w-[320px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input placeholder="Search clients, appointments..." className="pl-10 bg-muted/40" />
           </div>
