@@ -455,9 +455,11 @@ export default function Appointments() {
       };
 
       if (editingAppointment) {
+        // Do not attempt to update organization_id to avoid schema mismatches
+        const { organization_id, ...updatePayload } = appointmentPayload;
         const { error: updateError } = await supabase
           .from("appointments")
-          .update(appointmentPayload)
+          .update(updatePayload)
           .eq("id", editingAppointment.id);
         if (updateError) throw updateError;
 
@@ -560,8 +562,8 @@ export default function Appointments() {
       fetchData();
       resetForm();
       setIsModalOpen(false);
-    } catch (error) {
-      toast.error("Error saving appointment");
+    } catch (error: any) {
+      toast.error(error?.message ? `Error saving appointment: ${error.message}` : "Error saving appointment");
       console.error(error);
     }
   };
