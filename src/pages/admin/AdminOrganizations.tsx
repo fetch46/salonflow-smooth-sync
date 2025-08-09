@@ -67,6 +67,9 @@ const AdminOrganizations = () => {
     plan_id: ""
   });
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [isManageSubDialogOpen, setIsManageSubDialogOpen] = useState(false);
+  const [selectedOrgForSub, setSelectedOrgForSub] = useState<Organization | null>(null);
+  const [subForm, setSubForm] = useState<{ sub_id?: string; plan_id: string; status: string; interval: string; exists: boolean }>({ plan_id: "", status: "trial", interval: "month", exists: false });
 
   useEffect(() => {
     fetchOrganizations();
@@ -245,6 +248,63 @@ const AdminOrganizations = () => {
     setIsEditDialogOpen(true);
   };
 
+  const openManageSubscriptionDialog = async (organization: Organization) => {
+    setSelectedOrgForSub(organization);
+    setIsManageSubDialogOpen(true);
+    try {
+      const { data, error } = await supabase
+        .from('organization_subscriptions')
+        .select('id, plan_id, status, interval')
+        .eq('organization_id', organization.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setSubForm({
+          sub_id: data.id,
+          plan_id: data.plan_id || '',
+          status: (data as any).status || 'trial',
+          interval: (data as any).interval || 'month',
+          exists: true,
+        });
+      } else {
+        setSubForm({ plan_id: '', status: 'trial', interval: 'month', exists: false });
+      }
+    } catch (err) {
+      console.error('Error loading subscription:', err);
+      setSubForm({ plan_id: '', status: 'trial', interval: 'month', exists: false });
+    }
+  };
+
+  const saveOrganizationSubscription = async () => {
+    if (!selectedOrgForSub) return;
+    if (!subForm.plan_id) { toast.error('Please select a plan'); return; }
+    try {
+      if (subForm.exists && subForm.sub_id) {
+        const { error } = await supabase
+          .from('organization_subscriptions')
+          .update({ plan_id: subForm.plan_id, status: subForm.status, interval: subForm.interval })
+          .eq('id', subForm.sub_id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('organization_subscriptions')
+          .insert([{ organization_id: selectedOrgForSub.id, plan_id: subForm.plan_id, status: subForm.status, interval: subForm.interval }]);
+        if (error) throw error;
+      }
+      toast.success('Subscription saved');
+      setIsManageSubDialogOpen(false);
+      setSelectedOrgForSub(null);
+      fetchOrganizations();
+    } catch (err) {
+      console.error('Error saving subscription:', err);
+      toast.error('Failed to save subscription');
+    }
+  };
+
   const filteredOrganizations = organizations.filter(org =>
     org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     org.slug.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -375,6 +435,14 @@ const AdminOrganizations = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openManageSubscriptionDialog(organization)}
+                            title="Manage subscription"
+                          >
+                            <CreditCard className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
@@ -594,6 +662,79 @@ const AdminOrganizations = () => {
               </Button>
               <Button onClick={updateOrganization}>
                 Update Organization
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Manage Subscription Dialog */}
+        <Dialog open={isManageSubDialogOpen} onOpenChange={setIsManageSubDialogOpen}>
+          <DialogContent className="sm:max-w-[520px]">
+            <DialogHeader>
+              <DialogTitle>Manage Subscription{selectedOrgForSub ? ` — ${selectedOrgForSub.name}` : ''}</DialogTitle>
+              <DialogDescription>
+                Assign or update the subscription plan for this organization.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="sub-plan">Plan</Label>
+                <Select
+                  value={subForm.plan_id}
+                  onValueChange={(value) => setSubForm({ ...subForm, plan_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {plans.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} — ${Math.round(p.price_monthly / 100)}/mo
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="sub-status">Status</Label>
+                  <Select
+                    value={subForm.status}
+                    onValueChange={(value) => setSubForm({ ...subForm, status: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="trial">Trial</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="canceled">Canceled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sub-interval">Billing Interval</Label>
+                  <Select
+                    value={subForm.interval}
+                    onValueChange={(value) => setSubForm({ ...subForm, interval: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="month">Monthly</SelectItem>
+                      <SelectItem value="year">Yearly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsManageSubDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={saveOrganizationSubscription}>
+                Save
               </Button>
             </div>
           </DialogContent>
