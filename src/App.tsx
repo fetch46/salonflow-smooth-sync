@@ -57,6 +57,8 @@ import AdminBusinessData from "@/pages/admin/AdminBusinessData";
 import AdminSuperAdmins from "@/pages/admin/AdminSuperAdmins";
 import AdminActivity from "@/pages/admin/AdminActivity";
 import AdminSystemSettings from "@/pages/admin/AdminSystemSettings";
+import AdminLandingCMS from "@/pages/admin/AdminLandingCMS";
+import BusinessDirectory from "@/pages/BusinessDirectory";
 
 // SAAS-specific wrapper component to handle routing logic
 const AppRoutes = () => {
@@ -89,6 +91,7 @@ const AppRoutes = () => {
     return (
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/businesses" element={<BusinessDirectory />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/setup" element={<Navigate to="/login" replace />} />
@@ -112,6 +115,7 @@ const AppRoutes = () => {
       <Route path="/super-admin/super-admins" element={<AdminSuperAdmins />} />
       <Route path="/super-admin/activity" element={<AdminActivity />} />
       <Route path="/super-admin/settings" element={<AdminSystemSettings />} />
+      <Route path="/super-admin/cms" element={<AdminLandingCMS />} />
       
       {/* Redirect auth pages if already logged in */}
       <Route path="/login" element={<Navigate to="/dashboard" replace />} />

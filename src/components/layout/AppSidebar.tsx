@@ -393,6 +393,19 @@ export function AppSidebar() {
                     </a>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location.pathname === '/super-admin/cms'}
+                    className="hover:bg-violet-50 data-[active=true]:bg-violet-100 data-[active=true]:text-violet-900"
+                    tooltip={state === 'collapsed' ? 'Landing CMS' : undefined}
+                  >
+                    <NavLink to="/super-admin/cms" className={({ isActive }) => `flex items-center gap-2 ${isActive ? 'bg-accent text-accent-foreground' : ''}`}>
+                      <Sparkles className="h-4 w-4" />
+                      <span>Landing CMS</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
