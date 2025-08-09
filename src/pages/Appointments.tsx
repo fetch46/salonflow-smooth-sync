@@ -802,7 +802,7 @@ export default function Appointments() {
                             <SelectTrigger>
                               <SelectValue placeholder="Select Service" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="z-[100]">
                               {services.map((service) => (
                                 <SelectItem key={service.id} value={service.id}>
                                   {service.name} - ${service.price}
@@ -820,7 +820,7 @@ export default function Appointments() {
                             <SelectTrigger>
                               <SelectValue placeholder="Assign Staff" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="z-[100]">
                               {staff.map((member) => (
                                 <SelectItem key={member.id} value={member.id}>
                                   {member.full_name}
