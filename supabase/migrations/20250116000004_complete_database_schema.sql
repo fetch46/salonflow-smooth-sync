@@ -313,6 +313,20 @@ CREATE TABLE IF NOT EXISTS invoice_items (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 21b. APPOINTMENT_SERVICES TABLE (update if exists, create if not)
+CREATE TABLE IF NOT EXISTS appointment_services (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    appointment_id UUID NOT NULL REFERENCES appointments(id) ON DELETE CASCADE,
+    service_id UUID NOT NULL REFERENCES services(id),
+    staff_id UUID REFERENCES staff(id),
+    duration_minutes INTEGER,
+    price DECIMAL(10,2),
+    notes TEXT,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 22. INVENTORY_ADJUSTMENTS TABLE (update if exists, create if not)
 CREATE TABLE IF NOT EXISTS inventory_adjustments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -516,6 +530,10 @@ CREATE INDEX IF NOT EXISTS idx_appointments_staff_id ON appointments(staff_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_items_organization_id ON inventory_items(organization_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_items_sku ON inventory_items(sku);
 CREATE INDEX IF NOT EXISTS idx_inventory_items_category ON inventory_items(category);
+-- Indexes for appointment_services
+CREATE INDEX IF NOT EXISTS idx_appointment_services_appointment_id ON appointment_services(appointment_id);
+CREATE INDEX IF NOT EXISTS idx_appointment_services_service_id ON appointment_services(service_id);
+CREATE INDEX IF NOT EXISTS idx_appointment_services_staff_id ON appointment_services(staff_id);
 CREATE INDEX IF NOT EXISTS idx_storage_locations_name ON storage_locations(name);
 CREATE INDEX IF NOT EXISTS idx_inventory_levels_item_location ON inventory_levels(item_id, location_id);
 CREATE INDEX IF NOT EXISTS idx_service_kits_organization_id ON service_kits(organization_id);
@@ -575,6 +593,7 @@ ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE invoice_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory_adjustments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory_adjustment_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE appointment_services ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies for all tables
 -- Generic function to create tenant-based policies
@@ -707,6 +726,24 @@ CREATE POLICY "Users can view job card products" ON job_card_products
     );
 
 CREATE POLICY "Users can manage job card products" ON job_card_products
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM organization_users 
+            WHERE user_id = auth.uid() 
+            AND role IN ('owner', 'admin', 'manager', 'staff')
+            AND is_active = true
+        )
+    );
+
+CREATE POLICY "Users can view appointment services" ON appointment_services
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM organization_users 
+            WHERE user_id = auth.uid() AND is_active = true
+        )
+    );
+
+CREATE POLICY "Users can manage appointment services" ON appointment_services
     FOR ALL USING (
         EXISTS (
             SELECT 1 FROM organization_users 
