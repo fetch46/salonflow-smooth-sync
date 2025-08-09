@@ -277,6 +277,13 @@ export default function CreateJobCard() {
     fetchInitialData();
   }, []);
 
+  // Once initial data is loaded, if an appointment query param is present, prefill from it
+  useEffect(() => {
+    if (!loading && appointmentId) {
+      loadAppointmentData(appointmentId);
+    }
+  }, [loading, appointmentId, loadAppointmentData]);
+
   // Bridge to allow child step to set serviceStaffMap locally without prop drilling refactors
   useEffect(() => {
     (window as any).__setServiceStaffMap = (map: Record<string, string>) => {

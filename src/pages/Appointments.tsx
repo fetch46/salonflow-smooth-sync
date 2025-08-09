@@ -76,6 +76,7 @@ export default function Appointments() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+  const [isReadOnly, setIsReadOnly] = useState<boolean>(false);
   const navigate = useNavigate();
   
   const [appointmentServicesById, setAppointmentServicesById] = useState<Record<string, AppointmentServiceItem[]>>({});
@@ -198,15 +199,24 @@ export default function Appointments() {
         }
 
         // Build set of appointment IDs that already have job cards
-        const { data: apptJobcards, error: apptJobcardsErr } = await supabase
-          .from('job_cards')
-          .select('appointment_id')
-          .in('appointment_id', appointmentIds as string[]);
-        if (apptJobcardsErr) throw apptJobcardsErr;
-        const apptIdsWithJc = new Set<string>((apptJobcards || [])
-          .map((r: any) => r.appointment_id)
-          .filter(Boolean));
-        setAppointmentsWithJobcards(apptIdsWithJc);
+        try {
+          const { data: apptJobcards, error: apptJobcardsErr } = await supabase
+            .from('job_cards')
+            .select('appointment_id')
+            .in('appointment_id', appointmentIds as string[]);
+          if (apptJobcardsErr) {
+            console.warn('Could not fetch job cards by appointment_id (column may not exist). Continuing without linkage.');
+            setAppointmentsWithJobcards(new Set());
+          } else {
+            const apptIdsWithJc = new Set<string>((apptJobcards || [])
+              .map((r: any) => r.appointment_id)
+              .filter(Boolean));
+            setAppointmentsWithJobcards(apptIdsWithJc);
+          }
+        } catch (linkErr) {
+          console.warn('Error building appointment->jobcard linkage:', linkErr);
+          setAppointmentsWithJobcards(new Set());
+        }
       } else {
         setAppointmentServicesById({});
         setAppointmentsWithJobcards(new Set());
@@ -330,6 +340,7 @@ export default function Appointments() {
       serviceItems: [{ service_id: "", staff_id: "" }],
     });
     setEditingAppointment(null);
+    setIsReadOnly(false);
     setBookingFeeReceived(false);
     setBookingFeeAmount("");
     setBookingPaymentMethod("");
@@ -675,48 +686,14 @@ export default function Appointments() {
   };
   
   const handleView = (appointment: Appointment) => {
-    // Implement logic to view appointment details, perhaps in a read-only modal
-    console.log("Viewing appointment:", appointment);
-    toast("View Appointment functionality goes here.");
+    // Reuse edit loader then switch to read-only mode
+    handleEdit(appointment);
+    setIsReadOnly(true);
   };
 
   const handleCreateJobcard = async (appointment: Appointment) => {
-    try {
-      // Build start and end times
-      const start = new Date(`${appointment.appointment_date}T${appointment.appointment_time}`);
-      const duration = appointment.duration_minutes || 60;
-      const end = new Date(start.getTime() + duration * 60 * 1000);
-
-      const serviceItems = appointmentServicesById[appointment.id] || [];
-      const serviceIds = serviceItems.map(it => it.service_id);
-
-      const payload: any = {
-        appointment_id: appointment.id,
-        client_id: appointment.client_id || null,
-        staff_id: appointment.staff_id || null,
-        service_ids: serviceIds.length ? serviceIds : (appointment.service_id ? [appointment.service_id] : []),
-        start_time: start.toISOString(),
-        end_time: end.toISOString(),
-        total_amount: appointment.price || 0,
-        status: 'in_progress',
-        notes: appointment.notes || null,
-        organization_id: organization?.id || null,
-      };
-
-      const { data, error } = await supabase
-        .from('job_cards')
-        .insert([payload])
-        .select('id')
-        .maybeSingle();
-
-      if (error) throw error;
-
-      toast.success('Job card created successfully');
-      navigate('/job-cards');
-    } catch (err) {
-      console.error('Failed to create job card', err);
-      toast.error('Failed to create job card');
-    }
+    // Prefer navigating to the job card creation page with prefill via query param
+    navigate(`/job-cards/new?appointment=${appointment.id}`);
   };
 
   const getStatusColor = (status: string) => {
@@ -936,7 +913,7 @@ export default function Appointments() {
           <Card className="w-full max-w-5xl max-h-[90vh] overflow-y-auto">
             <CardHeader>
               <CardTitle>
-                {editingAppointment ? "Edit Appointment" : "Create New Appointment"}
+                {isReadOnly ? "View Appointment" : (editingAppointment ? "Edit Appointment" : "Create New Appointment")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -949,9 +926,10 @@ export default function Appointments() {
                         placeholder="Search by name or phone"
                         value={clientSearch}
                         onChange={(e) => setClientSearch(e.target.value)}
+                        disabled={isReadOnly}
                       />
                       <Select value={selectedClientId} onValueChange={handleSelectExistingClient}>
-                        <SelectTrigger>
+                        <SelectTrigger disabled={isReadOnly}>
                           <SelectValue placeholder="Choose client" />
                         </SelectTrigger>
                         <SelectContent>
@@ -965,7 +943,7 @@ export default function Appointments() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Button type="button" variant="outline" onClick={() => { setSelectedClientId(""); setClientSearch(""); }}>
+                      <Button type="button" variant="outline" onClick={() => { setSelectedClientId(""); setClientSearch(""); }} disabled={isReadOnly}>
                         Clear
                       </Button>
                     </div>
@@ -978,6 +956,7 @@ export default function Appointments() {
                       name="customer_name"
                       value={form.customer_name}
                       onChange={handleInputChange}
+                      disabled={isReadOnly}
                       required
                     />
                   </div>
@@ -989,6 +968,7 @@ export default function Appointments() {
                       type="email"
                       value={form.customer_email}
                       onChange={handleInputChange}
+                      disabled={isReadOnly}
                     />
                   </div>
                   <div>
@@ -998,6 +978,7 @@ export default function Appointments() {
                       name="customer_phone"
                       value={form.customer_phone}
                       onChange={handleInputChange}
+                      disabled={isReadOnly}
                       required
                     />
                   </div>
@@ -1005,7 +986,7 @@ export default function Appointments() {
                   <div className="md:col-span-2 space-y-3">
                     <div className="flex items-center justify-between">
                       <Label>Services and Staff</Label>
-                      <Button type="button" variant="outline" size="sm" onClick={addServiceItem} className="gap-1">
+                      <Button type="button" variant="outline" size="sm" onClick={addServiceItem} className="gap-1" disabled={isReadOnly}>
                         <Plus className="w-3 h-3" /> Add Service
                       </Button>
                     </div>
@@ -1018,7 +999,7 @@ export default function Appointments() {
                             value={item.service_id}
                             onValueChange={(value) => updateServiceItem(idx, 'service_id', value)}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger disabled={isReadOnly}>
                               <SelectValue placeholder="Select Service" />
                             </SelectTrigger>
                             <SelectContent className="z-[100]">
@@ -1036,7 +1017,7 @@ export default function Appointments() {
                             value={item.staff_id}
                             onValueChange={(value) => updateServiceItem(idx, 'staff_id', value)}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger disabled={isReadOnly}>
                               <SelectValue placeholder="Assign Staff" />
                             </SelectTrigger>
                             <SelectContent className="z-[100]">
@@ -1056,6 +1037,7 @@ export default function Appointments() {
                             step={15}
                             value={item.duration_minutes ?? ''}
                             onChange={(e) => updateServiceItem(idx, 'duration_minutes', Number(e.target.value))}
+                            disabled={isReadOnly}
                           />
                         </div>
                         <div className="md:col-span-1">
@@ -1066,10 +1048,11 @@ export default function Appointments() {
                             step={0.01}
                             value={item.price ?? ''}
                             onChange={(e) => updateServiceItem(idx, 'price', Number(e.target.value))}
+                            disabled={isReadOnly}
                           />
                         </div>
                         <div className="md:col-span-12 flex justify-end">
-                          {form.serviceItems.length > 1 && (
+                          {form.serviceItems.length > 1 && !isReadOnly && (
                             <Button type="button" variant="ghost" size="sm" onClick={() => removeServiceItem(idx)} className="text-red-600">
                               <Trash2 className="w-4 h-4 mr-1" /> Remove
                             </Button>
@@ -1087,6 +1070,7 @@ export default function Appointments() {
                       type="date"
                       value={form.appointment_date}
                       onChange={handleInputChange}
+                      disabled={isReadOnly}
                       required
                     />
                   </div>
@@ -1098,6 +1082,7 @@ export default function Appointments() {
                       type="time"
                       value={form.appointment_time}
                       onChange={handleInputChange}
+                      disabled={isReadOnly}
                       required
                     />
                   </div>
@@ -1111,6 +1096,7 @@ export default function Appointments() {
                       onChange={handleInputChange}
                       min="15"
                       step="15"
+                      disabled={isReadOnly}
                     />
                   </div>
                   <div>
@@ -1123,6 +1109,7 @@ export default function Appointments() {
                       value={form.price}
                       onChange={handleInputChange}
                       min="0"
+                      disabled={isReadOnly}
                     />
                   </div>
 
@@ -1134,6 +1121,7 @@ export default function Appointments() {
                         type="checkbox"
                         checked={bookingFeeReceived}
                         onChange={(e) => setBookingFeeReceived(e.target.checked)}
+                        disabled={isReadOnly}
                       />
                       <Label htmlFor="booking-fee-received">Booking fee received</Label>
                     </div>
@@ -1148,12 +1136,13 @@ export default function Appointments() {
                             value={bookingFeeAmount}
                             onChange={(e) => setBookingFeeAmount(e.target.value)}
                             placeholder="0.00"
+                            disabled={isReadOnly}
                           />
                         </div>
                         <div>
                           <Label htmlFor="booking-method">Payment Method</Label>
                           <Select value={bookingPaymentMethod} onValueChange={setBookingPaymentMethod}>
-                            <SelectTrigger>
+                            <SelectTrigger disabled={isReadOnly}>
                               <SelectValue placeholder="Select method" />
                             </SelectTrigger>
                             <SelectContent>
@@ -1167,7 +1156,7 @@ export default function Appointments() {
                         <div>
                           <Label htmlFor="booking-account">Account Deposited To</Label>
                           <Select value={bookingAccountId} onValueChange={setBookingAccountId}>
-                            <SelectTrigger>
+                            <SelectTrigger disabled={isReadOnly}>
                               <SelectValue placeholder="Select account" />
                             </SelectTrigger>
                             <SelectContent>
@@ -1186,6 +1175,7 @@ export default function Appointments() {
                             value={bookingTxnNumber}
                             onChange={(e) => setBookingTxnNumber(e.target.value)}
                             placeholder="e.g. QFG3XXXXXX"
+                            disabled={isReadOnly}
                           />
                         </div>
                         <div className="md:col-span-4">
@@ -1203,7 +1193,7 @@ export default function Appointments() {
                       value={form.status} 
                       onValueChange={(value) => handleSelectChange("status", value)}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger disabled={isReadOnly}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1226,20 +1216,33 @@ export default function Appointments() {
                     value={form.notes}
                     onChange={handleInputChange}
                     rows={3}
+                    disabled={isReadOnly}
                   />
                 </div>
 
                 <div className="flex justify-end gap-4 pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setIsModalOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit">
-                    {editingAppointment ? "Update" : "Create"} Appointment
-                  </Button>
+                  {isReadOnly ? (
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => { setIsModalOpen(false); setIsReadOnly(false); }}
+                    >
+                      Close
+                    </Button>
+                  ) : (
+                    <>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => { setIsModalOpen(false); setIsReadOnly(false); }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button type="submit">
+                        {editingAppointment ? "Update" : "Create"} Appointment
+                      </Button>
+                    </>
+                  )}
                 </div>
               </form>
             </CardContent>
