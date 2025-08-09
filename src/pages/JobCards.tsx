@@ -215,7 +215,7 @@ export default function JobCards() {
   const handleStatusUpdate = async (id: string, newStatus: string) => {
     try {
       const updateData: { status: string; start_time?: string; end_time?: string } = { status: newStatus };
-      
+
       if (newStatus === 'in_progress' && !jobCards.find(jc => jc.id === id)?.start_time) {
         updateData.start_time = new Date().toISOString();
       } else if (newStatus === 'completed' && !jobCards.find(jc => jc.id === id)?.end_time) {
@@ -226,13 +226,73 @@ export default function JobCards() {
         .from('job_cards')
         .update(updateData)
         .eq('id', id);
-      
+
       if (error) throw error;
-      toast.success("Job card status updated");
+      toast.success('Job card status updated');
       fetchJobCards();
     } catch (error) {
       console.error('Error updating status:', error);
-      toast.error("Failed to update status");
+      toast.error('Failed to update status');
+    }
+  };
+
+  const generateInvoiceNumber = () => {
+    const now = new Date();
+    const y = now.getFullYear().toString().slice(-2);
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+    return `INV-${y}${m}${d}-${rand}`;
+  };
+
+  const createInvoiceFromJobCard = async (card: JobCard) => {
+    try {
+      const today = new Date();
+      const issueDate = today.toISOString().split('T')[0];
+      const dueDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split('T')[0];
+
+      const invoicePayload = {
+        invoice_number: generateInvoiceNumber(),
+        client_id: card.client?.id || null,
+        issue_date: issueDate,
+        due_date: dueDate,
+        subtotal: card.total_amount,
+        tax_amount: 0,
+        total_amount: card.total_amount,
+        status: 'draft',
+        notes: `Invoice for Job Card ${card.job_number}`,
+      } as const;
+
+      const { data: invoice, error: invErr } = await supabase
+        .from('invoices')
+        .insert([invoicePayload])
+        .select('id')
+        .maybeSingle();
+
+      if (invErr) throw invErr;
+      if (!invoice?.id) throw new Error('Invoice created but no ID returned');
+
+      const itemPayload = {
+        invoice_id: invoice.id,
+        description: `Services for ${card.job_number}`,
+        quantity: 1,
+        unit_price: card.total_amount,
+        total_price: card.total_amount,
+      } as const;
+
+      const { error: itemErr } = await supabase
+        .from('invoice_items')
+        .insert([itemPayload]);
+
+      if (itemErr) throw itemErr;
+
+      toast.success('Invoice created');
+      navigate('/invoices');
+    } catch (e: any) {
+      console.error('Error creating invoice from job card:', e);
+      toast.error(e?.message ? `Failed to create invoice: ${e.message}` : 'Failed to create invoice');
     }
   };
 
@@ -704,7 +764,7 @@ export default function JobCards() {
                               Send to Client
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => createInvoiceFromJobCard(jobCard)}>
                               <Receipt className="w-4 h-4 mr-2" />
                               Create Invoice
                             </DropdownMenuItem>
