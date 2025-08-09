@@ -104,20 +104,6 @@ interface ClientStats {
   newThisMonth: number;
 }
 
-// Enhanced mock data for better analytics
-const generateClientAnalytics = (clients: Client[]) => {
-  return clients.map(client => ({
-    ...client,
-    total_spent: 150 + Math.floor(Math.random() * 2000), // $150-$2150
-    total_visits: 1 + Math.floor(Math.random() * 25), // 1-25 visits
-    last_visit_date: subDays(new Date(), Math.floor(Math.random() * 90)).toISOString(), // Within 90 days
-    loyalty_tier: ['Bronze', 'Silver', 'Gold', 'Platinum', 'VIP'][Math.floor(Math.random() * 5)],
-    client_status: ['active', 'inactive', 'vip', 'new'][Math.floor(Math.random() * 4)],
-    referral_source: ['Social Media', 'Friend Referral', 'Google Search', 'Walk-in', 'Advertisement'][Math.floor(Math.random() * 5)],
-    preferences: ['Hair coloring', 'Facial treatments', 'Massage therapy', 'Nail services', 'Special occasions'][Math.floor(Math.random() * 5)]
-  }));
-};
-
 const CLIENT_STATUSES = [
   { value: "new", label: "New", color: "bg-blue-50 text-blue-700 border-blue-200", icon: UserPlus },
   { value: "active", label: "Active", color: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: CheckCircle },
@@ -207,7 +193,7 @@ export default function Clients() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setClients(generateClientAnalytics(data || []));
+      setClients(data || []);
     } catch (error) {
       console.error("Error fetching clients:", error);
       toast.error("Failed to fetch clients");
@@ -732,7 +718,7 @@ export default function Clients() {
             <DollarSign className="h-4 w-4 text-white/80" />
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{symbol}{stats.totalRevenue.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-white">{formatMoney(stats.totalRevenue)}</div>
             <p className="text-xs text-white/80">
               From all clients
             </p>
@@ -746,7 +732,7 @@ export default function Clients() {
             <Target className="h-4 w-4 text-white/80" />
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{symbol}{stats.averageSpent.toFixed(0)}</div>
+            <div className="text-2xl font-bold text-white">{formatMoney(stats.averageSpent)}</div>
             <p className="text-xs text-white/80">
               Per client
             </p>
