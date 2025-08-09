@@ -253,16 +253,32 @@ export default function Clients() {
         }
       }
 
+      const basePayload = {
+        full_name: formData.full_name,
+        email: formData.email || null,
+        phone: trimmedPhone || null,
+        address: formData.address || null,
+        notes: formData.notes || null,
+      } as const;
+
       if (editingClient) {
+        const updatePayload = {
+          ...basePayload,
+          date_of_birth: formData.date_of_birth ? formData.date_of_birth : null,
+        };
         const { error } = await supabase
           .from("clients")
-          .update({ ...formData, phone: trimmedPhone || null })
+          .update(updatePayload)
           .eq("id", editingClient.id);
         if (error) throw error;
       } else {
+        const insertPayload = {
+          ...basePayload,
+          // Intentionally exclude date_of_birth and any non-existent columns on create
+        };
         const { error } = await supabase
           .from("clients")
-          .insert([{ ...formData, phone: trimmedPhone }]);
+          .insert([insertPayload]);
         if (error) throw error;
       }
 
@@ -579,25 +595,29 @@ export default function Clients() {
                       />
                     </div>
                     
-                    <div>
-                      <Label htmlFor="date_of_birth">Date of Birth</Label>
-                      <Input 
-                        id="date_of_birth" 
-                        type="date"
-                        value={formData.date_of_birth} 
-                        onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })} 
-                      />
-                    </div>
+                    {editingClient && (
+                      <div>
+                        <Label htmlFor="date_of_birth">Date of Birth</Label>
+                        <Input 
+                          id="date_of_birth" 
+                          type="date"
+                          value={formData.date_of_birth} 
+                          onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })} 
+                        />
+                      </div>
+                    )}
                     
-                    <div>
-                      <Label htmlFor="anniversary_date">Anniversary Date</Label>
-                      <Input 
-                        id="anniversary_date" 
-                        type="date"
-                        value={formData.anniversary_date} 
-                        onChange={(e) => setFormData({ ...formData, anniversary_date: e.target.value })} 
-                      />
-                    </div>
+                    {editingClient && (
+                      <div>
+                        <Label htmlFor="anniversary_date">Anniversary Date</Label>
+                        <Input 
+                          id="anniversary_date" 
+                          type="date"
+                          value={formData.anniversary_date} 
+                          onChange={(e) => setFormData({ ...formData, anniversary_date: e.target.value })} 
+                        />
+                      </div>
+                    )}
                     
                     <div className="md:col-span-2">
                       <Label htmlFor="address">Address</Label>
@@ -1125,6 +1145,15 @@ export default function Clients() {
                             <Cake className="w-4 h-4 mr-2" />
                             <span>
                               {formatDate(new Date(client.date_of_birth), "MMM dd")} birthday
+                            </span>
+                          </div>
+                        )}
+                        
+                        {client.anniversary_date && (
+                          <div className="flex items-center text-slate-600 text-sm pt-2 border-t">
+                            <CalendarClock className="w-4 h-4 mr-2" />
+                            <span>
+                              {formatDate(new Date(client.anniversary_date), "MMM dd")} anniversary
                             </span>
                           </div>
                         )}
