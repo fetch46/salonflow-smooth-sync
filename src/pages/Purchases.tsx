@@ -45,6 +45,11 @@ interface PurchaseItem {
   inventory_items: { name: string } | null;
 }
 
+interface StorageLocation {
+  id: string;
+  name: string;
+}
+
 export default function Purchases() {
   const { organization } = useSaas();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -67,6 +72,13 @@ export default function Purchases() {
     status: "pending",
     notes: "",
   });
+
+  // Receiving workflow state
+  const [locations, setLocations] = useState<StorageLocation[]>([]);
+  const [receiveOpen, setReceiveOpen] = useState(false);
+  const [receivePurchaseId, setReceivePurchaseId] = useState<string | null>(null);
+  const [receiveLocationId, setReceiveLocationId] = useState<string>("");
+  const [receiveQuantities, setReceiveQuantities] = useState<Record<string, number>>({});
 
   const [newItem, setNewItem] = useState({
     item_id: "",
@@ -95,6 +107,20 @@ export default function Purchases() {
       setLoading(false);
     }
   }, [toast]);
+
+  const fetchLocations = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("storage_locations")
+        .select("id, name")
+        .order("name");
+      if (error) throw error;
+      setLocations(data || []);
+    } catch (err) {
+      console.warn("Failed to load storage locations", err);
+      setLocations([]);
+    }
+  }, []);
 
   const fetchInventoryItems = useCallback(async () => {
     try {
@@ -132,6 +158,52 @@ export default function Purchases() {
   const generatePurchaseNumber = () => {
     const timestamp = Date.now().toString().slice(-6);
     return `PUR-${timestamp}`;
+  };
+
+  const openReceiveDialog = async (purchaseId: string) => {
+    setReceivePurchaseId(purchaseId);
+    await fetchPurchaseItems(purchaseId);
+    await fetchLocations();
+    setReceiveQuantities({});
+    setReceiveLocationId("");
+    setReceiveOpen(true);
+  };
+
+  const submitReceive = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!receivePurchaseId || !receiveLocationId) {
+      toast({ title: "Error", description: "Select a location to receive into", variant: "destructive" });
+      return;
+    }
+    try {
+      for (const item of selectedPurchaseItems) {
+        const qty = Number(receiveQuantities[item.item_id] || 0);
+        if (qty <= 0) continue;
+        const { data: levels } = await supabase
+          .from("inventory_levels")
+          .select("id, quantity")
+          .eq("item_id", item.item_id)
+          .eq("location_id", receiveLocationId)
+          .limit(1);
+        if (levels && levels.length > 0) {
+          const level = levels[0];
+          await supabase
+            .from("inventory_levels")
+            .update({ quantity: (level.quantity || 0) + qty })
+            .eq("id", level.id);
+        } else {
+          await supabase
+            .from("inventory_levels")
+            .insert([{ item_id: item.item_id, location_id: receiveLocationId, quantity: qty, organization_id: organization?.id || null } as any]);
+        }
+      }
+      toast({ title: "Received", description: "Items received into stock" });
+      setReceiveOpen(false);
+      fetchPurchases();
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Error", description: "Failed to receive items", variant: "destructive" });
+    }
   };
 
   const addPurchaseItem = () => {
@@ -676,17 +748,16 @@ export default function Purchases() {
                   <TableRow key={purchase.id}>
                     <TableCell className="font-medium">{purchase.purchase_number}</TableCell>
                     <TableCell>{purchase.vendor_name}</TableCell>
-                    <TableCell>{format(new Date(purchase.purchase_date), "MMM dd, yyyy")}</TableCell>
+                    <TableCell>{format(new Date(purchase.created_at), 'MMM dd, yyyy')}</TableCell>
                     <TableCell>${purchase.total_amount.toFixed(2)}</TableCell>
-                    <TableCell>{getStatusBadge(purchase.status)}</TableCell>
                     <TableCell>
-                      <div className="flex space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => handleEdit(purchase)}>
-                          Edit
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleDelete(purchase.id)}>
-                          Delete
-                        </Button>
+                      <Badge className={getStatusBadge(purchase.status).props.className}>{purchase.status.toUpperCase()}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(purchase)}>Edit</Button>
+                        <Button variant="outline" size="sm" onClick={() => openReceiveDialog(purchase.id)}>Receive</Button>
+                        <Button variant="outline" size="sm" className="text-red-600" onClick={() => handleDelete(purchase.id)}>Delete</Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -695,6 +766,39 @@ export default function Purchases() {
             </Table>
           </CardContent>
         </Card>
+
+        {/* Receive Dialog */}
+        <Dialog open={receiveOpen} onOpenChange={setReceiveOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Receive Items</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={submitReceive} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Location</Label>
+                <select className="border rounded px-3 py-2 w-full" value={receiveLocationId} onChange={(e) => setReceiveLocationId(e.target.value)}>
+                  <option value="">Select a location</option>
+                  {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Quantities</Label>
+                <div className="space-y-2">
+                  {selectedPurchaseItems.map(it => (
+                    <div key={it.item_id} className="flex items-center gap-2">
+                      <div className="w-64 truncate">{it.inventory_items?.name || it.item_id}</div>
+                      <Input type="number" min={0} placeholder={`0 / ${it.quantity}`} value={receiveQuantities[it.item_id] ?? ''} onChange={(e) => setReceiveQuantities(prev => ({ ...prev, [it.item_id]: Number(e.target.value) }))} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setReceiveOpen(false)}>Cancel</Button>
+                <Button type="submit">Receive</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

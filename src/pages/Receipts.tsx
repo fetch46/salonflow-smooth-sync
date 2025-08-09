@@ -32,9 +32,14 @@ export default function Receipts() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>("all");
+  const [customers, setCustomers] = useState<{ id: string; full_name: string }[]>([]);
+  const [customerId, setCustomerId] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
   const [isPayOpen, setIsPayOpen] = useState(false);
   const [selected, setSelected] = useState<Receipt | null>(null);
   const [payment, setPayment] = useState({ amount: "", method: "cash", reference: "" });
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const fetchReceipts = async () => {
     try {
@@ -51,6 +56,14 @@ export default function Receipts() {
 
   useEffect(() => {
     fetchReceipts();
+    (async () => {
+      try {
+        const { data } = await supabase.from('clients').select('id, full_name').order('full_name');
+        setCustomers(data || []);
+      } catch {
+        setCustomers([]);
+      }
+    })();
   }, []);
 
   const refresh = async () => {
@@ -63,8 +76,16 @@ export default function Receipts() {
     const s = search.toLowerCase();
     return receipts
       .filter(r => (status === 'all' ? true : r.status === status))
+      .filter(r => (customerId === 'all' ? true : r.customer_id === customerId))
+      .filter(r => {
+        if (!dateFrom && !dateTo) return true;
+        const d = new Date(r.created_at).toISOString().slice(0, 10);
+        if (dateFrom && d < dateFrom) return false;
+        if (dateTo && d > dateTo) return false;
+        return true;
+      })
       .filter(r => r.receipt_number.toLowerCase().includes(s) || (r.notes || '').toLowerCase().includes(s));
-  }, [receipts, search, status]);
+  }, [receipts, search, status, customerId, dateFrom, dateTo]);
 
   const outstanding = (r: Receipt) => Math.max(0, (r.total_amount || 0) - (r.amount_paid || 0));
   const totals = useMemo(() => {
@@ -109,6 +130,33 @@ export default function Receipts() {
     URL.revokeObjectURL(url);
   };
 
+  const exportSelectedCsv = () => {
+    const selected = filtered.filter(r => selectedIds.has(r.id));
+    if (selected.length === 0) {
+      toast.error('No receipts selected');
+      return;
+    }
+    const headers = ['Receipt Number','Date','Status','Total','Paid','Outstanding'];
+    const rows = selected.map(r => [
+      r.receipt_number,
+      new Date(r.created_at).toISOString(),
+      r.status,
+      (r.total_amount || 0).toFixed(2),
+      (r.amount_paid || 0).toFixed(2),
+      outstanding(r).toFixed(2),
+    ]);
+    const csv = [headers, ...rows].map(cols => cols.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `receipts_selected_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const openPayment = (r: Receipt) => {
     setSelected(r);
     setPayment({ amount: String(outstanding(r)), method: 'cash', reference: '' });
@@ -140,6 +188,19 @@ export default function Receipts() {
     }
   };
 
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) setSelectedIds(new Set(filtered.map(r => r.id)));
+    else setSelectedIds(new Set());
+  };
+
+  const toggleSelect = (id: string, checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[300px]">
@@ -163,9 +224,18 @@ export default function Receipts() {
             <option value="paid">Paid</option>
             <option value="cancelled">Cancelled</option>
           </select>
+          <select className="border rounded px-3 py-2" value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
+            <option value="all">All Customers</option>
+            {customers.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+          </select>
+          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-auto" />
+          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-auto" />
           <Input placeholder="Search receipts..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
           <Button variant="outline" onClick={exportCsv}>
             Export CSV
+          </Button>
+          <Button variant="outline" onClick={exportSelectedCsv}>
+            Export Selected
           </Button>
           <Button variant="outline" onClick={refresh} disabled={refreshing}>
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
@@ -197,6 +267,9 @@ export default function Receipts() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>
+                  <input type="checkbox" onChange={(e) => toggleSelectAll(e.currentTarget.checked)} checked={selectedIds.size === filtered.length && filtered.length > 0} />
+                </TableHead>
                 <TableHead>#</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Status</TableHead>
@@ -209,6 +282,9 @@ export default function Receipts() {
             <TableBody>
               {filtered.map(r => (
                 <TableRow key={r.id}>
+                  <TableCell>
+                    <input type="checkbox" checked={selectedIds.has(r.id)} onChange={(e) => toggleSelect(r.id, e.currentTarget.checked)} />
+                  </TableCell>
                   <TableCell className="font-medium">{r.receipt_number}</TableCell>
                   <TableCell>{format(new Date(r.created_at), 'MMM dd, yyyy')}</TableCell>
                   <TableCell>
