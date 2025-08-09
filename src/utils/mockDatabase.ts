@@ -139,13 +139,20 @@ export async function getReceiptsWithFallback(supabase: any) {
   try {
     const { data, error } = await supabase
       .from('receipts')
-      .select('id, receipt_number, customer_id, subtotal, tax_amount, discount_amount, total_amount, status, notes, created_at, updated_at')
+      .select('id, receipt_number, customer_id, subtotal, tax_amount, discount_amount, total_amount, amount_paid, status, notes, created_at, updated_at')
       .order('created_at', { ascending: false });
     if (error) throw error;
     return data || [];
   } catch (err) {
     console.log('Using mock database for receipts');
-    return await mockDb.getReceipts();
+    const storage = getStorage();
+    const receipts = (storage.receipts || []).map((r: any) => {
+      const paid = (storage.receipt_payments || [])
+        .filter((p: any) => p.receipt_id === r.id)
+        .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+      return { ...r, amount_paid: paid };
+    });
+    return receipts;
   }
 }
 

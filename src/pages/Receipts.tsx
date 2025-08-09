@@ -45,11 +45,21 @@ export default function Receipts() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [reportApplyTax, setReportApplyTax] = useState<boolean>(false);
 
+  // Create Receipt modal state
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [jobcards, setJobcards] = useState<any[]>([]);
+  const [selectedJobcardId, setSelectedJobcardId] = useState<string>("");
+  const [jobcardDetails, setJobcardDetails] = useState<any | null>(null);
+  const [jobcardItems, setJobcardItems] = useState<any[]>([]);
+  const [existingReceiptForJob, setExistingReceiptForJob] = useState<any | null>(null);
+  const [bookingNumber, setBookingNumber] = useState<string | null>(null);
+  const [createPayment, setCreatePayment] = useState<{ enabled: boolean; amount: string; method: string; reference: string }>({ enabled: false, amount: "", method: "cash", reference: "" });
+
   const fetchReceipts = async () => {
     try {
       setLoading(true);
       const data = await getReceiptsWithFallback(supabase);
-      setReceipts((data as any[]).map(r => ({ amount_paid: 0, ...r })) as Receipt[]);
+      setReceipts((data as any[]) as Receipt[]);
     } catch (e) {
       console.error(e);
       toast.error('Failed to load receipts');
@@ -208,6 +218,158 @@ export default function Receipts() {
     });
   };
 
+  // Fetch eligible job cards (completed and not fully paid)
+  const openCreate = async () => {
+    setIsCreateOpen(true);
+    setSelectedJobcardId("");
+    setJobcardDetails(null);
+    setJobcardItems([]);
+    setExistingReceiptForJob(null);
+    setBookingNumber(null);
+    setCreatePayment({ enabled: false, amount: "", method: "cash", reference: "" });
+    try {
+      const { data: cards } = await supabase
+        .from('job_cards')
+        .select('id, job_number, status, total_amount, client_id, start_time')
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false });
+      const jobIds = (cards || []).map(c => c.id);
+      let rcptByJob: Record<string, any[]> = {};
+      if (jobIds.length > 0) {
+        const { data: rcpts } = await supabase
+          .from('receipts')
+          .select('id, job_card_id, status, total_amount, amount_paid')
+          .in('job_card_id', jobIds);
+        (rcpts || []).forEach(r => {
+          rcptByJob[r.job_card_id] = rcptByJob[r.job_card_id] || [];
+          rcptByJob[r.job_card_id].push(r);
+        });
+      }
+      const eligible = (cards || []).filter(c => {
+        const rcpts = rcptByJob[c.id] || [];
+        // Include if no receipt exists or receipt exists but not paid
+        if (rcpts.length === 0) return true;
+        return rcpts.some(r => (r.status !== 'paid') && (Number(r.amount_paid || 0) < Number(r.total_amount || 0)));
+      });
+      // Attach display name
+      const clientIds = Array.from(new Set(eligible.map(c => c.client_id).filter(Boolean)));
+      let clientsById: Record<string, any> = {};
+      if (clientIds.length) {
+        const { data: clients } = await supabase.from('clients').select('id, full_name').in('id', clientIds as string[]);
+        (clients || []).forEach(c => { clientsById[c.id] = c; });
+      }
+      setJobcards(eligible.map(c => ({ ...c, client_name: c.client_id ? (clientsById[c.client_id]?.full_name || '') : '' })));
+    } catch (e) {
+      console.error('Failed to load job cards', e);
+      setJobcards([]);
+    }
+  };
+
+  const onSelectJobcard = async (jobcardId: string) => {
+    setSelectedJobcardId(jobcardId);
+    setJobcardDetails(null);
+    setJobcardItems([]);
+    setExistingReceiptForJob(null);
+    setBookingNumber(null);
+    setCreatePayment({ enabled: false, amount: "", method: "cash", reference: "" });
+    if (!jobcardId) return;
+    try {
+      const { data: jc } = await supabase
+        .from('job_cards')
+        .select('id, job_number, status, total_amount, client_id, staff_id, start_time')
+        .eq('id', jobcardId)
+        .maybeSingle();
+      setJobcardDetails(jc);
+
+      const [{ data: items }, { data: client }, { data: rcpt } ] = await Promise.all([
+        supabase.from('job_card_services').select('service_id, staff_id, quantity, unit_price, services:service_id(name)').eq('job_card_id', jobcardId),
+        jc?.client_id ? supabase.from('clients').select('id, full_name').eq('id', jc.client_id).maybeSingle() : Promise.resolve({ data: null } as any),
+        supabase.from('receipts').select('id, status, total_amount, amount_paid').eq('job_card_id', jobcardId)
+      ] as any);
+
+      const mappedItems = (items || []).map((it: any) => ({
+        service_id: it.service_id,
+        product_id: null,
+        description: it.services?.name || 'Service',
+        quantity: it.quantity || 1,
+        unit_price: it.unit_price || 0,
+        total_price: (it.quantity || 1) * (it.unit_price || 0),
+        staff_id: it.staff_id || null,
+      }));
+      setJobcardItems(mappedItems);
+
+      if (rcpt && rcpt.length > 0) {
+        // Prefer the most recent open/partial
+        const open = rcpt.find((r: any) => r.status !== 'paid');
+        setExistingReceiptForJob(open || rcpt[0]);
+        if (open) {
+          const outstandingAmt = Math.max(0, Number(open.total_amount || 0) - Number(open.amount_paid || 0));
+          setCreatePayment({ enabled: true, amount: String(outstandingAmt), method: 'cash', reference: '' });
+        }
+      } else {
+        // Set default payment amount to total
+        const total = Number(jc?.total_amount || 0);
+        setCreatePayment({ enabled: false, amount: String(total), method: 'cash', reference: '' });
+      }
+
+      // Try to find a booking number (appointment) for same client and date
+      if (jc?.client_id && jc?.start_time) {
+        const apptDate = new Date(jc.start_time).toISOString().slice(0,10);
+        const { data: appts } = await supabase
+          .from('appointments')
+          .select('id')
+          .eq('client_id', jc.client_id)
+          .eq('appointment_date', apptDate)
+          .limit(1);
+        if (appts && appts.length > 0) setBookingNumber(appts[0].id);
+      }
+    } catch (e) {
+      console.error('Failed to load jobcard details', e);
+    }
+  };
+
+  const handleCreateReceipt = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedJobcardId || !jobcardDetails) return;
+    try {
+      let receiptId = existingReceiptForJob?.id as string | undefined;
+      if (!receiptId) {
+        const receiptNumber = `RCT-${Date.now().toString().slice(-6)}`;
+        const payload = {
+          receipt_number: receiptNumber,
+          customer_id: jobcardDetails.client_id || null,
+          job_card_id: jobcardDetails.id,
+          subtotal: jobcardItems.reduce((s, it) => s + (it.total_price || 0), 0),
+          tax_amount: 0,
+          discount_amount: 0,
+          total_amount: Number(jobcardDetails.total_amount || 0),
+          status: 'open',
+          notes: `Receipt for ${jobcardDetails.job_number}`,
+        };
+        const created = await (await import('@/utils/mockDatabase')).createReceiptWithFallback(supabase, payload, jobcardItems);
+        receiptId = (created as any)?.id;
+      }
+
+      // Optional payment
+      if (receiptId && createPayment.enabled) {
+        const amt = parseFloat(createPayment.amount) || 0;
+        if (amt > 0) {
+          const { error: payErr } = await supabase
+            .from('receipt_payments')
+            .insert([{ receipt_id: receiptId, amount: amt, method: createPayment.method, reference_number: createPayment.reference || null }]);
+          if (payErr) throw payErr;
+        }
+      }
+
+      toast.success(existingReceiptForJob ? 'Payment recorded' : 'Receipt created');
+      setIsCreateOpen(false);
+      await fetchReceipts();
+    } catch (e: any) {
+      console.error('Failed to create receipt', e);
+      toast.error(e?.message || 'Failed to create receipt');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[300px]">
@@ -248,6 +410,7 @@ export default function Receipts() {
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
+          <Button onClick={openCreate}>Create Receipt</Button>
         </div>
       </div>
 
@@ -346,6 +509,115 @@ export default function Receipts() {
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setIsPayOpen(false)}>Cancel</Button>
               <Button type="submit">Record</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>Create Receipt</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateReceipt} className="space-y-6">
+            <div className="space-y-2">
+              <Label>Job Card</Label>
+              <select className="border rounded px-3 py-2 w-full" value={selectedJobcardId} onChange={(e) => onSelectJobcard(e.target.value)}>
+                <option value="">Select a completed, unpaid job card</option>
+                {jobcards.map(j => (
+                  <option key={j.id} value={j.id}>{j.job_number} — {j.client_name || 'No client'} — ${Number(j.total_amount||0).toFixed(2)}</option>
+                ))}
+              </select>
+              {existingReceiptForJob && (
+                <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mt-2">
+                  An existing receipt is linked to this job. You can record a payment below.
+                </div>
+              )}
+            </div>
+
+            {jobcardDetails && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <div>
+                    <Label>Booking Number (if applicable)</Label>
+                    <div className="text-sm text-muted-foreground">{bookingNumber || '—'}</div>
+                  </div>
+                  <div>
+                    <Label>Customer</Label>
+                    <div className="text-sm">{jobcards.find(j => j.id === jobcardDetails.id)?.client_name || '—'}</div>
+                  </div>
+                  <div>
+                    <Label>Job Card</Label>
+                    <div className="text-sm">{jobcardDetails.job_number}</div>
+                  </div>
+                  <div>
+                    <Label>Total Amount</Label>
+                    <div className="text-sm">${Number(jobcardDetails.total_amount || 0).toFixed(2)}</div>
+                  </div>
+                </div>
+                <div>
+                  <Label>Services</Label>
+                  {jobcardItems.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">No services found for this job card.</div>
+                  ) : (
+                    <div className="border rounded">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Description</TableHead>
+                            <TableHead>Qty</TableHead>
+                            <TableHead>Unit</TableHead>
+                            <TableHead>Total</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {jobcardItems.map((it, idx) => (
+                            <TableRow key={idx}>
+                              <TableCell>{it.description}</TableCell>
+                              <TableCell>{it.quantity}</TableCell>
+                              <TableCell>${Number(it.unit_price).toFixed(2)}</TableCell>
+                              <TableCell>${Number(it.total_price).toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <input id="record-pay" type="checkbox" checked={createPayment.enabled} onChange={(e) => setCreatePayment(prev => ({ ...prev, enabled: e.target.checked }))} />
+                <Label htmlFor="record-pay">Record payment now</Label>
+              </div>
+              {createPayment.enabled && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Amount</Label>
+                    <Input type="number" step="0.01" value={createPayment.amount} onChange={(e) => setCreatePayment(prev => ({ ...prev, amount: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Method</Label>
+                    <select className="border rounded px-3 py-2 w-full" value={createPayment.method} onChange={(e) => setCreatePayment(prev => ({ ...prev, method: e.target.value }))}>
+                      <option value="cash">Cash</option>
+                      <option value="card">Card</option>
+                      <option value="bank_transfer">Bank Transfer</option>
+                      <option value="mpesa">M-Pesa</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Reference (optional)</Label>
+                    <Input value={createPayment.reference} onChange={(e) => setCreatePayment(prev => ({ ...prev, reference: e.target.value }))} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+              <Button type="submit">{existingReceiptForJob ? 'Record Payment' : 'Create Receipt'}</Button>
             </div>
           </form>
         </DialogContent>
