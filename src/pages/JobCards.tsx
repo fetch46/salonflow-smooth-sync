@@ -152,7 +152,7 @@ export default function JobCards() {
         .from("job_cards")
         .select(`
           id, job_number, start_time, end_time, status, total_amount, created_at, updated_at,
-          staff:staff_id (id, full_name, profile_image),
+          staff:staff_id (id, full_name),
           client:client_id (id, full_name, email, phone)
         `)
         .order("created_at", { ascending: false });
