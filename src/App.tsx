@@ -27,6 +27,7 @@ import InventoryAdjustments from "@/pages/InventoryAdjustments";
 import Settings from "@/pages/Settings";
 import JobCards from "@/pages/JobCards";
 import CreateJobCard from "@/pages/CreateJobCard";
+import EditJobCard from "@/pages/EditJobCard";
 import SuperAdmin from "@/pages/SuperAdmin";
 import ServiceView from "@/pages/ServiceView";
 import Booking from "@/pages/Booking";
@@ -134,10 +135,11 @@ const AppRoutes = () => {
         <Route path="suppliers" element={<Suppliers />} />
         <Route path="accounts" element={<Accounts />} />
         
-        {/* Operations */}
-        <Route path="job-cards" element={<JobCards />} />
-        <Route path="job-cards/new" element={<CreateJobCard />} />
-        <Route path="pos" element={<POS />} />
+                 {/* Operations */}
+         <Route path="job-cards" element={<JobCards />} />
+         <Route path="job-cards/new" element={<CreateJobCard />} />
+         <Route path="job-cards/:id/edit" element={<EditJobCard />} />
+         <Route path="pos" element={<POS />} />
         <Route path="booking" element={<Booking />} />
         <Route path="invoices" element={<Invoices />} />
         
