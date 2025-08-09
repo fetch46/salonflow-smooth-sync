@@ -357,25 +357,29 @@ export default function POS() {
           {/* Customer Selection */}
           <div className="mb-4">
             <Label>Customer (Optional)</Label>
-            <Select 
-              value={selectedCustomer?.id || ""} 
-              onValueChange={(value) => {
-                const customer = customers.find(c => c.id === value);
-                setSelectedCustomer(customer || null);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select customer" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Walk-in Customer</SelectItem>
-                {customers.map((customer) => (
-                  <SelectItem key={customer.id} value={customer.id}>
-                    {customer.full_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                          <Select 
+               value={selectedCustomer ? selectedCustomer.id : "__walk_in__"} 
+               onValueChange={(value) => {
+                 if (value === "__walk_in__") {
+                   setSelectedCustomer(null);
+                   return;
+                 }
+                 const customer = customers.find(c => c.id === value);
+                 setSelectedCustomer(customer || null);
+               }}
+             >
+               <SelectTrigger>
+                 <SelectValue placeholder="Select customer" />
+               </SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="__walk_in__">Walk-in Customer</SelectItem>
+                 {customers.map((customer) => (
+                   <SelectItem key={customer.id} value={customer.id}>
+                     {customer.full_name}
+                   </SelectItem>
+                 ))}
+               </SelectContent>
+             </Select>
           </div>
 
           {/* Cart Items */}
