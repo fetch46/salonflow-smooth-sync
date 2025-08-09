@@ -10,7 +10,8 @@ import {
   Star,
   Clock,
   Smartphone,
-  Shield
+  Shield,
+  MapPin
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
@@ -105,6 +106,19 @@ const Landing = () => {
   const [dbPlans, setDbPlans] = useState<DbPlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState<boolean>(true);
 
+  type FeaturedBiz = {
+    id: string;
+    name: string;
+    category: string | null;
+    city: string | null;
+    country: string | null;
+    logo_url: string | null;
+    website_url: string | null;
+    rating: number | null;
+    review_count: number | null;
+  };
+  const [featured, setFeatured] = useState<FeaturedBiz[]>([]);
+
   useEffect(() => {
     const loadPlans = async () => {
       const { data, error } = await supabase
@@ -121,7 +135,18 @@ const Landing = () => {
       setLoadingPlans(false);
     };
 
+    const loadFeatured = async () => {
+      const { data } = await supabase
+        .from('business_listings')
+        .select('id, name, category, city, country, logo_url, website_url, rating, review_count')
+        .eq('is_active', true)
+        .eq('is_featured', true)
+        .limit(8);
+      if (data) setFeatured(data as any);
+    };
+
     loadPlans();
+    loadFeatured();
 
     // SEO: Title and meta description
     document.title = "SalonSync | Salon Management Software Pricing";
@@ -170,6 +195,7 @@ const Landing = () => {
           <nav className="hidden md:flex items-center space-x-6">
             <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</a>
             <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
+            <Link to="/businesses" className="text-muted-foreground hover:text-foreground transition-colors">Businesses</Link>
             <a href="#contact" className="text-muted-foreground hover:text-foreground transition-colors">Contact</a>
             <Link to="/login">
               <Button variant="outline" size="sm">Sign In</Button>
@@ -343,6 +369,59 @@ const Landing = () => {
           </div>
         </div>
       </section>
+
+      {/* Featured Businesses Section */}
+      {featured.length > 0 && (
+        <section className="py-20 px-4 bg-muted/30">
+          <div className="container mx-auto max-w-6xl">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-4xl font-bold text-foreground mb-2">Featured Businesses</h2>
+                <p className="text-muted-foreground">Explore salons using SalonSync</p>
+              </div>
+              <Link to="/businesses">
+                <Button variant="outline">View All</Button>
+              </Link>
+            </div>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {featured.map((b) => (
+                <Card key={b.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      {b.logo_url ? (
+                        <img src={b.logo_url} alt={b.name} className="w-8 h-8 rounded" />
+                      ) : (
+                        <div className="w-8 h-8 rounded bg-primary/10" />
+                      )}
+                      <CardTitle className="text-lg">{b.name}</CardTitle>
+                    </div>
+                    {b.category && <CardDescription>{b.category}</CardDescription>}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <MapPin className="w-4 h-4" />
+                        <span>{[b.city, b.country].filter(Boolean).join(', ')}</span>
+                      </div>
+                      {b.rating != null && (
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 text-yellow-500" />
+                          <span>{b.rating.toFixed(1)} ({b.review_count ?? 0})</span>
+                        </div>
+                      )}
+                    </div>
+                    {b.website_url && (
+                      <Link to={b.website_url} target="_blank">
+                        <Button variant="outline" size="sm" className="mt-4 w-full">Visit</Button>
+                      </Link>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* CTA Section */}
       <section className="py-20 px-4 bg-primary text-primary-foreground">
