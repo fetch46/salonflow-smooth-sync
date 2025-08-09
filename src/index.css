@@ -122,3 +122,36 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .mobile-container {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+  .mobile-card-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4;
+  }
+  .mobile-scroll-x {
+    @apply -mx-4 sm:mx-0 px-4 sm:px-0 overflow-x-auto;
+  }
+  .no-wrap-sm {
+    @apply whitespace-nowrap sm:whitespace-normal;
+  }
+}
+
+/* Ensure the app never causes horizontal scrolling on small screens */
+html, body, #root {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Make Radix Dialog better on mobile */
+@media (max-width: 640px) {
+  [role="dialog"][data-state="open"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto;
+    max-height: 90vh;
+    left: 50% !important;
+    transform: translateX(-50%) translateY(-50%);
+  }
+}
