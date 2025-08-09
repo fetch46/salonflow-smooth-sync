@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useEffect, useReducer, useCallback } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
@@ -276,8 +277,8 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dispatch({ type: 'SET_LOADING', payload: false })
       }
     }
-    }, [handleError])
- 
+        }, [handleError, setActiveOrganization])
+  
    // Set active organization
    const setActiveOrganization = useCallback(async (
      organization: Organization, 

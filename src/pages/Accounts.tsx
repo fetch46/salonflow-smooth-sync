@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -44,7 +44,7 @@ export default function Accounts() {
     document.title = "Chart of Accounts | SalonOS";
   }, []);
 
-  const fetchAccounts = async () => {
+  const fetchAccounts = useCallback(async () => {
     try {
       setLoading(true);
       if (!organization?.id) {
@@ -84,7 +84,7 @@ export default function Accounts() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [organization?.id]);
 
   useEffect(() => {
     // Re-fetch when organization changes and is available
@@ -94,7 +94,7 @@ export default function Accounts() {
       // Reset view when org not ready
       setAccounts([]);
     }
-  }, [organization?.id]);
+  }, [organization?.id, fetchAccounts]);
 
   const refresh = async () => {
     setRefreshing(true);

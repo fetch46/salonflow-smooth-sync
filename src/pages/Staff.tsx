@@ -124,11 +124,11 @@ export default function Staff() {
     is_active: true,
   });
 
-  useEffect(() => {
+    useEffect(() => {
     fetchStaff();
-  }, []);
-
-  const fetchStaff = useCallback(async () => {
+  }, [fetchStaff]);
+ 
+   const fetchStaff = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
