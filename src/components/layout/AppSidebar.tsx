@@ -261,7 +261,7 @@ export function AppSidebar() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="h-7 w-7 rounded-md bg-gradient-to-br from-blue-500 to-violet-600" />
-              <span className="font-semibold">SalonFlow</span>
+              <span className="font-semibold group-data-[collapsible=icon]:hidden">SalonFlow</span>
             </div>
             <SidebarTrigger className="hidden md:inline-flex" />
           </div>
@@ -294,7 +294,7 @@ export function AppSidebar() {
                       >
                         <item.icon className="w-4 h-4" />
                         <span className="flex-1">{item.title}</span>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 group-data-[collapsible=icon]:hidden">
                           {!isAvailable && <Lock className="w-3 h-3 text-slate-400" />}
                           {isOpen ? (
                             <ChevronDown className="w-4 h-4" />
