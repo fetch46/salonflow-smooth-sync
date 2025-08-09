@@ -127,6 +127,12 @@ const menuItems: MenuItem[] = [
          icon: FileText,
          feature: "accounting",
                },
+       {
+         title: "Payments",
+         url: "/payments",
+         icon: DollarSign,
+         feature: "accounting",
+       },
         {
           title: "Accounts",
           url: "/accounts",
