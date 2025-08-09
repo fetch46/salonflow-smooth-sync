@@ -45,6 +45,7 @@ import UpgradePlan from "@/pages/UpgradePlan";
 import Profile from "@/pages/Profile";
 import Help from "@/pages/Help";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import Payments from "@/pages/Payments";
 
 // Super Admin Pages
 import AdminDashboard from "@/pages/admin/AdminDashboard";
@@ -144,6 +145,7 @@ const AppRoutes = () => {
         <Route path="purchases" element={<Purchases />} />
         <Route path="suppliers" element={<Suppliers />} />
         <Route path="accounts" element={<Accounts />} />
+        <Route path="payments" element={<Payments />} />
         
                  {/* Operations */}
          <Route path="job-cards" element={<JobCards />} />

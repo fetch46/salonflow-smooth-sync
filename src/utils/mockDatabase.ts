@@ -551,3 +551,61 @@ export async function updateReceiptWithFallback(supabase: any, id: string, updat
     return await mockDb.updateInvoice(id, updates);
   }
 }
+
+export async function getAllReceiptPaymentsWithFallback(supabase: any): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from('receipt_payments')
+      .select('*')
+      .order('payment_date', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.log('Using mock database for fetching all receipt payments');
+    const storage = getStorage();
+    return (storage.receipt_payments || []).slice().sort((a: any, b: any) => String(b.payment_date).localeCompare(String(a.payment_date)));
+  }
+}
+
+export async function updateReceiptPaymentWithFallback(
+  supabase: any,
+  id: string,
+  updates: Partial<{ amount: number; method: string; reference_number: string | null; payment_date: string }>
+): Promise<boolean> {
+  try {
+    const allowed: any = {};
+    if (typeof updates.amount !== 'undefined') allowed.amount = updates.amount;
+    if (typeof updates.method !== 'undefined') allowed.method = updates.method;
+    if (typeof updates.reference_number !== 'undefined') allowed.reference_number = updates.reference_number;
+    if (typeof updates.payment_date !== 'undefined') allowed.payment_date = updates.payment_date;
+
+    const { error } = await supabase
+      .from('receipt_payments')
+      .update(allowed)
+      .eq('id', id);
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.log('Using mock database for updating receipt payment');
+    const storage = getStorage();
+    storage.receipt_payments = (storage.receipt_payments || []).map((p: any) =>
+      p.id === id ? { ...p, ...updates, updated_at: new Date().toISOString() } : p
+    );
+    setStorage(storage);
+    return true;
+  }
+}
+
+export async function deleteReceiptPaymentWithFallback(supabase: any, id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.from('receipt_payments').delete().eq('id', id);
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.log('Using mock database for deleting receipt payment');
+    const storage = getStorage();
+    storage.receipt_payments = (storage.receipt_payments || []).filter((p: any) => p.id !== id);
+    setStorage(storage);
+    return true;
+  }
+}
