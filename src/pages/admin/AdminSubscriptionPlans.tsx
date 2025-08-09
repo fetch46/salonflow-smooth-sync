@@ -148,82 +148,101 @@ const AdminSubscriptionPlans = () => {
 
   const createPlan = async () => {
     try {
-      let features;
+      let featuresObj: Record<string, any> = {}
       try {
-        features = JSON.parse(newPlan.features);
+        featuresObj = newPlan.features?.trim() ? JSON.parse(newPlan.features) : {}
       } catch (e) {
-        toast.error('Invalid JSON in features');
-        return;
+        toast.error('Invalid JSON in features')
+        return
       }
+
+      if (!newPlan.name.trim() || !newPlan.slug.trim()) {
+        toast.error('Name and slug are required')
+        return
+      }
+
+      const priceMonthly = Number.parseInt(newPlan.price_monthly || '0')
+      const priceYearly = Number.parseInt(newPlan.price_yearly || '0')
+      const maxUsers = newPlan.max_users?.trim() ? Number.parseInt(newPlan.max_users) : null
+      const maxLocations = newPlan.max_locations?.trim() ? Number.parseInt(newPlan.max_locations) : null
+      const sortOrder = Number.parseInt(newPlan.sort_order || '0')
 
       const { error } = await supabase
         .from('subscription_plans')
-        .insert([{
-          name: newPlan.name,
-          slug: newPlan.slug,
-          description: newPlan.description || null,
-          price_monthly: parseInt(newPlan.price_monthly),
-          price_yearly: parseInt(newPlan.price_yearly),
-          max_users: newPlan.max_users ? parseInt(newPlan.max_users) : null,
-          max_locations: newPlan.max_locations ? parseInt(newPlan.max_locations) : null,
-          features,
-          is_active: newPlan.is_active,
-          sort_order: parseInt(newPlan.sort_order)
-        }]);
+        .insert([{ 
+          name: newPlan.name.trim(),
+          slug: newPlan.slug.trim(),
+          description: newPlan.description?.trim() || null,
+          price_monthly: Number.isFinite(priceMonthly) ? priceMonthly : 0,
+          price_yearly: Number.isFinite(priceYearly) ? priceYearly : 0,
+          max_users: Number.isFinite(maxUsers as any) ? (maxUsers as number) : null,
+          max_locations: Number.isFinite(maxLocations as any) ? (maxLocations as number) : null,
+          features: featuresObj,
+          is_active: !!newPlan.is_active,
+          sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
+        }])
 
-      if (error) throw error;
+      if (error) throw error
 
-      toast.success('Subscription plan created successfully');
-      setIsCreateDialogOpen(false);
-      resetForm();
-      fetchPlans();
+      toast.success('Subscription plan created successfully')
+      setIsCreateDialogOpen(false)
+      resetForm()
+      fetchPlans()
     } catch (error: any) {
-      console.error('Error creating subscription plan:', error);
-      const message = (error && (error as any).message) ? (error as any).message : 'Failed to create subscription plan';
-      toast.error(message);
+      console.error('Error creating subscription plan:', error)
+      toast.error(error?.message || 'Failed to create subscription plan')
     }
   };
-
   const updatePlan = async () => {
     if (!selectedPlan) return;
 
     try {
-      let features;
+      let featuresObj: Record<string, any> = {}
       try {
-        features = JSON.parse(newPlan.features);
+        featuresObj = newPlan.features?.trim() ? JSON.parse(newPlan.features) : {}
       } catch (e) {
-        toast.error('Invalid JSON in features');
-        return;
+        toast.error('Invalid JSON in features')
+        return
       }
+
+      if (!newPlan.name.trim() || !newPlan.slug.trim()) {
+        toast.error('Name and slug are required')
+        return
+      }
+
+      const priceMonthly = Number.parseInt(newPlan.price_monthly || '0')
+      const priceYearly = Number.parseInt(newPlan.price_yearly || '0')
+      const maxUsers = newPlan.max_users?.trim() ? Number.parseInt(newPlan.max_users) : null
+      const maxLocations = newPlan.max_locations?.trim() ? Number.parseInt(newPlan.max_locations) : null
+      const sortOrder = Number.parseInt(newPlan.sort_order || '0')
 
       const { error } = await supabase
         .from('subscription_plans')
         .update({
-          name: newPlan.name,
-          slug: newPlan.slug,
-          description: newPlan.description || null,
-          price_monthly: parseInt(newPlan.price_monthly),
-          price_yearly: parseInt(newPlan.price_yearly),
-          max_users: newPlan.max_users ? parseInt(newPlan.max_users) : null,
-          max_locations: newPlan.max_locations ? parseInt(newPlan.max_locations) : null,
-          features,
-          is_active: newPlan.is_active,
-          sort_order: parseInt(newPlan.sort_order)
+          name: newPlan.name.trim(),
+          slug: newPlan.slug.trim(),
+          description: newPlan.description?.trim() || null,
+          price_monthly: Number.isFinite(priceMonthly) ? priceMonthly : 0,
+          price_yearly: Number.isFinite(priceYearly) ? priceYearly : 0,
+          max_users: Number.isFinite(maxUsers as any) ? (maxUsers as number) : null,
+          max_locations: Number.isFinite(maxLocations as any) ? (maxLocations as number) : null,
+          features: featuresObj,
+          is_active: !!newPlan.is_active,
+          sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
         })
-        .eq('id', selectedPlan.id);
+        .eq('id', selectedPlan.id)
 
-      if (error) throw error;
+      if (error) throw error
 
-      toast.success('Subscription plan updated successfully');
-      setIsEditDialogOpen(false);
-      setSelectedPlan(null);
-      fetchPlans();
-    } catch (error) {
-      console.error('Error updating subscription plan:', error);
-      toast.error('Failed to update subscription plan');
+      toast.success('Subscription plan updated successfully')
+      setIsEditDialogOpen(false)
+      setSelectedPlan(null)
+      fetchPlans()
+    } catch (error: any) {
+      console.error('Error updating subscription plan:', error)
+      toast.error(error?.message || 'Failed to update subscription plan')
     }
   };
-
   const deletePlan = async (id: string, name: string) => {
     if (!confirm(`Are you sure you want to delete plan "${name}"? This action cannot be undone.`)) {
       return;

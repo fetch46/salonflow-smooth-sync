@@ -321,15 +321,11 @@ export class UserService {
 export class SuperAdminService {
   static async checkSuperAdminStatus(userId: string): Promise<boolean> {
     try {
-      const { data, error } = await supabase
-        .from('super_admins')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .single()
+      // Use RPC to avoid RLS recursion issues and ensure reliable check
+      const { data, error } = await supabase.rpc('is_super_admin', { uid: userId })
 
-      if (error && error.code !== 'PGRST116') throw error
-      return !!data
+      if (error) throw error
+      return data === true
     } catch (error) {
       console.error('Error checking super admin status:', error)
       return false
