@@ -19,12 +19,39 @@ import {
   Target,
 } from 'lucide-react';
 import { useSaas } from '@/lib/saas/context';
+import { supabase } from '@/integrations/supabase/client';
 
 const Reports = () => {
   const { organization, subscriptionPlan } = useSaas();
   const [timeRange, setTimeRange] = useState('month');
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const [pl, setPl] = useState<{ income: number; cogs: number; expenses: number; grossProfit: number; netProfit: number }>({ income: 0, cogs: 0, expenses: 0, grossProfit: 0, netProfit: 0 });
+  const [bs, setBs] = useState<{ assets: number; liabilities: number; equity: number } >({ assets: 0, liabilities: 0, equity: 0 });
+
+  useEffect(() => {
+    (async () => {
+      try {
+        // Compute Profit & Loss from account balances
+        const { data: accounts } = await supabase
+          .from('accounts')
+          .select('id, account_type, account_code, balance');
+        const income = (accounts || []).filter(a => a.account_type === 'Income').reduce((s, a) => s + (a.balance || 0), 0);
+        const cogs = (accounts || []).filter(a => a.account_code === '5001').reduce((s, a) => s + (a.balance || 0), 0);
+        const expenses = (accounts || []).filter(a => a.account_type === 'Expense' && a.account_code !== '5001').reduce((s, a) => s + (a.balance || 0), 0);
+        const grossProfit = income - cogs;
+        const netProfit = grossProfit - expenses;
+        setPl({ income, cogs, expenses, grossProfit, netProfit });
+
+        const assets = (accounts || []).filter(a => a.account_type === 'Asset').reduce((s, a) => s + (a.balance || 0), 0);
+        const liabilities = (accounts || []).filter(a => a.account_type === 'Liability').reduce((s, a) => s + (a.balance || 0), 0);
+        const equity = (accounts || []).filter(a => a.account_type === 'Equity').reduce((s, a) => s + (a.balance || 0), 0);
+        setBs({ assets, liabilities, equity });
+      } catch (e) {
+        console.error('Error loading financial reports', e);
+      }
+    })();
+  }, []);
 
   // Mock data for reports
   const mockData = {
@@ -126,7 +153,7 @@ const Reports = () => {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <Activity className="w-4 h-4" />
             Overview
@@ -142,6 +169,14 @@ const Reports = () => {
           <TabsTrigger value="clients" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
             Clients
+          </TabsTrigger>
+          <TabsTrigger value="pnl" className="flex items-center gap-2">
+            <DollarSign className="w-4 h-4" />
+            P&L
+          </TabsTrigger>
+          <TabsTrigger value="balancesheet" className="flex items-center gap-2">
+            <PieChart className="w-4 h-4" />
+            Balance Sheet
           </TabsTrigger>
         </TabsList>
 
@@ -326,6 +361,65 @@ const Reports = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="pnl" className="space-y-6">
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle>Profit & Loss</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <div className="text-center p-4 bg-green-50 rounded-lg">
+                  <div className="text-2xl font-bold text-green-700">${pl.income.toFixed(2)}</div>
+                  <div className="text-sm text-green-700">Income</div>
+                </div>
+                <div className="text-center p-4 bg-amber-50 rounded-lg">
+                  <div className="text-2xl font-bold text-amber-700">${pl.cogs.toFixed(2)}</div>
+                  <div className="text-sm text-amber-700">Cost of Goods Sold</div>
+                </div>
+                <div className="text-center p-4 bg-red-50 rounded-lg">
+                  <div className="text-2xl font-bold text-red-700">${pl.expenses.toFixed(2)}</div>
+                  <div className="text-sm text-red-700">Expenses</div>
+                </div>
+                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-700">${pl.grossProfit.toFixed(2)}</div>
+                  <div className="text-sm text-blue-700">Gross Profit</div>
+                </div>
+              </div>
+              <div className="mt-6 text-center p-4 bg-indigo-50 rounded-lg">
+                <div className="text-3xl font-bold text-indigo-700">${pl.netProfit.toFixed(2)}</div>
+                <div className="text-sm text-indigo-700">Net Profit</div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="balancesheet" className="space-y-6">
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle>Balance Sheet</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="text-center p-4 bg-slate-50 rounded-lg">
+                  <div className="text-2xl font-bold text-slate-700">${bs.assets.toFixed(2)}</div>
+                  <div className="text-sm text-slate-700">Assets</div>
+                </div>
+                <div className="text-center p-4 bg-slate-50 rounded-lg">
+                  <div className="text-2xl font-bold text-slate-700">${bs.liabilities.toFixed(2)}</div>
+                  <div className="text-sm text-slate-700">Liabilities</div>
+                </div>
+                <div className="text-center p-4 bg-slate-50 rounded-lg">
+                  <div className="text-2xl font-bold text-slate-700">${bs.equity.toFixed(2)}</div>
+                  <div className="text-sm text-slate-700">Equity</div>
+                </div>
+              </div>
+              <div className="mt-6 text-center text-sm text-slate-600">
+                Check: Assets (${bs.assets.toFixed(2)}) = Liabilities (${bs.liabilities.toFixed(2)}) + Equity (${bs.equity.toFixed(2)})
               </div>
             </CardContent>
           </Card>
