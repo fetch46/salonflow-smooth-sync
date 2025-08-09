@@ -64,7 +64,7 @@ interface Appointment {
 export default function ClientProfile() {
   const { id } = useParams<{ id: string }>();
   const [client, setClient] = useState<Client | null>(null);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [receipts, setReceipts] = useState<any[]>([]);
   const [jobCards, setJobCards] = useState<JobCard[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,15 +103,15 @@ export default function ClientProfile() {
         notes: clientData.notes || '',
       });
 
-      // Fetch invoices
-      const { data: invoicesData, error: invoicesError } = await supabase
-        .from("invoices")
-        .select("id, invoice_number, issue_date, due_date, total_amount, status")
-        .eq("client_id", id)
+      // Fetch receipts for this client
+      const { data: receiptsData, error: receiptsError } = await supabase
+        .from("receipts")
+        .select("id, receipt_number, total_amount, amount_paid, status, created_at")
+        .eq("customer_id", id)
         .order("created_at", { ascending: false });
 
-      if (invoicesError) throw invoicesError;
-      setInvoices(invoicesData || []);
+      if (receiptsError) throw receiptsError;
+      setReceipts(receiptsData || []);
 
       // Fetch job cards
       const { data: jobCardsData, error: jobCardsError } = await supabase
@@ -329,7 +329,7 @@ export default function ClientProfile() {
                 ${(client.total_spent || 0).toFixed(2)}
               </div>
               <p className="text-xs text-green-600">
-                From {invoices.length} invoices
+                From {receipts.length} receipts
               </p>
             </CardContent>
           </Card>
@@ -412,7 +412,7 @@ export default function ClientProfile() {
         <Tabs defaultValue="appointments" className="space-y-4">
           <TabsList>
             <TabsTrigger value="appointments">Appointments</TabsTrigger>
-            <TabsTrigger value="invoices">Invoices</TabsTrigger>
+            <TabsTrigger value="receipts">Receipts</TabsTrigger>
             <TabsTrigger value="jobcards">Job Cards</TabsTrigger>
             <TabsTrigger value="details">Details</TabsTrigger>
           </TabsList>
@@ -452,35 +452,36 @@ export default function ClientProfile() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="invoices" className="space-y-4">
+          <TabsContent value="receipts" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Invoice History</CardTitle>
-                <CardDescription>All invoices for this client</CardDescription>
+                <CardTitle>Receipt History</CardTitle>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Invoice #</TableHead>
-                      <TableHead>Issue Date</TableHead>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {invoices.map((invoice) => (
-                      <TableRow key={invoice.id}>
-                        <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
-                        <TableCell>{format(new Date(invoice.issue_date), "MMM dd, yyyy")}</TableCell>
-                        <TableCell>{invoice.due_date ? format(new Date(invoice.due_date), "MMM dd, yyyy") : "N/A"}</TableCell>
-                        <TableCell>${invoice.total_amount.toFixed(2)}</TableCell>
-                        <TableCell>{getStatusBadge(invoice.status)}</TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>#</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Total</TableHead>
+                        <TableHead>Paid</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {receipts.map((r) => (
+                        <TableRow key={r.id}>
+                          <TableCell className="font-medium">{r.receipt_number}</TableCell>
+                          <TableCell>{format(new Date(r.created_at), "MMM dd, yyyy")}</TableCell>
+                          <TableCell>{getStatusBadge(r.status)}</TableCell>
+                          <TableCell>${(r.total_amount || 0).toFixed(2)}</TableCell>
+                          <TableCell>${(r.amount_paid || 0).toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

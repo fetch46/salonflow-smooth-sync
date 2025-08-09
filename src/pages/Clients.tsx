@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import ClientsTable from "@/components/clients/ClientsTable";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Plus,
   Search,
@@ -165,7 +166,7 @@ export default function Clients() {
   });
 
   // View mode toggle (cards | table)
-  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [viewMode, setViewMode] = useState<"cards" | "table">("table");
   const navigate = useNavigate();
 
   const handleViewProfile = (id: string) => navigate(`/clients/${id}`);
@@ -746,114 +747,117 @@ export default function Clients() {
       {/* Analytics Section */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Top Clients */}
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader className="border-b border-slate-200">
-            <CardTitle className="flex items-center gap-2">
-              <Award className="w-5 h-5 text-amber-600" />
-              Top Clients
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="space-y-1">
-              {topClients.map((client, index) => {
-                const tier = getLoyaltyTier(client.total_spent || 0);
-                return (
-                  <div key={client.id} className="flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                        index === 0 ? 'bg-gradient-to-br from-amber-500 to-yellow-500' :
-                        index === 1 ? 'bg-gradient-to-br from-gray-400 to-gray-500' :
-                        index === 2 ? 'bg-gradient-to-br from-orange-600 to-red-600' :
-                        'bg-gradient-to-br from-blue-500 to-cyan-500'
-                      }`}>
-                        {index + 1}
-                      </div>
-                      <div>
-                        <div className="font-medium text-sm">{client.full_name}</div>
-                        <div className="text-xs text-slate-500">{client.total_visits} visits</div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-sm">${(client.total_spent || 0).toLocaleString()}</div>
-                      <Badge className={`text-xs ${tier.textColor} bg-gradient-to-r ${tier.color} text-white`}>
-                        {tier.name}
-                      </Badge>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Loyalty Tiers */}
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader className="border-b border-slate-200">
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-purple-600" />
-              Loyalty Tiers
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="space-y-3">
-              {LOYALTY_TIERS.slice().reverse().map((tier) => {
-                const count = clients.filter(c => getLoyaltyTier(c.total_spent || 0).name === tier.name).length;
-                const percentage = stats.total > 0 ? (count / stats.total) * 100 : 0;
-                return (
-                  <div key={tier.name} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${tier.color}`} />
-                        <span className="font-medium text-sm">{tier.name}</span>
-                        <span className="text-xs text-slate-500">
-                          ${tier.minSpent.toLocaleString()}+
-                        </span>
+        <Collapsible>
+          <Card className="shadow-sm border-slate-200">
+            <CardHeader className="border-b border-slate-200 flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Award className="w-5 h-5 text-amber-600" />
+                Top Clients
+              </CardTitle>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm">Toggle</Button>
+              </CollapsibleTrigger>
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent className="p-0">
+                <div className="divide-y">
+                  {topClients.map((client, idx) => (
+                    <div key={client.id} className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`h-8 w-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-white flex items-center justify-center font-semibold`}>
+                          {getInitials(client.full_name)}
+                        </div>
+                        <div>
+                          <div className="font-medium">{client.full_name}</div>
+                          <div className="text-xs text-slate-500">Visits: {client.total_visits || 0}</div>
+                        </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-semibold text-sm">{count}</div>
-                        <div className="text-xs text-slate-500">{percentage.toFixed(1)}%</div>
+                        <div className="font-semibold">{formatMoney(client.total_spent || 0)}</div>
+                        <div className="text-xs text-slate-500">Tier: {getLoyaltyTier(client.total_spent || 0).name}</div>
                       </div>
                     </div>
-                    <Progress value={percentage} className="h-1.5" />
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
 
         {/* Recent Activity */}
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader className="border-b border-slate-200">
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-green-600" />
-              Recent Activity
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="max-h-64 overflow-y-auto">
-              {recentActivity.length === 0 ? (
-                <div className="text-center py-8 text-slate-500">
-                  <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No recent activity</p>
+        <Collapsible>
+          <Card className="shadow-sm border-slate-200">
+            <CardHeader className="border-b border-slate-200 flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="w-5 h-5 text-green-600" />
+                Recent Activity
+              </CardTitle>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm">Toggle</Button>
+              </CollapsibleTrigger>
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent className="p-0">
+                <div className="divide-y">
+                  {recentActivity.map((item) => (
+                    <div key={item.id} className="p-4 flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">{item.name}</div>
+                        <div className="text-xs text-slate-500">{item.action} • {item.time}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-semibold">{formatMoney(item.amount)}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                recentActivity.map((activity) => (
-                  <div key={activity.id} className="flex items-start gap-3 p-4 border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors">
-                    <div className={`p-2 rounded-lg bg-gradient-to-r ${activity.tier.color}`}>
-                      <User className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-slate-900">{activity.name}</p>
-                      <p className="text-xs text-slate-500">{activity.action} • ${activity.amount.toLocaleString()}</p>
-                      <p className="text-xs text-slate-500 mt-1">{activity.time}</p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+
+        {/* Loyalty Tiers */}
+        <Collapsible>
+          <Card className="shadow-sm border-slate-200">
+            <CardHeader className="border-b border-slate-200 flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-purple-600" />
+                Loyalty Tiers
+              </CardTitle>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm">Toggle</Button>
+              </CollapsibleTrigger>
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent className="p-4">
+                <div className="space-y-3">
+                  {LOYALTY_TIERS.slice().reverse().map((tier) => {
+                    const count = clients.filter(c => getLoyaltyTier(c.total_spent || 0).name === tier.name).length;
+                    const percentage = stats.total > 0 ? (count / stats.total) * 100 : 0;
+                    return (
+                      <div key={tier.name} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${tier.color}`} />
+                            <span className="font-medium text-sm">{tier.name}</span>
+                            <span className="text-xs text-slate-500">
+                              ${tier.minSpent.toLocaleString()}+
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-semibold text-sm">{count}</div>
+                            <div className="text-xs text-slate-500">{percentage.toFixed(1)}%</div>
+                          </div>
+                        </div>
+                        <Progress value={percentage} className="h-1.5" />
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
       </div>
 
       {/* Clients List */}

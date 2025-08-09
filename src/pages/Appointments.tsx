@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { CalendarDays, Clock, Phone, Mail, User, Edit2, Trash2, Plus, MoreHorizontal, Eye, FilePlus } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
+import { useSaas } from "@/lib/saas";
 
 interface Appointment {
   id: string;
@@ -59,6 +60,7 @@ interface AppointmentServiceItem {
 }
 
 export default function Appointments() {
+  const { organization } = useSaas();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -129,8 +131,8 @@ export default function Appointments() {
       } else {
         setAppointmentServicesById({});
       }
-    } catch (error) {
-      toast.error("Error fetching data");
+    } catch (error: any) {
+      toast.error(error?.message ? `Error fetching appointments: ${error.message}` : "Error fetching data");
       console.error(error);
     } finally {
       setLoading(false);
@@ -259,6 +261,7 @@ export default function Appointments() {
         status: form.status,
         notes: form.notes || null,
         price: totalPrice || form.price,
+        organization_id: organization?.id || null,
       };
 
       if (editingAppointment) {
@@ -402,12 +405,13 @@ export default function Appointments() {
         appointment_id: appointment.id,
         client_id: appointment.client_id || null,
         staff_id: appointment.staff_id || null,
-        service_ids: serviceIds.length ? serviceIds : (appointment.service_id ? [appointment.service_id] : null),
+        service_ids: serviceIds.length ? serviceIds : (appointment.service_id ? [appointment.service_id] : []),
         start_time: start.toISOString(),
         end_time: end.toISOString(),
         total_amount: appointment.price || 0,
         status: 'in_progress',
         notes: appointment.notes || null,
+        organization_id: organization?.id || null,
       };
 
       const { data, error } = await supabase
