@@ -54,6 +54,30 @@ export const mockDb = {
     const storage = getStorage();
     return storage.receipts || [];
   },
+  async updateInvoice(id: string, updates: Partial<MockReceipt>): Promise<boolean> {
+    const storage = getStorage();
+    storage.receipts = (storage.receipts || []).map((r: MockReceipt) => {
+      if (r.id === id) {
+        return { ...r, ...updates, updated_at: new Date().toISOString() };
+      }
+      return r;
+    });
+    setStorage(storage);
+    return true;
+  },
+  async deleteInvoice(id: string): Promise<boolean> {
+    const storage = getStorage();
+    storage.receipts = (storage.receipts || []).filter((r: MockReceipt) => r.id !== id);
+    // No invoice_items in mock; if present as receipt_items with invoice_id, remove them
+    storage.receipt_items = (storage.receipt_items || []).filter((it: any) => it.invoice_id !== id && it.receipt_id !== id);
+    setStorage(storage);
+    return true;
+  },
+  async getInvoiceItems(invoiceId: string): Promise<any[]> {
+    const storage = getStorage();
+    // Return any items linked to this invoice/receipt id if present
+    return (storage.receipt_items || []).filter((it: any) => it.invoice_id === invoiceId || it.receipt_id === invoiceId);
+  },
 };
 
 // Wrapper functions for Receipts

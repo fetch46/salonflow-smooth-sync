@@ -132,7 +132,7 @@ const Register = () => {
         return '';
       case 'phone':
         if (!value) return 'Phone number is required';
-        if (!/^\+?[\d\s\-\(\)]{10,}$/.test(value)) return 'Please enter a valid phone number';
+        if (!/^\+?[\d\s\-()]{10,}$/.test(value)) return 'Please enter a valid phone number';
         return '';
       case 'firstName':
       case 'lastName':
@@ -169,7 +169,7 @@ const Register = () => {
     let hasErrors = false;
 
     switch (step) {
-      case 1:
+      case 1: {
         const personalFields: (keyof BusinessData)[] = ['firstName', 'lastName', 'email', 'password', 'confirmPassword', 'phone'];
         personalFields.forEach(field => {
           const error = validateField(field, formData[field]);
@@ -179,7 +179,8 @@ const Register = () => {
           }
         });
         break;
-      case 2:
+      }
+      case 2: {
         const businessFields: (keyof BusinessData)[] = ['businessName', 'businessType'];
         businessFields.forEach(field => {
           const error = validateField(field, formData[field]);
@@ -189,7 +190,8 @@ const Register = () => {
           }
         });
         break;
-      case 3:
+      }
+      case 3: {
         const locationFields: (keyof BusinessData)[] = ['address', 'city', 'state', 'zipCode'];
         locationFields.forEach(field => {
           const error = validateField(field, formData[field]);
@@ -199,6 +201,7 @@ const Register = () => {
           }
         });
         break;
+      }
     }
 
     setFieldErrors(errors);

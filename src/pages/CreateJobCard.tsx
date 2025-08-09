@@ -285,7 +285,7 @@ export default function CreateJobCard() {
     return () => {
       try {
         delete (window as any).__setServiceStaffMap;
-      } catch {}
+      } catch { /* ignore cleanup errors */ }
     };
   }, []);
 
