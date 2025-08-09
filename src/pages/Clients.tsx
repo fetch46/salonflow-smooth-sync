@@ -231,16 +231,38 @@ export default function Clients() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Enforce unique mobile number if provided
+      const trimmedPhone = (formData.phone || '').trim();
+      if (!editingClient && !trimmedPhone) {
+        toast.error('Mobile number is required');
+        return;
+      }
+      if (trimmedPhone) {
+        const { data: dup, error: dupErr } = await supabase
+          .from('clients')
+          .select('id, phone')
+          .eq('phone', trimmedPhone)
+          .maybeSingle();
+        if (!editingClient && dup?.id) {
+          toast.error('A client with this mobile number already exists');
+          return;
+        }
+        if (editingClient && dup?.id && dup.id !== editingClient.id) {
+          toast.error('Another client with this mobile number already exists');
+          return;
+        }
+      }
+
       if (editingClient) {
         const { error } = await supabase
           .from("clients")
-          .update(formData)
+          .update({ ...formData, phone: trimmedPhone || null })
           .eq("id", editingClient.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from("clients")
-          .insert([formData]);
+          .insert([{ ...formData, phone: trimmedPhone }]);
         if (error) throw error;
       }
 
