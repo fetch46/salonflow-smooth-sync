@@ -136,8 +136,9 @@ export default function ClientProfile() {
           id, appointment_date, appointment_time, service_name, status, price,
           staff:staff_id (full_name)
         `)
-        .eq("customer_name", clientData?.full_name)
-        .order("appointment_date", { ascending: false });
+        .eq("client_id", id)
+        .order("appointment_date", { ascending: false })
+        .order("appointment_time", { ascending: false });
 
       if (appointmentsError) throw appointmentsError;
       setAppointments((appointmentsData || []).map(app => ({
