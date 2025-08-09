@@ -10,10 +10,12 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Receipt } from "lucide-react";
 import { createReceiptWithFallback, getReceiptsWithFallback } from "@/utils/mockDatabase";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface Staff {
   id: string;
   full_name: string;
+  commission_rate?: number | null;
 }
 
 interface Client {
@@ -32,6 +34,34 @@ interface JobCardRecord {
   total_amount: number;
   created_at: string;
   updated_at: string;
+}
+
+interface JobServiceRow {
+  id: string;
+  job_card_id: string;
+  service_id: string;
+  staff_id: string | null;
+  quantity: number;
+  unit_price: number;
+  commission_percentage?: number | null;
+  services?: { id: string; name: string; commission_percentage?: number | null } | null;
+  staff?: { id: string; full_name: string; commission_rate?: number | null } | null;
+}
+
+function computeCommissionRate(row: JobServiceRow, staffList: Staff[], overrideStaffId?: string | null, overrideCommission?: number | null) {
+  if (typeof overrideCommission === 'number' && overrideCommission >= 0) return overrideCommission;
+  if (typeof row.commission_percentage === 'number' && row.commission_percentage >= 0) return row.commission_percentage;
+  if (typeof row.services?.commission_percentage === 'number' && row.services.commission_percentage >= 0) return row.services.commission_percentage;
+  const sid = overrideStaffId ?? row.staff_id;
+  const st = staffList.find((s) => s.id === sid);
+  if (typeof st?.commission_rate === 'number') return st.commission_rate as number;
+  return 0;
+}
+
+function computeCommissionAmount(row: JobServiceRow, rate: number) {
+  const qty = Number(row.quantity || 1);
+  const price = Number(row.unit_price || 0);
+  return (qty * price * (Number(rate) || 0)) / 100;
 }
 
 const STATUS_OPTIONS = [
@@ -73,6 +103,10 @@ export default function EditJobCard() {
   const [jobCard, setJobCard] = useState<JobCardRecord | null>(null);
   const [hasReceipt, setHasReceipt] = useState<boolean>(false);
 
+  const [jobServices, setJobServices] = useState<JobServiceRow[]>([]);
+  const [serviceEdits, setServiceEdits] = useState<Record<string, { staff_id?: string | null; commission_percentage?: number | null }>>({});
+  const [savingServices, setSavingServices] = useState<boolean>(false);
+
   // Local form state
   const [clientId, setClientId] = useState<string | "">("");
   const [staffId, setStaffId] = useState<string | "">("");
@@ -87,7 +121,7 @@ export default function EditJobCard() {
       setLoading(true);
       try {
         const [staffRes, clientsRes, cardRes] = await Promise.all([
-          supabase.from("staff").select("id, full_name").eq("is_active", true),
+          supabase.from("staff").select("id, full_name, commission_rate").eq("is_active", true),
           supabase.from("clients").select("id, full_name").eq("client_status", "active"),
           supabase
             .from("job_cards")
@@ -108,6 +142,18 @@ export default function EditJobCard() {
           setEndTime(toInputDateTimeLocal(cardRes.data.end_time));
           setTotalAmount(String(cardRes.data.total_amount ?? 0));
         }
+
+        // Load services assigned to this job card
+        const { data: jcsData, error: jcsErr } = await supabase
+          .from('job_card_services')
+          .select(`
+            id, job_card_id, service_id, staff_id, quantity, unit_price, commission_percentage,
+            services:service_id ( id, name, commission_percentage ),
+            staff:staff_id ( id, full_name, commission_rate )
+          `)
+          .eq('job_card_id', id);
+        if (jcsErr) throw jcsErr;
+        setJobServices((jcsData || []) as any);
 
         // Check if a receipt already exists for this job card (fallback aware)
         try {
@@ -222,6 +268,61 @@ export default function EditJobCard() {
     }
   };
 
+  const servicesSubtotal = useMemo(() => {
+    return jobServices.reduce((sum, row) => sum + Number(row.quantity || 1) * Number(row.unit_price || 0), 0);
+  }, [jobServices]);
+
+  const commissionsTotal = useMemo(() => {
+    return jobServices.reduce((sum, row) => {
+      const edit = serviceEdits[row.id] || {};
+      const rate = computeCommissionRate(row, staff, edit.staff_id ?? undefined, edit.commission_percentage ?? undefined);
+      return sum + computeCommissionAmount(row, Number(rate) || 0);
+    }, 0);
+  }, [jobServices, serviceEdits, staff]);
+
+  const updateServiceEdit = (rowId: string, changes: { staff_id?: string | null; commission_percentage?: number | null }) => {
+    setServiceEdits((prev) => ({ ...prev, [rowId]: { ...prev[rowId], ...changes } }));
+  };
+
+  const handleSaveServices = async () => {
+    if (jobServices.length === 0) return;
+    setSavingServices(true);
+    try {
+      const updates = Object.entries(serviceEdits).map(([rowId, changes]) => ({ rowId, changes }));
+      if (updates.length === 0) {
+        toast.info('No service changes to save');
+        return;
+      }
+      await Promise.all(
+        updates.map(async ({ rowId, changes }) => {
+          const payload: any = {};
+          if (typeof changes.staff_id !== 'undefined') payload.staff_id = changes.staff_id;
+          if (typeof changes.commission_percentage !== 'undefined' && changes.commission_percentage !== null) payload.commission_percentage = changes.commission_percentage;
+          if (Object.keys(payload).length === 0) return;
+          const { error } = await supabase.from('job_card_services').update(payload).eq('id', rowId);
+          if (error) throw error;
+        })
+      );
+      // Reload rows after save
+      const { data: jcsData } = await supabase
+        .from('job_card_services')
+        .select(`
+          id, job_card_id, service_id, staff_id, quantity, unit_price, commission_percentage,
+          services:service_id ( id, name, commission_percentage ),
+          staff:staff_id ( id, full_name, commission_rate )
+        `)
+        .eq('job_card_id', id);
+      setJobServices((jcsData || []) as any);
+      setServiceEdits({});
+      toast.success('Service changes saved');
+    } catch (e: any) {
+      console.error('Failed to save service changes:', e);
+      toast.error(e?.message || 'Failed to save service changes');
+    } finally {
+      setSavingServices(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6">
@@ -307,10 +408,103 @@ export default function EditJobCard() {
                 value={totalAmount}
                 onChange={(e) => setTotalAmount(e.target.value)}
               />
+              <div className="text-xs text-muted-foreground">Services subtotal: {servicesSubtotal.toFixed(2)} · Estimated commissions: {commissionsTotal.toFixed(2)}</div>
             </div>
           </div>
 
           <Separator />
+
+          <Card className="border">
+            <CardHeader>
+              <CardTitle>Services & Commissions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Service</TableHead>
+                      <TableHead>Assigned Staff</TableHead>
+                      <TableHead className="text-right">Qty</TableHead>
+                      <TableHead className="text-right">Unit Price</TableHead>
+                      <TableHead className="text-right">Line Total</TableHead>
+                      <TableHead className="text-right">Commission %</TableHead>
+                      <TableHead className="text-right">Commission Due</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {jobServices.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground">No services assigned</TableCell>
+                      </TableRow>
+                    ) : (
+                      jobServices.map((row) => {
+                        const edit = serviceEdits[row.id] || {};
+                        const currentStaffId = typeof edit.staff_id !== 'undefined' ? edit.staff_id : row.staff_id || '';
+                        const rate = computeCommissionRate(row, staff, edit.staff_id ?? undefined, edit.commission_percentage ?? undefined);
+                        const commissionDue = computeCommissionAmount(row, Number(rate) || 0);
+                        return (
+                          <TableRow key={row.id}>
+                            <TableCell className="font-medium">{row.services?.name || 'Service'}</TableCell>
+                            <TableCell>
+                              <Select value={currentStaffId || ''} onValueChange={(v) => updateServiceEdit(row.id, { staff_id: v || null })}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select staff" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="">—</SelectItem>
+                                  {staff.map((s) => (
+                                    <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell className="text-right">{Number(row.quantity || 1)}</TableCell>
+                            <TableCell className="text-right">{Number(row.unit_price || 0).toFixed(2)}</TableCell>
+                            <TableCell className="text-right">{(Number(row.quantity || 1) * Number(row.unit_price || 0)).toFixed(2)}</TableCell>
+                            <TableCell className="text-right">
+                              <Input
+                                className="w-24 text-right"
+                                type="number"
+                                step="0.01"
+                                value={
+                                  typeof edit.commission_percentage === 'number'
+                                    ? String(edit.commission_percentage)
+                                    : String(
+                                        typeof row.commission_percentage === 'number' && row.commission_percentage !== null
+                                          ? row.commission_percentage
+                                          : typeof row.services?.commission_percentage === 'number'
+                                          ? row.services?.commission_percentage
+                                          : ''
+                                      )
+                                }
+                                placeholder={String(rate)}
+                                onChange={(e) => updateServiceEdit(row.id, { commission_percentage: e.target.value === '' ? null : Number(e.target.value) })}
+                              />
+                            </TableCell>
+                            <TableCell className="text-right">{Number(commissionDue || 0).toFixed(2)}</TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                    {jobServices.length > 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4}></TableCell>
+                        <TableCell className="text-right font-medium">{servicesSubtotal.toFixed(2)}</TableCell>
+                        <TableCell className="text-right font-medium">Total</TableCell>
+                        <TableCell className="text-right font-medium">{commissionsTotal.toFixed(2)}</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="flex items-center justify-end gap-3 mt-4">
+                <Button variant="outline" onClick={handleSaveServices} disabled={savingServices || Object.keys(serviceEdits).length === 0}>
+                  {savingServices ? 'Saving…' : 'Save Service Changes'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
