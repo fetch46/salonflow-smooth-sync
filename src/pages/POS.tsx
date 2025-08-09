@@ -88,7 +88,7 @@ export default function POS() {
     notes: "",
     cash_received: "",
   });
-  const [applyTax, setApplyTax] = useState<boolean>(true);
+  const [applyTax, setApplyTax] = useState<boolean>(false);
 
   useEffect(() => {
     setPaymentData(prev => ({ ...prev, tax_percentage: typeof orgTaxRate === 'number' ? orgTaxRate : prev.tax_percentage }))

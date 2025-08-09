@@ -16,6 +16,7 @@ import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { useToast } from "@/hooks/use-toast";
 import { useSaas } from "@/lib/saas";
 import { useOrganizationTaxRate } from "@/lib/saas/hooks";
+import { Switch } from "@/components/ui/switch";
 
 interface Purchase {
   id: string;
@@ -72,6 +73,7 @@ export default function Purchases() {
 
   const { format: formatMoney } = useOrganizationCurrency();
   const orgTaxRate = useOrganizationTaxRate();
+  const [applyTax, setApplyTax] = useState<boolean>(true);
 
   const [formData, setFormData] = useState({
     purchase_number: "",
@@ -269,7 +271,7 @@ export default function Purchases() {
 
     const calculateTotals = useCallback(() => {
     const subtotal = purchaseItems.reduce((sum, item) => sum + item.total_cost, 0);
-    const computedTax = subtotal * ((orgTaxRate || 0) / 100);
+    const computedTax = applyTax ? (subtotal * ((orgTaxRate || 0) / 100)) : 0;
     const total = subtotal + computedTax;
     
     setFormData(prev => ({
@@ -278,7 +280,7 @@ export default function Purchases() {
       tax_amount: computedTax.toString(),
       total_amount: total.toString(),
     }));
-  }, [purchaseItems, orgTaxRate]);
+  }, [purchaseItems, orgTaxRate, applyTax]);
 
   useEffect(() => {
     fetchPurchases();
@@ -664,7 +666,11 @@ export default function Purchases() {
                       value={formData.tax_amount}
                       readOnly
                     />
-                    <p className="text-xs text-muted-foreground">Auto-calculated at {(orgTaxRate || 0)}% based on subtotal.</p>
+                    <div className="flex items-center gap-2">
+                      <Switch checked={applyTax} onCheckedChange={setApplyTax} />
+                      <span className="text-sm">Apply Tax ({(orgTaxRate || 0)}%)</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Auto-calculated when enabled.</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="total_amount">Total Amount</Label>
