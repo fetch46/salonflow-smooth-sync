@@ -205,22 +205,40 @@ CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON invoices FOR EACH ROW
 CREATE TRIGGER update_inventory_adjustments_updated_at BEFORE UPDATE ON inventory_adjustments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Insert default accounts for basic accounting structure
-INSERT INTO accounts (account_code, account_name, account_type, account_subtype, description) VALUES
-('1001', 'Cash', 'Asset', 'Cash', 'Cash on hand and in registers'),
-('1002', 'Bank Account', 'Asset', 'Bank', 'Primary business bank account'),
-('1100', 'Accounts Receivable', 'Asset', 'Accounts Receivable', 'Money owed by customers'),
-('1200', 'Inventory', 'Asset', 'Stock', 'Hair products and supplies inventory'),
-('1500', 'Equipment', 'Asset', 'Fixed Asset', 'Salon equipment and fixtures'),
-('2001', 'Accounts Payable', 'Liability', 'Accounts Payable', 'Money owed to suppliers'),
-('2100', 'Sales Tax Payable', 'Liability', 'Current Liability', 'Sales tax collected from customers'),
-('3001', 'Owner Equity', 'Equity', 'Equity', 'Owner investment in business'),
-('3002', 'Retained Earnings', 'Equity', 'Retained Earnings', 'Accumulated business profits'),
-('4001', 'Hair Services Revenue', 'Income', 'Income', 'Revenue from hair styling services'),
-('4002', 'Product Sales Revenue', 'Income', 'Income', 'Revenue from product sales'),
-('5001', 'Cost of Goods Sold', 'Expense', 'Cost of Goods Sold', 'Direct cost of products sold'),
-('5100', 'Staff Wages', 'Expense', 'Expense', 'Salaries and wages for staff'),
-('5200', 'Rent Expense', 'Expense', 'Expense', 'Monthly rent for salon space'),
-('5300', 'Utilities Expense', 'Expense', 'Expense', 'Electricity, water, internet'),
-('5400', 'Supplies Expense', 'Expense', 'Expense', 'General salon supplies'),
-('5500', 'Marketing Expense', 'Expense', 'Expense', 'Advertising and promotion costs')
-ON CONFLICT (account_code) DO NOTHING;
+-- Updated to tenant-aware seed using organization_id when available; keep legacy as fallback
+DO $$
+DECLARE
+  v_has_org boolean;
+BEGIN
+  -- detect whether accounts table has organization_id (new schema)
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema='public' AND table_name='accounts' AND column_name='organization_id'
+  ) INTO v_has_org;
+
+  IF v_has_org THEN
+    -- If tenant-aware, do nothing here; defaults should be inserted via setup_new_organization
+    NULL;
+  ELSE
+    -- Legacy global accounts insertion
+    INSERT INTO accounts (account_code, account_name, account_type, account_subtype, description) VALUES
+    ('1001', 'Cash', 'Asset', 'Cash', 'Cash on hand and in registers'),
+    ('1002', 'Bank Account', 'Asset', 'Bank', 'Primary business bank account'),
+    ('1100', 'Accounts Receivable', 'Asset', 'Accounts Receivable', 'Money owed by customers'),
+    ('1200', 'Inventory', 'Asset', 'Stock', 'Hair products and supplies inventory'),
+    ('1500', 'Equipment', 'Asset', 'Fixed Asset', 'Salon equipment and fixtures'),
+    ('2001', 'Accounts Payable', 'Liability', 'Accounts Payable', 'Money owed to suppliers'),
+    ('2100', 'Sales Tax Payable', 'Liability', 'Current Liability', 'Sales tax collected from customers'),
+    ('3001', 'Owner Equity', 'Equity', 'Equity', 'Owner investment in business'),
+    ('3002', 'Retained Earnings', 'Equity', 'Retained Earnings', 'Accumulated business profits'),
+    ('4001', 'Hair Services Revenue', 'Income', 'Income', 'Revenue from hair styling services'),
+    ('4002', 'Product Sales Revenue', 'Income', 'Income', 'Revenue from product sales'),
+    ('5001', 'Cost of Goods Sold', 'Expense', 'Cost of Goods Sold', 'Direct cost of products sold'),
+    ('5100', 'Staff Wages', 'Expense', 'Expense', 'Salaries and wages for staff'),
+    ('5200', 'Rent Expense', 'Expense', 'Expense', 'Monthly rent for salon space'),
+    ('5300', 'Utilities Expense', 'Expense', 'Expense', 'Electricity, water, internet'),
+    ('5400', 'Supplies Expense', 'Expense', 'Expense', 'General salon supplies'),
+    ('5500', 'Marketing Expense', 'Expense', 'Expense', 'Advertising and promotion costs')
+    ON CONFLICT (account_code) DO NOTHING;
+  END IF;
+END $$;

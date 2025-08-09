@@ -17,6 +17,7 @@ fi
 if ! command -v supabase &> /dev/null; then
     echo "❌ Error: Supabase CLI not found"
     echo "Please install Supabase CLI first: https://supabase.com/docs/guides/cli"
+    echo "Alternatively, run the SQL in Supabase Dashboard > SQL Editor: setup_database.sql and the migrations in supabase/migrations/*.sql"
     exit 1
 fi
 

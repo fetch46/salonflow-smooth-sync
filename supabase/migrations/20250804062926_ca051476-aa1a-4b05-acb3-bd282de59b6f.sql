@@ -151,3 +151,5 @@ INSERT INTO public.purchases (purchase_number, vendor_name, purchase_date, subto
 INSERT INTO public.job_cards (job_number, client_id, staff_id, status, total_amount) VALUES
 ('JOB-001', (SELECT id FROM public.clients LIMIT 1), (SELECT id FROM public.staff LIMIT 1), 'completed', 85.00),
 ('JOB-002', (SELECT id FROM public.clients LIMIT 1 OFFSET 1), (SELECT id FROM public.staff LIMIT 1), 'in_progress', 120.00);
+
+DO $$ BEGIN PERFORM pg_notify('pgrst', 'reload schema'); END $$;

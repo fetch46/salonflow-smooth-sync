@@ -9,11 +9,18 @@ DECLARE
   amt NUMERIC;
 BEGIN
   -- Map simple default expense account (Supplies Expense 5400)
-  SELECT id INTO expense_account FROM public.accounts WHERE account_code = '5400' LIMIT 1;
+  SELECT id INTO expense_account FROM public.accounts 
+  WHERE account_code = '5400' AND organization_id = NEW.organization_id
+  LIMIT 1;
+
   IF NEW.payment_method = 'Cash' OR NEW.payment_method = 'cash' THEN
-    SELECT id INTO cash_or_bank FROM public.accounts WHERE account_code = '1001' LIMIT 1; -- Cash
+    SELECT id INTO cash_or_bank FROM public.accounts 
+    WHERE account_code = '1001' AND organization_id = NEW.organization_id
+    LIMIT 1; -- Cash
   ELSE
-    SELECT id INTO cash_or_bank FROM public.accounts WHERE account_code = '1002' LIMIT 1; -- Bank
+    SELECT id INTO cash_or_bank FROM public.accounts 
+    WHERE account_code = '1002' AND organization_id = NEW.organization_id
+    LIMIT 1; -- Bank
   END IF;
 
   amt := COALESCE(NEW.amount, 0);
@@ -53,8 +60,12 @@ DECLARE
   ap_account UUID;
   amt NUMERIC;
 BEGIN
-  SELECT id INTO inventory_account FROM public.accounts WHERE account_code = '1200' LIMIT 1; -- Inventory
-  SELECT id INTO ap_account FROM public.accounts WHERE account_code = '2001' LIMIT 1; -- Accounts Payable
+  SELECT id INTO inventory_account FROM public.accounts 
+  WHERE account_code = '1200' AND organization_id = NEW.organization_id
+  LIMIT 1; -- Inventory
+  SELECT id INTO ap_account FROM public.accounts 
+  WHERE account_code = '2001' AND organization_id = NEW.organization_id
+  LIMIT 1; -- Accounts Payable
   amt := COALESCE(NEW.total_amount, 0);
   IF NEW.status = 'received' AND amt > 0 AND inventory_account IS NOT NULL AND ap_account IS NOT NULL THEN
     -- Debit Inventory

@@ -21,6 +21,17 @@ CREATE TABLE IF NOT EXISTS public.receipts (
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
+-- Add organization_id to receipts if missing
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema='public' AND table_name='receipts' AND column_name='organization_id'
+  ) THEN
+    ALTER TABLE public.receipts ADD COLUMN organization_id UUID REFERENCES public.organizations(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS public.receipt_items (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   receipt_id UUID NOT NULL REFERENCES public.receipts(id) ON DELETE CASCADE,
@@ -35,6 +46,17 @@ CREATE TABLE IF NOT EXISTS public.receipt_items (
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
+-- Add organization_id to receipt_items if missing
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema='public' AND table_name='receipt_items' AND column_name='organization_id'
+  ) THEN
+    ALTER TABLE public.receipt_items ADD COLUMN organization_id UUID REFERENCES public.organizations(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS public.receipt_payments (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   receipt_id UUID NOT NULL REFERENCES public.receipts(id) ON DELETE CASCADE,
@@ -45,6 +67,17 @@ CREATE TABLE IF NOT EXISTS public.receipt_payments (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
+
+-- Add organization_id to receipt_payments if missing
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema='public' AND table_name='receipt_payments' AND column_name='organization_id'
+  ) THEN
+    ALTER TABLE public.receipt_payments ADD COLUMN organization_id UUID REFERENCES public.organizations(id) ON DELETE CASCADE;
+  END IF;
+END $$;
 
 -- 3) Enable RLS
 ALTER TABLE public.receipts ENABLE ROW LEVEL SECURITY;
@@ -109,9 +142,13 @@ DECLARE
   ar_account UUID;
   revenue_account UUID;
 BEGIN
-  -- Get Accounts Receivable and default Services Revenue accounts
-  SELECT id INTO ar_account FROM public.accounts WHERE account_code = '1100' LIMIT 1;
-  SELECT id INTO revenue_account FROM public.accounts WHERE account_code = '4001' LIMIT 1;
+  -- Get Accounts Receivable and default Services Revenue accounts for same org
+  SELECT id INTO ar_account FROM public.accounts 
+  WHERE account_code = '1100' AND organization_id = NEW.organization_id
+  LIMIT 1;
+  SELECT id INTO revenue_account FROM public.accounts 
+  WHERE account_code = '4001' AND organization_id = NEW.organization_id
+  LIMIT 1;
 
   IF ar_account IS NOT NULL AND revenue_account IS NOT NULL THEN
     -- Debit Accounts Receivable
@@ -140,13 +177,19 @@ DECLARE
   ar_account UUID;
   cash_account UUID;
 BEGIN
-  SELECT id INTO ar_account FROM public.accounts WHERE account_code = '1100' LIMIT 1;
+  SELECT id INTO ar_account FROM public.accounts 
+  WHERE account_code = '1100' AND organization_id = NEW.organization_id
+  LIMIT 1;
 
-  -- Map method to cash/bank accounts
+  -- Map method to cash/bank accounts within org
   IF NEW.method = 'cash' OR NEW.method = 'mpesa' THEN
-    SELECT id INTO cash_account FROM public.accounts WHERE account_code = '1001' LIMIT 1; -- Cash
+    SELECT id INTO cash_account FROM public.accounts 
+    WHERE account_code = '1001' AND organization_id = NEW.organization_id
+    LIMIT 1; -- Cash
   ELSE
-    SELECT id INTO cash_account FROM public.accounts WHERE account_code = '1002' LIMIT 1; -- Bank
+    SELECT id INTO cash_account FROM public.accounts 
+    WHERE account_code = '1002' AND organization_id = NEW.organization_id
+    LIMIT 1; -- Bank
   END IF;
 
   IF cash_account IS NOT NULL AND ar_account IS NOT NULL THEN

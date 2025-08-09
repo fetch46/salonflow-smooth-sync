@@ -123,7 +123,7 @@ async function setupDatabaseFunctions() {
           (org_id, '5300', 'Utilities Expense', 'Expense', 'debit', 'Electricity, water, internet', 0, true),
           (org_id, '5400', 'Supplies Expense', 'Expense', 'debit', 'General salon supplies', 0, true),
           (org_id, '5500', 'Marketing Expense', 'Expense', 'debit', 'Advertising and promotion costs', 0, true)
-        ON CONFLICT (account_code) DO NOTHING;
+        ON CONFLICT (organization_id, account_code) DO NOTHING;
         
         RETURN true;
       END;

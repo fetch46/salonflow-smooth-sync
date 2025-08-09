@@ -6,6 +6,7 @@ DECLARE
   existing_receipt_id UUID;
   new_receipt_id UUID;
   rcpt_number TEXT;
+  v_org UUID;
 BEGIN
   -- Only act when status transitions to completed
   IF NEW.status = 'completed' AND (OLD.status IS DISTINCT FROM NEW.status) THEN
@@ -14,6 +15,9 @@ BEGIN
     IF existing_receipt_id IS NOT NULL THEN
       RETURN NEW;
     END IF;
+
+    -- Determine organization from job card
+    v_org := NEW.organization_id;
 
     -- Generate a unique human-friendly receipt number RCT-YYMMDD-XXXXXX
     rcpt_number := 'RCT-' || to_char(now(),'YYMMDD') || '-' || substring(gen_random_uuid()::text from 1 for 6);
@@ -28,7 +32,8 @@ BEGIN
       discount_amount,
       total_amount,
       status,
-      notes
+      notes,
+      organization_id
     ) VALUES (
       rcpt_number,
       NEW.client_id,
@@ -38,7 +43,8 @@ BEGIN
       0,
       COALESCE(NEW.total_amount, 0),
       'open',
-      'Auto-generated for Job ' || NEW.job_number
+      'Auto-generated for Job ' || NEW.job_number,
+      v_org
     ) RETURNING id INTO new_receipt_id;
 
     -- Create receipt items from job_card_services to allocate staff commissions per service
@@ -50,7 +56,8 @@ BEGIN
       quantity,
       unit_price,
       total_price,
-      staff_id
+      staff_id,
+      organization_id
     )
     SELECT
       new_receipt_id,
@@ -60,7 +67,8 @@ BEGIN
       COALESCE(jcs.quantity, 1),
       COALESCE(jcs.unit_price, 0),
       COALESCE(jcs.quantity, 1) * COALESCE(jcs.unit_price, 0),
-      jcs.staff_id
+      jcs.staff_id,
+      v_org
     FROM public.job_card_services jcs
     LEFT JOIN public.services s ON s.id = jcs.service_id
     WHERE jcs.job_card_id = NEW.id;
