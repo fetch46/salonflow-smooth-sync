@@ -76,6 +76,11 @@ export default function Purchases() {
   const orgTaxRate = useOrganizationTaxRate();
   const [applyTax, setApplyTax] = useState<boolean>(true);
 
+  // Filters
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'partial' | 'received' | 'cancelled'>('all');
+  const [vendorFilter, setVendorFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
 
 
   const [formData, setFormData] = useState({
