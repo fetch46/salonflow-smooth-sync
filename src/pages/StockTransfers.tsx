@@ -12,14 +12,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MoreHorizontal, Pencil, Trash2, Eye } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, Eye, ArrowRight } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface InventoryItem { id: string; name: string; }
 interface Location { id: string; name: string; }
 interface LevelRow { id: string; item_id: string; location_id: string; quantity: number; inventory_items?: { name: string }; storage_locations?: { name: string }; }
 
-interface TransferRow { id: string; item_id: string; from_location_id: string; to_location_id: string; quantity: number; created_at: string; updated_at: string; notes?: string; inventory_items?: { name: string }; from_location?: { name: string }; to_location?: { name: string }; }
+interface TransferRow { id: string; item_id: string; from_location_id: string; to_location_id: string; quantity: number; created_at: string; updated_at: string; notes?: string; inventory_items?: { name: string; cost_price?: number | null; selling_price?: number | null; unit?: string | null }; from_location?: { name: string }; to_location?: { name: string }; }
 
 export default function StockTransfers() {
   const { toast } = useToast();
@@ -43,8 +43,7 @@ export default function StockTransfers() {
         supabase.from("inventory_items").select("id, name").eq("type", "good").eq("is_active", true).order("name"),
         supabase.from("storage_locations").select("id, name").order("name"),
         supabase.from("inventory_levels").select(`id, item_id, location_id, quantity, inventory_items(name), storage_locations(name)`).order("location_id").order("item_id"),
-        supabase.from("inventory_transfers").select(`id, item_id, from_location_id, to_location_id, quantity, notes, created_at, updated_at, inventory_items(name)`)
-          .order("created_at", { ascending: false })
+        supabase.from("inventory_transfers").select(`id, item_id, from_location_id, to_location_id, quantity, notes, created_at, updated_at, inventory_items(name, cost_price, selling_price, unit)`).order("created_at", { ascending: false })
       ]);
       setItems(itemsRes.data || []);
       setLocations(locsRes.data || []);
@@ -226,6 +225,8 @@ export default function StockTransfers() {
     }
   };
 
+  const formatMoney = (amount: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(amount || 0));
+
   return (
     <div className="flex-1 space-y-6 p-8 pt-6">
       <div className="flex items-center justify-between">
@@ -387,25 +388,89 @@ export default function StockTransfers() {
           <div className="space-y-6 py-4">
             {selectedTransfer && (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-sm text-muted-foreground">Item</div>
-                    <div className="font-medium">{items.find(i => i.id === selectedTransfer.item_id)?.name || selectedTransfer.item_id}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">Quantity</div>
-                    <div className="font-medium">{Number(selectedTransfer.quantity || 0)}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">From</div>
-                    <div className="font-medium">{locations.find(l => l.id === selectedTransfer.from_location_id)?.name || selectedTransfer.from_location_id}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">To</div>
-                    <div className="font-medium">{locations.find(l => l.id === selectedTransfer.to_location_id)?.name || selectedTransfer.to_location_id}</div>
+                {/* Primary Info */}
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="rounded-lg border bg-card">
+                    <div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                      <div className="sm:col-span-2">
+                        <div className="text-sm text-muted-foreground">Item</div>
+                        <div className="font-semibold text-lg">{selectedTransfer.inventory_items?.name || items.find(i => i.id === selectedTransfer.item_id)?.name || selectedTransfer.item_id}</div>
+                        <div className="text-xs text-muted-foreground mt-1">Unit: {selectedTransfer.inventory_items?.unit || 'Each'}</div>
+                      </div>
+                      <div className="justify-self-end">
+                        <Badge variant="secondary">Qty {Number(selectedTransfer.quantity || 0)}</Badge>
+                      </div>
+                    </div>
+                    <Separator />
+                    {/* Movement */}
+                    <div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                      <div>
+                        <div className="text-xs text-muted-foreground">From</div>
+                        <div className="font-medium">{locations.find(l => l.id === selectedTransfer.from_location_id)?.name || selectedTransfer.from_location_id}</div>
+                        <div className="text-xs text-muted-foreground">Current stock: {getAvailableQty(selectedTransfer.item_id, selectedTransfer.from_location_id)}</div>
+                      </div>
+                      <div className="flex items-center justify-center">
+                        <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">To</div>
+                        <div className="font-medium">{locations.find(l => l.id === selectedTransfer.to_location_id)?.name || selectedTransfer.to_location_id}</div>
+                        <div className="text-xs text-muted-foreground">Current stock: {getAvailableQty(selectedTransfer.item_id, selectedTransfer.to_location_id)}</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <Separator />
+
+                {/* Financials */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Value Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {(() => {
+                      const unitCost = Number(selectedTransfer.inventory_items?.cost_price || 0);
+                      const unitPrice = Number(selectedTransfer.inventory_items?.selling_price || 0);
+                      const quantity = Number(selectedTransfer.quantity || 0);
+                      const totalCost = quantity * unitCost;
+                      const totalSales = quantity * unitPrice;
+                      const margin = totalSales - totalCost;
+                      const marginPct = totalSales > 0 ? (margin / totalSales) * 100 : 0;
+                      return (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                          <div className="rounded-md border p-3">
+                            <div className="text-xs text-muted-foreground">Unit Cost</div>
+                            <div className="font-semibold">{formatMoney(unitCost)}</div>
+                          </div>
+                          <div className="rounded-md border p-3">
+                            <div className="text-xs text-muted-foreground">Unit Price</div>
+                            <div className="font-semibold">{formatMoney(unitPrice)}</div>
+                          </div>
+                          <div className="rounded-md border p-3">
+                            <div className="text-xs text-muted-foreground">Quantity</div>
+                            <div className="font-semibold">{quantity}</div>
+                          </div>
+                          <div className="rounded-md border p-3">
+                            <div className="text-xs text-muted-foreground">Total Cost Value</div>
+                            <div className="font-semibold">{formatMoney(totalCost)}</div>
+                          </div>
+                          <div className="rounded-md border p-3">
+                            <div className="text-xs text-muted-foreground">Total Sales Value</div>
+                            <div className="font-semibold">{formatMoney(totalSales)}</div>
+                          </div>
+                          <div className="rounded-md border p-3">
+                            <div className="text-xs text-muted-foreground">Margin</div>
+                            <div className="font-semibold flex items-center gap-2">
+                              {formatMoney(margin)}
+                              <Badge variant={margin >= 0 ? 'default' : 'destructive'} className="text-xs">{marginPct.toFixed(1)}%</Badge>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+
+                {/* Meta */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <div className="text-sm text-muted-foreground">Created</div>
