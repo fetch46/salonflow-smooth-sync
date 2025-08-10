@@ -122,6 +122,12 @@ const menuItems: MenuItem[] = [
         icon: ShoppingCart,
         feature: "purchases",
       },
+        {
+        title: "Expenses",
+        url: "/expenses",
+        icon: Receipt,
+        feature: "expenses",
+      },
     ],
   },
   {
@@ -160,12 +166,6 @@ const menuItems: MenuItem[] = [
     icon: DollarSign,
     feature: "expenses",
     subItems: [
-      {
-        title: "Expenses",
-        url: "/expenses",
-        icon: Receipt,
-        feature: "expenses",
-      },
       {
         title: "Chart of Accounts",
         url: "/accounts",
