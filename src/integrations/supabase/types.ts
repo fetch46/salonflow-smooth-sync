@@ -335,6 +335,7 @@ export type Database = {
           status: string
           total_items: number
           updated_at: string
+          location_id: string | null
         }
         Insert: {
           adjustment_date: string
@@ -350,6 +351,7 @@ export type Database = {
           status?: string
           total_items?: number
           updated_at?: string
+          location_id?: string | null
         }
         Update: {
           adjustment_date?: string
@@ -365,6 +367,7 @@ export type Database = {
           status?: string
           total_items?: number
           updated_at?: string
+          location_id?: string | null
         }
         Relationships: []
       }
