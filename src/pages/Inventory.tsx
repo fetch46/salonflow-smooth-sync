@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Package, Trash2, Edit, MapPin } from "lucide-react";
+import { Plus, Package, Trash2, Edit, MapPin, RefreshCw } from "lucide-react";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -157,6 +157,28 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
+              <Label htmlFor="cost-price">Cost Price</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="cost-price"
+                  type="number"
+                  step="0.01"
+                  value={formData.cost_price}
+                  onChange={(e) => setFormData({ ...formData, cost_price: parseFloat(e.target.value) || 0 })}
+                />
+                {editingItem?.id && (
+                  <Button type="button" variant="outline" onClick={fillCostFromLastPurchase}>Fill</Button>
+                )}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="selling-price">Selling Price</Label>
+              <Input
+                id="selling-price"
+                type="number"
+                step="0.01"
+                value={formData.selling_price}
+                onChange={(e) => setFormData({ ...formData, selling_price: parseFloat(e.target.value) || 0 })}
               />
             </div>
           </div>
@@ -189,6 +211,7 @@ export default function Inventory() {
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
   const [locationsLoading, setLocationsLoading] = useState<boolean>(false);
   const [selectedLocationId, setSelectedLocationId] = useState<string>("all");
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   // Currency formatter
   const { format: formatMoney } = useOrganizationCurrency();
@@ -245,6 +268,15 @@ export default function Inventory() {
       setLocationsLoading(false);
     }
   }, []);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([fetchData(), fetchLevels(), fetchLocations()]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchData, fetchLevels, fetchLocations]);
 
   useEffect(() => {
     fetchData();
@@ -392,6 +424,10 @@ export default function Inventory() {
               </SelectContent>
             </Select>
           </div>
+          <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
           <Button onClick={() => { setEditingItem(null); setIsItemDialogOpen(true); }}>
             <Plus className="w-4 h-4 mr-2" /> Add Product
           </Button>
