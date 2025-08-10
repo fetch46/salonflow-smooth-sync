@@ -288,14 +288,38 @@ export default function Expenses() {
 
         if (error) throw error;
 
-        }
+        // Ensure bank transaction reflects the update
+        await upsertExpenseBankTransaction(
+          updated.id,
+          amountNumber,
+          expenseData.expense_date,
+          expenseData.description,
+          paidFromAccountId,
+          expenseData.location_id
+        );
+
         toast({
           title: "Success",
           description: "Expense updated successfully",
         });
       } else {
+        const { data: created, error } = await supabase
+          .from("expenses")
+          .insert([expenseData])
+          .select("*")
+          .single();
 
-        }
+        if (error) throw error;
+
+        await upsertExpenseBankTransaction(
+          created.id,
+          amountNumber,
+          expenseData.expense_date,
+          expenseData.description,
+          paidFromAccountId,
+          expenseData.location_id
+        );
+
         toast({
           title: "Success",
           description: "Expense created successfully",

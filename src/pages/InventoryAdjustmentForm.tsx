@@ -214,6 +214,31 @@ export default function InventoryAdjustmentForm() {
       return;
     }
 
+    // Basic validations
+    if (!formData.adjustment_type || !formData.reason) {
+      toast.error("Please select an adjustment type and reason");
+      return;
+    }
+
+    if (locations.length > 0 && !formData.location_id) {
+      toast.error("Please select a location");
+      return;
+    }
+
+    const hasInvalidItemId = selectedItems.some((item) => !item.item_id || item.item_id.trim() === "");
+    if (hasInvalidItemId) {
+      toast.error("Please select an item for all adjustment rows");
+      return;
+    }
+
+    const hasInvalidNumbers = selectedItems.some(
+      (item) => !Number.isFinite(item.current_quantity) || !Number.isFinite(item.adjusted_quantity) || !Number.isFinite(item.unit_cost)
+    );
+    if (hasInvalidNumbers) {
+      toast.error("Please enter valid numeric values for quantities and unit cost");
+      return;
+    }
+
     try {
       setLoading(true);
       const adjustmentData = {
@@ -237,7 +262,11 @@ export default function InventoryAdjustmentForm() {
         if (error) throw error;
         adjustmentId = id;
         // Replace items
-        await supabase.from("inventory_adjustment_items").delete().eq("adjustment_id", id);
+        const { error: deleteErr } = await supabase
+          .from("inventory_adjustment_items")
+          .delete()
+          .eq("adjustment_id", id);
+        if (deleteErr) throw deleteErr;
       } else {
         const { data, error } = await supabase
           .from("inventory_adjustments")
@@ -268,7 +297,8 @@ export default function InventoryAdjustmentForm() {
       navigate("/inventory-adjustments");
     } catch (error) {
       console.error("Error saving adjustment:", error);
-      toast.error("Failed to save adjustment");
+      const message = (error as any)?.message || (typeof error === "string" ? error : "");
+      toast.error(message ? `Failed to save adjustment: ${message}` : "Failed to save adjustment");
     } finally {
       setLoading(false);
     }
