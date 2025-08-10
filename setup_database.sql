@@ -202,8 +202,3 @@ BEGIN
     RAISE NOTICE 'Database setup completed successfully!';
 END $$;
 
--- 7. Enforce primary/foreign key constraints and indexes
-\i supabase/migrations/20250822000000_enforce_pks_fks.sql
-
--- 8. Force PostgREST to reload schema (ensure new tables are visible)
-\i supabase/migrations/20250821100000_reload_schema_after_business_locations.sql

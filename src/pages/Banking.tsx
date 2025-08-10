@@ -5,9 +5,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, CreditCard, Search } from "lucide-react";
+import { RefreshCw, CreditCard, Search, Upload, Lock, Unlock, FileDown } from "lucide-react";
 import { useSaas } from "@/lib/saas";
-import { postAccountTransfer } from "@/utils/ledger";
+
 
 interface AccountRow {
   id: string;
@@ -34,12 +34,7 @@ export default function Banking() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
-  const [transferOpen, setTransferOpen] = useState(false);
-  const [transferFromId, setTransferFromId] = useState<string>("");
-  const [transferToId, setTransferToId] = useState<string>("");
-  const [transferAmount, setTransferAmount] = useState<string>("");
-  const [transferDate, setTransferDate] = useState<string>(() => new Date().toISOString().slice(0,10));
-  const [transferLoading, setTransferLoading] = useState(false);
+
 
   const loadAccounts = useCallback(async () => {
     if (!organization?.id) {
@@ -152,31 +147,6 @@ export default function Banking() {
 
   const selectedAccount = useMemo(() => accounts.find(a => a.id === selectedAccountId), [accounts, selectedAccountId]);
 
-  const doTransfer = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!organization?.id) return;
-    const amt = parseFloat(transferAmount || '0');
-    if (!transferFromId || !transferToId || transferFromId === transferToId || isNaN(amt) || amt <= 0) return;
-    setTransferLoading(true);
-    try {
-      await postAccountTransfer({
-        organizationId: organization.id,
-        amount: amt,
-        fromAccountId: transferFromId,
-        toAccountId: transferToId,
-        transferDate,
-        description: `Transfer ${amt} from ${transferFromId} to ${transferToId}`,
-      });
-      setTransferOpen(false);
-      setTransferFromId("");
-      setTransferToId("");
-      setTransferAmount("");
-      await loadTransactions();
-    } finally {
-      setTransferLoading(false);
-    }
-  };
-
   return (
     <div className="flex-1 space-y-6 p-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -198,7 +168,7 @@ export default function Banking() {
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
             Refresh
           </Button>
-          <Button variant="default" onClick={() => { setTransferOpen(true); setTransferFromId(selectedAccountId); setTransferToId(""); setTransferAmount(""); setTransferDate(new Date().toISOString().slice(0,10)); }}>Transfer</Button>
+
         </div>
       </div>
 
