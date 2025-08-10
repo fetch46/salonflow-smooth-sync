@@ -42,6 +42,21 @@ interface ServiceKit {
   };
 }
 
+interface SalesHistoryRow {
+  id: string;
+  receipt_id: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  staff_id: string | null;
+  created_at: string;
+  receipt_number?: string | null;
+  receipt_created_at?: string | null;
+  customer_id?: string | null;
+  staff_name?: string | null;
+}
+
 export default function ServiceView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -49,6 +64,8 @@ export default function ServiceView() {
   const [service, setService] = useState<Service | null>(null);
   const [serviceKits, setServiceKits] = useState<ServiceKit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [salesHistory, setSalesHistory] = useState<SalesHistoryRow[]>([]);
+  const [salesLoading, setSalesLoading] = useState<boolean>(false);
 
 
   const fetchServiceData = useCallback(async () => {
