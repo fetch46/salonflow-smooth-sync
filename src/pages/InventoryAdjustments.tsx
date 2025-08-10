@@ -182,6 +182,16 @@ export default function InventoryAdjustments() {
 
       setLoading(true);
 
+      // Validate that the referenced location still exists to avoid FK violations on inventory_levels
+      const { data: locationRow, error: locationErr } = await supabase
+        .from("business_locations")
+        .select("id")
+        .eq("id", adjustment.location_id)
+        .single();
+      if (locationErr || !locationRow) {
+        throw new Error("Selected location no longer exists. Please edit this adjustment and choose a valid location.");
+      }
+
       // Load items for this adjustment to apply quantity changes at the selected location
       const { data: items, error: itemsErr } = await supabase
         .from("inventory_adjustment_items")
@@ -261,6 +271,16 @@ export default function InventoryAdjustments() {
       if (adj?.status === 'approved') {
         if (!adj.location_id) {
           throw new Error("Approved adjustment is missing location; cannot safely revert stock.");
+        }
+
+        // Validate that the referenced location still exists
+        const { data: loc, error: locErr } = await supabase
+          .from("business_locations")
+          .select("id")
+          .eq("id", adj.location_id)
+          .single();
+        if (locErr || !loc) {
+          throw new Error("The adjustment's location no longer exists. Please restore the location or manually correct stock.");
         }
 
         const { data: items, error: itemsErr } = await supabase
