@@ -175,19 +175,28 @@ export default function InventoryAdjustments() {
 
   const handleApproveAdjustment = async (adjustment: Adjustment) => {
     try {
-      if (!adjustment.location_id) {
+      setLoading(true);
+
+      // Always re-fetch the latest adjustment to avoid acting on stale data
+      const { data: latestAdj, error: latestAdjErr } = await supabase
+        .from("inventory_adjustments")
+        .select("id, location_id")
+        .eq("id", adjustment.id)
+        .single();
+      if (latestAdjErr) throw latestAdjErr;
+
+      const effectiveLocationId = latestAdj?.location_id;
+      if (!effectiveLocationId) {
         toast.error("This adjustment has no location set. Please edit and select a location before approval.");
         return;
       }
-
-      setLoading(true);
 
       // Validate that the referenced location still exists to avoid FK violations on inventory_levels
       const { data: locationRow, error: locationErr } = await supabase
         .from("business_locations")
         .select("id")
-        .eq("id", adjustment.location_id)
-        .single();
+        .eq("id", effectiveLocationId)
+        .maybeSingle();
       if (locationErr || !locationRow) {
         throw new Error("Selected location no longer exists. Please edit this adjustment and choose a valid location.");
       }
@@ -206,7 +215,7 @@ export default function InventoryAdjustments() {
           .from("inventory_levels")
           .select("id, quantity")
           .eq("item_id", item.item_id)
-          .eq("location_id", adjustment.location_id)
+          .eq("location_id", effectiveLocationId)
           .limit(1);
         if (levelErr) throw levelErr;
 
@@ -220,10 +229,23 @@ export default function InventoryAdjustments() {
           if (updErr) throw updErr;
         } else {
           // No existing level row => assume current was 0 and set to adjusted quantity
-          const { error: insErr } = await supabase
-            .from("inventory_levels")
-            .insert([{ item_id: item.item_id, location_id: adjustment.location_id, quantity: item.adjusted_quantity ?? (item.difference ?? 0) }]);
-          if (insErr) throw insErr;
+          try {
+            const insertQuantity = item.adjusted_quantity ?? (item.difference ?? 0);
+            const { error: upsertErr } = await supabase
+              .from("inventory_levels")
+              .upsert(
+                [{ item_id: item.item_id, location_id: effectiveLocationId, quantity: insertQuantity }],
+                { onConflict: "item_id,location_id" }
+              );
+            if (upsertErr) throw upsertErr;
+          } catch (e: any) {
+            // Convert FK violation into a clearer message
+            const pgCode = e?.code || e?.details || "";
+            if (typeof pgCode === "string" && pgCode.includes("foreign key") || e?.code === "23503") {
+              throw new Error("The selected location was removed. Please set a valid location on this adjustment and try again.");
+            }
+            throw e;
+          }
         }
       }
 
