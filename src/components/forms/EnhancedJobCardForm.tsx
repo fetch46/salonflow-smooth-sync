@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, User, Phone, Mail, Package } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 
 interface EnhancedJobCardFormProps {
   appointmentId?: string;
@@ -70,6 +71,7 @@ interface ServiceKit {
 
 export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCardFormProps) {
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm();
+  const { symbol } = useOrganizationCurrency();
   const [staff, setStaff] = useState<Staff[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -466,9 +468,9 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
                           className="w-20"
                         />
                       </TableCell>
-                      <TableCell>${kit.inventory_items.cost_price?.toFixed(2) || "0.00"}</TableCell>
+                      <TableCell>{symbol}{kit.inventory_items.cost_price?.toFixed(2) || "0.00"}</TableCell>
                       <TableCell>
-                        ${((productQuantities[kit.good_id] || kit.default_quantity || 1) * (kit.inventory_items.cost_price || 0)).toFixed(2)}
+                        {symbol}{((productQuantities[kit.good_id] || kit.default_quantity || 1) * (kit.inventory_items.cost_price || 0)).toFixed(2)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -526,7 +528,7 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
           <CardContent className="pt-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <Label>Service Charge (Ksh)</Label>
+                <Label>Service Charge ({symbol})</Label>
                 <Input type="number" step="0.01" {...register("serviceCharge")} />
               </div>
               <div className="space-y-2">

@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, CalendarIcon, Clock, User, Phone, Mail, Scissors, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 
 interface JobCardFormProps {
   clientId?: string;
@@ -88,6 +89,7 @@ const browChecklist = [
 ];
 
 export function JobCardForm({ clientId, appointmentId, onSuccess }: JobCardFormProps) {
+  const { symbol } = useOrganizationCurrency();
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm();
   const [staff, setStaff] = useState<Staff[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -492,7 +494,7 @@ export function JobCardForm({ clientId, appointmentId, onSuccess }: JobCardFormP
           <CardContent className="pt-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label>Service Charge (Ksh)</Label>
+                <Label>Service Charge ({symbol})</Label>
                 <Input 
                   type="number" 
                   step="0.01"

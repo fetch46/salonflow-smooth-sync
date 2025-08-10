@@ -28,6 +28,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSearchParams } from 'react-router-dom';
 import { mockDb } from '@/utils/mockDatabase';
 import { useOrganization } from '@/lib/saas/hooks';
+import { useOrganizationCurrency } from '@/lib/saas/hooks';
 
 const Reports = () => {
   const { organization, subscriptionPlan } = useSaas();
@@ -55,6 +56,8 @@ const Reports = () => {
   const [endDate, setEndDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [recalcLoading, setRecalcLoading] = useState(false);
   const [density, setDensity] = useState<'compact' | 'comfortable'>('comfortable');
+
+  const { symbol, format: formatMoney } = useOrganizationCurrency();
 
   // Load locations for current organization
   useEffect(() => {
@@ -654,7 +657,7 @@ const Reports = () => {
                     <DollarSign className="h-4 w-4 text-green-600" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">${overview.revenue.current.toLocaleString()}</div>
+                    <div className="text-2xl font-bold">{formatMoney(overview.revenue.current, { decimals: 0 })}</div>
                     <div className="flex items-center text-xs text-slate-600">
                       <TrendingUp className="h-3 w-3 mr-1 text-green-600" />
                       +{overview.revenue.change}% from last period
@@ -753,15 +756,15 @@ const Reports = () => {
                   <div className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-3">
                       <div className="text-center p-4 bg-green-50 rounded-lg">
-                        <div className="text-2xl font-bold text-green-600">${overview.revenue.current.toLocaleString()}</div>
+                        <div className="text-2xl font-bold text-green-600">{formatMoney(overview.revenue.current, { decimals: 0 })}</div>
                         <div className="text-sm text-green-700">Total Revenue</div>
                       </div>
                       <div className="text-center p-4 bg-blue-50 rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600">${(overview.appointments.current ? (overview.revenue.current / overview.appointments.current) : 0).toFixed(0)}</div>
+                        <div className="text-2xl font-bold text-blue-600">{formatMoney(overview.appointments.current ? (overview.revenue.current / overview.appointments.current) : 0, { decimals: 0 })}</div>
                         <div className="text-sm text-blue-700">Average per Appointment</div>
                       </div>
                       <div className="text-center p-4 bg-purple-50 rounded-lg">
-                        <div className="text-2xl font-bold text-purple-600">${(overview.clients.current ? (overview.revenue.current / overview.clients.current) : 0).toFixed(0)}</div>
+                        <div className="text-2xl font-bold text-purple-600">{formatMoney(overview.clients.current ? (overview.revenue.current / overview.clients.current) : 0, { decimals: 0 })}</div>
                         <div className="text-sm text-purple-700">Average per Client</div>
                       </div>
                     </div>
@@ -790,7 +793,7 @@ const Reports = () => {
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="font-medium">${service.revenue.toLocaleString()}</div>
+                          <div className="font-medium">{formatMoney(service.revenue, { decimals: 0 })}</div>
                           <div className="text-sm text-green-600">+{service.growth}%</div>
                         </div>
                       </div>
