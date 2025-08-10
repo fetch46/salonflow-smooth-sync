@@ -273,7 +273,9 @@ export default function ServiceForm() {
         if (updError) {
           const code = (updError as any)?.code;
           const message = (updError as any)?.message || String(updError);
-          const isMissingLocationId = code === '42703' || /column\s+("?[\w\.]*location_id"?)\s+does not exist/i.test(message);
+          const isMissingLocationId = code === '42703'
+            || /column\s+("?[\w\.]*location_id"?)\s+does not exist/i.test(message)
+            || (/schema cache/i.test(message) && /location_id/i.test(message) && /services/i.test(message));
           if (isMissingLocationId) {
             const { error: retryError } = await supabase
               .from("services")
@@ -321,7 +323,9 @@ export default function ServiceForm() {
           const code = (error as any)?.code;
           const message = (error as any)?.message || String(error);
           const isMissingOrgId = code === '42703' || /column\s+("?[\w\.]*organization_id"?)\s+does not exist/i.test(message);
-          const isMissingLocationId = code === '42703' || /column\s+("?[\w\.]*location_id"?)\s+does not exist/i.test(message);
+          const isMissingLocationId = code === '42703'
+            || /column\s+("?[\w\.]*location_id"?)\s+does not exist/i.test(message)
+            || (/schema cache/i.test(message) && /location_id/i.test(message) && /services/i.test(message));
           if (isMissingOrgId || isMissingLocationId) {
             const { data: retryData, error: retryError } = await supabase
               .from("services")
