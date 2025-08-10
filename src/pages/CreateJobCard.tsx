@@ -240,6 +240,9 @@ export default function CreateJobCard() {
         .select(`
           service_id,
           staff_id,
+          duration_minutes,
+          price,
+          commission_percentage,
           services ( id, name, description, price, duration_minutes, category )
         `)
         .eq("appointment_id", appointment.id);
@@ -253,12 +256,23 @@ export default function CreateJobCard() {
           .filter(Boolean) as Service[];
         setSelectedServices(svcList);
 
+        // Map service_id -> commission override if provided
+        const commissionByService: Record<string, number | null> = {};
+        for (const row of apptServices as any[]) {
+          if (row.service_id && typeof row.commission_percentage === 'number') {
+            commissionByService[row.service_id] = row.commission_percentage as number;
+          }
+        }
+
         // Build service -> staff assignment map
         const assignmentMap: Record<string, string> = {};
         for (const row of apptServices as any[]) {
           if (row.service_id && row.staff_id) assignmentMap[row.service_id] = row.staff_id;
         }
         setServiceStaffMap(assignmentMap);
+
+        // Store commission overrides for later use on submit by stashing on window
+        (window as any).__appointmentServiceCommission = commissionByService;
 
         // Pick a primary staff for backward compatibility
         const firstStaffId = (apptServices.find((r: any) => !!r.staff_id) as any)?.staff_id as string | undefined;
@@ -460,16 +474,17 @@ export default function CreateJobCard() {
 
       // Save service assignments to job_card_services
       if (selectedServices.length > 0) {
-        const serviceRows = selectedServices.map(svc => ({
+        const overrideMap: Record<string, number | null> = (window as any).__appointmentServiceCommission || {};
+        const rows = selectedServices.map(svc => ({
           job_card_id: jobCard.id,
           service_id: svc.id,
           staff_id: serviceStaffMap[svc.id],
           quantity: 1,
           unit_price: svc.price,
           duration_minutes: svc.duration_minutes,
-          commission_percentage: (svc as any).commission_percentage ?? null,
+          commission_percentage: typeof overrideMap[svc.id] === 'number' ? overrideMap[svc.id] : (svc as any).commission_percentage ?? null,
         }));
-        const { error: jcsError } = await supabase.from("job_card_services").insert(serviceRows);
+        const { error: jcsError } = await supabase.from("job_card_services").insert(rows as any);
         if (jcsError) throw jcsError;
       }
 

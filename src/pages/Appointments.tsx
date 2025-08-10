@@ -65,6 +65,7 @@ interface AppointmentServiceItem {
   price?: number;
   notes?: string;
   sort_order?: number;
+  commission_percentage?: number; // Commission % override
 }
 
 export default function Appointments() {
@@ -176,6 +177,7 @@ export default function Appointments() {
               price: item.price || undefined,
               notes: item.notes || undefined,
               sort_order: item.sort_order || 0,
+              commission_percentage: item.commission_percentage || undefined,
             });
           });
           setAppointmentServicesById(grouped);
@@ -192,6 +194,7 @@ export default function Appointments() {
               price: appt.price || undefined,
               notes: appt.notes || undefined,
               sort_order: 0,
+              commission_percentage: appt.commission_percentage || undefined,
             }] : [];
             grouped[appt.id] = items;
           });
@@ -349,7 +352,7 @@ export default function Appointments() {
   };
 
   const addServiceItem = () => {
-    setForm(prev => ({ ...prev, serviceItems: [...prev.serviceItems, { service_id: "", staff_id: "" }] }));
+    setForm(prev => ({ ...prev, serviceItems: [...prev.serviceItems, { service_id: "", staff_id: "", commission_percentage: undefined }] }));
   };
 
   const removeServiceItem = (index: number) => {
@@ -373,6 +376,8 @@ export default function Appointments() {
         current.duration_minutes = Number(value);
       } else if (field === 'price') {
         current.price = Number(value);
+      } else if (field === 'commission_percentage') {
+        current.commission_percentage = Number(value);
       }
       updated[index] = current;
 
@@ -502,6 +507,7 @@ export default function Appointments() {
             price: it.price || null,
             notes: it.notes || null,
             sort_order: idx,
+            commission_percentage: typeof it.commission_percentage === 'number' ? it.commission_percentage : null,
           }));
           if (rows.length) {
             const { error: insError } = await supabase.from("appointment_services").insert(rows);
@@ -550,6 +556,7 @@ export default function Appointments() {
             price: it.price || null,
             notes: it.notes || null,
             sort_order: idx,
+            commission_percentage: typeof it.commission_percentage === 'number' ? it.commission_percentage : null,
           }));
           if (rows.length) {
             const { error: insError } = await supabase.from("appointment_services").insert(rows);
@@ -621,6 +628,7 @@ export default function Appointments() {
             price: it.price || undefined,
             notes: it.notes || undefined,
             sort_order: it.sort_order || 0,
+            commission_percentage: it.commission_percentage || undefined,
           }));
         }
       } else {
@@ -633,6 +641,7 @@ export default function Appointments() {
           price: appointment.price || undefined,
           notes: appointment.notes || undefined,
           sort_order: 0,
+          commission_percentage: appointment.commission_percentage || undefined,
         }] : [];
       }
     }
@@ -649,7 +658,7 @@ export default function Appointments() {
       status: appointment.status,
       notes: appointment.notes || "",
       price: appointment.price,
-      serviceItems: (items && items.length) ? items : [{ service_id: "", staff_id: "" }],
+      serviceItems: (items && items.length) ? items : [{ service_id: "", staff_id: "", commission_percentage: undefined }],
     });
     setEditingAppointment(appointment);
     setIsModalOpen(true);
@@ -1048,6 +1057,18 @@ export default function Appointments() {
                             step={0.01}
                             value={item.price ?? ''}
                             onChange={(e) => updateServiceItem(idx, 'price', Number(e.target.value))}
+                            disabled={isReadOnly}
+                          />
+                        </div>
+                        <div className="md:col-span-1">
+                          <Label>Commission %</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={0.1}
+                            value={item.commission_percentage ?? ''}
+                            onChange={(e) => updateServiceItem(idx, 'commission_percentage', Number(e.target.value))}
                             disabled={isReadOnly}
                           />
                         </div>
