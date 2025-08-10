@@ -45,6 +45,7 @@ interface ServiceKit {
 export default function ServiceView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { organization } = useOrganization();
   const [service, setService] = useState<Service | null>(null);
   const [serviceKits, setServiceKits] = useState<ServiceKit[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,7 +67,8 @@ export default function ServiceView() {
         const code = (serviceError as any)?.code
         const message = (serviceError as any)?.message || String(serviceError)
         const isMissingOrgId = code === '42703' || /column\s+("?[\w\.]*organization_id"?)\s+does not exist/i.test(message)
-        if (isMissingOrgId) {
+        const isNotFound = code === 'PGRST116' || /Results contain 0 rows/i.test(message)
+        if (isMissingOrgId || isNotFound) {
           const { data: fallback, error: fallbackErr } = await supabase
             .from("services")
             .select("*")
@@ -97,7 +99,8 @@ export default function ServiceView() {
         const code = (kitsError as any)?.code
         const message = (kitsError as any)?.message || String(kitsError)
         const isMissingOrgId = code === '42703' || /column\s+("?[\w\.]*organization_id"?)\s+does not exist/i.test(message)
-        if (isMissingOrgId) {
+        const isNotFound = code === 'PGRST116' || /Results contain 0 rows/i.test(message)
+        if (isMissingOrgId || isNotFound) {
           const { data: kitsFallback, error: kitsFallbackErr } = await supabase
             .from("service_kits")
             .select(`
