@@ -16,9 +16,17 @@ import { toast } from "sonner";
 import { useOrganization } from "@/lib/saas/hooks";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { useSearchParams } from "react-router-dom";
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState("company");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "company");
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam && tabParam !== activeTab) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   // Company Settings State
   const [companyData, setCompanyData] = useState({
@@ -269,10 +277,10 @@ phone: "+1 (555) 123-4567",
     if (editingLocation) {
       try {
         await supabase
-          .from('stock_locations')
+          .from('business_locations')
           .update({
             name: locationForm.name,
-            description: locationForm.description,
+            address: locationForm.description,
             is_active: locationForm.is_active,
           })
           .eq('id', editingLocation.id);
@@ -286,11 +294,11 @@ phone: "+1 (555) 123-4567",
     } else {
       try {
         await supabase
-          .from('stock_locations')
+          .from('business_locations')
           .insert({
             organization_id: organization.id,
             name: locationForm.name,
-            description: locationForm.description,
+            address: locationForm.description,
             is_active: locationForm.is_active,
           });
         toast.success('Location created successfully');
@@ -308,7 +316,7 @@ phone: "+1 (555) 123-4567",
     if (window.confirm('Are you sure you want to delete this location?')) {
       try {
         await supabase
-          .from('stock_locations')
+          .from('business_locations')
           .delete()
           .eq('id', id);
         toast.success('Location deleted successfully');
@@ -324,11 +332,17 @@ phone: "+1 (555) 123-4567",
     if (!organization) return;
     try {
       const { data } = await supabase
-        .from('stock_locations')
-        .select('*')
+        .from('business_locations')
+        .select('id, name, address, is_active')
         .eq('organization_id', organization.id)
         .order('name');
-      setStockLocations(data || []);
+      const mapped = (data || []).map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        description: row.address ?? null,
+        is_active: row.is_active,
+      }));
+      setStockLocations(mapped);
     } catch (e) {
       console.error(e);
       toast.error('Failed to fetch stock locations');
@@ -352,7 +366,13 @@ phone: "+1 (555) 123-4567",
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs
+        value={activeTab}
+        onValueChange={(val) => {
+          setActiveTab(val);
+          setSearchParams({ tab: val });
+        }}
+      >
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="company" className="flex items-center gap-2">
             <Building className="w-4 h-4" />
@@ -855,7 +875,7 @@ phone: "+1 (555) 123-4567",
               <CardTitle className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <MapPin className="h-5 w-5 text-pink-600" />
-                  Stock Locations
+                  Business Locations
                 </span>
                 <Button size="sm" className="bg-gradient-to-r from-pink-500 to-purple-600" onClick={openNewLocation}>
                   <Plus className="w-4 h-4 mr-1" />
@@ -863,7 +883,7 @@ phone: "+1 (555) 123-4567",
                 </Button>
               </CardTitle>
               <CardDescription>
-                Manage where inventory is stored
+                Manage your business locations
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -871,7 +891,7 @@ phone: "+1 (555) 123-4567",
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
-                    <TableHead>Description</TableHead>
+                    <TableHead>Address</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -909,7 +929,7 @@ phone: "+1 (555) 123-4567",
                       <Input id="loc_name" value={locationForm.name} onChange={(e) => setLocationForm({ ...locationForm, name: e.target.value })} />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="loc_desc">Description</Label>
+                      <Label htmlFor="loc_desc">Address</Label>
                       <Textarea id="loc_desc" value={locationForm.description} onChange={(e) => setLocationForm({ ...locationForm, description: e.target.value })} />
                     </div>
                     <div className="flex items-center justify-between">
