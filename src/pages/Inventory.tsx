@@ -738,7 +738,7 @@ export default function Inventory() {
             <CardTitle className="text-sm font-medium text-white/90">Quantities in Stock</CardTitle>
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{new Intl.NumberFormat('en-US').format(totals.totalQty)}</div>
+            <div className="text-2xl font-bold text-white">{new Intl.NumberFormat((typeof navigator !== 'undefined' ? navigator.language : 'en-US')).format(totals.totalQty)}</div>
             <p className="text-xs text-white/80">All products</p>
           </CardContent>
         </Card>

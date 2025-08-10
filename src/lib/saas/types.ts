@@ -164,6 +164,9 @@ export interface SaasState {
   
   // Error State
   error: string | null
+
+  // System Settings
+  systemSettings?: Json | null
 }
 
 // SaaS Actions
@@ -206,6 +209,9 @@ export interface SaasContextType extends SaasState, SaasActions {
   hasFeature: (feature: string) => boolean
   getFeatureAccess: (feature: string) => FeatureAccess
   canPerformAction: (action: string, resource: string) => boolean
+
+  // Formatting/Locale
+  locale: string
 }
 
 // API Data Types

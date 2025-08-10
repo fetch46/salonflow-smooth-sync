@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { addDays, format, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays } from "date-fns";
 import { DateRange } from "react-day-picker";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 
 interface InventoryItem { id: string; name: string; cost_price?: number | null; selling_price?: number | null; unit?: string | null }
 interface Location { id: string; name: string; }
@@ -27,6 +28,7 @@ interface TransferRow { id: string; item_id: string; from_location_id: string; t
 
 export default function StockTransfers() {
   const { toast } = useToast();
+  const { format: formatMoney } = useOrganizationCurrency();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [levels, setLevels] = useState<LevelRow[]>([]);
@@ -278,7 +280,7 @@ export default function StockTransfers() {
     }
   };
 
-  const formatMoney = (amount: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(amount || 0));
+  // formatMoney provided by useOrganizationCurrency
 
   // Derived filters & dashboard data
   const filteredTransfers = useMemo(() => {

@@ -18,6 +18,7 @@ interface SystemSettings {
   default_plan_slug: string;
   features: Record<string, boolean>;
   metadata: Record<string, any>;
+  regional_formats_enabled?: boolean;
 }
 
 const DEFAULT_SETTINGS: SystemSettings = {
@@ -29,6 +30,7 @@ const DEFAULT_SETTINGS: SystemSettings = {
     allow_public_booking: true,
   },
   metadata: {},
+  regional_formats_enabled: false,
 };
 
 export default function AdminSystemSettings() {
@@ -271,6 +273,17 @@ useEffect(() => {
                   <Switch
                     checked={settings.maintenance_mode}
                     onCheckedChange={(v) => setSettings((s) => ({ ...s, maintenance_mode: v }))}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between border rounded-md p-4">
+                  <div>
+                    <Label className="text-base">Regional Formats</Label>
+                    <p className="text-sm text-gray-500">Use users' regional settings for dates, currency and number separators</p>
+                  </div>
+                  <Switch
+                    checked={!!settings.regional_formats_enabled}
+                    onCheckedChange={(v) => setSettings((s) => ({ ...s, regional_formats_enabled: v }))}
                   />
                 </div>
 

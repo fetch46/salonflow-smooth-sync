@@ -389,6 +389,7 @@ export const useFeatureGuard = (feature: string) => {
 
 export const useOrganizationCurrency = () => {
   const { organization } = useSaas()
+  const { locale } = useSaas()
   const [currency, setCurrency] = useState<{ id: string; code: string; symbol: string } | null>(null)
   const [loading, setLoading] = useState(false)
   const [rate, setRate] = useState<number>(1)
@@ -444,13 +445,13 @@ export const useOrganizationCurrency = () => {
       const n = typeof amount === 'number' ? amount : 0
       const decimals = opts?.decimals ?? 2
       const sym = currency?.symbol ?? '$'
-      const formatted = new Intl.NumberFormat('en-US', {
+      const formatted = new Intl.NumberFormat(locale || 'en-US', {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
       }).format(n)
       return `${sym}${formatted}`
     },
-    [currency]
+    [currency, locale]
   )
 
   // Convert a USD amount expressed in cents to the organization currency (major units)
