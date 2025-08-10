@@ -268,7 +268,7 @@ export default function Expenses() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       const amountNumber = parseFloat(formData.amount) || 0;
       const expenseData = {
@@ -288,13 +288,7 @@ export default function Expenses() {
 
         if (error) throw error;
 
-      } else {
-        const { data: created, error } = await supabase
-          .from("expenses")
-          .insert([expenseData])
-          .select("*")
-          .single();
-        if (error) throw error;
+
       }
 
       setIsModalOpen(false);
