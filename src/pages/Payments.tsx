@@ -10,10 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarRange, Download, Edit, Filter, MoreVertical, ReceiptText, RefreshCw, Search, Trash2 } from "lucide-react";
+import { CalendarRange, Download, Edit, Filter, List, MoreVertical, ReceiptText, RefreshCw, Search, Trash2, Bookmark, BookmarkPlus } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { getReceiptsWithFallback, getAllReceiptPaymentsWithFallback, updateReceiptPaymentWithFallback, deleteReceiptPaymentWithFallback } from "@/utils/mockDatabase";
@@ -76,6 +76,11 @@ export default function Payments() {
   const [methodFilter, setMethodFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(10);
+  const [compact, setCompact] = useState<boolean>(false);
+  type FilterPreset = { id: string; name: string; search: string; method: string; from?: string; to?: string; pageSize: number };
+  const [presets, setPresets] = useState<FilterPreset[]>([]);
+  const [savePresetOpen, setSavePresetOpen] = useState(false);
+  const [newPresetName, setNewPresetName] = useState("");
 
   // Made
   const [expenses, setExpenses] = useState<ExpenseLite[]>([]);
@@ -134,6 +139,63 @@ export default function Payments() {
   };
 
   useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('payments_filter_presets_v1');
+      if (raw) setPresets(JSON.parse(raw));
+      const savedCompact = localStorage.getItem('payments_density_compact');
+      if (savedCompact) setCompact(savedCompact === '1');
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('payments_density_compact', compact ? '1' : '0');
+  }, [compact]);
+
+  const persistPresets = (next: FilterPreset[]) => {
+    setPresets(next);
+    try { localStorage.setItem('payments_filter_presets_v1', JSON.stringify(next)); } catch {}
+  };
+
+  const saveCurrentAsPreset = () => {
+    if (!newPresetName.trim()) { toast.error('Enter a preset name'); return; }
+    const next: FilterPreset = {
+      id: `${Date.now()}`,
+      name: newPresetName.trim(),
+      search: searchReceived,
+      method: methodFilter,
+      from: dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : undefined,
+      to: dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : undefined,
+      pageSize,
+    };
+    const updated = [next, ...presets].slice(0, 20);
+    persistPresets(updated);
+    setNewPresetName("");
+    setSavePresetOpen(false);
+    toast.success('Preset saved');
+  };
+
+  const applyPreset = (p: FilterPreset) => {
+    setSearchReceived(p.search || "");
+    setMethodFilter(p.method || 'all');
+    if (p.from || p.to) {
+      setDateRange({
+        from: p.from ? new Date(`${p.from}T00:00:00`) : undefined,
+        to: p.to ? new Date(`${p.to}T00:00:00`) : undefined,
+      });
+    } else {
+      setDateRange(undefined);
+    }
+    if (p.pageSize) setPageSize(p.pageSize);
+    setPage(1);
+    toast.success(`Applied preset: ${p.name}`);
+  };
+
+  const deletePreset = (id: string) => {
+    const updated = presets.filter(p => p.id !== id);
+    persistPresets(updated);
+    toast.success('Preset deleted');
+  };
 
   const refresh = async () => { setRefreshing(true); await loadData(); setRefreshing(false); };
 
@@ -369,6 +431,42 @@ export default function Payments() {
                   Clear filters
                 </Button>
 
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full md:w-auto">
+                      <Bookmark className="h-4 w-4 mr-2" /> Presets
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-64">
+                    <DropdownMenuItem onClick={() => setSavePresetOpen(true)}>
+                      <BookmarkPlus className="h-4 w-4 mr-2" /> Save current as preset
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {presets.length === 0 && (
+                      <DropdownMenuLabel className="text-muted-foreground">No presets saved</DropdownMenuLabel>
+                    )}
+                    {presets.map(p => (
+                      <DropdownMenuItem key={p.id} onClick={() => applyPreset(p)} className="flex items-center justify-between">
+                        <span className="truncate">{p.name}</span>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); deletePreset(p.id); }}
+                          aria-label={`Delete ${p.name}`}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Button variant="outline" className="ml-auto" onClick={() => setCompact(c => !c)}>
+                  <List className="h-4 w-4 mr-2" /> {compact ? 'Comfortable' : 'Compact'}
+                </Button>
+
                 <div className="ml-auto flex items-center gap-2">
                   <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
                     <SelectTrigger className="w-[110px]"><SelectValue /></SelectTrigger>
@@ -389,22 +487,22 @@ export default function Payments() {
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
-                <Table className="w-full">
+                <Table className={`w-full ${compact ? 'text-sm' : ''}`}>
                   <TableHeader className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <TableRow>
-                      <TableHead>Receipt #</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Method</TableHead>
-                      <TableHead>Reference</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Receipt #</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Client</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Date</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Amount</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Method</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Reference</TableHead>
+                      <TableHead className={`text-right ${compact ? 'py-2' : ''}`}>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {paginatedReceived.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                        <TableCell colSpan={7} className={`text-center text-muted-foreground ${compact ? 'py-6' : 'h-24'}`}>
                           No payments found. Adjust filters or try a different search.
                         </TableCell>
                       </TableRow>
@@ -414,13 +512,13 @@ export default function Payments() {
                       const clientName = r?.customer_id ? (clientsById[r.customer_id]?.full_name || '—') : 'Walk-in';
                       return (
                         <TableRow key={p.id} className="hover:bg-muted/50">
-                          <TableCell className="font-medium">{r?.receipt_number || '—'}</TableCell>
-                          <TableCell>{clientName}</TableCell>
-                          <TableCell>{format(new Date(p.payment_date || r?.created_at || new Date()), 'MMM dd, yyyy')}</TableCell>
-                          <TableCell>${Number(p.amount || 0).toFixed(2)}</TableCell>
-                          <TableCell>{(p.method || '').toUpperCase()}</TableCell>
-                          <TableCell>{p.reference_number || '—'}</TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className={`font-medium ${compact ? 'py-2' : ''}`}>{r?.receipt_number || '—'}</TableCell>
+                          <TableCell className={compact ? 'py-2' : ''}>{clientName}</TableCell>
+                          <TableCell className={compact ? 'py-2' : ''}>{format(new Date(p.payment_date || r?.created_at || new Date()), 'MMM dd, yyyy')}</TableCell>
+                          <TableCell className={compact ? 'py-2' : ''}>${Number(p.amount || 0).toFixed(2)}</TableCell>
+                          <TableCell className={compact ? 'py-2' : ''}>{(p.method || '').toUpperCase()}</TableCell>
+                          <TableCell className={compact ? 'py-2' : ''}>{p.reference_number || '—'}</TableCell>
+                          <TableCell className={`text-right ${compact ? 'py-2' : ''}`}>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -493,37 +591,37 @@ export default function Payments() {
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
-                <Table className="w-full">
+                <Table className={`w-full ${compact ? 'text-sm' : ''}`}>
                   <TableHeader className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <TableRow>
-                      <TableHead>Expense #</TableHead>
-                      <TableHead>Vendor</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Method</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Expense #</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Vendor</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Date</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Amount</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Method</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Status</TableHead>
+                      <TableHead className={`text-right ${compact ? 'py-2' : ''}`}>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredExpenses.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">No expenses found.</TableCell>
+                        <TableCell colSpan={7} className={`text-center text-muted-foreground ${compact ? 'py-6' : 'h-24'}`}>No expenses found.</TableCell>
                       </TableRow>
                     )}
                     {filteredExpenses.map((e) => (
                       <TableRow key={e.id} className="hover:bg-muted/50">
-                        <TableCell className="font-medium">{e.expense_number}</TableCell>
-                        <TableCell>{e.vendor_name}</TableCell>
-                        <TableCell>{format(new Date(e.expense_date), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell>${Number(e.amount || 0).toFixed(2)}</TableCell>
-                        <TableCell>{e.payment_method || '—'}</TableCell>
-                        <TableCell>
+                        <TableCell className={`font-medium ${compact ? 'py-2' : ''}`}>{e.expense_number}</TableCell>
+                        <TableCell className={compact ? 'py-2' : ''}>{e.vendor_name}</TableCell>
+                        <TableCell className={compact ? 'py-2' : ''}>{format(new Date(e.expense_date), 'MMM dd, yyyy')}</TableCell>
+                        <TableCell className={compact ? 'py-2' : ''}>${Number(e.amount || 0).toFixed(2)}</TableCell>
+                        <TableCell className={compact ? 'py-2' : ''}>{e.payment_method || '—'}</TableCell>
+                        <TableCell className={compact ? 'py-2' : ''}>
                           <Badge className={e.status === 'paid' ? 'bg-green-100 text-green-800' : e.status === 'approved' ? 'bg-blue-100 text-blue-800' : e.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}>
                             {e.status.toUpperCase()}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className={`text-right ${compact ? 'py-2' : ''}`}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -560,35 +658,35 @@ export default function Payments() {
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
-                <Table className="w-full">
+                <Table className={`w-full ${compact ? 'text-sm' : ''}`}>
                   <TableHeader className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <TableRow>
-                      <TableHead>Purchase #</TableHead>
-                      <TableHead>Vendor</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Purchase #</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Vendor</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Date</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Amount</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Status</TableHead>
+                      <TableHead className={`text-right ${compact ? 'py-2' : ''}`}>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredPurchases.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">No purchases found.</TableCell>
+                        <TableCell colSpan={6} className={`text-center text-muted-foreground ${compact ? 'py-6' : 'h-24'}`}>No purchases found.</TableCell>
                       </TableRow>
                     )}
                     {filteredPurchases.map((p) => (
                       <TableRow key={p.id} className="hover:bg-muted/50">
-                        <TableCell className="font-medium">{p.purchase_number}</TableCell>
-                        <TableCell>{p.vendor_name}</TableCell>
-                        <TableCell>{format(new Date(p.purchase_date || p.created_at || new Date()), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell>${Number(p.total_amount || 0).toFixed(2)}</TableCell>
-                        <TableCell>
+                        <TableCell className={`font-medium ${compact ? 'py-2' : ''}`}>{p.purchase_number}</TableCell>
+                        <TableCell className={compact ? 'py-2' : ''}>{p.vendor_name}</TableCell>
+                        <TableCell className={compact ? 'py-2' : ''}>{format(new Date(p.purchase_date || p.created_at || new Date()), 'MMM dd, yyyy')}</TableCell>
+                        <TableCell className={compact ? 'py-2' : ''}>${Number(p.total_amount || 0).toFixed(2)}</TableCell>
+                        <TableCell className={compact ? 'py-2' : ''}>
                           <Badge className={p.status === 'received' ? 'bg-green-100 text-green-800' : p.status === 'partial' ? 'bg-blue-100 text-blue-800' : p.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}>
                             {p.status.toUpperCase()}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className={`text-right ${compact ? 'py-2' : ''}`}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -620,6 +718,24 @@ export default function Payments() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={savePresetOpen} onOpenChange={setSavePresetOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Save filter preset</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Preset name</Label>
+              <Input value={newPresetName} onChange={(e) => setNewPresetName(e.target.value)} placeholder="e.g. Last 30 days - Card" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setSavePresetOpen(false)}>Cancel</Button>
+              <Button onClick={saveCurrentAsPreset}>Save</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-w-md">
