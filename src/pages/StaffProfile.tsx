@@ -11,6 +11,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import {
   Users,
   ArrowLeft,
@@ -34,6 +36,7 @@ interface StaffRecord {
   is_active: boolean;
   hire_date?: string | null;
   specialties?: string[] | null;
+  notes?: string | null;
 }
 
 interface StaffGalleryItem {
@@ -66,6 +69,11 @@ export default function StaffProfile() {
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
 
+  const [commissionEditing, setCommissionEditing] = useState(false);
+  const [commissionDraft, setCommissionDraft] = useState<number | ''>('');
+  const [notesDraft, setNotesDraft] = useState('');
+  const [scheduleDate, setScheduleDate] = useState<Date>(new Date());
+
   useEffect(() => {
     (async () => {
       try {
@@ -73,6 +81,10 @@ export default function StaffProfile() {
         const { data: s, error } = await supabase.from('staff').select('*').eq('id', id).maybeSingle();
         if (error) throw error;
         setStaff(s as any);
+        if (s) {
+          setCommissionDraft(typeof s.commission_rate === 'number' ? Number(s.commission_rate) : '');
+          setNotesDraft((s as any).notes || '');
+        }
       } catch (e: any) {
         toast({ title: 'Error', description: e?.message || 'Failed to load staff', variant: 'destructive' });
       } finally {
@@ -280,6 +292,38 @@ export default function StaffProfile() {
     }
   };
 
+  const handleSaveCommission = async () => {
+    if (!id) return;
+    try {
+      const value = commissionDraft === '' ? null : Number(commissionDraft);
+      const { error } = await supabase
+        .from('staff')
+        .update({ commission_rate: value })
+        .eq('id', id);
+      if (error) throw error;
+      setStaff((prev) => (prev ? { ...prev, commission_rate: value } : prev));
+      setCommissionEditing(false);
+      toast({ title: 'Commission updated' });
+    } catch (e: any) {
+      toast({ title: 'Update failed', description: e?.message || 'Could not update commission', variant: 'destructive' });
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    if (!id) return;
+    try {
+      const { error } = await supabase
+        .from('staff')
+        .update({ notes: notesDraft })
+        .eq('id', id);
+      if (error) throw error;
+      setStaff((prev) => (prev ? { ...prev, notes: notesDraft } : prev));
+      toast({ title: 'Notes saved' });
+    } catch (e: any) {
+      toast({ title: 'Save failed', description: e?.message || 'Could not save notes', variant: 'destructive' });
+    }
+  };
+
   const setPresetRange = (preset: 'today' | '7d' | '30d' | 'month' | 'ytd') => {
     const now = new Date();
     let start = new Date();
@@ -422,6 +466,7 @@ export default function StaffProfile() {
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="commissions">Commissions</TabsTrigger>
               <TabsTrigger value="activity">Activity</TabsTrigger>
+              <TabsTrigger value="schedule">Schedule</TabsTrigger>
               <TabsTrigger value="gallery">Gallery</TabsTrigger>
             </TabsList>
 
@@ -572,6 +617,64 @@ export default function StaffProfile() {
               </Card>
             </TabsContent>
 
+            <TabsContent value="schedule">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2"><Calendar className="w-4 h-4"/> Schedule</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-6 md:grid-cols-2">
+                  <div className="rounded-lg border p-3 bg-white">
+                    <CalendarPicker
+                      mode="single"
+                      selected={scheduleDate}
+                      onSelect={(d) => d && setScheduleDate(d)}
+                      className="rounded-md"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm text-slate-600">Selected date</div>
+                      <div className="text-sm font-medium text-slate-900">{scheduleDate.toISOString().slice(0,10)}</div>
+                    </div>
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Time</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {appointments.filter((a) => String(a.appointment_date).slice(0,10) === scheduleDate.toISOString().slice(0,10)).length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={3} className="text-sm text-muted-foreground">No appointments on this date</TableCell>
+                            </TableRow>
+                          ) : (
+                            appointments
+                              .filter((a) => String(a.appointment_date).slice(0,10) === scheduleDate.toISOString().slice(0,10))
+                              .map((a) => (
+                                <TableRow key={a.id}>
+                                  <TableCell>{String(a.appointment_date).split('T')[1] ? String(a.appointment_date).split('T')[1].slice(0,5) : '—'}</TableCell>
+                                  <TableCell>
+                                    {a.status ? (
+                                      <Badge variant={a.status === 'completed' ? 'default' : a.status === 'cancelled' ? 'secondary' : 'outline'} className="capitalize">
+                                        {a.status}
+                                      </Badge>
+                                    ) : '—'}
+                                  </TableCell>
+                                  <TableCell className="text-right">${Number(a.total_amount || 0).toFixed(2)}</TableCell>
+                                </TableRow>
+                              ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             <TabsContent value="gallery">
               <Card>
                 <CardHeader className="flex items-center justify-between">
@@ -652,12 +755,29 @@ export default function StaffProfile() {
                     <span className="font-medium text-slate-900">{staff.phone}</span>
                   </div>
                 )}
-                {typeof staff.commission_rate === 'number' && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-600">Commission</span>
-                    <span className="font-medium text-slate-900">{staff.commission_rate}%</span>
-                  </div>
-                )}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-600">Commission</span>
+                  {commissionEditing ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.5}
+                        value={commissionDraft}
+                        onChange={(e) => setCommissionDraft(e.target.value === '' ? '' : Number(e.target.value))}
+                        className="h-8 w-24"
+                      />
+                      <Button size="sm" onClick={handleSaveCommission}>Save</Button>
+                      <Button size="sm" variant="outline" onClick={() => { setCommissionEditing(false); setCommissionDraft(typeof staff.commission_rate === 'number' ? Number(staff.commission_rate) : ''); }}>Cancel</Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-slate-900">{typeof staff.commission_rate === 'number' ? `${staff.commission_rate}%` : '—'}</span>
+                      <Button size="sm" variant="outline" onClick={() => setCommissionEditing(true)}>Edit</Button>
+                    </div>
+                  )}
+                </div>
                 {staff.hire_date && (
                   <div className="flex items-center justify-between">
                     <span className="text-slate-600">Hired</span>
@@ -678,6 +798,24 @@ export default function StaffProfile() {
                   </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base">Notes</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Textarea
+                placeholder="Add private notes about this staff member (visible to admins only)"
+                value={notesDraft}
+                onChange={(e) => setNotesDraft(e.target.value)}
+                rows={6}
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setNotesDraft(staff.notes || '')}>Reset</Button>
+                <Button onClick={handleSaveNotes}>Save Notes</Button>
+              </div>
             </CardContent>
           </Card>
 
