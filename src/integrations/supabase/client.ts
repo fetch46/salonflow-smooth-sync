@@ -2,8 +2,31 @@
 import { createClient } from '@supabase/supabase-js';
 // import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+function sanitizeEnv(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+  const lowered = trimmed.toLowerCase()
+  if (lowered === 'undefined' || lowered === 'null' || lowered === 'false') return undefined
+  return trimmed
+}
+
+function isValidUrl(url: string): boolean {
+  try {
+    // Throws if invalid
+    // eslint-disable-next-line no-new
+    new URL(url)
+    return true
+  } catch {
+    return false
+  }
+}
+
+const RAW_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const RAW_SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+const SUPABASE_URL = sanitizeEnv(RAW_SUPABASE_URL)
+const SUPABASE_PUBLISHABLE_KEY = sanitizeEnv(RAW_SUPABASE_PUBLISHABLE_KEY)
 
 function createSupabaseStub() {
   const stubError = new Error(
@@ -91,12 +114,27 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = (SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY)
-  ? createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+function createSupabaseOrStub() {
+  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY || !isValidUrl(SUPABASE_URL)) {
+    if (SUPABASE_URL && !isValidUrl(SUPABASE_URL)) {
+      // eslint-disable-next-line no-console
+      console.error('Invalid VITE_SUPABASE_URL value; falling back to stub:', SUPABASE_URL)
+    }
+    return createSupabaseStub()
+  }
+  try {
+    return createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       auth: {
         storage: localStorage,
         persistSession: true,
         autoRefreshToken: true,
       }
     })
-  : createSupabaseStub();
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to initialize Supabase client; falling back to stub.', error)
+    return createSupabaseStub()
+  }
+}
+
+export const supabase = createSupabaseOrStub();
