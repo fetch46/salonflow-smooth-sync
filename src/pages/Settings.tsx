@@ -937,6 +937,11 @@ phone: "+1 (555) 123-4567",
                     <Plus className="w-4 h-4 mr-1" />
                     Add Location
                   </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Address</TableHead>
