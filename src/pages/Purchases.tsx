@@ -98,6 +98,23 @@ export default function Purchases() {
     unit_cost: "",
   });
 
+  const calculateTotals = useCallback(() => {
+    const subtotal = purchaseItems.reduce((sum, item) => sum + item.total_cost, 0);
+    const computedTax = applyTax ? (subtotal * ((orgTaxRate || 0) / 100)) : 0;
+    const total = subtotal + computedTax;
+    
+    setFormData(prev => ({
+      ...prev,
+      subtotal: subtotal.toString(),
+      tax_amount: computedTax.toString(),
+      total_amount: total.toString(),
+    }));
+  }, [purchaseItems, orgTaxRate, applyTax]);
+
+  useEffect(() => {
+    calculateTotals();
+  }, [calculateTotals]);
+
   const fetchPurchases = useCallback(async () => {
     try {
       setLoading(true);
@@ -179,6 +196,23 @@ export default function Purchases() {
       setSelectedPurchaseItems(data || []);
     } catch (error) {
       console.error("Error fetching purchase items:", error);
+    }
+  };
+
+  const fetchItemsForEditing = async (purchaseId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("purchase_items")
+        .select(`
+          *,
+          inventory_items (name)
+        `)
+        .eq("purchase_id", purchaseId);
+
+      if (error) throw error;
+      setPurchaseItems(data || []);
+    } catch (error) {
+      console.error("Error fetching items for editing:", error);
     }
   };
 
@@ -290,19 +324,6 @@ export default function Purchases() {
     setPurchaseItems(purchaseItems.filter((_, i) => i !== index));
   };
 
-    const calculateTotals = useCallback(() => {
-    const subtotal = purchaseItems.reduce((sum, item) => sum + item.total_cost, 0);
-    const computedTax = applyTax ? (subtotal * ((orgTaxRate || 0) / 100)) : 0;
-    const total = subtotal + computedTax;
-    
-    setFormData(prev => ({
-      ...prev,
-      subtotal: subtotal.toString(),
-      tax_amount: computedTax.toString(),
-      total_amount: total.toString(),
-    }));
-  }, [purchaseItems, orgTaxRate, applyTax]);
-
   useEffect(() => {
     fetchPurchases();
     fetchInventoryItems();
@@ -313,13 +334,17 @@ export default function Purchases() {
     e.preventDefault();
     
     try {
+      // Compute totals from current items and tax settings to avoid state race conditions
+      const subtotalNow = purchaseItems.reduce((sum, item) => sum + (Number(item.total_cost) || 0), 0);
+      const taxNow = applyTax ? subtotalNow * ((orgTaxRate || 0) / 100) : 0;
+      const totalNow = subtotalNow + taxNow;
+
       const purchaseData = {
         ...formData,
         purchase_number: formData.purchase_number || generatePurchaseNumber(),
-        subtotal: parseFloat(formData.subtotal) || 0,
-        tax_amount: parseFloat(formData.tax_amount) || 0,
-        total_amount: parseFloat(formData.total_amount) || 0,
-        organization_id: organization?.id || null,
+        subtotal: Number(subtotalNow.toFixed(2)),
+        tax_amount: Number(taxNow.toFixed(2)),
+        total_amount: Number(totalNow.toFixed(2)),
       };
 
       let purchaseId: string;
@@ -405,7 +430,8 @@ export default function Purchases() {
       notes: purchase.notes || "",
     });
     
-    await fetchPurchaseItems(purchase.id);
+    await fetchItemsForEditing(purchase.id);
+    calculateTotals();
     setIsModalOpen(true);
   };
 
@@ -503,9 +529,11 @@ export default function Purchases() {
           </DialogTrigger>
           <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingPurchase ? "Edit Purchase" : "Create New Purchase"}</DialogTitle>
-              <DialogDescription>
-                {editingPurchase ? "Update the purchase details." : "Fill in the purchase information and add products."}
+              <DialogTitle className="text-2xl font-semibold tracking-tight">
+                {editingPurchase ? "Edit Purchase" : "Create New Purchase"}
+              </DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                {editingPurchase ? "Update the purchase details and items. Totals recalculate automatically." : "Fill in purchase details, add items, and totals will auto-calculate."}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -623,8 +651,29 @@ export default function Purchases() {
                       {purchaseItems.map((item, index) => (
                         <TableRow key={index}>
                           <TableCell>{item.inventory_items?.name || 'Unknown Item'}</TableCell>
-                          <TableCell>{item.quantity}</TableCell>
-                          <TableCell>{formatMoney(item.unit_cost)}</TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={item.quantity}
+                              onChange={(e) => {
+                                const qty = Number(e.target.value || 0);
+                                setPurchaseItems(prev => prev.map((it, i) => i === index ? { ...it, quantity: qty, total_cost: qty * (it.unit_cost || 0) } : it));
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min={0}
+                              value={item.unit_cost}
+                              onChange={(e) => {
+                                const price = Number(e.target.value || 0);
+                                setPurchaseItems(prev => prev.map((it, i) => i === index ? { ...it, unit_cost: price, total_cost: (it.quantity || 0) * price } : it));
+                              }}
+                            />
+                          </TableCell>
                           <TableCell>{formatMoney(item.total_cost)}</TableCell>
                           <TableCell>
                             <Button
@@ -794,7 +843,9 @@ export default function Purchases() {
                     <TableCell>
                       <div className="flex gap-2">
                         <Button variant="outline" size="sm" onClick={() => handleEdit(purchase)}>Edit</Button>
-                        <Button variant="outline" size="sm" onClick={() => openReceiveDialog(purchase.id)}>Receive</Button>
+                        {(purchase.status === 'pending' || purchase.status === 'partial') && (
+                          <Button variant="outline" size="sm" onClick={() => openReceiveDialog(purchase.id)}>Receive Items</Button>
+                        )}
                         <Button variant="outline" size="sm" className="text-red-600" onClick={() => handleDelete(purchase.id)}>Delete</Button>
                       </div>
                     </TableCell>
@@ -810,7 +861,7 @@ export default function Purchases() {
       <Dialog open={receiveOpen} onOpenChange={setReceiveOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Receive Items</DialogTitle>
+            <DialogTitle className="text-xl">Receive Purchase Items</DialogTitle>
           </DialogHeader>
           <form onSubmit={submitReceive} className="space-y-4">
             <div className="space-y-2">
