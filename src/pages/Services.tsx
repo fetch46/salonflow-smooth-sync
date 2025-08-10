@@ -1330,11 +1330,10 @@ export default function Services() {
                             )}
                           </div>
 
-                            <div className="text-xs text-slate-500">
-                              {service.commission_percentage}% commission
-                            </div>
-                          )}
-                        </div>
+                                                      <div className="text-xs text-slate-500">
+                            {service.commission_percentage}% commission
+                          </div>
+                      </div>
                       </CardContent>
                     </Card>
                   );
