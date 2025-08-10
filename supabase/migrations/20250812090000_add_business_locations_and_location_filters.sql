@@ -34,7 +34,7 @@ END $$;
 -- 2) Add location_id to key operational tables (idempotent)
 DO $$ BEGIN
   -- receipts
-  IF NOT EXISTS (
+  IF to_regclass('public.receipts') IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM information_schema.columns 
     WHERE table_schema='public' AND table_name='receipts' AND column_name='location_id'
   ) THEN
@@ -43,7 +43,7 @@ DO $$ BEGIN
   END IF;
 
   -- receipt_items (optional, derive via receipt; add for convenience)
-  IF NOT EXISTS (
+  IF to_regclass('public.receipt_items') IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM information_schema.columns 
     WHERE table_schema='public' AND table_name='receipt_items' AND column_name='location_id'
   ) THEN
@@ -52,7 +52,7 @@ DO $$ BEGIN
   END IF;
 
   -- receipt_payments
-  IF NOT EXISTS (
+  IF to_regclass('public.receipt_payments') IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM information_schema.columns 
     WHERE table_schema='public' AND table_name='receipt_payments' AND column_name='location_id'
   ) THEN
@@ -61,7 +61,7 @@ DO $$ BEGIN
   END IF;
 
   -- expenses
-  IF NOT EXISTS (
+  IF to_regclass('public.expenses') IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM information_schema.columns 
     WHERE table_schema='public' AND table_name='expenses' AND column_name='location_id'
   ) THEN
@@ -70,7 +70,7 @@ DO $$ BEGIN
   END IF;
 
   -- purchases
-  IF NOT EXISTS (
+  IF to_regclass('public.purchases') IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM information_schema.columns 
     WHERE table_schema='public' AND table_name='purchases' AND column_name='location_id'
   ) THEN
@@ -79,7 +79,7 @@ DO $$ BEGIN
   END IF;
 
   -- appointments (for future location-aware scheduling)
-  IF NOT EXISTS (
+  IF to_regclass('public.appointments') IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM information_schema.columns 
     WHERE table_schema='public' AND table_name='appointments' AND column_name='location_id'
   ) THEN
@@ -88,7 +88,7 @@ DO $$ BEGIN
   END IF;
 
   -- account_transactions (for P&L and Balance Sheet by location)
-  IF NOT EXISTS (
+  IF to_regclass('public.account_transactions') IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM information_schema.columns 
     WHERE table_schema='public' AND table_name='account_transactions' AND column_name='location_id'
   ) THEN

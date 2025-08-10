@@ -4,6 +4,9 @@
 -- 1. Run the complete schema migration
 \i supabase/migrations/20250116000004_complete_database_schema.sql
 
+-- Replace invoices with receipts (ensures receipts exist before adding location_id)
+\i supabase/migrations/20250809000000_replace_invoices_with_receipts.sql
+
 -- Also include business locations and related columns
 \i supabase/migrations/20250812090000_add_business_locations_and_location_filters.sql
 -- Migrate prior storage_locations usage to business_locations
