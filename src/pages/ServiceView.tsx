@@ -45,13 +45,7 @@ export default function ServiceView() {
   const [serviceKits, setServiceKits] = useState<ServiceKit[]>([]);
   const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-    if (id) {
-      fetchServiceData();
-    }
-  }, [id, fetchServiceData]);
- 
-   const fetchServiceData = useCallback(async () => {
+  const fetchServiceData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -85,6 +79,12 @@ export default function ServiceView() {
       setLoading(false);
     }
   }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      fetchServiceData();
+    }
+  }, [id, fetchServiceData]);
 
   const { format: formatCurrency } = useOrganizationCurrency()
   const formatPrice = (price: number) => formatCurrency(price)

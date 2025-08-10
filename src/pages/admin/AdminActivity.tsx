@@ -21,10 +21,6 @@ export default function AdminActivity() {
   const [rangeDays, setRangeDays] = useState<number>(14);
   const [loading, setLoading] = useState<boolean>(false);
 
-  useEffect(() => {
-    fetchActivity();
-  }, [rangeDays, fetchActivity]);
-
   const fetchActivity = useCallback(async () => {
     try {
       setLoading(true);
@@ -79,6 +75,10 @@ export default function AdminActivity() {
       setLoading(false);
     }
   }, [rangeDays]);
+
+  useEffect(() => {
+    fetchActivity();
+  }, [fetchActivity]);
 
   const filtered = items.filter((i) => {
     const hay = `${i.type} ${i.description} ${i.organization ?? ""}`.toLowerCase();

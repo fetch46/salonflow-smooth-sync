@@ -54,16 +54,6 @@ const AdminBusinessData = () => {
     { name: 'job_cards', label: 'Job Cards', icon: FileText, description: 'Service records' }
   ], []);
 
-  useEffect(() => {
-    fetchTableStats();
-    fetchOrganizations();
-  }, [fetchTableStats, fetchOrganizations]);
-
-    useEffect(() => {
-    if (selectedTable) {
-      fetchTableData(selectedTable);
-    }
-  }, [selectedTable, selectedOrganization, fetchTableData]);
  
   const fetchTableStats = useCallback(async () => {
     try {
@@ -173,6 +163,17 @@ const AdminBusinessData = () => {
       setDataLoading(false);
     }
   }, [selectedOrganization]);
+
+  useEffect(() => {
+    fetchTableStats();
+    fetchOrganizations();
+  }, [fetchTableStats, fetchOrganizations]);
+
+  useEffect(() => {
+    if (selectedTable) {
+      fetchTableData(selectedTable);
+    }
+  }, [selectedTable, selectedOrganization, fetchTableData]);
 
   const getTableIcon = (tableName: string) => {
     const table = businessTables.find(t => t.name === tableName);

@@ -67,10 +67,6 @@ const AdminDashboard = () => {
     { name: 'expenses', label: 'Expenses', icon: DollarSign, color: 'text-yellow-600' }
   ], []);
 
-    useEffect(() => {
-    fetchSystemStats();
-    fetchRecentActivity();
-  }, [fetchSystemStats, fetchRecentActivity]);
  
    const fetchSystemStats = useCallback(async () => {
     try {
@@ -261,6 +257,11 @@ const AdminDashboard = () => {
       console.error('Error fetching recent activity:', error);
     }
   }, []);
+
+  useEffect(() => {
+    fetchSystemStats();
+    fetchRecentActivity();
+  }, [fetchSystemStats, fetchRecentActivity]);
 
   const { symbol } = useOrganizationCurrency();
   const formatCurrency = (cents: number) => {
