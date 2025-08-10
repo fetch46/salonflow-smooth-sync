@@ -62,8 +62,24 @@ export default function ServiceView() {
         .eq("organization_id", organization?.id || "")
         .single();
 
-      if (serviceError) throw serviceError;
-      setService(serviceData);
+      if (serviceError) {
+        const code = (serviceError as any)?.code
+        const message = (serviceError as any)?.message || String(serviceError)
+        const isMissingOrgId = code === '42703' || /column\s+("?[\w\.]*organization_id"?)\s+does not exist/i.test(message)
+        if (isMissingOrgId) {
+          const { data: fallback, error: fallbackErr } = await supabase
+            .from("services")
+            .select("*")
+            .eq("id", id)
+            .single()
+          if (fallbackErr) throw fallbackErr
+          setService(fallback)
+        } else {
+          throw serviceError
+        }
+      } else {
+        setService(serviceData);
+      }
 
       // Fetch service kit items
       const { data: kitsData, error: kitsError } = await supabase
@@ -77,8 +93,28 @@ export default function ServiceView() {
         .eq("service_id", id)
         .eq("organization_id", organization?.id || "");
 
-      if (kitsError) throw kitsError;
-      setServiceKits(kitsData || []);
+      if (kitsError) {
+        const code = (kitsError as any)?.code
+        const message = (kitsError as any)?.message || String(kitsError)
+        const isMissingOrgId = code === '42703' || /column\s+("?[\w\.]*organization_id"?)\s+does not exist/i.test(message)
+        if (isMissingOrgId) {
+          const { data: kitsFallback, error: kitsFallbackErr } = await supabase
+            .from("service_kits")
+            .select(`
+              *,
+              inventory_items!service_kits_good_id_fkey (
+                id, name, type, unit, cost_price, selling_price, category
+              )
+            `)
+            .eq("service_id", id)
+          if (kitsFallbackErr) throw kitsFallbackErr
+          setServiceKits(kitsFallback || [])
+        } else {
+          throw kitsError
+        }
+      } else {
+        setServiceKits(kitsData || []);
+      }
       // Fetch sales history for this service
       setSalesLoading(true);
       const rows = await getReceiptItemsByServiceWithFallback(supabase, String(id));
