@@ -259,17 +259,53 @@ phone: "",
     (async () => {
       if (!organization) return setDepositAccounts([])
       try {
-        const { data } = await supabase
+        // Prefer subtype-aware lookup from Chart of Accounts
+        const { data, error } = await supabase
           .from('accounts')
           .select('id, account_code, account_name, account_subtype, account_type')
           .eq('organization_id', organization.id)
           .eq('account_type', 'Asset')
           .in('account_subtype', ['Cash', 'Bank'])
-          .order('account_code')
-        const opts = (data || []).map((a: any) => ({ id: a.id, account_code: a.account_code, account_name: a.account_name, account_subtype: a.account_subtype }))
-        setDepositAccounts(opts)
+          .order('account_code', { ascending: true });
+
+        if (error) throw error;
+
+        const opts = (data || []).map((a: any) => ({
+          id: a.id,
+          account_code: a.account_code,
+          account_name: a.account_name,
+          account_subtype: a.account_subtype,
+        }));
+        setDepositAccounts(opts);
       } catch (e) {
-        setDepositAccounts([])
+        // Fallback for schemas without account_subtype: derive Cash/Bank from canonical codes or names
+        try {
+          const { data: allAssets, error: fbErr } = await supabase
+            .from('accounts')
+            .select('id, account_code, account_name, account_type')
+            .eq('organization_id', organization.id)
+            .eq('account_type', 'Asset')
+            .order('account_code', { ascending: true });
+          if (fbErr) throw fbErr;
+
+          const candidates = (allAssets || []).filter((a: any) => {
+            const code = String(a.account_code || '').trim();
+            const name = String(a.account_name || '').toLowerCase();
+            const isCanonical = code === '1001' || code === '1002';
+            const nameSuggests = name.includes('cash') || name.includes('bank');
+            return isCanonical || nameSuggests;
+          });
+
+          const opts = candidates.map((a: any) => ({
+            id: a.id,
+            account_code: a.account_code,
+            account_name: a.account_name,
+            account_subtype: a.account_code === '1001' ? 'Cash' : a.account_code === '1002' ? 'Bank' : undefined,
+          }));
+          setDepositAccounts(opts);
+        } catch {
+          setDepositAccounts([]);
+        }
       }
     })()
   }, [organization])
