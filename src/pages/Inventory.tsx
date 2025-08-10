@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Package, Trash2, Edit, MapPin } from "lucide-react";
+import { Plus, Package, Trash2, Edit, MapPin, RefreshCw } from "lucide-react";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -154,6 +154,7 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem }) => {
               />
             </div>
           </div>
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
@@ -182,6 +183,7 @@ export default function Inventory() {
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
   const [locationsLoading, setLocationsLoading] = useState<boolean>(false);
   const [selectedLocationId, setSelectedLocationId] = useState<string>("all");
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   // Currency formatter
   const { format: formatMoney } = useOrganizationCurrency();
@@ -238,6 +240,15 @@ export default function Inventory() {
       setLocationsLoading(false);
     }
   }, []);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([fetchData(), fetchLevels(), fetchLocations()]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchData, fetchLevels, fetchLocations]);
 
   useEffect(() => {
     fetchData();
@@ -385,6 +396,10 @@ export default function Inventory() {
               </SelectContent>
             </Select>
           </div>
+          <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
           <Button onClick={() => { setEditingItem(null); setIsItemDialogOpen(true); }}>
             <Plus className="w-4 h-4 mr-2" /> Add Product
           </Button>
