@@ -18,6 +18,7 @@ import { useOrganizationTaxRate } from "@/lib/saas/hooks";
 import { Switch } from "@/components/ui/switch";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Edit3, Truck as TruckIcon, RotateCcw, Trash2, CreditCard, RefreshCw } from "lucide-react";
+import { postDoubleEntry, findAccountIdByCode } from "@/utils/ledger";
 
 interface AccountOption { id: string; account_code: string; account_name: string; account_type: string; account_subtype: string | null; balance?: number | null }
 
@@ -317,6 +318,7 @@ export default function Purchases() {
       await supabase.from("purchases").update({ location_id: receiveLocationId }).eq("id", receivePurchaseId);
 
       // Update received quantities only; DB triggers will sync inventory and status
+      let receivedTotal = 0; // monetary value of this receiving batch
       for (const item of selectedPurchaseItems) {
         const qtyRequested = Number(receiveQuantities[item.item_id] || 0);
         if (qtyRequested <= 0) continue;
@@ -330,6 +332,33 @@ export default function Purchases() {
           .from("purchase_items")
           .update({ received_quantity: newReceived })
           .eq("id", item.id);
+        // Accumulate value for ledger
+        const unitCost = Number(item.unit_cost || 0);
+        receivedTotal += qty * unitCost;
+      }
+
+      // Post ledger for receiving: Dr Inventory (1200), Cr A/P (2001)
+      try {
+        const orgId = organization?.id;
+        if (orgId && receivedTotal > 0) {
+          const inventoryAccountId = await findAccountIdByCode(orgId, "1200");
+          const apAccountId = await findAccountIdByCode(orgId, "2001");
+          if (inventoryAccountId && apAccountId) {
+            await postDoubleEntry({
+              organizationId: orgId,
+              amount: receivedTotal,
+              transactionDate: new Date().toISOString().slice(0,10),
+              description: `Purchase ${receivePurchaseId} receiving`,
+              debitAccountId: inventoryAccountId,
+              creditAccountId: apAccountId,
+              referenceType: "purchase_receipt",
+              referenceId: receivePurchaseId,
+              locationId: receiveLocationId,
+            });
+          }
+        }
+      } catch (ledgerErr) {
+        console.warn("Ledger posting failed for purchase receiving", ledgerErr);
       }
 
       toast({ title: "Received", description: "Items received into stock" });

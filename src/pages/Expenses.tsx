@@ -14,6 +14,7 @@ import { Plus, Search, Receipt, DollarSign, TrendingUp, AlertTriangle, RefreshCw
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useSaas } from "@/lib/saas";
+import { postExpensePaymentToLedger } from "@/utils/ledger";
 
 
 interface Expense {
@@ -289,8 +290,42 @@ export default function Expenses() {
           .single();
 
         if (error) throw error;
+        saved = updated as any as Expense;
+      } else {
+        const { data: created, error } = await supabase
+          .from("expenses")
+          .insert([expenseData])
+          .select("*")
+          .single();
+        if (error) throw error;
+        saved = created as any as Expense;
+      }
 
+      // If marked as paid, post to ledger (debit Expense, credit Cash/Bank) once
+      if (saved && formData.status === "paid" && organization?.id) {
+        try {
+          // Avoid duplicate postings for the same expense
+          const { data: existingTxn } = await supabase
+            .from("account_transactions")
+            .select("id")
+            .eq("reference_type", "expense_payment")
+            .eq("reference_id", saved.id)
+            .limit(1);
 
+          if (!existingTxn || existingTxn.length === 0) {
+            await postExpensePaymentToLedger({
+              organizationId: organization.id,
+              amount: Number(saved.amount || amountNumber || 0),
+              method: String(saved.payment_method || formData.payment_method || "Cash"),
+              expenseId: saved.id,
+              expenseNumber: saved.expense_number,
+              paymentDate: String(saved.expense_date || formData.expense_date || new Date().toISOString().slice(0,10)),
+              locationId: (saved.location_id as any) || null,
+            });
+          }
+        } catch (ledgerErr) {
+          console.warn("Ledger posting failed for expense", ledgerErr);
+        }
       }
 
       setIsModalOpen(false);
