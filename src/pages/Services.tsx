@@ -356,7 +356,7 @@ export default function Services() {
         price: formData.price,
         category: formData.category || null,
         is_active: formData.is_active,
-
+        commission_percentage: typeof formData.commission_percentage === 'number' ? formData.commission_percentage : null,
       } as const;
 
       if (editingService) {
@@ -433,7 +433,7 @@ export default function Services() {
       price: service.price,
       category: service.category || "",
       is_active: service.is_active,
-
+      commission_percentage: isNaN(cp) ? 0 : cp,
     });
     setEditingService(service);
     fetchServiceKits(service.id);
@@ -721,13 +721,14 @@ export default function Services() {
                     </div>
                     
                     <div>
-         <Input 
+                      <Label htmlFor="commission_percentage">Commission %</Label>
+                      <Input 
                         id="commission_percentage" 
                         type="number" 
                         min="0" 
                         max="100" 
                         step="0.1" 
-
+                        value={formData.commission_percentage}
                         onChange={(e) => setFormData({ ...formData, commission_percentage: parseFloat(e.target.value) || 0 })} 
                         placeholder="10.0"
                       />
