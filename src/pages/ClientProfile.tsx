@@ -413,7 +413,7 @@ export default function ClientProfile() {
         <Tabs defaultValue="appointments" className="space-y-4">
           <TabsList>
             <TabsTrigger value="appointments">Appointments</TabsTrigger>
-            <TabsTrigger value="receipts">Receipts</TabsTrigger>
+            <TabsTrigger value="receipts">Sales Receipts</TabsTrigger>
             <TabsTrigger value="jobcards">Job Cards</TabsTrigger>
             <TabsTrigger value="details">Details</TabsTrigger>
           </TabsList>

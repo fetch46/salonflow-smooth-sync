@@ -485,7 +485,7 @@ export default function ServiceView() {
           <CardHeader>
             <CardTitle>Sales History</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
-              Posted from receipts containing this service
+              Posted from sales receipts containing this service
             </p>
           </CardHeader>
           <CardContent>
@@ -512,7 +512,7 @@ export default function ServiceView() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
-                      <TableHead>Receipt #</TableHead>
+                      <TableHead>Sales Receipt #</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead className="hidden md:table-cell">Staff</TableHead>
                       <TableHead className="text-right">Qty</TableHead>
