@@ -9,6 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
+import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import {
   Users,
   ArrowLeft,
@@ -31,6 +35,8 @@ interface StaffRecord {
   commission_rate?: number | null;
   is_active: boolean;
   hire_date?: string | null;
+  specialties?: string[] | null;
+  notes?: string | null;
 }
 
 interface StaffGalleryItem {
@@ -63,6 +69,11 @@ export default function StaffProfile() {
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
 
+  const [commissionEditing, setCommissionEditing] = useState(false);
+  const [commissionDraft, setCommissionDraft] = useState<number | ''>('');
+  const [notesDraft, setNotesDraft] = useState('');
+  const [scheduleDate, setScheduleDate] = useState<Date>(new Date());
+
   useEffect(() => {
     (async () => {
       try {
@@ -70,6 +81,10 @@ export default function StaffProfile() {
         const { data: s, error } = await supabase.from('staff').select('*').eq('id', id).maybeSingle();
         if (error) throw error;
         setStaff(s as any);
+        if (s) {
+          setCommissionDraft(typeof s.commission_rate === 'number' ? Number(s.commission_rate) : '');
+          setNotesDraft((s as any).notes || '');
+        }
       } catch (e: any) {
         toast({ title: 'Error', description: e?.message || 'Failed to load staff', variant: 'destructive' });
       } finally {
@@ -160,6 +175,14 @@ export default function StaffProfile() {
     const avgPerService = services > 0 ? gross / services : 0;
     return { gross, commission, services, avgRate, apptCount, avgPerService };
   }, [commissionRows, appointments]);
+
+  const commissionTotals = useMemo(() => {
+    return {
+      gross: commissionRows.reduce((sum, r) => sum + (r.gross || 0), 0),
+      commission: commissionRows.reduce((sum, r) => sum + (r.commission || 0), 0),
+      count: commissionRows.length,
+    };
+  }, [commissionRows]);
 
   const getInitials = (name: string) => {
     const parts = (name || '').trim().split(' ');
@@ -254,6 +277,74 @@ export default function StaffProfile() {
     }
   };
 
+  const handleToggleActive = async (nextActive: boolean) => {
+    if (!id) return;
+    try {
+      const { error } = await supabase
+        .from('staff')
+        .update({ is_active: nextActive })
+        .eq('id', id);
+      if (error) throw error;
+      setStaff((prev) => (prev ? { ...prev, is_active: nextActive } : prev));
+      toast({ title: nextActive ? 'Staff activated' : 'Staff deactivated' });
+    } catch (e: any) {
+      toast({ title: 'Update failed', description: e?.message || 'Could not update status', variant: 'destructive' });
+    }
+  };
+
+  const handleSaveCommission = async () => {
+    if (!id) return;
+    try {
+      const value = commissionDraft === '' ? null : Number(commissionDraft);
+      const { error } = await supabase
+        .from('staff')
+        .update({ commission_rate: value })
+        .eq('id', id);
+      if (error) throw error;
+      setStaff((prev) => (prev ? { ...prev, commission_rate: value } : prev));
+      setCommissionEditing(false);
+      toast({ title: 'Commission updated' });
+    } catch (e: any) {
+      toast({ title: 'Update failed', description: e?.message || 'Could not update commission', variant: 'destructive' });
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    if (!id) return;
+    try {
+      const { error } = await supabase
+        .from('staff')
+        .update({ notes: notesDraft })
+        .eq('id', id);
+      if (error) throw error;
+      setStaff((prev) => (prev ? { ...prev, notes: notesDraft } : prev));
+      toast({ title: 'Notes saved' });
+    } catch (e: any) {
+      toast({ title: 'Save failed', description: e?.message || 'Could not save notes', variant: 'destructive' });
+    }
+  };
+
+  const setPresetRange = (preset: 'today' | '7d' | '30d' | 'month' | 'ytd') => {
+    const now = new Date();
+    let start = new Date();
+    let end = new Date();
+    if (preset === 'today') {
+      // start and end are today
+    } else if (preset === '7d') {
+      start.setDate(now.getDate() - 6);
+    } else if (preset === '30d') {
+      start.setDate(now.getDate() - 29);
+    } else if (preset === 'month') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    } else if (preset === 'ytd') {
+      start = new Date(now.getFullYear(), 0, 1);
+    }
+    const iso = (d: Date) => d.toISOString().slice(0,10);
+    setStartDate(iso(start));
+    setEndDate(iso(end));
+  };
+
   if (loading && !staff) return <div className="p-6">Loading...</div>;
   if (!staff) return <div className="p-6">Staff not found</div>;
 
@@ -309,6 +400,14 @@ export default function StaffProfile() {
           </div>
         </div>
         <div className="flex items-end gap-3">
+          <div className="hidden md:flex items-center gap-2 mr-2 p-2 bg-white rounded-lg border">
+            <span className="text-xs text-slate-600">Quick ranges:</span>
+            <Button variant="ghost" size="sm" onClick={() => setPresetRange('today')}>Today</Button>
+            <Button variant="ghost" size="sm" onClick={() => setPresetRange('7d')}>7d</Button>
+            <Button variant="ghost" size="sm" onClick={() => setPresetRange('30d')}>30d</Button>
+            <Button variant="ghost" size="sm" onClick={() => setPresetRange('month')}>This month</Button>
+            <Button variant="ghost" size="sm" onClick={() => setPresetRange('ytd')}>YTD</Button>
+          </div>
           <div>
             <div className="text-xs text-slate-600">Start</div>
             <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
@@ -360,195 +459,377 @@ export default function StaffProfile() {
         </Card>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="commissions">Commissions</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
-          <TabsTrigger value="gallery">Gallery</TabsTrigger>
-        </TabsList>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="commissions">Commissions</TabsTrigger>
+              <TabsTrigger value="activity">Activity</TabsTrigger>
+              <TabsTrigger value="schedule">Schedule</TabsTrigger>
+              <TabsTrigger value="gallery">Gallery</TabsTrigger>
+            </TabsList>
 
-        <TabsContent value="overview" className="space-y-4">
-          <Card className="shadow-lg overflow-hidden">
-            <div className="relative h-28 w-full bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-400" />
-            <CardContent className="pt-0">
-              <div className="-mt-10 flex items-end gap-4">
-                <div className="relative">
-                  <Avatar className="w-20 h-20 ring-4 ring-white shadow-xl">
-                    {staff.profile_image ? (
-                      <AvatarImage src={staff.profile_image} alt={staff.full_name} />
-                    ) : (
-                      <AvatarFallback className="text-xl font-semibold">
-                        {getInitials(staff.full_name)}
-                      </AvatarFallback>
+            <TabsContent value="overview" className="space-y-4">
+              <Card className="shadow-lg overflow-hidden">
+                <div className="relative h-28 w-full bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-400" />
+                <CardContent className="pt-0">
+                  <div className="-mt-10 flex items-end gap-4">
+                    <div className="relative">
+                      <Avatar className="w-20 h-20 ring-4 ring-white shadow-xl">
+                        {staff.profile_image ? (
+                          <AvatarImage src={staff.profile_image} alt={staff.full_name} />
+                        ) : (
+                          <AvatarFallback className="text-xl font-semibold">
+                            {getInitials(staff.full_name)}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full p-0"
+                        onClick={handleAvatarFilePick}
+                        disabled={avatarUploading}
+                      >
+                        <Camera className="w-3 h-3" />
+                      </Button>
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-xl font-semibold">{staff.full_name}</h2>
+                        <Badge variant={staff.is_active ? 'default' : 'secondary'}>
+                          {staff.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
+                      <div className="text-slate-600 text-sm flex flex-wrap items-center gap-3 mt-1">
+                        {staff.email && <span className="truncate">{staff.email}</span>}
+                        {staff.phone && <span>{staff.phone}</span>}
+                        {typeof staff.commission_rate === 'number' && <span>{staff.commission_rate}% commission</span>}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2"><Calendar className="w-4 h-4"/> Period Summary</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-4 md:grid-cols-3">
+                  <div>
+                    <div className="text-sm text-slate-600">Appointments</div>
+                    <div className="text-xl font-semibold">{totals.apptCount}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-slate-600">Services</div>
+                    <div className="text-xl font-semibold">{totals.services}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-slate-600">Avg. $/Service</div>
+                    <div className="text-xl font-semibold">${totals.avgPerService.toFixed(2)}</div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="commissions">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Commission Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between text-sm text-slate-600 mb-3">
+                    <div>Entries: <span className="font-medium text-slate-900">{commissionTotals.count}</span></div>
+                    <div className="flex items-center gap-4">
+                      <div>Gross: <span className="font-medium text-slate-900">${commissionTotals.gross.toFixed(2)}</span></div>
+                      <Separator orientation="vertical" className="h-4" />
+                      <div>Commission: <span className="font-medium text-slate-900">${commissionTotals.commission.toFixed(2)}</span></div>
+                    </div>
+                  </div>
+                  {commissionRows.length === 0 ? (
+                    <div className="text-sm text-muted-foreground p-6">No commissions in this period</div>
+                  ) : (
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Service</TableHead>
+                            <TableHead className="text-right">Gross</TableHead>
+                            <TableHead className="text-right">Rate %</TableHead>
+                            <TableHead className="text-right">Commission</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {commissionRows.map((r) => (
+                            <TableRow key={r.id}>
+                              <TableCell>{String(r.date || '').slice(0,10)}</TableCell>
+                              <TableCell>{r.service}</TableCell>
+                              <TableCell className="text-right">${r.gross.toFixed(2)}</TableCell>
+                              <TableCell className="text-right">{r.rate.toFixed(2)}</TableCell>
+                              <TableCell className="text-right">${r.commission.toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="activity">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Appointments</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {appointments.length === 0 ? (
+                    <div className="text-sm text-muted-foreground p-6">No appointments in this period</div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {appointments.map((a) => (
+                          <TableRow key={a.id}>
+                            <TableCell>{a.appointment_date}</TableCell>
+                            <TableCell>
+                              {a.status ? (
+                                <Badge variant={a.status === 'completed' ? 'default' : a.status === 'cancelled' ? 'secondary' : 'outline'} className="capitalize">
+                                  {a.status}
+                                </Badge>
+                              ) : '—'}
+                            </TableCell>
+                            <TableCell className="text-right">${Number(a.total_amount || 0).toFixed(2)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="schedule">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2"><Calendar className="w-4 h-4"/> Schedule</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-6 md:grid-cols-2">
+                  <div className="rounded-lg border p-3 bg-white">
+                    <CalendarPicker
+                      mode="single"
+                      selected={scheduleDate}
+                      onSelect={(d) => d && setScheduleDate(d)}
+                      className="rounded-md"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm text-slate-600">Selected date</div>
+                      <div className="text-sm font-medium text-slate-900">{scheduleDate.toISOString().slice(0,10)}</div>
+                    </div>
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Time</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {appointments.filter((a) => String(a.appointment_date).slice(0,10) === scheduleDate.toISOString().slice(0,10)).length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={3} className="text-sm text-muted-foreground">No appointments on this date</TableCell>
+                            </TableRow>
+                          ) : (
+                            appointments
+                              .filter((a) => String(a.appointment_date).slice(0,10) === scheduleDate.toISOString().slice(0,10))
+                              .map((a) => (
+                                <TableRow key={a.id}>
+                                  <TableCell>{String(a.appointment_date).split('T')[1] ? String(a.appointment_date).split('T')[1].slice(0,5) : '—'}</TableCell>
+                                  <TableCell>
+                                    {a.status ? (
+                                      <Badge variant={a.status === 'completed' ? 'default' : a.status === 'cancelled' ? 'secondary' : 'outline'} className="capitalize">
+                                        {a.status}
+                                      </Badge>
+                                    ) : '—'}
+                                  </TableCell>
+                                  <TableCell className="text-right">${Number(a.total_amount || 0).toFixed(2)}</TableCell>
+                                </TableRow>
+                              ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="gallery">
+              <Card>
+                <CardHeader className="flex items-center justify-between">
+                  <CardTitle className="text-base">Work Gallery</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="text-sm text-slate-600">Showcase this staff member's work</div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        ref={galleryInputRef}
+                        className="hidden"
+                        multiple
+                        onChange={handleGalleryUpload}
+                      />
+                      <Button onClick={handleGalleryPick} disabled={galleryUploading}>
+                        <ImagePlus className="w-4 h-4 mr-2" />
+                        {galleryUploading ? 'Uploading...' : 'Add Images'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {gallery.length === 0 ? (
+                    <div className="text-sm text-muted-foreground p-6">No images yet. Click "Add Images" to upload.</div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {gallery.map((item) => (
+                        <div key={item.id} className="group relative overflow-hidden rounded-lg border bg-white shadow-sm">
+                          <img
+                            src={item.public_url}
+                            alt={item.caption || 'Work photo'}
+                            className="h-40 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
+                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button size="icon" variant="destructive" className="h-8 w-8" onClick={() => handleDeleteGalleryItem(item)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        <div className="space-y-4">
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base">Profile</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-slate-600">Status</div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-600">Inactive</span>
+                  <Switch checked={staff.is_active} onCheckedChange={handleToggleActive} />
+                  <span className="text-xs text-slate-900 font-medium">Active</span>
+                </div>
+              </div>
+              <Separator />
+              <div className="grid grid-cols-1 gap-3 text-sm">
+                {staff.email && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600">Email</span>
+                    <span className="font-medium text-slate-900 truncate max-w-[180px]">{staff.email}</span>
+                  </div>
+                )}
+                {staff.phone && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600">Phone</span>
+                    <span className="font-medium text-slate-900">{staff.phone}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-600">Commission</span>
+                  {commissionEditing ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.5}
+                        value={commissionDraft}
+                        onChange={(e) => setCommissionDraft(e.target.value === '' ? '' : Number(e.target.value))}
+                        className="h-8 w-24"
+                      />
+                      <Button size="sm" onClick={handleSaveCommission}>Save</Button>
+                      <Button size="sm" variant="outline" onClick={() => { setCommissionEditing(false); setCommissionDraft(typeof staff.commission_rate === 'number' ? Number(staff.commission_rate) : ''); }}>Cancel</Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-slate-900">{typeof staff.commission_rate === 'number' ? `${staff.commission_rate}%` : '—'}</span>
+                      <Button size="sm" variant="outline" onClick={() => setCommissionEditing(true)}>Edit</Button>
+                    </div>
+                  )}
+                </div>
+                {staff.hire_date && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600">Hired</span>
+                    <span className="font-medium text-slate-900">{staff.hire_date}</span>
+                  </div>
+                )}
+              </div>
+              {staff.specialties && staff.specialties.length > 0 && (
+                <div>
+                  <div className="text-sm text-slate-600 mb-2">Specialties</div>
+                  <div className="flex flex-wrap gap-1">
+                    {staff.specialties.slice(0, 8).map((s) => (
+                      <Badge key={s} variant="outline" className="text-xs">{s}</Badge>
+                    ))}
+                    {staff.specialties.length > 8 && (
+                      <Badge variant="outline" className="text-xs">+{staff.specialties.length - 8} more</Badge>
                     )}
-                  </Avatar>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full p-0"
-                    onClick={handleAvatarFilePick}
-                    disabled={avatarUploading}
-                  >
-                    <Camera className="w-3 h-3" />
-                  </Button>
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-semibold">{staff.full_name}</h2>
-                    <Badge variant={staff.is_active ? 'default' : 'secondary'}>
-                      {staff.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </div>
-                  <div className="text-slate-600 text-sm flex flex-wrap items-center gap-3 mt-1">
-                    {staff.email && <span className="truncate">{staff.email}</span>}
-                    {staff.phone && <span>{staff.phone}</span>}
-                    {typeof staff.commission_rate === 'number' && <span>{staff.commission_rate}% commission</span>}
                   </div>
                 </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base">Notes</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Textarea
+                placeholder="Add private notes about this staff member (visible to admins only)"
+                value={notesDraft}
+                onChange={(e) => setNotesDraft(e.target.value)}
+                rows={6}
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setNotesDraft(staff.notes || '')}>Reset</Button>
+                <Button onClick={handleSaveNotes}>Save Notes</Button>
               </div>
             </CardContent>
           </Card>
 
           <Card className="shadow-sm">
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2"><Calendar className="w-4 h-4"/> Period Summary</CardTitle>
+              <CardTitle className="text-base">Tips</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-3">
-              <div>
-                <div className="text-sm text-slate-600">Appointments</div>
-                <div className="text-xl font-semibold">{totals.apptCount}</div>
-              </div>
-              <div>
-                <div className="text-sm text-slate-600">Services</div>
-                <div className="text-xl font-semibold">{totals.services}</div>
-              </div>
-              <div>
-                <div className="text-sm text-slate-600">Avg. $/Service</div>
-                <div className="text-xl font-semibold">${totals.avgPerService.toFixed(2)}</div>
-              </div>
+            <CardContent className="text-sm text-slate-600 space-y-2">
+              <p>Use the date presets to quickly analyze this staff member's performance over common periods.</p>
+              <p>Upload work photos to keep a portfolio that you can showcase to clients.</p>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="commissions">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Commission Details</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {commissionRows.length === 0 ? (
-                <div className="text-sm text-muted-foreground p-6">No commissions in this period</div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Service</TableHead>
-                      <TableHead className="text-right">Gross</TableHead>
-                      <TableHead className="text-right">Rate %</TableHead>
-                      <TableHead className="text-right">Commission</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {commissionRows.map((r) => (
-                      <TableRow key={r.id}>
-                        <TableCell>{String(r.date || '').slice(0,10)}</TableCell>
-                        <TableCell>{r.service}</TableCell>
-                        <TableCell className="text-right">${r.gross.toFixed(2)}</TableCell>
-                        <TableCell className="text-right">{r.rate.toFixed(2)}</TableCell>
-                        <TableCell className="text-right">${r.commission.toFixed(2)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="activity">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Appointments</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {appointments.length === 0 ? (
-                <div className="text-sm text-muted-foreground p-6">No appointments in this period</div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {appointments.map((a) => (
-                      <TableRow key={a.id}>
-                        <TableCell>{a.appointment_date}</TableCell>
-                        <TableCell>{a.status || '—'}</TableCell>
-                        <TableCell className="text-right">${Number(a.total_amount || 0).toFixed(2)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="gallery">
-          <Card>
-            <CardHeader className="flex items-center justify-between">
-              <CardTitle className="text-base">Work Gallery</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between mb-4">
-                <div className="text-sm text-slate-600">Showcase this staff member's work</div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    ref={galleryInputRef}
-                    className="hidden"
-                    multiple
-                    onChange={handleGalleryUpload}
-                  />
-                  <Button onClick={handleGalleryPick} disabled={galleryUploading}>
-                    <ImagePlus className="w-4 h-4 mr-2" />
-                    {galleryUploading ? 'Uploading...' : 'Add Images'}
-                  </Button>
-                </div>
-              </div>
-
-              {gallery.length === 0 ? (
-                <div className="text-sm text-muted-foreground p-6">No images yet. Click "Add Images" to upload.</div>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {gallery.map((item) => (
-                    <div key={item.id} className="group relative overflow-hidden rounded-lg border bg-white shadow-sm">
-                      <img
-                        src={item.public_url}
-                        alt={item.caption || 'Work photo'}
-                        className="h-40 w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        loading="lazy"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button size="icon" variant="destructive" className="h-8 w-8" onClick={() => handleDeleteGalleryItem(item)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
     </div>
   );
 }
