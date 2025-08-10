@@ -81,10 +81,6 @@ export function AppTopbar() {
         <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0">
           <SidebarTrigger className="md:hidden" />
 
-          <Button size="sm" className="inline-flex bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700" onClick={() => navigate('/pos')}>
-            POS
-          </Button>
-
           {organizations.length > 1 && (
             <Select value={organization?.id || ""} onValueChange={switchOrganization}>
               <SelectTrigger className="w-44 md:w-56 bg-muted/50">
@@ -117,6 +113,11 @@ export function AppTopbar() {
         </div>
 
         <div className="flex items-center gap-2 md:gap-3">
+          <Button size="sm" className="inline-flex gap-2 px-4 bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700" onClick={() => navigate('/pos')}>
+            <CreditCard className="w-4 h-4" />
+            POS
+          </Button>
+
           {isTrialing && daysLeftInTrial !== null && daysLeftInTrial <= 3 && (
             <Button variant="outline" size="sm" className="hidden sm:inline-flex border-amber-200 text-amber-700 hover:bg-amber-50" onClick={() => navigate("/settings")}> 
               <CreditCard className="w-4 h-4 mr-2" />
