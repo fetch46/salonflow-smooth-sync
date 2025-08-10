@@ -48,7 +48,7 @@ import { CreateButtonGate, FeatureGate, UsageBadge } from "@/components/features
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useNavigate } from "react-router-dom";
-import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { useOrganizationCurrency, useOrganization } from "@/lib/saas/hooks";
 
 interface Staff {
   id: string;
