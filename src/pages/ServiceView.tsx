@@ -64,7 +64,7 @@ export default function ServiceView() {
   const [service, setService] = useState<Service | null>(null);
   const [serviceKits, setServiceKits] = useState<ServiceKit[]>([]);
   const [loading, setLoading] = useState(true);
-  const [salesHistory, setSalesHistory] = useState<SalesHistoryRow[]>([]);
+  const [serviceSalesHistory, setServiceSalesHistory] = useState<SalesHistoryRow[]>([]);
   const [salesLoading, setSalesLoading] = useState<boolean>(false);
 
 
@@ -138,7 +138,7 @@ export default function ServiceView() {
       // Fetch sales history for this service
       setSalesLoading(true);
       const rows = await getReceiptItemsByServiceWithFallback(supabase, String(id));
-      setSalesHistory(rows);
+      setServiceSalesHistory(rows);
     } catch (error) {
       console.error("Error fetching service data:", error);
     } finally {
@@ -165,8 +165,8 @@ export default function ServiceView() {
   const totalKitCost = serviceKits.reduce((total, kit) => 
     total + (kit.default_quantity * (kit.inventory_items.cost_price || 0)), 0
   );
-  const totalSoldQty = salesHistory.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
-  const totalRevenue = salesHistory.reduce((s, r) => s + (Number(r.total_price) || 0), 0);
+  const totalSoldQty = serviceSalesHistory.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+  const totalRevenue = serviceSalesHistory.reduce((s, r) => s + (Number(r.total_price) || 0), 0);
 
   if (loading) {
     return (
@@ -521,12 +521,12 @@ export default function ServiceView() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {salesHistory.length === 0 ? (
+                    {serviceSalesHistory.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center text-muted-foreground">No sales recorded.</TableCell>
                       </TableRow>
                     ) : (
-                      salesHistory.map((row) => (
+                      serviceSalesHistory.map((row) => (
                         <TableRow key={row.id}>
                           <TableCell>{row.receipt_created_at ? new Date(row.receipt_created_at).toLocaleDateString() : (row.created_at ? new Date(row.created_at).toLocaleDateString() : '—')}</TableCell>
                           <TableCell className="font-medium">
