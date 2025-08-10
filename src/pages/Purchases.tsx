@@ -239,7 +239,12 @@ export default function Purchases() {
     try {
       // Apply inventory level updates and track received per item
       for (const item of selectedPurchaseItems) {
-        const qty = Number(receiveQuantities[item.item_id] || 0);
+        const qtyRequested = Number(receiveQuantities[item.item_id] || 0);
+        if (qtyRequested <= 0) continue;
+        const alreadyReceived = Number(item.received_quantity || 0);
+        const expected = Number(item.quantity || 0);
+        const remainingToReceive = Math.max(0, expected - alreadyReceived);
+        const qty = Math.min(qtyRequested, remainingToReceive);
         if (qty <= 0) continue;
         const { data: levels } = await supabase
           .from("inventory_levels")
@@ -259,7 +264,7 @@ export default function Purchases() {
             .insert([{ item_id: item.item_id, location_id: receiveLocationId, quantity: qty }]);
         }
         // Update purchase_items.received_quantity
-        const newReceived = Math.min((item.received_quantity || 0) + qty, item.quantity || 0);
+        const newReceived = Math.min(alreadyReceived + qty, expected);
         await supabase
           .from("purchase_items")
           .update({ received_quantity: newReceived })
