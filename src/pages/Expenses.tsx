@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useSaas } from "@/lib/saas";
 
+
 interface Expense {
   id: string;
   expense_number: string;
@@ -286,26 +287,14 @@ export default function Expenses() {
           .single();
 
         if (error) throw error;
-        // If marked paid and a paid-from account is chosen, upsert banking transaction
-        if (expenseData.status === "paid" && paidFromAccountId) {
-          const desc = `Expense ${updated.expense_number} - ${updated.vendor_name}`;
-          await upsertExpenseBankTransaction(updated.id, amountNumber, updated.expense_date, desc, paidFromAccountId, updated.location_id);
+
         }
         toast({
           title: "Success",
           description: "Expense updated successfully",
         });
       } else {
-        const { data: inserted, error } = await supabase
-          .from("expenses")
-          .insert([expenseData])
-          .select("*")
-          .single();
 
-        if (error) throw error;
-        if (expenseData.status === "paid" && paidFromAccountId) {
-          const desc = `Expense ${inserted.expense_number} - ${inserted.vendor_name}`;
-          await upsertExpenseBankTransaction(inserted.id, amountNumber, inserted.expense_date, desc, paidFromAccountId, inserted.location_id);
         }
         toast({
           title: "Success",

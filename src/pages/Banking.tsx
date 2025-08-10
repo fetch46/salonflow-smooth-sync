@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, CreditCard, Search } from "lucide-react";
 import { useSaas } from "@/lib/saas";
+import { postAccountTransfer } from "@/utils/ledger";
 
 interface AccountRow {
   id: string;
@@ -33,6 +34,12 @@ export default function Banking() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferFromId, setTransferFromId] = useState<string>("");
+  const [transferToId, setTransferToId] = useState<string>("");
+  const [transferAmount, setTransferAmount] = useState<string>("");
+  const [transferDate, setTransferDate] = useState<string>(() => new Date().toISOString().slice(0,10));
+  const [transferLoading, setTransferLoading] = useState(false);
 
   const loadAccounts = useCallback(async () => {
     if (!organization?.id) {
@@ -145,6 +152,31 @@ export default function Banking() {
 
   const selectedAccount = useMemo(() => accounts.find(a => a.id === selectedAccountId), [accounts, selectedAccountId]);
 
+  const doTransfer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!organization?.id) return;
+    const amt = parseFloat(transferAmount || '0');
+    if (!transferFromId || !transferToId || transferFromId === transferToId || isNaN(amt) || amt <= 0) return;
+    setTransferLoading(true);
+    try {
+      await postAccountTransfer({
+        organizationId: organization.id,
+        amount: amt,
+        fromAccountId: transferFromId,
+        toAccountId: transferToId,
+        transferDate,
+        description: `Transfer ${amt} from ${transferFromId} to ${transferToId}`,
+      });
+      setTransferOpen(false);
+      setTransferFromId("");
+      setTransferToId("");
+      setTransferAmount("");
+      await loadTransactions();
+    } finally {
+      setTransferLoading(false);
+    }
+  };
+
   return (
     <div className="flex-1 space-y-6 p-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -166,6 +198,7 @@ export default function Banking() {
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
             Refresh
           </Button>
+          <Button variant="default" onClick={() => { setTransferOpen(true); setTransferFromId(selectedAccountId); setTransferToId(""); setTransferAmount(""); setTransferDate(new Date().toISOString().slice(0,10)); }}>Transfer</Button>
         </div>
       </div>
 
@@ -229,6 +262,44 @@ export default function Banking() {
           )}
         </CardContent>
       </Card>
+
+      {transferOpen && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-4 w-full max-w-md">
+            <div className="text-lg font-semibold mb-3">Transfer Between Accounts</div>
+            <form onSubmit={doTransfer} className="space-y-3">
+              <div className="space-y-1">
+                <div className="text-sm text-slate-600">From</div>
+                <select className="border rounded px-3 py-2 w-full" value={transferFromId} onChange={(e) => setTransferFromId(e.target.value)}>
+                  <option value="">Select account</option>
+                  {accounts.map(a => (<option key={a.id} value={a.id}>{a.account_code} · {a.account_name}</option>))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <div className="text-sm text-slate-600">To</div>
+                <select className="border rounded px-3 py-2 w-full" value={transferToId} onChange={(e) => setTransferToId(e.target.value)}>
+                  <option value="">Select account</option>
+                  {accounts.map(a => (<option key={a.id} value={a.id}>{a.account_code} · {a.account_name}</option>))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <div className="text-sm text-slate-600">Amount</div>
+                  <Input type="number" step="0.01" min="0" value={transferAmount} onChange={(e) => setTransferAmount(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <div className="text-sm text-slate-600">Date</div>
+                  <Input type="date" value={transferDate} onChange={(e) => setTransferDate(e.target.value)} />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setTransferOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={transferLoading}>{transferLoading ? 'Transferring...' : 'Transfer'}</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useSaas } from "@/lib/saas";
+import { postReceiptPaymentToLedger } from "@/utils/ledger";
 
 const Booking = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -28,6 +30,7 @@ const Booking = () => {
   const [reservationAmount, setReservationAmount] = useState("");
   const [reservationPaymentMethod, setReservationPaymentMethod] = useState("");
   const [reservationTransactionNumber, setReservationTransactionNumber] = useState("");
+  const { organization } = useSaas();
 
   const steps = [
     { number: 1, title: "Services", icon: User },
@@ -108,6 +111,21 @@ const Booking = () => {
             },
           ]);
         if (payErr) throw payErr;
+
+        // Post to ledger
+        if (organization?.id) {
+          try {
+            await postReceiptPaymentToLedger({
+              organizationId: organization.id,
+              amount: Number(reservationAmount),
+              method: reservationPaymentMethod,
+              receiptId: receipt.id,
+              receiptNumber,
+            });
+          } catch (ledgerErr) {
+            console.warn('Ledger posting failed (booking reservation)', ledgerErr);
+          }
+        }
       }
 
       console.log("Booking submitted:", bookingData);
