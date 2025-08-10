@@ -36,7 +36,7 @@ export default function Banking() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
 
-  const [transferOpen, setTransferOpen] = useState(false);
+  const [isTransferOpen, setIsTransferOpen] = useState(false);
   const [transferFromId, setTransferFromId] = useState<string>("");
   const [transferToId, setTransferToId] = useState<string>("");
   const [transferAmount, setTransferAmount] = useState<string>("");
@@ -160,7 +160,7 @@ export default function Banking() {
     setTransferToId("");
     setTransferAmount("");
     setTransferDate(new Date().toISOString().slice(0, 10));
-    setTransferOpen(true);
+    setIsTransferOpen(true);
   };
 
   const doTransfer = async (e: React.FormEvent) => {
@@ -195,7 +195,7 @@ export default function Banking() {
         locationId: null,
       });
       if (!ok) throw new Error("Transfer failed");
-      setTransferOpen(false);
+      setIsTransferOpen(false);
       await onRefresh();
     } catch (err) {
       console.error(err);
@@ -295,7 +295,7 @@ export default function Banking() {
         </CardContent>
       </Card>
 
-      {transferOpen && (
+      {isTransferOpen && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-4 w-full max-w-md">
             <div className="text-lg font-semibold mb-3">Transfer Between Accounts</div>
@@ -325,7 +325,7 @@ export default function Banking() {
                 </div>
               </div>
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setTransferOpen(false)}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={() => setIsTransferOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={transferLoading}>{transferLoading ? 'Transferring...' : 'Transfer'}</Button>
               </div>
             </form>
