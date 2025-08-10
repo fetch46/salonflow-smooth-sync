@@ -194,10 +194,11 @@ export default function ReceiptView() {
   const commissionIndex = useMemo(() => {
     const map = new Map<string, number | null>();
     for (const js of jobServices || []) {
+      const rate = (js as any).commission_percentage ?? (js as any).services?.commission_percentage ?? null;
       const key = `${js.service_id || ''}::${js.staff_id || ''}`;
-      if (!map.has(key)) map.set(key, js.commission_percentage);
+      if (!map.has(key)) map.set(key, rate);
       const svcKey = `${js.service_id || ''}::`;
-      if (!map.has(svcKey)) map.set(svcKey, js.commission_percentage);
+      if (!map.has(svcKey)) map.set(svcKey, rate);
     }
     return map;
   }, [jobServices]);

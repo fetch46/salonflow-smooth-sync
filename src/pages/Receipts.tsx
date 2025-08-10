@@ -320,23 +320,22 @@ export default function Receipts() {
         supabase.from('receipts').select('id, status, total_amount, amount_paid').eq('job_card_id', jobcardId)
       ] as any);
 
-      const mappedItems = (items || []).map((it: any) => {
-        const svcRate = typeof it.services?.commission_percentage === 'number' ? it.services.commission_percentage : null;
-        const staffRate = typeof it.staff?.commission_rate === 'number' ? it.staff.commission_rate : null;
-        const overrideRate = typeof it.commission_percentage === 'number' ? it.commission_percentage : null;
-        const rate = (overrideRate ?? svcRate ?? staffRate ?? 0) as number;
-        return ({
-          service_id: it.service_id,
-          product_id: null,
-          description: it.services?.name || 'Service',
-          quantity: it.quantity || 1,
-          unit_price: it.unit_price || 0,
-          total_price: (it.quantity || 1) * (it.unit_price || 0),
-          staff_id: it.staff_id || null,
-          staff_name: it.staff?.full_name || null,
-          commission_percentage: rate,
+              const mappedItems = (items || []).map((it: any) => {
+          const svcRate = typeof it.services?.commission_percentage === 'number' ? it.services.commission_percentage : null;
+          const overrideRate = typeof it.commission_percentage === 'number' ? it.commission_percentage : null;
+          const rate = (overrideRate ?? svcRate ?? 0) as number; // prefer service item override, else service-level
+          return ({
+            service_id: it.service_id,
+            product_id: null,
+            description: it.services?.name || 'Service',
+            quantity: it.quantity || 1,
+            unit_price: it.unit_price || 0,
+            total_price: (it.quantity || 1) * (it.unit_price || 0),
+            staff_id: it.staff_id || null,
+            staff_name: it.staff?.full_name || null,
+            commission_percentage: rate,
+          });
         });
-      });
       setJobcardItems(mappedItems);
 
       if (rcpt && rcpt.length > 0) {

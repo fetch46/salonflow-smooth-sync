@@ -947,7 +947,7 @@ const Reports = () => {
                               const qty = Number(r.quantity || 1);
                               const unit = Number(r.unit_price || 0);
                               const gross = qty * unit;
-                              const rate = Number(r.service?.commission_percentage ?? r.staff?.commission_rate ?? 0);
+                              const rate = Number(r.commission_rate ?? r.service?.commission_percentage ?? 0);
                               const comm = gross * (Number(rate) || 0) / 100;
                               return (
                                 <TableRow key={r.id}>

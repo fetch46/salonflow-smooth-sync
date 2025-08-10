@@ -175,6 +175,7 @@ export default function Services() {
   const enrichServices = (services: Service[]): Service[] => {
     return services.map(service => ({
       ...service,
+
       popularity_score: Math.floor(Math.random() * 100),
       avg_rating: 4.0 + Math.random() * 1.0,
       total_bookings: Math.floor(Math.random() * 200) + 10
@@ -355,7 +356,7 @@ export default function Services() {
         price: formData.price,
         category: formData.category || null,
         is_active: formData.is_active,
-        commission_percentage: typeof formData.commission_percentage === 'number' ? formData.commission_percentage : 0,
+
       } as const;
 
       if (editingService) {
@@ -432,7 +433,7 @@ export default function Services() {
       price: service.price,
       category: service.category || "",
       is_active: service.is_active,
-      commission_percentage: !Number.isNaN(cp) ? cp : 10,
+
     });
     setEditingService(service);
     fetchServiceKits(service.id);
@@ -720,14 +721,13 @@ export default function Services() {
                     </div>
                     
                     <div>
-                      <Label htmlFor="commission_percentage">Commission Rate (%)</Label>
-                      <Input 
+         <Input 
                         id="commission_percentage" 
                         type="number" 
                         min="0" 
                         max="100" 
                         step="0.1" 
-                        value={formData.commission_percentage} 
+
                         onChange={(e) => setFormData({ ...formData, commission_percentage: parseFloat(e.target.value) || 0 })} 
                         placeholder="10.0"
                       />
@@ -1329,8 +1329,7 @@ export default function Services() {
                               </Badge>
                             )}
                           </div>
-                          
-                          {service.commission_percentage && (
+
                             <div className="text-xs text-slate-500">
                               {service.commission_percentage}% commission
                             </div>

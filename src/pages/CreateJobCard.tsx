@@ -81,6 +81,7 @@ interface Service {
   price: number;
   duration_minutes: number;
   category?: string;
+  commission_percentage?: number | null;
 }
 
 interface Appointment {
@@ -466,7 +467,7 @@ export default function CreateJobCard() {
           quantity: 1,
           unit_price: svc.price,
           duration_minutes: svc.duration_minutes,
-          // commission_percentage will be filled by DB default or used at reporting time
+          commission_percentage: (svc as any).commission_percentage ?? null,
         }));
         const { error: jcsError } = await supabase.from("job_card_services").insert(serviceRows);
         if (jcsError) throw jcsError;

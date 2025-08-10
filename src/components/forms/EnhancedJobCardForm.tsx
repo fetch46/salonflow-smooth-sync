@@ -49,6 +49,7 @@ interface Service {
   category?: string;
   price?: number;
   duration_minutes?: number;
+  commission_percentage?: number | null;
 }
 
 interface InventoryItem {
@@ -86,7 +87,7 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
       const [staffRes, clientsRes, servicesRes] = await Promise.all([
         supabase.from("staff").select("id, full_name").eq("is_active", true),
         supabase.from("clients").select("id, full_name, phone, email").eq("is_active", true),
-        supabase.from("services").select("id, name, category, price, duration_minutes").eq("is_active", true)
+        supabase.from("services").select("id, name, category, price, duration_minutes, commission_percentage").eq("is_active", true)
       ]);
 
       if (staffRes.data) setStaff(staffRes.data);
@@ -223,6 +224,7 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
             quantity: 1,
             unit_price: Number(svc.price || 0),
             duration_minutes: svc.duration_minutes || null,
+            commission_percentage: (svc as any).commission_percentage ?? null,
           }));
           const { error: jcsError } = await supabase.from("job_card_services").insert(rows as any);
           if (jcsError) throw jcsError;
