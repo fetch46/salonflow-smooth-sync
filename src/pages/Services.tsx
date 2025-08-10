@@ -199,22 +199,23 @@ export default function Services() {
 
         if (error) {
           // Fallback for environments where services table doesn't have organization_id yet
-          const message = (error as any)?.message || String(error);
-          const isMissingOrgId = /column\s+\"?organization_id\"?\s+does not exist/i.test(message);
-          const isRlsOrPermission = /permission denied|rls/i.test(message);
+          const code = (error as any)?.code
+          const message = (error as any)?.message || String(error)
+          const isMissingOrgId = code === '42703' || /column\s+("?[\w\.]*organization_id"?)\s+does not exist/i.test(message)
+          const isRlsOrPermission = /permission denied|rls/i.test(message)
 
           if (isMissingOrgId || isRlsOrPermission) {
             const { data: fallbackData, error: fallbackError } = await supabase
               .from("services")
               .select("*")
-              .order("created_at", { ascending: false });
+              .order("created_at", { ascending: false })
 
-            if (fallbackError) throw fallbackError;
-            setServices(enrichServices(fallbackData || []));
-            return;
+            if (fallbackError) throw fallbackError
+            setServices(enrichServices(fallbackData || []))
+            return
           }
 
-          throw error;
+          throw error
         }
 
         setServices(enrichServices(data || []));
@@ -407,14 +408,37 @@ export default function Services() {
       } else {
         if (!organization?.id) throw new Error("No active organization selected");
         const insertPayload = { ...payload, organization_id: organization.id } as any;
-        const { data, error } = await supabase
-          .from("services")
-          .insert([insertPayload])
-          .select('id')
-          .maybeSingle();
-        if (error) throw error;
+        let data: any | null = null
+        let error: any | null = null
+        try {
+          const res = await supabase
+            .from("services")
+            .insert([insertPayload])
+            .select('id')
+            .maybeSingle()
+          data = res.data
+          error = res.error
+        } catch (e: any) {
+          error = e
+        }
+        if (error) {
+          const code = (error as any)?.code
+          const message = (error as any)?.message || String(error)
+          const isMissingOrgId = code === '42703' || /column\s+("?[\w\.]*organization_id"?)\s+does not exist/i.test(message)
+          if (isMissingOrgId) {
+            const { data: retryData, error: retryError } = await supabase
+              .from("services")
+              .insert([{ ...payload }])
+              .select('id')
+              .maybeSingle()
+            if (retryError) throw retryError
+            data = retryData
+          } else {
+            throw error
+          }
+        }
         if (!data?.id) {
-          throw new Error('Service was created but no ID was returned');
+          throw new Error('Service was created but no ID was returned')
         }
         serviceId = data.id;
       }
@@ -433,13 +457,25 @@ export default function Services() {
             good_id: kit.good_id,
             default_quantity: kit.default_quantity,
             organization_id: organization.id,
-          }));
+          })) as any[]
 
+          // Try insert with organization_id, then retry without if column missing
           const { error: kitError } = await supabase
             .from("service_kits")
-            .insert(kitData);
-
-          if (kitError) throw kitError;
+            .insert(kitData)
+          if (kitError) {
+            const code = (kitError as any)?.code
+            const message = (kitError as any)?.message || String(kitError)
+            const isMissingOrgId = code === '42703' || /column\s+("?[\w\.]*organization_id"?)\s+does not exist/i.test(message)
+            if (isMissingOrgId) {
+              const { error: retryKitError } = await supabase
+                .from("service_kits")
+                .insert(kitData.map(k => ({ service_id: k.service_id, good_id: k.good_id, default_quantity: k.default_quantity })))
+              if (retryKitError) throw retryKitError
+            } else {
+              throw kitError
+            }
+          }
         }
       }
 
