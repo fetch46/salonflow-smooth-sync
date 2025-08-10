@@ -447,12 +447,12 @@ export default function EditJobCard() {
                           <TableRow key={row.id}>
                             <TableCell className="font-medium">{row.services?.name || 'Service'}</TableCell>
                             <TableCell>
-                              <Select value={currentStaffId || ''} onValueChange={(v) => updateServiceEdit(row.id, { staff_id: v || null })}>
+                              <Select value={(currentStaffId || '') === '' ? '__none__' : currentStaffId} onValueChange={(v) => updateServiceEdit(row.id, { staff_id: v === '__none__' ? null : v })}>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select staff" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="">—</SelectItem>
+                                  <SelectItem value="__none__">—</SelectItem>
                                   {staff.map((s) => (
                                     <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>
                                   ))}
