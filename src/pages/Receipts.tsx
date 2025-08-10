@@ -315,20 +315,28 @@ export default function Receipts() {
       setJobcardDetails(jc);
 
       const [{ data: items }, { data: client }, { data: rcpt } ] = await Promise.all([
-        supabase.from('job_card_services').select('service_id, staff_id, quantity, unit_price, services:service_id(name)').eq('job_card_id', jobcardId),
+        supabase.from('job_card_services').select('service_id, staff_id, quantity, unit_price, commission_percentage, services:service_id(name, commission_percentage), staff:staff_id(full_name, commission_rate)').eq('job_card_id', jobcardId),
         jc?.client_id ? supabase.from('clients').select('id, full_name').eq('id', jc.client_id).maybeSingle() : Promise.resolve({ data: null } as any),
         supabase.from('receipts').select('id, status, total_amount, amount_paid').eq('job_card_id', jobcardId)
       ] as any);
 
-      const mappedItems = (items || []).map((it: any) => ({
-        service_id: it.service_id,
-        product_id: null,
-        description: it.services?.name || 'Service',
-        quantity: it.quantity || 1,
-        unit_price: it.unit_price || 0,
-        total_price: (it.quantity || 1) * (it.unit_price || 0),
-        staff_id: it.staff_id || null,
-      }));
+      const mappedItems = (items || []).map((it: any) => {
+        const svcRate = typeof it.services?.commission_percentage === 'number' ? it.services.commission_percentage : null;
+        const staffRate = typeof it.staff?.commission_rate === 'number' ? it.staff.commission_rate : null;
+        const overrideRate = typeof it.commission_percentage === 'number' ? it.commission_percentage : null;
+        const rate = (overrideRate ?? svcRate ?? staffRate ?? 0) as number;
+        return ({
+          service_id: it.service_id,
+          product_id: null,
+          description: it.services?.name || 'Service',
+          quantity: it.quantity || 1,
+          unit_price: it.unit_price || 0,
+          total_price: (it.quantity || 1) * (it.unit_price || 0),
+          staff_id: it.staff_id || null,
+          staff_name: it.staff?.full_name || null,
+          commission_percentage: rate,
+        });
+      });
       setJobcardItems(mappedItems);
 
       if (rcpt && rcpt.length > 0) {
@@ -700,18 +708,22 @@ export default function Receipts() {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Description</TableHead>
+                            <TableHead>Staff</TableHead>
                             <TableHead>Qty</TableHead>
                             <TableHead>Unit</TableHead>
                             <TableHead>Total</TableHead>
+                            <TableHead>Commission %</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {jobcardItems.map((it, idx) => (
                             <TableRow key={idx}>
                               <TableCell>{it.description}</TableCell>
+                              <TableCell>{it.staff_name || '—'}</TableCell>
                               <TableCell>{it.quantity}</TableCell>
                               <TableCell>${Number(it.unit_price).toFixed(2)}</TableCell>
                               <TableCell>${Number(it.total_price).toFixed(2)}</TableCell>
+                              <TableCell>{Number(it.commission_percentage || 0).toFixed(2)}%</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
