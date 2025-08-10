@@ -187,7 +187,13 @@ BEGIN
     RAISE NOTICE 'All required functions exist and are properly configured';
 END $$;
 
--- 7. Completion message
+-- 7. Reload PostgREST schema to avoid cache issues
+DO $$
+BEGIN
+  PERFORM pg_notify('pgrst', 'reload schema');
+END $$;
+
+-- 8. Completion message
 DO $$
 BEGIN
     RAISE NOTICE 'Database setup completed successfully!';
