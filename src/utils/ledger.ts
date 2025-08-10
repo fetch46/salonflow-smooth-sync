@@ -241,6 +241,32 @@ export async function postReceiptPaymentToLedger(opts: {
   });
 }
 
+export async function postReceiptPaymentWithAccount(opts: {
+  organizationId: string;
+  amount: number;
+  depositAccountId: string; // Cash/Bank account to debit
+  receiptId: string;
+  receiptNumber?: string | null;
+  paymentDate?: string; // yyyy-mm-dd
+  locationId?: string | null;
+}): Promise<boolean> {
+  const { organizationId, amount, depositAccountId, receiptId, receiptNumber, paymentDate, locationId } = opts;
+  const incomeAccountId = await findDefaultIncomeAccountId(organizationId);
+  if (!incomeAccountId) return false;
+  const desc = `Receipt ${receiptNumber || receiptId} payment`;
+  return await postDoubleEntry({
+    organizationId,
+    amount,
+    transactionDate: paymentDate,
+    description: desc,
+    debitAccountId: depositAccountId,
+    creditAccountId: incomeAccountId,
+    referenceType: "receipt_payment",
+    referenceId: receiptId,
+    locationId: locationId || null,
+  });
+}
+
 export async function postExpensePaymentToLedger(opts: {
   organizationId: string;
   amount: number;
