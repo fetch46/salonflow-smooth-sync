@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -96,34 +97,6 @@ export default function Purchases() {
   // removed inline create/edit form state
 
   // Receiving workflow migrated to full pages (Goods Received)
-
-  const fetchSuppliers = useCallback(async () => {
-    try {
-      const { data, error } = await supabase.from("suppliers").select("id, name").eq("is_active", true).order("name");
-      if (error) throw error;
-      setSuppliers((data || []) as SupplierOption[]);
-    } catch (err) {
-      console.warn("Failed to load suppliers", err);
-      setSuppliers([]);
-    }
-  }, []);
-
-  const fetchPurchases = useCallback(async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("purchases")
-        .select("id, purchase_number, vendor_name, purchase_date, subtotal, tax_amount, total_amount, status, notes, created_at, updated_at")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      setPurchases((data || []) as Purchase[]);
-    } catch (e) {
-      console.error("Error loading purchases", e);
-      setPurchases([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   
   // Fetch suppliers for the vendor filter
