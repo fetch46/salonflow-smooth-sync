@@ -221,6 +221,19 @@ export default function Services() {
           throw error
         }
 
+        // If org-scoped query returned zero rows, try a compatibility fallback
+        if (!data || data.length === 0) {
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from("services")
+            .select("*")
+            .order("created_at", { ascending: false })
+
+          if (!fallbackError && fallbackData && fallbackData.length > 0) {
+            setServices(enrichServices(fallbackData))
+            return
+          }
+        }
+
         setServices(enrichServices(data || []));
         return;
       }

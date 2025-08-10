@@ -20,6 +20,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { useSaas } from "@/lib/saas";
+import { postReceiptPaymentToLedger } from "@/utils/ledger";
 
 interface Receipt {
   id: string;
@@ -42,6 +44,7 @@ export default function Receipts() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>("all");
   const { format: formatMoney } = useOrganizationCurrency();
+  const { organization } = useSaas();
   const [customers, setCustomers] = useState<{ id: string; full_name: string }[]>([]);
   const [customerId, setCustomerId] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState<string>("");
@@ -238,10 +241,26 @@ export default function Receipts() {
         reference_number: payment.reference || null,
       });
       if (!ok) throw new Error('Failed to record payment');
+
+      // Post to ledger (debit Cash/Bank, credit Income)
+      if (organization?.id) {
+        try {
+          await postReceiptPaymentToLedger({
+            organizationId: organization.id,
+            amount: amt,
+            method: payment.method,
+            receiptId: selected.id,
+            receiptNumber: selected.receipt_number,
+          });
+        } catch (ledgerErr) {
+          console.warn('Ledger posting failed', ledgerErr);
+        }
+      }
+
       toast.success('Payment recorded');
       setIsPayOpen(false);
       setSelected(null);
-      fetchReceipts();
+      await fetchReceipts();
     } catch (e) {
       console.error(e);
       toast.error('Failed to record payment');

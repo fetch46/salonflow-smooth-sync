@@ -10,10 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Plus, Search, Receipt, DollarSign, TrendingUp, AlertTriangle } from "lucide-react";
+import { Plus, Search, Receipt, DollarSign, TrendingUp, AlertTriangle, RefreshCw, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useSaas } from "@/lib/saas";
+
 
 interface Expense {
   id: string;
@@ -29,6 +30,7 @@ interface Expense {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  location_id: string | null;
 }
 
 interface AccountOption {
@@ -39,10 +41,16 @@ interface AccountOption {
   account_subtype: string | null;
 }
 
+interface LocationOption {
+  id: string;
+  name: string;
+}
+
 export default function Expenses() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const { toast } = useToast();
@@ -59,9 +67,15 @@ export default function Expenses() {
     receipt_url: "",
     status: "pending",
     notes: "",
+    location_id: "",
   });
 
   const [expenseAccounts, setExpenseAccounts] = useState<AccountOption[]>([]);
+  const [paymentAccounts, setPaymentAccounts] = useState<AccountOption[]>([]);
+  const [locations, setLocations] = useState<LocationOption[]>([]);
+  const [paidFromAccountId, setPaidFromAccountId] = useState<string>("");
+
+  const [locationFilter, setLocationFilter] = useState<string>("all");
 
   const fetchExpenses = useCallback(async () => {
     try {
@@ -72,7 +86,7 @@ export default function Expenses() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setExpenses(data || []);
+      setExpenses((data || []) as Expense[]);
     } catch (error) {
       console.error("Error fetching expenses:", error);
       toast({
@@ -85,9 +99,33 @@ export default function Expenses() {
     }
   }, [toast]);
 
+  const onRefresh = async () => {
+    try {
+      setRefreshing(true);
+      await fetchExpenses();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const fetchLocations = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("business_locations")
+        .select("id, name")
+        .order("name");
+      if (error) throw error;
+      setLocations((data || []) as LocationOption[]);
+    } catch (err) {
+      console.warn("Failed to load business locations", err);
+      setLocations([]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchExpenses();
-  }, [fetchExpenses]);
+    fetchLocations();
+  }, [fetchExpenses, fetchLocations]);
 
   const fetchExpenseAccounts = useCallback(async () => {
     try {
@@ -140,45 +178,124 @@ export default function Expenses() {
     }
   }, [organization?.id]);
 
+  const fetchPaymentAccounts = useCallback(async () => {
+    try {
+      const query = supabase
+        .from("accounts")
+        .select("id, account_code, account_name, account_type, account_subtype");
+      const { data, error } = await query;
+      if (error) throw error;
+      const list = (data || []) as AccountOption[];
+      // Prefer Cash/Bank when subtype exists; fallback to Asset type if subtype missing in schema
+      const filtered = list.filter(a =>
+        (a.account_subtype === "Cash" || a.account_subtype === "Bank") ||
+        (a.account_type === "Asset" && (!a.account_subtype || a.account_subtype === null))
+      );
+      // Sort by code
+      filtered.sort((a, b) => (a.account_code || "").localeCompare(b.account_code || ""));
+      setPaymentAccounts(filtered);
+    } catch (err) {
+      console.warn("Failed to load payment accounts", err);
+      setPaymentAccounts([]);
+    }
+  }, []);
+
   useEffect(() => {
     if (isModalOpen) {
       fetchExpenseAccounts();
+      fetchPaymentAccounts();
+      fetchLocations();
     }
-  }, [isModalOpen, fetchExpenseAccounts]);
-
+  }, [isModalOpen, fetchExpenseAccounts, fetchPaymentAccounts, fetchLocations]);
 
   const generateExpenseNumber = () => {
     const timestamp = Date.now().toString().slice(-6);
     return `EXP-${timestamp}`;
   };
 
+  const upsertExpenseBankTransaction = useCallback(async (
+    expId: string,
+    amountNumber: number,
+    transDate: string,
+    description: string,
+    accountId: string,
+    locId: string | null
+  ) => {
+    try {
+      // Check for existing transaction for this expense
+      const { data: existing, error: findErr } = await supabase
+        .from("account_transactions")
+        .select("id")
+        .eq("reference_type", "expense")
+        .eq("reference_id", expId)
+        .limit(1)
+        .maybeSingle();
+      if (findErr) throw findErr;
+
+      if (existing?.id) {
+        const { error: updErr } = await supabase
+          .from("account_transactions")
+          .update({
+            account_id: accountId,
+            transaction_date: transDate,
+            description,
+            debit_amount: 0,
+            credit_amount: amountNumber,
+            location_id: locId,
+          })
+          .eq("id", existing.id);
+        if (updErr) throw updErr;
+      } else {
+        const { error: insErr } = await supabase
+          .from("account_transactions")
+          .insert([{ 
+            account_id: accountId,
+            transaction_date: transDate,
+            description,
+            debit_amount: 0,
+            credit_amount: amountNumber,
+            reference_type: "expense",
+            reference_id: expId,
+            location_id: locId,
+          }]);
+        if (insErr) throw insErr;
+      }
+    } catch (txErr) {
+      console.error("Failed to upsert expense bank transaction", txErr);
+      toast({ title: "Warning", description: "Saved expense, but failed to record bank transaction.", variant: "destructive" });
+    }
+  }, [toast]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
+      const amountNumber = parseFloat(formData.amount) || 0;
       const expenseData = {
         ...formData,
         expense_number: formData.expense_number || generateExpenseNumber(),
-        amount: parseFloat(formData.amount) || 0,
-      };
+        amount: amountNumber,
+        location_id: formData.location_id || null,
+      } as any;
 
       if (editingExpense) {
-        const { error } = await supabase
+        const { data: updated, error } = await supabase
           .from("expenses")
           .update(expenseData)
-          .eq("id", editingExpense.id);
+          .eq("id", editingExpense.id)
+          .select("*")
+          .single();
 
         if (error) throw error;
+
+        }
         toast({
           title: "Success",
           description: "Expense updated successfully",
         });
       } else {
-        const { error } = await supabase
-          .from("expenses")
-          .insert([expenseData]);
 
-        if (error) throw error;
+        }
         toast({
           title: "Success",
           description: "Expense created successfully",
@@ -199,7 +316,7 @@ export default function Expenses() {
     }
   };
 
-  const handleEdit = (expense: Expense) => {
+  const handleEdit = async (expense: Expense) => {
     setEditingExpense(expense);
     setFormData({
       expense_number: expense.expense_number,
@@ -212,7 +329,22 @@ export default function Expenses() {
       receipt_url: expense.receipt_url || "",
       status: expense.status,
       notes: expense.notes || "",
+      location_id: expense.location_id || "",
     });
+    // Try to prefill paid-from account based on existing transaction
+    try {
+      const { data: existing, error } = await supabase
+        .from("account_transactions")
+        .select("id, account_id")
+        .eq("reference_type", "expense")
+        .eq("reference_id", expense.id)
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      setPaidFromAccountId(existing?.account_id || "");
+    } catch {
+      setPaidFromAccountId("");
+    }
     setIsModalOpen(true);
   };
 
@@ -253,15 +385,19 @@ export default function Expenses() {
       receipt_url: "",
       status: "pending",
       notes: "",
+      location_id: "",
     });
+    setPaidFromAccountId("");
   };
 
-  const filteredExpenses = expenses.filter((expense) =>
-    expense.expense_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    expense.vendor_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    expense.category?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredExpenses = expenses
+    .filter((expense) => locationFilter === "all" || expense.location_id === locationFilter)
+    .filter((expense) =>
+      expense.expense_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      expense.vendor_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (expense.category || "").toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
   const getStatusBadge = (status: string) => {
     const statusColors = {
@@ -279,11 +415,12 @@ export default function Expenses() {
   };
 
   const stats = {
-    total: expenses.length,
-    pending: expenses.filter(e => e.status === 'pending').length,
-    approved: expenses.filter(e => e.status === 'approved').length,
-    paid: expenses.filter(e => e.status === 'paid').length,
-    totalAmount: expenses.filter(e => e.status === 'paid').reduce((sum, e) => sum + e.amount, 0),
+    total: filteredExpenses.length,
+    pending: filteredExpenses.filter(e => e.status === 'pending').length,
+    approved: filteredExpenses.filter(e => e.status === 'approved').length,
+    paid: filteredExpenses.filter(e => e.status === 'paid').length,
+    totalAmount: filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0),
+    totalPaidAmount: filteredExpenses.filter(e => e.status === 'paid').reduce((sum, e) => sum + (e.amount || 0), 0),
   };
 
   if (loading) {
@@ -298,160 +435,225 @@ export default function Expenses() {
   }
 
   return (
-      <div className="flex-1 space-y-6 p-8 pt-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold tracking-tight">Expenses</h2>
-          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => { setEditingExpense(null); resetForm(); }}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Expense
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>{editingExpense ? "Edit Expense" : "Add New Expense"}</DialogTitle>
-                <DialogDescription>
-                  {editingExpense ? "Update the expense details." : "Fill in the expense information."}
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="expense_number">Expense Number</Label>
-                    <Input
-                      id="expense_number"
-                      placeholder="Auto-generated if empty"
-                      value={formData.expense_number}
-                      onChange={(e) => setFormData({ ...formData, expense_number: e.target.value })}
-                    />
+      <div className="flex-1 space-y-6 p-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-xl shadow-lg">
+              <Receipt className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">Expenses</h2>
+              <p className="text-slate-600">Track and manage your business expenses</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Search expenses..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 w-64"
+              />
+            </div>
+            <Select value={locationFilter} onValueChange={setLocationFilter}>
+              <SelectTrigger className="w-56">
+                <SelectValue placeholder="Filter by location" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Locations</SelectItem>
+                {locations.map(loc => (
+                  <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={onRefresh} disabled={refreshing}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={() => { setEditingExpense(null); resetForm(); }}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Expense
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>{editingExpense ? "Edit Expense" : "Add New Expense"}</DialogTitle>
+                  <DialogDescription>
+                    {editingExpense ? "Update the expense details." : "Fill in the expense information."}
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="expense_number">Expense Number</Label>
+                      <Input
+                        id="expense_number"
+                        placeholder="Auto-generated if empty"
+                        value={formData.expense_number}
+                        onChange={(e) => setFormData({ ...formData, expense_number: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="vendor_name">Vendor Name</Label>
+                      <Input
+                        id="vendor_name"
+                        placeholder="Enter vendor name"
+                        value={formData.vendor_name}
+                        onChange={(e) => setFormData({ ...formData, vendor_name: e.target.value })}
+                        required
+                      />
+                    </div>
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="vendor_name">Vendor Name</Label>
+                    <Label htmlFor="description">Description</Label>
                     <Input
-                      id="vendor_name"
-                      placeholder="Enter vendor name"
-                      value={formData.vendor_name}
-                      onChange={(e) => setFormData({ ...formData, vendor_name: e.target.value })}
+                      id="description"
+                      placeholder="Expense description"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       required
                     />
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Input
-                    id="description"
-                    placeholder="Expense description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    required
-                  />
-                </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="amount">Amount</Label>
+                      <Input
+                        id="amount"
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={formData.amount}
+                        onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="expense_date">Expense Date</Label>
+                      <Input
+                        id="expense_date"
+                        type="date"
+                        value={formData.expense_date}
+                        onChange={(e) => setFormData({ ...formData, expense_date: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="category">Account</Label>
+                      <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select expense account" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {expenseAccounts.map(acc => (
+                            <SelectItem key={acc.id} value={acc.account_name}>{acc.account_code} - {acc.account_name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="payment_method">Payment Method</Label>
+                      <Select value={formData.payment_method} onValueChange={(value) => setFormData({ ...formData, payment_method: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select payment method" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Cash">Cash</SelectItem>
+                          <SelectItem value="Credit Card">Credit Card</SelectItem>
+                          <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                          <SelectItem value="Check">Check</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="status">Status</Label>
+                      <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="paid">Paid</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="receipt_url">Receipt URL</Label>
+                      <Input
+                        id="receipt_url"
+                        placeholder="https://..."
+                        value={formData.receipt_url}
+                        onChange={(e) => setFormData({ ...formData, receipt_url: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="location">Location</Label>
+                      <Select value={formData.location_id} onValueChange={(value) => setFormData({ ...formData, location_id: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select location" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {locations.map(loc => (
+                            <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {formData.status === 'paid' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="paid_from">Paid From Account</Label>
+                        <Select value={paidFromAccountId} onValueChange={setPaidFromAccountId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Cash/Bank account" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {paymentAccounts.map(acc => (
+                              <SelectItem key={acc.id} value={acc.id}>{acc.account_code} - {acc.account_name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="amount">Amount</Label>
-                    <Input
-                      id="amount"
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={formData.amount}
-                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                      required
+                    <Label htmlFor="notes">Notes</Label>
+                    <Textarea
+                      id="notes"
+                      placeholder="Additional notes..."
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="expense_date">Expense Date</Label>
-                    <Input
-                      id="expense_date"
-                      type="date"
-                      value={formData.expense_date}
-                      onChange={(e) => setFormData({ ...formData, expense_date: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="category">Account</Label>
-                    <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select expense account" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {expenseAccounts.map(acc => (
-                          <SelectItem key={acc.id} value={acc.account_name}>{acc.account_code} - {acc.account_name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="flex justify-end space-x-2">
+                    <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit">
+                      {editingExpense ? "Update Expense" : "Add Expense"}
+                    </Button>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="payment_method">Payment Method</Label>
-                    <Select value={formData.payment_method} onValueChange={(value) => setFormData({ ...formData, payment_method: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select payment method" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Cash">Cash</SelectItem>
-                        <SelectItem value="Credit Card">Credit Card</SelectItem>
-                        <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-                        <SelectItem value="Check">Check</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="status">Status</Label>
-                    <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="paid">Paid</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="receipt_url">Receipt URL</Label>
-                    <Input
-                      id="receipt_url"
-                      placeholder="https://..."
-                      value={formData.receipt_url}
-                      onChange={(e) => setFormData({ ...formData, receipt_url: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes</Label>
-                  <Textarea
-                    id="notes"
-                    placeholder="Additional notes..."
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  />
-                </div>
-
-                <div className="flex justify-end space-x-2">
-                  <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit">
-                    {editingExpense ? "Update Expense" : "Add Expense"}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -463,6 +665,7 @@ export default function Expenses() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.total}</div>
+              <p className="text-xs text-muted-foreground">${stats.totalAmount.toFixed(2)} total</p>
             </CardContent>
           </Card>
           
@@ -492,22 +695,14 @@ export default function Expenses() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${stats.totalAmount.toFixed(2)}</div>
+              <div className="text-2xl font-bold">${stats.totalPaidAmount.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">{stats.paid} expenses</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Search */}
-        <div className="flex items-center space-x-2">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search expenses..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-sm"
-          />
-        </div>
+        {/* Filters Row (Search + Location) */}
+        {/* Kept above in header */}
 
         {/* Expenses Table */}
         <Card>
@@ -525,6 +720,7 @@ export default function Expenses() {
                   <TableHead>Vendor</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Category</TableHead>
+                  <TableHead>Location</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Status</TableHead>
@@ -538,6 +734,12 @@ export default function Expenses() {
                     <TableCell>{expense.vendor_name}</TableCell>
                     <TableCell>{expense.description}</TableCell>
                     <TableCell>{expense.category || "N/A"}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1 text-slate-700">
+                        <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                        {locations.find(l => l.id === expense.location_id)?.name || "-"}
+                      </div>
+                    </TableCell>
                     <TableCell>{format(new Date(expense.expense_date), "MMM dd, yyyy")}</TableCell>
                     <TableCell>${expense.amount.toFixed(2)}</TableCell>
                     <TableCell>{getStatusBadge(expense.status)}</TableCell>

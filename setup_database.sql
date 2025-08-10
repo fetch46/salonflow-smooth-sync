@@ -202,5 +202,3 @@ BEGIN
     RAISE NOTICE 'Database setup completed successfully!';
 END $$;
 
--- 9. Add Bank Reconciliation & Period Locking
-\i supabase/migrations/20250825090000_add_bank_reconciliation_and_period_lock.sql

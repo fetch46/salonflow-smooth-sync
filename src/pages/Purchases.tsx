@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSaas } from "@/lib/saas";
 import { useOrganizationTaxRate } from "@/lib/saas/hooks";
 import { Switch } from "@/components/ui/switch";
+import { postPurchasePaymentToLedger } from "@/utils/ledger";
 
 interface AccountOption { id: string; account_code: string; account_name: string; account_type: string; account_subtype: string | null; balance?: number | null }
 
@@ -694,6 +695,20 @@ export default function Purchases() {
         p_notes: null,
       });
       if (error) throw error;
+
+      // Post ledger entry: Dr Accounts Payable (2001), Cr selected Cash/Bank (selectedAccountId)
+      try {
+        await postPurchasePaymentToLedger({
+          organizationId: orgId,
+          amount: amt,
+          paidFromAccountId: selectedAccountId,
+          purchaseId: payPurchaseId,
+          paymentDate: payDate,
+        });
+      } catch (ledgerErr) {
+        console.warn('Ledger posting failed (purchase payment)', ledgerErr);
+      }
+
       toast({ title: "Paid", description: "Purchase payment recorded" });
       setIsPayDialogOpen(false);
       setPayPurchaseId(null);
