@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ArrowLeft, Calculator, Edit2, Eye, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 interface AccountRow {
   id: string;
@@ -37,6 +38,8 @@ export default function AccountView() {
   const [txns, setTxns] = useState<TransactionRow[]>([]);
   const [hasTransactions, setHasTransactions] = useState<boolean>(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [fromDate, setFromDate] = useState<string>("");
+  const [toDate, setToDate] = useState<string>("");
 
   useEffect(() => {
     (async () => {
@@ -70,23 +73,34 @@ export default function AccountView() {
     })();
   }, [id]);
 
+  const filteredTxns = useMemo(() => {
+    const fd = fromDate?.trim() || "";
+    const td = toDate?.trim() || "";
+    return (txns || []).filter((r) => {
+      const d = String(r.transaction_date || "").slice(0, 10);
+      if (fd && d < fd) return false;
+      if (td && d > td) return false;
+      return true;
+    });
+  }, [txns, fromDate, toDate]);
+
   const totals = useMemo(() => {
-    const debit = (txns || []).reduce((sum, r) => sum + Number(r.debit_amount || 0), 0);
-    const credit = (txns || []).reduce((sum, r) => sum + Number(r.credit_amount || 0), 0);
+    const debit = (filteredTxns || []).reduce((sum, r) => sum + Number(r.debit_amount || 0), 0);
+    const credit = (filteredTxns || []).reduce((sum, r) => sum + Number(r.credit_amount || 0), 0);
     return { debit, credit };
-  }, [txns]);
+  }, [filteredTxns]);
 
   const rowsWithRunning = useMemo(() => {
     let running = 0;
     const normal = (account?.normal_balance || "debit").toLowerCase();
     const preferDebit = normal === "debit";
-    return (txns || []).map((r) => {
+    return (filteredTxns || []).map((r) => {
       const d = Number(r.debit_amount || 0);
       const c = Number(r.credit_amount || 0);
       running += preferDebit ? (d - c) : (c - d);
       return { ...r, running_balance: running } as TransactionRow & { running_balance: number };
     });
-  }, [txns, account?.normal_balance]);
+  }, [filteredTxns, account?.normal_balance]);
 
   const onDelete = async () => {
     if (!id) return;
@@ -178,7 +192,22 @@ export default function AccountView() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Ledger</CardTitle>
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <CardTitle>Ledger</CardTitle>
+            <div className="flex gap-3 flex-wrap">
+              <div className="space-y-1">
+                <div className="text-xs text-slate-600">From</div>
+                <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-44" />
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs text-slate-600">To</div>
+                <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-44" />
+              </div>
+              {(fromDate || toDate) && (
+                <Button variant="outline" onClick={() => { setFromDate(""); setToDate(""); }}>Clear</Button>
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           {rowsWithRunning.length === 0 ? (

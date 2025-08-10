@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw, CreditCard, Search, Upload, Lock, Unlock, FileDown } from "lucide-react";
 import { useSaas } from "@/lib/saas";
 import { postAccountTransfer } from "@/utils/ledger";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 
 interface AccountRow {
@@ -44,6 +46,14 @@ export default function Banking() {
   const [transferAmount, setTransferAmount] = useState<string>("");
   const [transferDate, setTransferDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [transferLoading, setTransferLoading] = useState(false);
+
+  // Reconciliation state
+  const [reconOpen, setReconOpen] = useState(false);
+  const [reconLoading, setReconLoading] = useState(false);
+  const [unreconciled, setUnreconciled] = useState<any[]>([]);
+  const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[]>([]);
+  const [statementDate, setStatementDate] = useState<string>(() => new Date().toISOString().slice(0,10));
+  const [endingBalance, setEndingBalance] = useState<string>("");
 
 
   const loadAccounts = useCallback(async () => {
@@ -108,6 +118,23 @@ export default function Banking() {
     document.title = "Banking | SalonOS";
   }, []);
 
+  const loadUnreconciled = useCallback(async () => {
+    if (!selectedAccountId) { setUnreconciled([]); return; }
+    try {
+      setReconLoading(true);
+      const base = (import.meta.env.VITE_SERVER_URL || "/api").replace(/\/$/, "");
+      const resp = await fetch(`${base}/bank/unreconciled?bankAccountId=${encodeURIComponent(selectedAccountId)}`);
+      if (!resp.ok) throw new Error(`Failed to load unreconciled: ${resp.status}`);
+      const json = await resp.json();
+      setUnreconciled(json.items || []);
+    } catch (e) {
+      console.warn("Unreconciled fetch failed", e);
+      setUnreconciled([]);
+    } finally {
+      setReconLoading(false);
+    }
+  }, [selectedAccountId]);
+
   useEffect(() => {
     loadAccounts();
   }, [loadAccounts]);
@@ -115,6 +142,10 @@ export default function Banking() {
   useEffect(() => {
     loadTransactions();
   }, [loadTransactions]);
+
+  useEffect(() => {
+    if (reconOpen) loadUnreconciled();
+  }, [reconOpen, loadUnreconciled]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -167,6 +198,44 @@ export default function Banking() {
     setTransferAmount("");
     setTransferDate(new Date().toISOString().slice(0, 10));
     setIsTransferOpen(true);
+  };
+
+  const openReconcile = () => {
+    setSelectedPaymentIds([]);
+    setStatementDate(new Date().toISOString().slice(0,10));
+    setEndingBalance("");
+    setReconOpen(true);
+  };
+
+  const togglePayment = (pid: string) => {
+    setSelectedPaymentIds(prev => prev.includes(pid) ? prev.filter(id => id !== pid) : [...prev, pid]);
+  };
+
+  const submitReconcile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAccountId) return;
+    try {
+      setReconLoading(true);
+      const base = (import.meta.env.VITE_SERVER_URL || "/api").replace(/\/$/, "");
+      const resp = await fetch(`${base}/bank/reconcile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bankAccountId: selectedAccountId,
+          statementDate,
+          endingBalance: Number(endingBalance || 0),
+          paymentIds: selectedPaymentIds,
+        })
+      });
+      if (!resp.ok) throw new Error(`Reconcile failed: ${resp.status}`);
+      setReconOpen(false);
+      await Promise.all([loadTransactions(), loadUnreconciled()]);
+    } catch (err) {
+      console.error(err);
+      window.alert('Reconciliation failed. Ensure server is running and you have permissions.');
+    } finally {
+      setReconLoading(false);
+    }
   };
 
   const doTransfer = async (e: React.FormEvent) => {
@@ -235,6 +304,10 @@ export default function Banking() {
           <Button onClick={openTransfer}>
             <Upload className="w-4 h-4 mr-2" />
             Transfer
+          </Button>
+          <Button variant="outline" onClick={openReconcile} disabled={!selectedAccountId}>
+            <Lock className="w-4 h-4 mr-2" />
+            Reconcile
           </Button>
 
         </div>
@@ -338,6 +411,61 @@ export default function Banking() {
           </div>
         </div>
       )}
+
+      <Dialog open={reconOpen} onOpenChange={setReconOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Bank Reconciliation</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={submitReconcile} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <div className="text-sm text-slate-600 mb-1">Statement Date</div>
+                <Input type="date" value={statementDate} onChange={(e) => setStatementDate(e.target.value)} />
+              </div>
+              <div>
+                <div className="text-sm text-slate-600 mb-1">Ending Balance</div>
+                <Input type="number" step="0.01" value={endingBalance} onChange={(e) => setEndingBalance(e.target.value)} />
+              </div>
+            </div>
+            <div className="text-sm text-slate-600">Select payments to reconcile</div>
+            <div className="border rounded max-h-80 overflow-auto">
+              <Table className="min-w-[700px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10"></TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reconLoading ? (
+                    <TableRow><TableCell colSpan={4} className="text-center text-slate-500">Loading...</TableCell></TableRow>
+                  ) : (unreconciled || []).length === 0 ? (
+                    <TableRow><TableCell colSpan={4} className="text-center text-slate-500">No unreconciled payments</TableCell></TableRow>
+                  ) : (
+                    unreconciled.map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell>
+                          <input type="checkbox" checked={selectedPaymentIds.includes(p.id)} onChange={() => togglePayment(p.id)} />
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">{String(p.date || '').slice(0,10)}</TableCell>
+                        <TableCell className="max-w-[420px] truncate">{p.referenceType ? `${p.referenceType} #${p.referenceId || ''}` : 'Payment'}</TableCell>
+                        <TableCell className="text-right">{Number(p.amount || 0).toLocaleString()}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setReconOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={reconLoading || selectedPaymentIds.length === 0}>{reconLoading ? 'Reconciling...' : 'Reconcile'}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
