@@ -11,7 +11,6 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -62,6 +61,7 @@ import { format } from "date-fns";
 import ServicesTable from "@/components/services/ServicesTable";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { useOrganization } from "@/lib/saas/hooks";
+import { useNavigate } from "react-router-dom";
 
 interface Service {
   id: string;
@@ -153,6 +153,7 @@ export default function Services() {
  
   const { format: formatCurrency } = useOrganizationCurrency();
   const { organization } = useOrganization();
+  const navigate = useNavigate();
 
   const [serviceMetrics, setServiceMetrics] = useState<{
     totalRevenue: number;
@@ -645,20 +646,7 @@ export default function Services() {
   };
 
   const handleEdit = (service: Service) => {
-    const cp = Number((service as any).commission_percentage);
-    setFormData({
-      name: service.name,
-      description: service.description || "",
-      duration_minutes: service.duration_minutes,
-      price: service.price,
-      category: service.category || "",
-      is_active: service.is_active,
-      commission_percentage: isNaN(cp) ? 0 : cp,
-      location_id: (service as any).location_id || "",
-    });
-    setEditingService(service);
-    fetchServiceKits(service.id);
-    setIsModalOpen(true);
+    navigate(`/services/${service.id}/edit`);
   };
 
   const handleDelete = async (id: string) => {
@@ -834,290 +822,14 @@ export default function Services() {
             </DropdownMenuContent>
           </DropdownMenu>
           
-          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                onClick={resetForm}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                New Service
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
-              <DialogHeader className="pb-4 border-b">
-                <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                  <Scissors className="w-5 h-5 text-purple-600" />
-                  {editingService ? "Edit Service" : "Create New Service"}
-                </DialogTitle>
-                <DialogDescription className="text-slate-600">
-                  {editingService ? "Update service details and kit items" : "Add a new service with pricing and kit configuration"}
-                </DialogDescription>
-              </DialogHeader>
-              
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Basic Service Information */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                    <Info className="w-4 h-4 text-blue-600" />
-                    Service Details
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="md:col-span-2">
-                      <Label htmlFor="name">Service Name *</Label>
-                      <Input 
-                        id="name" 
-                        value={formData.name} 
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
-                        placeholder="e.g., Premium Hair Cut & Style"
-                        required 
-                      />
-                    </div>
-                    
-                    <div className="md:col-span-2">
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea 
-                        id="description" 
-                        value={formData.description} 
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })} 
-                        rows={3}
-                        placeholder="Describe what this service includes..."
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="category">Category</Label>
-                      <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SERVICE_CATEGORIES.map((category) => {
-                            const IconComponent = category.icon;
-                            return (
-                              <SelectItem key={category.name} value={category.name}>
-                                <div className="flex items-center gap-2">
-                                  <IconComponent className="w-4 h-4" />
-                                  {category.name}
-                                </div>
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="location_id">Location *</Label>
-                      <Select 
-                        value={formData.location_id}
-                        onValueChange={(value) => setFormData({ ...formData, location_id: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={locations.length ? "Select a location" : "No locations found"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {locations.map((loc) => (
-                            <SelectItem key={loc.id} value={loc.id}>
-                              {loc.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="duration">Duration</Label>
-                      <Select 
-                        value={formData.duration_minutes.toString()} 
-                        onValueChange={(value) => setFormData({ ...formData, duration_minutes: parseInt(value) })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {DURATION_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value.toString()}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="price">Price *</Label>
-                      <Input 
-                        id="price" 
-                        type="number" 
-                        min="0" 
-                        step="0.01" 
-                        value={formData.price} 
-                        onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })} 
-                        placeholder="0.00"
-                        required 
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="commission_percentage">Commission %</Label>
-                      <Input 
-                        id="commission_percentage" 
-                        type="number" 
-                        min="0" 
-                        max="100" 
-                        step="0.1" 
-                        value={formData.commission_percentage}
-                        onChange={(e) => setFormData({ ...formData, commission_percentage: parseFloat(e.target.value) || 0 })} 
-                        placeholder="10.0"
-                      />
-                    </div>
-                    
-                    <div className="md:col-span-2">
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="is_active"
-                          checked={formData.is_active}
-                          onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-                        />
-                        <Label htmlFor="is_active">Service is active and bookable</Label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Service Kit Section */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                        <ShoppingCart className="w-4 h-4 text-green-600" />
-                        Service Kit Configuration
-                      </h3>
-                      <p className="text-sm text-slate-600">Products and materials used for this service</p>
-                    </div>
-                    <Badge variant="outline" className="ml-2">
-                      {serviceKits.length} items
-                    </Badge>
-                  </div>
-
-                  {/* Add Product Selection */}
-                  <div>
-                    <Label htmlFor="addProduct">Add Product to Kit</Label>
-                    <Select value={selectedProductId} onValueChange={(value) => { addKitItem(value); setSelectedProductId("") }}> 
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a product to add..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableProducts
-                          .filter(product => !serviceKits.find(kit => kit.good_id === product.id))
-                          .map((product) => (
-                            <SelectItem key={product.id} value={product.id}>
-                              <div className="flex items-center justify-between w-full">
-                                <span>{product.name}</span>
-                                <span className="text-xs text-slate-500 ml-2">
-                                  {product.type} • ${product.cost_price?.toFixed(2) || '0.00'}
-                                </span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Current Kit Items */}
-                  {serviceKits.length > 0 && (
-                    <div className="space-y-3">
-                      <Label className="text-sm font-medium">Kit Items</Label>
-                      <div className="space-y-2 max-h-60 overflow-y-auto">
-                        {serviceKits.map((kit) => (
-                          <div key={kit.good_id} className="flex items-center justify-between p-3 border rounded-lg bg-slate-50">
-                            <div className="flex-1">
-                              <div className="font-medium text-sm">{kit.inventory_items.name}</div>
-                              <div className="text-xs text-slate-500">
-                                {kit.inventory_items.type} • {kit.inventory_items.unit || 'Each'} • ${kit.inventory_items.cost_price?.toFixed(2) || '0.00'}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="flex items-center gap-1">
-                                <Label htmlFor={`qty-${kit.good_id}`} className="text-xs">Qty:</Label>
-                                <Input
-                                  id={`qty-${kit.good_id}`}
-                                  type="number"
-                                  min="0"
-                                  step="0.1"
-                                  value={kit.default_quantity}
-                                  onChange={(e) => updateKitQuantity(kit.good_id, parseFloat(e.target.value) || 0)}
-                                  className="w-20 h-8 text-xs"
-                                />
-                              </div>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeKitItem(kit.good_id)}
-                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Kit Summary */}
-                      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-4 border border-emerald-200">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className="text-sm font-medium text-slate-700">Total Kit Cost</p>
-                            <p className="text-xs text-slate-500">
-                              Material costs for this service
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-lg font-bold text-emerald-600">
-                              ${serviceKits.reduce((total, kit) => 
-                                total + (kit.default_quantity * (kit.inventory_items.cost_price || 0)), 0
-                              ).toFixed(2)}
-                            </p>
-                            <p className="text-xs text-slate-500">
-                              Profit margin: {serviceKits.length > 0 ? 
-                                ((formData.price - serviceKits.reduce((total, kit) => 
-                                  total + (kit.default_quantity * (kit.inventory_items.cost_price || 0)), 0
-                                )) / formData.price * 100).toFixed(1) : 0}%
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {serviceKits.length === 0 && (
-                    <div className="text-center py-8 text-slate-500 border border-dashed rounded-lg bg-slate-50">
-                      <ShoppingCart className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No kit items added yet</p>
-                      <p className="text-xs">Select products above to build your service kit</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                  <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button 
-                    type="submit"
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                  >
-                    {editingService ? "Update Service" : "Create Service"}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+          {/* Replaced modal trigger with navigation to full page */}
+          <Button 
+            onClick={() => navigate('/services/new')}
+            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            New Service
+          </Button>
         </div>
       </div>
 
@@ -1443,7 +1155,7 @@ export default function Services() {
               </div>
               {!searchTerm && categoryFilter === "all" && (
                 <Button 
-                  onClick={() => setIsModalOpen(true)}
+                  onClick={() => navigate('/services/new')}
                   className="bg-purple-600 hover:bg-purple-700"
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -1498,11 +1210,11 @@ export default function Services() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuItem onClick={() => console.log("View service", service.id)}>
+                                <DropdownMenuItem onClick={() => navigate(`/services/${service.id}`)}>
                                   <Eye className="mr-2 h-4 w-4" />
                                   View Details
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleEdit(service)}>
+                                <DropdownMenuItem onClick={() => navigate(`/services/${service.id}/edit`)}>
                                   <Edit2 className="mr-2 h-4 w-4" />
                                   Edit Service
                                 </DropdownMenuItem>
