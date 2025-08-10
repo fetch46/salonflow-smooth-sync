@@ -1,19 +1,25 @@
 BEGIN;
 
--- Function to fetch a default storage location id
-CREATE OR REPLACE FUNCTION public.get_default_storage_location_id()
+-- Function to fetch a default business location id
+CREATE OR REPLACE FUNCTION public.get_default_business_location_id()
 RETURNS UUID AS $$
 DECLARE
   v_id UUID;
 BEGIN
-  -- Prefer an existing location named 'Main Storage'
-  SELECT id INTO v_id FROM public.storage_locations WHERE name = 'Main Storage' LIMIT 1;
+  -- Prefer an existing default location per organization
+  SELECT id INTO v_id FROM public.business_locations WHERE is_default = true LIMIT 1;
   IF v_id IS NOT NULL THEN
     RETURN v_id;
   END IF;
 
-  -- Otherwise pick the earliest created location
-  SELECT id INTO v_id FROM public.storage_locations ORDER BY created_at ASC NULLS LAST, id ASC LIMIT 1;
+  -- Otherwise prefer one named 'Main Location' or 'Main Storage'
+  SELECT id INTO v_id FROM public.business_locations WHERE name IN ('Main Location', 'Main Storage') ORDER BY name = 'Main Location' DESC, created_at ASC NULLS LAST LIMIT 1;
+  IF v_id IS NOT NULL THEN
+    RETURN v_id;
+  END IF;
+
+  -- Otherwise pick the earliest created active location
+  SELECT id INTO v_id FROM public.business_locations WHERE is_active = true ORDER BY is_default DESC, created_at ASC NULLS LAST, id ASC LIMIT 1;
   RETURN v_id;
 END;
 $$ LANGUAGE plpgsql;
@@ -26,7 +32,7 @@ DECLARE
   r_item RECORD;
 BEGIN
   -- Resolve a default location to apply the adjustment
-  v_loc := public.get_default_storage_location_id();
+  v_loc := public.get_default_business_location_id();
   IF v_loc IS NULL THEN
     -- No location available; nothing to do
     RETURN;
@@ -54,7 +60,7 @@ DECLARE
   v_loc UUID;
   r_item RECORD;
 BEGIN
-  v_loc := public.get_default_storage_location_id();
+  v_loc := public.get_default_business_location_id();
   IF v_loc IS NULL THEN
     RETURN;
   END IF;

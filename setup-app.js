@@ -155,21 +155,21 @@ async function setupApplication() {
       console.log('⚠️  Could not test database functions');
     }
 
-    // Step 3: Check if storage locations exist
-    console.log('\n📋 Step 3: Checking storage locations...');
-    const { data: locations, error: locationsError } = await supabase
-      .from('storage_locations')
-      .select('id, name')
-      .limit(5);
+    // Step 3: Check if business locations exist
+console.log('\n📋 Step 3: Checking business locations...');
+const { data: locations, error: locationsError } = await supabase
+  .from('business_locations')
+  .select('id, name')
+  .limit(5);
 
-    if (locationsError) {
-      console.log('⚠️  Could not check storage locations:', locationsError.message);
-    } else if (locations && locations.length > 0) {
-      console.log(`✅ Found ${locations.length} storage locations`);
-    } else {
-      console.log('⚠️  No storage locations found');
-      console.log('Default locations will be created when needed');
-    }
+if (locationsError) {
+  console.log('⚠️  Could not check business locations:', locationsError.message);
+} else if (locations && locations.length > 0) {
+  console.log(`✅ Found ${locations.length} business locations`);
+} else {
+  console.log('⚠️  No business locations found');
+  console.log('Default locations will be created when needed');
+}
 
     console.log('\n🎉 Setup check complete!');
     console.log('\n📋 Next steps:');

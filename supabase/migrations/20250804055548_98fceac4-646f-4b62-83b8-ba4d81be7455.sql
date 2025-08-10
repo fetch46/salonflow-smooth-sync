@@ -11,6 +11,7 @@
 
 -- The rest of this file created sample data for legacy storage locations; left as comments.
 
+/*
 -- Create inventory items table
 CREATE TABLE public.inventory_items (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -113,3 +114,4 @@ INSERT INTO public.service_kits (service_id, good_id, quantity) VALUES
   ((SELECT id FROM public.inventory_items WHERE sku = 'SV001'), (SELECT id FROM public.inventory_items WHERE sku = 'TW001'), 2),
   ((SELECT id FROM public.inventory_items WHERE sku = 'SV002'), (SELECT id FROM public.inventory_items WHERE sku = 'HD001'), 1),
   ((SELECT id FROM public.inventory_items WHERE sku = 'SV002'), (SELECT id FROM public.inventory_items WHERE sku = 'TW001'), 1);
+*/

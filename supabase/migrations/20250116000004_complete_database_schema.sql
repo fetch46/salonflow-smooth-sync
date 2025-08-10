@@ -581,7 +581,7 @@ ALTER TABLE staff ENABLE ROW LEVEL SECURITY;
 ALTER TABLE services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE storage_locations ENABLE ROW LEVEL SECURITY;
+-- storage_locations removed; use business_locations instead
 ALTER TABLE inventory_levels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE service_kits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE job_cards ENABLE ROW LEVEL SECURITY;
@@ -688,19 +688,7 @@ CREATE POLICY "Users can update their own profile" ON profiles
 CREATE POLICY "Users can insert their own profile" ON profiles
     FOR INSERT WITH CHECK (id = auth.uid());
 
--- Storage locations policy (global, but organization-scoped)
-CREATE POLICY "Users can view storage locations" ON storage_locations
-    FOR SELECT USING (true);
 
-CREATE POLICY "Users can manage storage locations" ON storage_locations
-    FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM organization_users 
-            WHERE user_id = auth.uid() 
-            AND role IN ('owner', 'admin', 'manager', 'staff')
-            AND is_active = true
-        )
-    );
 
 -- Policies for junction tables
 CREATE POLICY "Users can view inventory levels" ON inventory_levels
@@ -865,7 +853,6 @@ CREATE TRIGGER update_staff_updated_at BEFORE UPDATE ON staff FOR EACH ROW EXECU
 CREATE TRIGGER update_services_updated_at BEFORE UPDATE ON services FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_appointments_updated_at BEFORE UPDATE ON appointments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_inventory_items_updated_at BEFORE UPDATE ON inventory_items FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_storage_locations_updated_at BEFORE UPDATE ON storage_locations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_inventory_levels_updated_at BEFORE UPDATE ON inventory_levels FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_service_kits_updated_at BEFORE UPDATE ON service_kits FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_job_cards_updated_at BEFORE UPDATE ON job_cards FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -892,7 +879,6 @@ GRANT ALL ON staff TO authenticated;
 GRANT ALL ON services TO authenticated;
 GRANT ALL ON appointments TO authenticated;
 GRANT ALL ON inventory_items TO authenticated;
-GRANT ALL ON storage_locations TO authenticated;
 GRANT ALL ON inventory_levels TO authenticated;
 GRANT ALL ON service_kits TO authenticated;
 GRANT ALL ON job_cards TO authenticated;
@@ -910,14 +896,7 @@ GRANT ALL ON invoice_items TO authenticated;
 GRANT ALL ON inventory_adjustments TO authenticated;
 GRANT ALL ON inventory_adjustment_items TO authenticated;
 
--- Insert default storage locations
-INSERT INTO storage_locations (name, description) VALUES
-('Main Storage', 'Primary storage area'),
-('Back Room', 'Secondary storage area'),
-('Front Desk', 'Front desk storage'),
-('Treatment Room 1', 'Storage in treatment room 1'),
-('Treatment Room 2', 'Storage in treatment room 2')
-ON CONFLICT (name) DO NOTHING;
+
 
 -- Insert default accounts for new organizations
 -- This will be handled by the setup_new_organization function
