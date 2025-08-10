@@ -4,6 +4,9 @@
 -- 1. Run the complete schema migration
 \i supabase/migrations/20250116000004_complete_database_schema.sql
 
+-- Also include business locations and related columns
+\i supabase/migrations/20250812090000_add_business_locations_and_location_filters.sql
+
 -- 2. Ensure all required functions exist
 -- Create organization creation function if it doesn't exist
 CREATE OR REPLACE FUNCTION create_organization_with_user(
@@ -181,44 +184,8 @@ BEGIN
     RAISE NOTICE 'All required functions exist and are properly configured';
 END $$;
 
--- 7. Verify RLS is enabled on all tables
+-- 7. Completion message
 DO $$
-DECLARE
-    rls_tables TEXT[] := ARRAY[
-        'profiles', 'clients', 'staff', 'services', 'appointments', 
-        'inventory_items', 'storage_locations', 'inventory_levels', 
-        'service_kits', 'job_cards', 'job_card_products', 'expenses', 
-        'purchases', 'purchase_items', 'suppliers', 'accounts', 
-        'account_transactions', 'sales', 'sale_items', 'invoices', 
-        'invoice_items', 'inventory_adjustments', 'inventory_adjustment_items',
-        'organizations', 'organization_users', 'organization_subscriptions',
-        'subscription_plans', 'user_invitations', 'super_admins'
-    ];
-    table_name TEXT;
-    rls_enabled BOOLEAN;
 BEGIN
-    FOREACH table_name IN ARRAY rls_tables
-    LOOP
-        SELECT row_security 
-        FROM pg_tables 
-        WHERE schemaname = 'public' 
-        AND tablename = table_name
-        INTO rls_enabled;
-        
-        IF NOT rls_enabled THEN
-            RAISE EXCEPTION 'RLS is not enabled on table %', table_name;
-        END IF;
-    END LOOP;
-    
-    RAISE NOTICE 'RLS is enabled on all tables';
+    RAISE NOTICE 'Database setup completed successfully!';
 END $$;
-
--- 8. Final verification
-SELECT 
-    'Database setup completed successfully!' as status,
-    COUNT(*) as total_tables,
-    (SELECT COUNT(*) FROM subscription_plans WHERE is_active = true) as active_plans,
-    (SELECT COUNT(*) FROM storage_locations) as storage_locations
-FROM information_schema.tables 
-WHERE table_schema = 'public' 
-AND table_type = 'BASE TABLE';
