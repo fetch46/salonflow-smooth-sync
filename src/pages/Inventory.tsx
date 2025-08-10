@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Package, Trash2, Edit, MapPin } from "lucide-react";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
@@ -145,6 +146,13 @@ export default function Inventory() {
   const [searchQuery, setSearchQuery] = useState("");
   const [levels, setLevels] = useState<any[]>([]);
   const [levelsLoading, setLevelsLoading] = useState<boolean>(false);
+  // New: locations and filter
+  const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
+  const [locationsLoading, setLocationsLoading] = useState<boolean>(false);
+  const [selectedLocationId, setSelectedLocationId] = useState<string>("all");
+
+  // Currency formatter
+  const { format: formatMoney } = useOrganizationCurrency();
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -168,7 +176,7 @@ export default function Inventory() {
           item_id,
           location_id,
           quantity,
-          inventory_items ( name, sku ),
+          inventory_items ( name, sku, cost_price, selling_price ),
           storage_locations ( name )
         `)
         .order("location_id")
@@ -182,10 +190,28 @@ export default function Inventory() {
     }
   }, []);
 
+  // New: fetch storage locations
+  const fetchLocations = useCallback(async () => {
+    setLocationsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("storage_locations")
+        .select("id, name")
+        .order("name");
+      if (error) throw error;
+      setLocations((data || []) as { id: string; name: string }[]);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLocationsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchData();
     fetchLevels();
-  }, [fetchData, fetchLevels]);
+    fetchLocations();
+  }, [fetchData, fetchLevels, fetchLocations]);
 
   const handleItemSubmit = async (formData) => {
     try {
@@ -255,6 +281,23 @@ export default function Inventory() {
     return item.name.toLowerCase().includes(q) || (item.sku || '').toLowerCase().includes(q);
   });
 
+  // New: filter levels by selected location and compute metrics
+  const filteredLevels = selectedLocationId === 'all' ? levels : levels.filter(l => l.location_id === selectedLocationId);
+  const totals = (() => {
+    let totalQty = 0;
+    let totalCost = 0;
+    let totalSales = 0;
+    for (const lvl of filteredLevels) {
+      const qty = Number(lvl.quantity || 0);
+      const cost = Number(lvl.inventory_items?.cost_price || 0);
+      const price = Number(lvl.inventory_items?.selling_price || 0);
+      totalQty += qty;
+      totalCost += qty * cost;
+      totalSales += qty * price;
+    }
+    return { totalQty, totalCost, totalSales };
+  })();
+
   const TableSkeleton = () => (
     <div className="overflow-auto max-h-[65vh] rounded-lg border">
       <Table className="min-w-[720px]">
@@ -286,11 +329,62 @@ export default function Inventory() {
     <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8 py-6 space-y-6 lg:space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold">Inventory Management</h1>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Location Filter */}
+          <div className="flex items-center gap-2">
+            <Label className="text-sm">Location</Label>
+            <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder={locationsLoading ? 'Loading...' : 'All locations'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All locations</SelectItem>
+                {locations.map((loc) => (
+                  <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <Button onClick={() => { setEditingItem(null); setIsItemDialogOpen(true); }}>
             <Plus className="w-4 h-4 mr-2" /> Add Product
           </Button>
         </div>
+      </div>
+
+      {/* Metrics Dashboard */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card className="relative overflow-hidden border-0 shadow-lg">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-emerald-600 opacity-95" />
+          <CardHeader className="relative pb-2">
+            <CardTitle className="text-sm font-medium text-white/90">Cost Value</CardTitle>
+          </CardHeader>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-white">{formatMoney(totals.totalCost)}</div>
+            <p className="text-xs text-white/80">Stock at cost</p>
+          </CardContent>
+        </Card>
+
+        <Card className="relative overflow-hidden border-0 shadow-lg">
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-indigo-600 opacity-95" />
+          <CardHeader className="relative pb-2">
+            <CardTitle className="text-sm font-medium text-white/90">Sales Value</CardTitle>
+          </CardHeader>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-white">{formatMoney(totals.totalSales)}</div>
+            <p className="text-xs text-white/80">Stock at selling price</p>
+          </CardContent>
+        </Card>
+
+        <Card className="relative overflow-hidden border-0 shadow-lg">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-500 to-amber-600 opacity-95" />
+          <CardHeader className="relative pb-2">
+            <CardTitle className="text-sm font-medium text-white/90">Quantities in Stock</CardTitle>
+          </CardHeader>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-white">{new Intl.NumberFormat('en-US').format(totals.totalQty)}</div>
+            <p className="text-xs text-white/80">All products</p>
+          </CardContent>
+        </Card>
       </div>
 
       <ItemFormDialog
@@ -437,7 +531,7 @@ export default function Inventory() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {levels.map((lvl) => (
+                      {filteredLevels.map((lvl) => (
                         <TableRow key={lvl.id} className="hover:bg-muted/50">
                           <TableCell className="font-medium">{lvl.storage_locations?.name || lvl.location_id}</TableCell>
                           <TableCell>{lvl.inventory_items?.name || lvl.item_id}</TableCell>
