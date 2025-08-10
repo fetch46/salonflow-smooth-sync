@@ -3,6 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, Eye, Pencil, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -33,6 +36,8 @@ export default function Accounts() {
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState<Account | null>(null);
+  const [txHasRows, setTxHasRows] = useState<Record<string, boolean>>({});
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState({
     account_code: "",
     account_name: "",
@@ -101,6 +106,52 @@ export default function Accounts() {
       }
 
       setAccounts(data || []);
+      // Try to prefetch transaction existence per account (best-effort)
+      try {
+        const ids = (data || []).map((a: any) => a.id);
+        if (ids.length > 0) {
+          // Attempt grouped query first
+          let grouped: { account_id: string; count: number }[] | null = null;
+          let groupedErr: any = null;
+          try {
+            const res = await supabase
+              .from("account_transactions")
+              .select("account_id, count:account_id")
+              .in("account_id", ids)
+              .group("account_id");
+            grouped = (res.data as any) || null;
+            groupedErr = res.error;
+          } catch (gErr: any) {
+            groupedErr = gErr;
+          }
+          if (!groupedErr && grouped) {
+            const map: Record<string, boolean> = {};
+            grouped.forEach((r: any) => { map[r.account_id] = Number(r.count || 0) > 0; });
+            setTxHasRows(map);
+          } else {
+            // Fallback: per-id head counts (safe, low payload)
+            const entries = await Promise.all(ids.map(async (aid: string) => {
+              try {
+                const { count } = await supabase
+                  .from("account_transactions")
+                  .select("*", { count: "exact", head: true })
+                  .eq("account_id", aid);
+                return [aid, (count || 0) > 0] as const;
+              } catch {
+                return [aid, false] as const;
+              }
+            }));
+            const map: Record<string, boolean> = {};
+            entries.forEach(([k, v]) => { map[k] = v; });
+            setTxHasRows(map);
+          }
+        } else {
+          setTxHasRows({});
+        }
+      } catch (err) {
+        console.warn("Failed to prefetch transaction existence", err);
+        setTxHasRows({});
+      }
     } catch (e: any) {
       console.error(e);
       // Graceful fallback: surface empty state rather than erroring
@@ -227,6 +278,35 @@ export default function Accounts() {
     Equity: ["Equity"],
   };
 
+  const requestDelete = (id: string) => {
+    setConfirmDeleteId(id);
+  };
+
+  const performDelete = async () => {
+    const id = confirmDeleteId;
+    if (!id) return;
+    try {
+      const { count } = await supabase
+        .from("account_transactions")
+        .select("*", { count: "exact", head: true })
+        .eq("account_id", id);
+      if ((count || 0) > 0) {
+        toast.error("Cannot delete: account has posted transactions");
+        setConfirmDeleteId(null);
+        return;
+      }
+      const { error } = await supabase.from("accounts").delete().eq("id", id);
+      if (error) throw error;
+      toast.success("Account deleted");
+      setConfirmDeleteId(null);
+      fetchAccounts();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Failed to delete account");
+      setConfirmDeleteId(null);
+    }
+  };
+
   return (
     <div className="flex-1 space-y-6 p-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen">
       <div className="flex items-center justify-between">
@@ -346,14 +426,37 @@ export default function Accounts() {
                 {filtered.map((acc) => (
                   <TableRow key={acc.id}>
                     <TableCell className="font-medium">{acc.account_code}</TableCell>
-                    <TableCell>{acc.account_name}</TableCell>
+                    <TableCell>
+                      <Link to={`/accounts/${acc.id}`} className="text-indigo-700 hover:underline">
+                        {acc.account_name}
+                      </Link>
+                    </TableCell>
                     <TableCell>{acc.account_type}</TableCell>
                     <TableCell>{acc.account_subtype || "—"}</TableCell>
                     <TableCell>{acc.normal_balance || "—"}</TableCell>
                     <TableCell>{acc.description || "—"}</TableCell>
                     <TableCell className="text-right">
-                      <Button variant="outline" size="sm" onClick={() => openEdit(acc)}>Edit</Button>
-                      <Link to={`/accounts/${acc.id}/edit`} className="ml-2 text-xs text-indigo-600 hover:underline">Full page</Link>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => window.location.assign(`/accounts/${acc.id}`)}>
+                            <Eye className="w-4 h-4 mr-2" /> View Account
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEdit(acc)}>
+                            <Pencil className="w-4 h-4 mr-2" /> Quick Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => window.location.assign(`/accounts/${acc.id}/edit`)}>
+                            <Pencil className="w-4 h-4 mr-2" /> Edit Full Page
+                          </DropdownMenuItem>
+                          <DropdownMenuItem disabled={!!txHasRows[acc.id]} onClick={() => requestDelete(acc.id)} className="text-red-600 focus:text-red-600">
+                            <Trash2 className="w-4 h-4 mr-2" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -362,6 +465,20 @@ export default function Accounts() {
           </div>
         </CardContent>
       </Card>
+      <AlertDialog open={!!confirmDeleteId} onOpenChange={(open) => !open && setConfirmDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. Accounts with transactions cannot be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={performDelete} disabled={confirmDeleteId ? !!txHasRows[confirmDeleteId] : true}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
