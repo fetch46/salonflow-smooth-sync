@@ -96,67 +96,6 @@ export type Database = {
           },
         ]
       }
-      appointment_services: {
-        Row: {
-          id: string
-          appointment_id: string
-          service_id: string
-          staff_id: string | null
-          duration_minutes: number | null
-          price: number | null
-          notes: string | null
-          sort_order: number | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          appointment_id: string
-          service_id: string
-          staff_id?: string | null
-          duration_minutes?: number | null
-          price?: number | null
-          notes?: string | null
-          sort_order?: number | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          appointment_id?: string
-          service_id?: string
-          staff_id?: string | null
-          duration_minutes?: number | null
-          price?: number | null
-          notes?: string | null
-          sort_order?: number | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "appointment_services_appointment_id_fkey"
-            columns: ["appointment_id"]
-            isOneToOne: false
-            referencedRelation: "appointments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "appointment_services_service_id_fkey"
-            columns: ["service_id"]
-            isOneToOne: false
-            referencedRelation: "services"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "appointment_services_staff_id_fkey"
-            columns: ["staff_id"]
-            isOneToOne: false
-            referencedRelation: "staff"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       clients: {
         Row: {
           address: string | null
@@ -269,33 +208,6 @@ export type Database = {
           is_active?: boolean
           name?: string
           symbol?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      currency_rates: {
-        Row: {
-          id: string
-          code: string
-          rate: number
-          source: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          code: string
-          rate: number
-          source?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          code?: string
-          rate?: number
-          source?: string | null
-          created_at?: string
           updated_at?: string
         }
         Relationships: []
@@ -687,42 +599,42 @@ export type Database = {
       }
       job_card_services: {
         Row: {
+          commission_percentage: number | null
+          created_at: string
+          duration_minutes: number | null
           id: string
           job_card_id: string
+          notes: string | null
+          quantity: number
           service_id: string
           staff_id: string | null
-          quantity: number
           unit_price: number
-          commission_percentage: number | null
-          duration_minutes: number | null
-          notes: string | null
-          created_at: string
           updated_at: string
         }
         Insert: {
+          commission_percentage?: number | null
+          created_at?: string
+          duration_minutes?: number | null
           id?: string
           job_card_id: string
+          notes?: string | null
+          quantity?: number
           service_id: string
           staff_id?: string | null
-          quantity?: number
           unit_price?: number
-          commission_percentage?: number | null
-          duration_minutes?: number | null
-          notes?: string | null
-          created_at?: string
           updated_at?: string
         }
         Update: {
+          commission_percentage?: number | null
+          created_at?: string
+          duration_minutes?: number | null
           id?: string
           job_card_id?: string
+          notes?: string | null
+          quantity?: number
           service_id?: string
           staff_id?: string | null
-          quantity?: number
           unit_price?: number
-          commission_percentage?: number | null
-          duration_minutes?: number | null
-          notes?: string | null
-          created_at?: string
           updated_at?: string
         }
         Relationships: [
@@ -1148,7 +1060,7 @@ export type Database = {
             foreignKeyName: "service_kits_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
-            referencedRelation: "inventory_items"
+            referencedRelation: "services"
             referencedColumns: ["id"]
           },
         ]
@@ -1156,6 +1068,7 @@ export type Database = {
       services: {
         Row: {
           category: string | null
+          commission_percentage: number | null
           created_at: string
           description: string | null
           duration_minutes: number
@@ -1167,6 +1080,7 @@ export type Database = {
         }
         Insert: {
           category?: string | null
+          commission_percentage?: number | null
           created_at?: string
           description?: string | null
           duration_minutes?: number
@@ -1178,6 +1092,7 @@ export type Database = {
         }
         Update: {
           category?: string | null
+          commission_percentage?: number | null
           created_at?: string
           description?: string | null
           duration_minutes?: number
