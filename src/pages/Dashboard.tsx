@@ -45,6 +45,8 @@ import {
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useSaas } from "@/lib/saas";
+import { subDays, startOfDay, endOfDay, format as formatDate } from "date-fns";
 
 // Utility helpers for safe percentage and averages
 const safePercent = (current: number, previous: number) => {
