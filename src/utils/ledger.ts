@@ -151,7 +151,6 @@ export async function postDoubleEntry(params: LedgerPostParams): Promise<boolean
           credit_amount: 0,
           reference_type: referenceType || null,
           reference_id: referenceId || null,
-          organization_id: organizationId,
           location_id: locationId || null,
         },
         {
@@ -162,7 +161,6 @@ export async function postDoubleEntry(params: LedgerPostParams): Promise<boolean
           credit_amount: amount,
           reference_type: referenceType || null,
           reference_id: referenceId || null,
-          organization_id: organizationId,
           location_id: locationId || null,
         },
       ]);
