@@ -25,7 +25,8 @@ export default function Settings() {
   useEffect(() => {
     const tabParam = searchParams.get("tab");
     if (tabParam && tabParam !== activeTab) {
-      setActiveTab(tabParam);
+      // Map deprecated 'users' tab to the new 'roles' tab
+      setActiveTab(tabParam === 'users' ? 'roles' : tabParam);
     }
   }, [searchParams]);
 
@@ -426,9 +427,9 @@ phone: "+1 (555) 123-4567",
             <Building className="w-4 h-4" />
             Company
           </TabsTrigger>
-          <TabsTrigger value="users" className="justify-start gap-2 data-[state=active]:bg-muted">
-            <Users className="w-4 h-4" />
-            Users & Roles
+          <TabsTrigger value="roles" className="justify-start gap-2 data-[state=active]:bg-muted">
+            <Shield className="w-4 h-4" />
+            Roles
           </TabsTrigger>
           <TabsTrigger value="subscription" className="justify-start gap-2 data-[state=active]:bg-muted">
             <CreditCard className="w-4 h-4" />
@@ -560,54 +561,8 @@ phone: "+1 (555) 123-4567",
           </TabsContent>
 
           {/* Users & Roles */}
-          <TabsContent value="users" className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* Users */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <Users className="h-5 w-5 text-pink-600" />
-                      Users
-                    </span>
-                    <Button size="sm" className="bg-gradient-to-r from-pink-500 to-purple-600">
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add User
-                    </Button>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {users.map((user) => (
-                      <div key={user.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                            {user.name.split(' ').map(n => n[0]).join('')}
-                          </div>
-                          <div>
-                            <div className="font-medium">{user.name}</div>
-                            <div className="text-sm text-muted-foreground">{user.email}</div>
-                            <div className="flex items-center gap-2 mt-1">
-                              {getRoleIcon(user.role)}
-                              <span className="text-sm">{user.role}</span>
-                              {getStatusBadge(user.status)}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="sm">
-                            <Edit2 className="w-3 h-3" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="text-destructive">
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
+          <TabsContent value="roles" className="space-y-6">
+            <div className="grid gap-6">
               {/* Roles */}
               <Card>
                 <CardHeader>
