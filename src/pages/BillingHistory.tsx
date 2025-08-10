@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { supabase } from "@/integrations/supabase/client";
-import { useSaas } from "@/lib/saas/context";
+import { useSaas } from "@/lib/saas";
 import { useEffect, useState } from "react";
 
 export default function BillingHistory() {

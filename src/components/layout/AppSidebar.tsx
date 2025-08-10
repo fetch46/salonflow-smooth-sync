@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { useFeatureGating } from "@/hooks/useFeatureGating";
-import { useSaas } from "@/lib/saas/context";
+import { useSaas } from "@/lib/saas";
 
 interface MenuSubItem {
   title: string;
