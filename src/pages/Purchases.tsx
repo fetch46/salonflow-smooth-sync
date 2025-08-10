@@ -139,7 +139,7 @@ export default function Purchases() {
       const { data, error } = await supabase
         .from("inventory_items")
         .select("id, name, type")
-        .eq("type", "goods")
+        .eq("type", "good")
         .eq("is_active", true)
         .order("name");
 
