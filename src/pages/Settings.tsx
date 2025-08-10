@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Building, Users, CreditCard, MessageSquare, MapPin, Plus, Edit2, Trash2, Crown, Shield, User } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog as UIDialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { usePermissions } from "@/lib/saas/hooks";
 import { toast } from "sonner";
 import { useOrganization } from "@/lib/saas/hooks";
@@ -129,6 +129,45 @@ phone: "+1 (555) 123-4567",
   });
 
   // Locations State
+  const [stockLocations, setStockLocations] = useState<{
+    id: string;
+    name: string;
+    description: string | null;
+    is_active: boolean;
+  }[]>([])
+  const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false)
+  const [editingLocation, setEditingLocation] = useState<{
+    id: string;
+    name: string;
+    description: string | null;
+    is_active: boolean;
+  } | null>(null)
+  const [locationForm, setLocationForm] = useState({
+    name: "",
+    description: "",
+    is_active: true,
+  })
+
+  const openNewLocation = () => {
+    setEditingLocation(null)
+    setLocationForm({ name: "", description: "", is_active: true })
+    setIsLocationDialogOpen(true)
+  }
+
+  const openEditLocation = (location: {
+    id: string;
+    name: string;
+    description: string | null;
+    is_active: boolean;
+  }) => {
+    setEditingLocation(location)
+    setLocationForm({
+      name: location.name,
+      description: location.description || "",
+      is_active: location.is_active,
+    })
+    setIsLocationDialogOpen(true)
+  }
 
   useEffect(() => {
     (async () => {
@@ -841,13 +880,25 @@ phone: "+1 (555) 123-4567",
                   {stockLocations.map((location) => (
                     <TableRow key={location.id}>
                       <TableCell className="font-medium">{location.name}</TableCell>
-
+                      <TableCell className="text-muted-foreground">{location.description}</TableCell>
+                      <TableCell>
+                        <Badge variant={location.is_active ? "default" : "secondary"}>
+                          {location.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button variant="ghost" size="sm" onClick={() => openEditLocation(location)}>
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDeleteLocation(location.id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-              <Dialog open={isLocationDialogOpen} onOpenChange={setIsLocationDialogOpen}>
+              <UIDialog open={isLocationDialogOpen} onOpenChange={setIsLocationDialogOpen}>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>{editingLocation ? 'Edit Location' : 'Add Location'}</DialogTitle>
@@ -874,7 +925,7 @@ phone: "+1 (555) 123-4567",
                     <Button onClick={handleSaveLocation}>{editingLocation ? 'Save Changes' : 'Create Location'}</Button>
                   </DialogFooter>
                 </DialogContent>
-              </Dialog>
+              </UIDialog>
             </CardContent>
           </Card>
         </TabsContent>
