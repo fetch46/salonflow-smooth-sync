@@ -626,7 +626,12 @@ export default function Purchases() {
             .eq("account_type", "Asset")
             .order("account_code", { ascending: true });
           if (scoped.error) throw scoped.error;
-          data = scoped.data as any[] | null;
+          const allAsset = scoped.data as any[] | null;
+          const filtered = (allAsset || []).filter((a: any) => {
+            const name = String(a.account_name || "");
+            return /cash/i.test(name) || /bank/i.test(name);
+          });
+          data = filtered;
         } else {
           throw error;
         }
