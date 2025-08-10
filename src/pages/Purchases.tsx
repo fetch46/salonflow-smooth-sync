@@ -242,22 +242,6 @@ export default function Purchases() {
         const receivedQty = Number(it.received_quantity || 0);
         if (receivedQty > 0) {
           anyReceived = true;
-          const { data: levels } = await supabase
-            .from("inventory_levels")
-            .select("id, quantity")
-            .eq("item_id", it.item_id)
-            .eq("location_id", purchase.location_id)
-            .limit(1);
-
-          if (levels && levels.length > 0) {
-            const level = levels[0];
-            const newQty = Math.max(0, Number(level.quantity || 0) - receivedQty);
-            await supabase
-              .from("inventory_levels")
-              .update({ quantity: newQty })
-              .eq("id", level.id);
-          }
-
           await supabase
             .from("purchase_items")
             .update({ received_quantity: 0 })
@@ -270,11 +254,7 @@ export default function Purchases() {
         return;
       }
 
-      await supabase
-        .from("purchases")
-        .update({ status: "pending", location_id: null })
-        .eq("id", purchaseId);
-
+      // DB triggers will update purchase status back to pending; keep location as-is
       toast({ title: "Receiving removed", description: "Inventory and received quantities have been reverted." });
       fetchPurchases();
     } catch (err) {
@@ -304,7 +284,10 @@ export default function Purchases() {
       return;
     }
     try {
-      // Apply inventory level updates and track received per item
+      // Set receiving location before updating item receipts so DB trigger can post to correct location
+      await supabase.from("purchases").update({ location_id: receiveLocationId }).eq("id", receivePurchaseId);
+
+      // Update received quantities only; DB triggers will sync inventory and status
       for (const item of selectedPurchaseItems) {
         const qtyRequested = Number(receiveQuantities[item.item_id] || 0);
         if (qtyRequested <= 0) continue;
@@ -313,24 +296,6 @@ export default function Purchases() {
         const remainingToReceive = Math.max(0, expected - alreadyReceived);
         const qty = Math.min(qtyRequested, remainingToReceive);
         if (qty <= 0) continue;
-        const { data: levels } = await supabase
-          .from("inventory_levels")
-          .select("id, quantity")
-          .eq("item_id", item.item_id)
-          .eq("location_id", receiveLocationId)
-          .limit(1);
-        if (levels && levels.length > 0) {
-          const level = levels[0];
-          await supabase
-            .from("inventory_levels")
-            .update({ quantity: (level.quantity || 0) + qty })
-            .eq("id", level.id);
-        } else {
-          await supabase
-            .from("inventory_levels")
-            .insert([{ item_id: item.item_id, location_id: receiveLocationId, quantity: qty }]);
-        }
-        // Update purchase_items.received_quantity
         const newReceived = Math.min(alreadyReceived + qty, expected);
         await supabase
           .from("purchase_items")
@@ -338,21 +303,7 @@ export default function Purchases() {
           .eq("id", item.id);
       }
 
-      // Recompute purchase status
-      const { data: refreshedItems } = await supabase
-        .from("purchase_items")
-        .select("quantity, received_quantity")
-        .eq("purchase_id", receivePurchaseId);
-      let status: string = "pending";
-      if (refreshedItems && refreshedItems.length > 0) {
-        const total = refreshedItems.length;
-        const fully = refreshedItems.filter(it => Number(it.received_quantity || 0) >= Number(it.quantity || 0)).length;
-        const anyReceived = refreshedItems.some(it => Number(it.received_quantity || 0) > 0);
-        status = fully === total ? "received" : (anyReceived ? "partial" : "pending");
-      }
-      await supabase.from("purchases").update({ status, location_id: receiveLocationId }).eq("id", receivePurchaseId);
-
-      toast({ title: "Received", description: "Items received into stock", });
+      toast({ title: "Received", description: "Items received into stock" });
       setReceiveOpen(false);
       fetchPurchases();
     } catch (err) {
