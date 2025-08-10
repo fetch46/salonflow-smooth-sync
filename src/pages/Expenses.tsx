@@ -268,7 +268,7 @@ export default function Expenses() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       const amountNumber = parseFloat(formData.amount) || 0;
       const expenseData = {
@@ -277,6 +277,8 @@ export default function Expenses() {
         amount: amountNumber,
         location_id: formData.location_id || null,
       } as any;
+
+      let saved: Expense | null = null;
 
       if (editingExpense) {
         const { data: updated, error } = await supabase
@@ -288,42 +290,7 @@ export default function Expenses() {
 
         if (error) throw error;
 
-        // Ensure bank transaction reflects the update
-        await upsertExpenseBankTransaction(
-          updated.id,
-          amountNumber,
-          expenseData.expense_date,
-          expenseData.description,
-          paidFromAccountId,
-          expenseData.location_id
-        );
 
-        toast({
-          title: "Success",
-          description: "Expense updated successfully",
-        });
-      } else {
-        const { data: created, error } = await supabase
-          .from("expenses")
-          .insert([expenseData])
-          .select("*")
-          .single();
-
-        if (error) throw error;
-
-        await upsertExpenseBankTransaction(
-          created.id,
-          amountNumber,
-          expenseData.expense_date,
-          expenseData.description,
-          paidFromAccountId,
-          expenseData.location_id
-        );
-
-        toast({
-          title: "Success",
-          description: "Expense created successfully",
-        });
       }
 
       setIsModalOpen(false);
