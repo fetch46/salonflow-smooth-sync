@@ -268,9 +268,7 @@ export default function InventoryAdjustments() {
 
       if (error) throw error;
       
-      // Here you would typically update inventory levels based on the adjustment items
-      // For now, we'll just show a success message
-      toast.success("Adjustment approved successfully");
+      toast.success("Adjustment approved and stock updated");
       fetchAdjustments();
     } catch (error) {
       console.error("Error approving adjustment:", error);
@@ -291,20 +289,32 @@ export default function InventoryAdjustments() {
   };
 
   const handleDelete = async (adjustmentId: string) => {
-    if (!confirm("Are you sure you want to delete this adjustment?")) return;
+    if (!confirm("Delete this adjustment? If approved, stock will be reverted.")) return;
     
     try {
+      setLoading(true);
+      // Load the adjustment to check status
+      const { data: adj, error: adjErr } = await supabase
+        .from("inventory_adjustments")
+        .select("id, status")
+        .eq("id", adjustmentId)
+        .single();
+      if (adjErr) throw adjErr;
+
+      // If approved, the DB BEFORE DELETE trigger will revert quantities. Nothing to do client-side.
       const { error } = await supabase
         .from("inventory_adjustments")
         .delete()
         .eq("id", adjustmentId);
 
       if (error) throw error;
-      toast.success("Adjustment deleted successfully");
+      toast.success("Adjustment deleted" + (adj?.status === 'approved' ? " and stock reverted" : ""));
       fetchAdjustments();
     } catch (error) {
       console.error("Error deleting adjustment:", error);
       toast.error("Failed to delete adjustment");
+    } finally {
+      setLoading(false);
     }
   };
 
