@@ -393,10 +393,10 @@ export default function Appointments() {
         ...prev,
         serviceItems: updated,
         duration_minutes: totalDuration || prev.duration_minutes,
-        price: totalPrice || prev.price,
-        service_name: serviceNames,
-        staff_id: updated.length === 1 ? (updated[0].staff_id || "") : "",
-      };
+                  price: totalPrice || prev.price,
+          service_name: serviceNames,
+          staff_id: updated.length === 1 ? (updated[0].staff_id || "") : "",
+        };
     });
   };
 
@@ -471,7 +471,10 @@ export default function Appointments() {
         customer_phone: form.customer_phone || null,
         client_id: resolvedClientId,
         service_name: serviceNames || "",
-        staff_id: form.serviceItems.length === 1 ? (form.serviceItems[0].staff_id || null) : null,
+        // Persist primary service_id for fallback UIs when appointment_services table is missing
+        service_id: form.serviceItems.length >= 1 ? form.serviceItems[0].service_id : null,
+        // Persist primary staff assignment from the first item for fallback display
+        staff_id: form.serviceItems.length >= 1 ? (form.serviceItems[0].staff_id || null) : null,
         appointment_date: form.appointment_date,
         appointment_time: form.appointment_time,
         duration_minutes: totalDuration || form.duration_minutes,
