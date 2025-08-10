@@ -288,22 +288,6 @@ export default function Expenses() {
 
         if (error) throw error;
 
-        // If a paid-from account is provided, upsert a corresponding bank transaction
-        if (paidFromAccountId) {
-          await upsertExpenseBankTransaction(
-            updated.id,
-            amountNumber,
-            expenseData.expense_date || new Date().toISOString().slice(0,10),
-            expenseData.description || `Expense ${updated.expense_number}`,
-            paidFromAccountId,
-            expenseData.location_id || null
-          );
-        }
-
-        toast({
-          title: "Success",
-          description: "Expense updated successfully",
-        });
       } else {
         const { data: created, error } = await supabase
           .from("expenses")
@@ -311,22 +295,6 @@ export default function Expenses() {
           .select("*")
           .single();
         if (error) throw error;
-
-        if (paidFromAccountId) {
-          await upsertExpenseBankTransaction(
-            created.id,
-            amountNumber,
-            expenseData.expense_date || new Date().toISOString().slice(0,10),
-            expenseData.description || `Expense ${created.expense_number}`,
-            paidFromAccountId,
-            expenseData.location_id || null
-          );
-        }
-
-        toast({
-          title: "Success",
-          description: "Expense created successfully",
-        });
       }
 
       setIsModalOpen(false);
