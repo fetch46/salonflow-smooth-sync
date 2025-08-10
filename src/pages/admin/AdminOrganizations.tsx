@@ -28,6 +28,7 @@ interface Organization {
   user_count?: number;
   subscription_status?: string;
   plan_name?: string;
+  currency_id?: string | null; // added so currency can be edited
 }
 
 interface NewOrganization {
@@ -71,9 +72,30 @@ const AdminOrganizations = () => {
   const [selectedOrgForSub, setSelectedOrgForSub] = useState<Organization | null>(null);
   const [subForm, setSubForm] = useState<{ sub_id?: string; plan_id: string; status: string; interval: string; exists: boolean }>({ plan_id: "", status: "trial", interval: "month", exists: false });
 
+  // Country & Currency state for editing
+  const [currencies, setCurrencies] = useState<{ id: string; code: string; name: string; symbol: string; is_active: boolean }[]>([]);
+  const [countries, setCountries] = useState<{ id: string; code: string; name: string; is_active: boolean }[]>([]);
+  const [selectedCurrencyIdEdit, setSelectedCurrencyIdEdit] = useState<string>("");
+  const [selectedCountryCodeEdit, setSelectedCountryCodeEdit] = useState<string>("US");
+
   useEffect(() => {
     fetchOrganizations();
     fetchPlans();
+    // preload select lists
+    (async () => {
+      const { data: cur } = await supabase
+        .from("currencies")
+        .select("*")
+        .eq("is_active", true)
+        .order("code");
+      setCurrencies(cur || []);
+      const { data: ctry } = await supabase
+        .from("countries")
+        .select("*")
+        .eq("is_active", true)
+        .order("name");
+      setCountries(ctry || []);
+    })();
   }, []);
 
   const fetchOrganizations = async () => {
@@ -102,7 +124,7 @@ const AdminOrganizations = () => {
         plan_name: org.organization_subscriptions?.[0]?.subscription_plans?.name || 'No Plan'
       })) || [];
 
-      setOrganizations(transformedData);
+      setOrganizations(transformedData as Organization[]);
     } catch (error) {
       console.error('Error fetching organizations:', error);
       toast.error('Failed to fetch organizations');
@@ -188,6 +210,11 @@ const AdminOrganizations = () => {
         return;
       }
 
+      // Ensure country code sticks inside settings
+      if (selectedCountryCodeEdit) {
+        settings = { ...(settings || {}), country: selectedCountryCodeEdit };
+      }
+
       const { error } = await supabase
         .from('organizations')
         .update({
@@ -197,7 +224,9 @@ const AdminOrganizations = () => {
           logo_url: newOrganization.logo_url || null,
           status: newOrganization.status,
           settings,
-          metadata
+          metadata,
+          // Persist currency selection
+          currency_id: selectedCurrencyIdEdit || null,
         })
         .eq('id', selectedOrganization.id);
 
@@ -245,6 +274,14 @@ const AdminOrganizations = () => {
       settings: JSON.stringify(organization.settings, null, 2),
       metadata: JSON.stringify(organization.metadata, null, 2)
     });
+    // Prefill selectors
+    setSelectedCurrencyIdEdit(organization.currency_id || "");
+    try {
+      const s = (organization.settings as any) || {};
+      setSelectedCountryCodeEdit(s.country || "US");
+    } catch {
+      setSelectedCountryCodeEdit("US");
+    }
     setIsEditDialogOpen(true);
   };
 
@@ -398,66 +435,32 @@ const AdminOrganizations = () => {
                     <TableHead>Status</TableHead>
                     <TableHead>Users</TableHead>
                     <TableHead>Subscription</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="w-[100px]">Actions</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredOrganizations.map((organization) => (
-                    <TableRow key={organization.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center space-x-2">
-                          {organization.logo_url && (
-                            <img 
-                              src={organization.logo_url} 
-                              alt="" 
-                              className="h-6 w-6 rounded"
-                            />
-                          )}
-                          <span>{organization.name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{organization.slug}</TableCell>
-                      <TableCell>{organization.domain || '-'}</TableCell>
+                  {filteredOrganizations.map((org) => (
+                    <TableRow key={org.id}>
+                      <TableCell className="font-medium">{org.name}</TableCell>
+                      <TableCell>{org.slug}</TableCell>
+                      <TableCell>{org.domain || '-'}</TableCell>
                       <TableCell>
-                        <Badge className={getStatusBadge(organization.status)}>
-                          {organization.status}
-                        </Badge>
+                        <span className={`px-2 py-1 rounded text-xs ${getStatusBadge(org.status)}`}>
+                          {org.status}
+                        </span>
                       </TableCell>
-                      <TableCell>{organization.user_count || 0}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {organization.plan_name}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {format(new Date(organization.created_at), 'MMM dd, yyyy')}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openManageSubscriptionDialog(organization)}
-                            title="Manage subscription"
-                          >
-                            <CreditCard className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openEditDialog(organization)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => deleteOrganization(organization.id, organization.name)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                      <TableCell>{org.user_count || 0}</TableCell>
+                      <TableCell>{org.plan_name || 'No Plan'}</TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button variant="outline" size="sm" onClick={() => openEditDialog(org)}>
+                          <Edit className="h-4 w-4 mr-1" /> Edit
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => openManageSubscriptionDialog(org)}>
+                          <CreditCard className="h-4 w-4 mr-1" /> Subscription
+                        </Button>
+                        <Button variant="destructive" size="sm" onClick={() => deleteOrganization(org.id, org.name)}>
+                          <Trash2 className="h-4 w-4 mr-1" /> Delete
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -471,9 +474,9 @@ const AdminOrganizations = () => {
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>Create New Organization</DialogTitle>
+              <DialogTitle>Create Organization</DialogTitle>
               <DialogDescription>
-                Add a new organization to the system.
+                Add a new tenant to the system.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -525,36 +528,32 @@ const AdminOrganizations = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="plan">Subscription Plan (optional)</Label>
-                <Select
-                  value={newOrganization.plan_id || undefined}
-                  onValueChange={(value) =>
-                    setNewOrganization({
-                      ...newOrganization,
-                      plan_id: value === 'none' ? '' : value,
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a plan (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No plan</SelectItem>
-                    {plans.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name} — ${Math.round(p.price_monthly / 100)}/mo
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="logo_url">Logo URL (optional)</Label>
                 <Input
                   id="logo_url"
                   value={newOrganization.logo_url}
                   onChange={(e) => setNewOrganization({...newOrganization, logo_url: e.target.value})}
                   placeholder="https://example.com/logo.png"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="settings">Settings (JSON)</Label>
+                <Textarea
+                  id="settings"
+                  value={newOrganization.settings}
+                  onChange={(e) => setNewOrganization({...newOrganization, settings: e.target.value})}
+                  placeholder="{}"
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="metadata">Metadata (JSON)</Label>
+                <Textarea
+                  id="metadata"
+                  value={newOrganization.metadata}
+                  onChange={(e) => setNewOrganization({...newOrganization, metadata: e.target.value})}
+                  placeholder="{}"
+                  rows={3}
                 />
               </div>
             </div>
@@ -622,6 +621,37 @@ const AdminOrganizations = () => {
                       <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="suspended">Suspended</SelectItem>
                       <SelectItem value="deleted">Deleted</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {/* Country & Currency selectors */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-country">Country</Label>
+                  <Select value={selectedCountryCodeEdit} onValueChange={setSelectedCountryCodeEdit}>
+                    <SelectTrigger id="edit-country">
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {countries.map((c) => (
+                        <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-currency">Currency</Label>
+                  <Select value={selectedCurrencyIdEdit} onValueChange={setSelectedCurrencyIdEdit}>
+                    <SelectTrigger id="edit-currency">
+                      <SelectValue placeholder="Select currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currencies.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.code} — {c.name} ({c.symbol})
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
