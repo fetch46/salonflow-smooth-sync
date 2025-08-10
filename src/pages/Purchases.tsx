@@ -5,11 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, ShoppingCart, Package, TrendingUp, Truck } from "lucide-react";
+
+import { Plus, Search, ShoppingCart, Package, TrendingUp, Truck, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
@@ -17,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSaas } from "@/lib/saas";
 // removed modal tax toggle and org tax rate from list page
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit3, Truck as TruckIcon, RotateCcw, Trash2, CreditCard, RefreshCw } from "lucide-react";
+import { MoreHorizontal, Edit3, Truck as TruckIcon, Trash2, CreditCard, RefreshCw } from "lucide-react";
 import { postDoubleEntry, findAccountIdByCode } from "@/utils/ledger";
 
 interface AccountOption { id: string; account_code: string; account_name: string; account_type: string; account_subtype: string | null; balance?: number | null }
@@ -69,7 +70,7 @@ export default function Purchases() {
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
-  const [selectedPurchaseItems, setSelectedPurchaseItems] = useState<PurchaseItem[]>([]);
+
   const { toast } = useToast();
 
   const { format: formatMoney } = useOrganizationCurrency();
@@ -94,14 +95,35 @@ export default function Purchases() {
 
   // removed inline create/edit form state
 
-  // Receiving workflow state
-  const [locations, setLocations] = useState<StorageLocation[]>([]);
-  const [receiveOpen, setReceiveOpen] = useState(false);
-  const [receivePurchaseId, setReceivePurchaseId] = useState<string | null>(null);
-  const [receiveLocationId, setReceiveLocationId] = useState<string>("");
-  const [receiveQuantities, setReceiveQuantities] = useState<Record<string, number>>({});
+  // Receiving workflow migrated to full pages (Goods Received)
 
-  // removed inline item add/remove (handled in full page form)
+  const fetchSuppliers = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.from("suppliers").select("id, name").eq("is_active", true).order("name");
+      if (error) throw error;
+      setSuppliers((data || []) as SupplierOption[]);
+    } catch (err) {
+      console.warn("Failed to load suppliers", err);
+      setSuppliers([]);
+    }
+  }, []);
+
+  const fetchPurchases = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("purchases")
+        .select("id, purchase_number, vendor_name, purchase_date, subtotal, tax_amount, total_amount, status, notes, created_at, updated_at")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setPurchases((data || []) as Purchase[]);
+    } catch (e) {
+      console.error("Error loading purchases", e);
+      setPurchases([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   
   // Fetch suppliers for the vendor filter
@@ -277,6 +299,9 @@ export default function Purchases() {
 
   const handleEdit = (purchase: Purchase) => {
     navigate(`/purchases/${purchase.id}/edit`);
+  };
+  const handleView = (purchase: Purchase) => {
+    navigate(`/purchases/${purchase.id}`);
   };
 
   const handleDelete = async (id: string) => {
@@ -668,16 +693,15 @@ export default function Purchases() {
                             <DropdownMenuItem onClick={() => handleEdit(purchase)} className="gap-2">
                               <Edit3 className="h-4 w-4" /> Edit
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleView(purchase)} className="gap-2">
+                              <FileText className="h-4 w-4" /> View
+                            </DropdownMenuItem>
                             {(purchase.status === 'pending' || purchase.status === 'partial') && (
-                              <DropdownMenuItem onClick={() => openReceiveDialog(purchase.id)} className="gap-2">
+                              <DropdownMenuItem onClick={() => navigate(`/goods-received/new?purchaseId=${purchase.id}`)} className="gap-2">
                                 <TruckIcon className="h-4 w-4" /> Receive Items
                               </DropdownMenuItem>
                             )}
-                            {(purchase.status === 'partial' || purchase.status === 'received') && (
-                              <DropdownMenuItem onClick={() => undoReceiving(purchase.id)} className="gap-2">
-                                <RotateCcw className="h-4 w-4" /> Undo Receiving
-                              </DropdownMenuItem>
-                            )}
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => openPayDialog(purchase.id, Number(purchase.total_amount || 0))}
                               className="gap-2"
@@ -705,38 +729,6 @@ export default function Purchases() {
         </CardContent>
       </Card>
 
-      {/* Receive Dialog */}
-      <Dialog open={receiveOpen} onOpenChange={setReceiveOpen}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl">Receive Purchase Items</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={submitReceive} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Location</Label>
-              <select className="border rounded px-3 py-2 w-full" value={receiveLocationId} onChange={(e) => setReceiveLocationId(e.target.value)}>
-                <option value="">Select a location</option>
-                {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label>Quantities</Label>
-              <div className="space-y-2">
-                {selectedPurchaseItems.map(it => (
-                  <div key={it.item_id} className="flex items-center gap-2">
-                    <div className="w-64 truncate">{it.inventory_items?.name || it.item_id}</div>
-                    <Input type="number" min={1} placeholder={`0 / ${it.quantity}`} value={receiveQuantities[it.item_id] ?? ''} onChange={(e) => setReceiveQuantities(prev => ({ ...prev, [it.item_id]: Number(e.target.value) }))} />
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setReceiveOpen(false)}>Cancel</Button>
-              <Button type="submit">Receive</Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       {/* Pay Dialog */}
       <Dialog open={isPayDialogOpen} onOpenChange={setIsPayDialogOpen}>
