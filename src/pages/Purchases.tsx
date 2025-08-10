@@ -203,6 +203,7 @@ export default function Purchases() {
       return;
     }
     try {
+      // Apply inventory level updates and track received per item
       for (const item of selectedPurchaseItems) {
         const qty = Number(receiveQuantities[item.item_id] || 0);
         if (qty <= 0) continue;
@@ -221,10 +222,31 @@ export default function Purchases() {
         } else {
           await supabase
             .from("inventory_levels")
-            .insert([{ item_id: item.item_id, location_id: receiveLocationId, quantity: qty, organization_id: organization?.id || null } as any]);
+            .insert([{ item_id: item.item_id, location_id: receiveLocationId, quantity: qty }]);
         }
+        // Update purchase_items.received_quantity
+        const newReceived = Math.min((item.received_quantity || 0) + qty, item.quantity || 0);
+        await supabase
+          .from("purchase_items")
+          .update({ received_quantity: newReceived })
+          .eq("id", item.id);
       }
-      toast({ title: "Received", description: "Items received into stock" });
+
+      // Recompute purchase status
+      const { data: refreshedItems } = await supabase
+        .from("purchase_items")
+        .select("quantity, received_quantity")
+        .eq("purchase_id", receivePurchaseId);
+      let status: string = "pending";
+      if (refreshedItems && refreshedItems.length > 0) {
+        const total = refreshedItems.length;
+        const fully = refreshedItems.filter(it => Number(it.received_quantity || 0) >= Number(it.quantity || 0)).length;
+        const anyReceived = refreshedItems.some(it => Number(it.received_quantity || 0) > 0);
+        status = fully === total ? "received" : (anyReceived ? "partial" : "pending");
+      }
+      await supabase.from("purchases").update({ status }).eq("id", receivePurchaseId);
+
+      toast({ title: "Received", description: "Items received into stock", });
       setReceiveOpen(false);
       fetchPurchases();
     } catch (err) {
@@ -353,27 +375,7 @@ export default function Purchases() {
           .insert(itemsToInsert);
 
         if (itemsError) throw itemsError;
-
-        // Update inventory levels for received goods (increase stock)
-        for (const item of purchaseItems) {
-          try {
-            // Find existing inventory levels across locations
-            const { data: levels } = await supabase
-              .from("inventory_levels")
-              .select("id, quantity")
-              .eq("item_id", item.item_id)
-              .limit(1);
-            if (levels && levels.length > 0) {
-              const level = levels[0];
-              await supabase
-                .from("inventory_levels")
-                .update({ quantity: (level.quantity || 0) + (item.received_quantity || item.quantity || 0) })
-                .eq("id", level.id);
-            }
-          } catch (err) {
-            console.warn("Failed to update inventory level for", item.item_id, err);
-          }
-        }
+        // Inventory levels are updated via the Receive workflow, not on purchase save
       }
 
       setIsModalOpen(false);

@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Package, Trash2, Edit } from "lucide-react";
+import { Plus, Package, Trash2, Edit, MapPin } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
@@ -143,6 +143,8 @@ export default function Inventory() {
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [searchQuery, setSearchQuery] = useState("");
+  const [levels, setLevels] = useState<any[]>([]);
+  const [levelsLoading, setLevelsLoading] = useState<boolean>(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -156,9 +158,34 @@ export default function Inventory() {
     }
   }, []);
 
+  const fetchLevels = useCallback(async () => {
+    setLevelsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("inventory_levels")
+        .select(`
+          id,
+          item_id,
+          location_id,
+          quantity,
+          inventory_items ( name, sku ),
+          storage_locations ( name )
+        `)
+        .order("location_id")
+        .order("item_id");
+      if (error) throw error;
+      setLevels(data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLevelsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    fetchLevels();
+  }, [fetchData, fetchLevels]);
 
   const handleItemSubmit = async (formData) => {
     try {
@@ -276,6 +303,7 @@ export default function Inventory() {
       <Tabs defaultValue="goods" className="space-y-6">
         <TabsList className="grid w-full grid-cols-1 md:w-fit">
           <TabsTrigger value="goods">Products</TabsTrigger>
+          <TabsTrigger value="stock">Stock by Location</TabsTrigger>
         </TabsList>
 
         <TabsContent value="goods">
@@ -357,6 +385,66 @@ export default function Inventory() {
                           </TableRow>
                         );
                       })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="stock">
+          <Card>
+            <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-primary" />
+                Stock by Location
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {levelsLoading ? (
+                <div className="overflow-auto max-h-[65vh] rounded-lg border">
+                  <Table className="min-w-[720px]">
+                    <TableHeader className="sticky top-0 bg-background z-10">
+                      <TableRow>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Item</TableHead>
+                        <TableHead className="hidden sm:table-cell">SKU</TableHead>
+                        <TableHead className="text-right">Quantity</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <TableRow key={i} className="hover:bg-muted/50">
+                          <TableCell><Skeleton className="h-4 w-[160px]" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-[220px]" /></TableCell>
+                          <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-[120px]" /></TableCell>
+                          <TableCell className="text-right"><Skeleton className="h-4 w-[60px] ml-auto" /></TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="overflow-auto max-h-[65vh] rounded-lg border">
+                  <Table className="min-w-[720px]">
+                    <TableHeader className="sticky top-0 bg-background z-10">
+                      <TableRow>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Item</TableHead>
+                        <TableHead className="hidden sm:table-cell">SKU</TableHead>
+                        <TableHead className="text-right">Quantity</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {levels.map((lvl) => (
+                        <TableRow key={lvl.id} className="hover:bg-muted/50">
+                          <TableCell className="font-medium">{lvl.storage_locations?.name || lvl.location_id}</TableCell>
+                          <TableCell>{lvl.inventory_items?.name || lvl.item_id}</TableCell>
+                          <TableCell className="hidden sm:table-cell">{lvl.inventory_items?.sku || ''}</TableCell>
+                          <TableCell className="text-right">{Number(lvl.quantity || 0)}</TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
                 </div>

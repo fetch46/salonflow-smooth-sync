@@ -29,6 +29,7 @@ import AccountCreate from "@/pages/AccountCreate";
 import AccountEdit from "@/pages/AccountEdit";
 import POS from "@/pages/POS";
 import InventoryAdjustments from "@/pages/InventoryAdjustments";
+import StockTransfers from "@/pages/StockTransfers";
 import Settings from "@/pages/Settings";
 import JobCards from "@/pages/JobCards";
 import CreateJobCard from "@/pages/CreateJobCard";
@@ -146,6 +147,7 @@ const AppRoutes = () => {
         <Route path="inventory" element={<Inventory />} />
         <Route path="inventory/:id" element={<ProductView />} />
         <Route path="inventory-adjustments" element={<InventoryAdjustments />} />
+        <Route path="inventory-transfers" element={<StockTransfers />} />
         
         {/* Financial Management */}
         <Route path="expenses" element={<Expenses />} />
