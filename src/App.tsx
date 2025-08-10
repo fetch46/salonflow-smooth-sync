@@ -44,6 +44,9 @@ import SupplierProfile from "@/pages/SupplierProfile";
 import ProductView from "@/pages/ProductView";
 import InventoryAdjustmentForm from "@/pages/InventoryAdjustmentForm";
 import AccountView from "@/pages/AccountView";
+import PurchaseView from "@/pages/PurchaseView";
+import GoodsReceived from "@/pages/GoodsReceived";
+import GoodsReceivedForm from "@/pages/GoodsReceivedForm";
 
 import NotFound from "@/pages/NotFound";
 import Landing from "@/pages/Landing";
@@ -164,7 +167,11 @@ const AppRoutes = () => {
         <Route path="receipts/:id" element={<ReceiptView />} />
         <Route path="purchases" element={<Purchases />} />
         <Route path="purchases/new" element={<PurchaseForm />} />
+        <Route path="purchases/:id" element={<PurchaseView />} />
         <Route path="purchases/:id/edit" element={<PurchaseForm />} />
+        <Route path="goods-received" element={<GoodsReceived />} />
+        <Route path="goods-received/new" element={<GoodsReceivedForm />} />
+        <Route path="goods-received/:id/edit" element={<GoodsReceivedForm />} />
         <Route path="suppliers" element={<Suppliers />} />
         <Route path="suppliers/:id" element={<SupplierProfile />} />
         <Route path="accounts" element={<Accounts />} />

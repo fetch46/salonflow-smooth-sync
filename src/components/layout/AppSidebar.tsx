@@ -23,6 +23,7 @@ import {
   User,
   HelpCircle,
   ArrowLeftRight,
+  Truck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -122,7 +123,13 @@ const menuItems: MenuItem[] = [
         icon: ShoppingCart,
         feature: "purchases",
       },
-        {
+      {
+        title: "Goods Received",
+        url: "/goods-received",
+        icon: Truck,
+        feature: "purchases",
+      },
+      {
         title: "Expenses",
         url: "/expenses",
         icon: Receipt,
