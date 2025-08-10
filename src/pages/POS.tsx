@@ -105,21 +105,47 @@ export default function POS() {
     if (organization?.id) {
       fetchProducts();
     }
-  }, [organization?.id]);
+  }, [organization?.id, (organization?.settings as any)?.pos_default_location_id]);
 
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("inventory_items")
-        .select("*")
-        .eq("is_active", true)
-        .eq("type", "good")
-        .eq("organization_id", organization?.id || "")
-        .order("name");
-
-      if (error) throw error;
-      setProducts(data || []);
+      const defaultLocationId = ((organization?.settings as any) || {}).pos_default_location_id as string | undefined;
+      if (defaultLocationId) {
+        // First get item_ids that have stock at the default location
+        const { data: levels, error: levelsError } = await supabase
+          .from("inventory_levels")
+          .select("item_id, quantity")
+          .eq("location_id", defaultLocationId)
+          .gt("quantity", 0);
+        if (levelsError) throw levelsError;
+        const itemIds = Array.from(new Set((levels || []).map((l: any) => l.item_id)));
+        if (itemIds.length === 0) {
+          setProducts([]);
+        } else {
+          const { data: items, error: itemsError } = await supabase
+            .from("inventory_items")
+            .select("*")
+            .in("id", itemIds)
+            .eq("is_active", true)
+            .eq("type", "good")
+            .eq("organization_id", organization?.id || "")
+            .order("name");
+          if (itemsError) throw itemsError;
+          setProducts(items || []);
+        }
+      } else {
+        // No default location set: show all active goods in organization
+        const { data, error } = await supabase
+          .from("inventory_items")
+          .select("*")
+          .eq("is_active", true)
+          .eq("type", "good")
+          .eq("organization_id", organization?.id || "")
+          .order("name");
+        if (error) throw error;
+        setProducts(data || []);
+      }
     } catch (error) {
       console.error("Error fetching products:", error);
       toast.error("Failed to fetch products");

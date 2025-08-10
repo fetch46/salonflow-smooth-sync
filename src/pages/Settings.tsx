@@ -155,6 +155,8 @@ phone: "+1 (555) 123-4567",
     description: "",
     is_active: true,
   })
+  // Default POS Location (organization setting)
+  const [defaultPosLocationId, setDefaultPosLocationId] = useState<string>("")
 
   const openNewLocation = () => {
     setEditingLocation(null)
@@ -214,6 +216,8 @@ phone: "+1 (555) 123-4567",
       const tax = s.tax_rate_percent
       const parsed = typeof tax === 'number' ? tax : typeof tax === 'string' ? parseFloat(tax) : 0
       setTaxRatePercent(Number.isFinite(parsed) ? String(parsed) : "")
+      // Initialize default POS location from org settings
+      setDefaultPosLocationId(s.pos_default_location_id || "")
     }
   }, [organization])
 
@@ -327,6 +331,22 @@ phone: "+1 (555) 123-4567",
       }
     }
   };
+
+  const handleSaveDefaultPosLocation = async () => {
+    if (!organization) return toast.error('No organization selected');
+    try {
+      await updateOrganization(organization.id, {
+        settings: {
+          ...(organization.settings as any),
+          pos_default_location_id: defaultPosLocationId || null,
+        },
+      } as any)
+      toast.success('Default POS location updated')
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to save default POS location')
+    }
+  }
 
   const fetchStockLocations = async () => {
     if (!organization) return;
@@ -889,6 +909,31 @@ phone: "+1 (555) 123-4567",
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {/* Default POS Location selector */}
+              <div className="mb-6 p-4 border rounded-lg bg-muted/30">
+                <div className="flex flex-col md:flex-row md:items-end gap-3">
+                  <div className="flex-1">
+                    <Label htmlFor="default_pos_location">Default POS Location</Label>
+                    <Select
+                      value={defaultPosLocationId || ""}
+                      onValueChange={(v) => setDefaultPosLocationId(v)}
+                    >
+                      <SelectTrigger id="default_pos_location">
+                        <SelectValue placeholder="Select default location for POS" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stockLocations.filter(l => l.is_active).map((l) => (
+                          <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">Only items stocked at this location will be available for sale in POS.</p>
+                  </div>
+                  <div>
+                    <Button onClick={handleSaveDefaultPosLocation}>Save</Button>
+                  </div>
+                </div>
+              </div>
               <Table>
                 <TableHeader>
                   <TableRow>
