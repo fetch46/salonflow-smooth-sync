@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Package, ShoppingCart, ClipboardList, Pencil, Settings } from "lucide-react";
+import { ArrowLeft, Package, ShoppingCart, ClipboardList, Pencil, Settings, MapPin } from "lucide-react";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -73,6 +73,7 @@ export default function ProductView() {
   const [usageHistory, setUsageHistory] = useState<UsageHistoryRow[]>([]);
   const [salesHistory, setSalesHistory] = useState<SalesHistoryRow[]>([]);
   const [onHand, setOnHand] = useState<number>(0);
+  const [levelsByLocation, setLevelsByLocation] = useState<Array<{ location_id: string; quantity: number; business_locations?: { name: string } | null }>>([]);
   const { format: formatMoney } = useOrganizationCurrency();
 
   // Accounts mapping state
@@ -128,13 +129,14 @@ export default function ProductView() {
           .order("created_at", { ascending: false });
         setUsageHistory((usages || []) as any);
 
-        // On-hand quantity aggregation from inventory_levels
+        // On-hand and stock by location from inventory_levels
         const { data: levels } = await supabase
           .from("inventory_levels")
-          .select("quantity")
+          .select(`quantity, location_id, business_locations(name)`)
           .eq("item_id", id);
         const hand = (levels || []).reduce((s: number, r: any) => s + Number(r.quantity || 0), 0);
         setOnHand(hand);
+        setLevelsByLocation((levels || []) as any);
       } finally {
         setLoading(false);
       }
@@ -235,6 +237,8 @@ export default function ProductView() {
   const totalPurchased = useMemo(() => purchaseHistory.reduce((s, r) => s + (Number(r.quantity) || 0), 0), [purchaseHistory]);
   const totalUsed = useMemo(() => usageHistory.reduce((s, r) => s + (Number(r.quantity_used) || 0), 0), [usageHistory]);
   const totalSold = useMemo(() => salesHistory.reduce((s, r) => s + (Number(r.quantity) || 0), 0), [salesHistory]);
+  const netOutflow = useMemo(() => (totalUsed + totalSold), [totalUsed, totalSold]);
+  const netChange = useMemo(() => (totalPurchased - netOutflow), [totalPurchased, netOutflow]);
 
   const saveAccounts = async () => {
     if (!id) return;
@@ -395,25 +399,29 @@ export default function ProductView() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Overview</CardTitle>
+          <CardTitle>Mini Dashboard</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="p-4 rounded-lg border bg-gradient-to-b from-white to-slate-50">
               <div className="text-xs text-muted-foreground">On Hand</div>
               <div className="text-2xl font-semibold mt-1">{new Intl.NumberFormat((typeof navigator !== 'undefined' ? navigator.language : 'en-US')).format(onHand)}</div>
             </div>
             <div className="p-4 rounded-lg border bg-gradient-to-b from-white to-slate-50">
-              <div className="text-xs text-muted-foreground">Cost Price</div>
-              <div className="text-2xl font-semibold mt-1">{formatMoney(Number(item.cost_price || 0))}</div>
+              <div className="text-xs text-muted-foreground">Purchased</div>
+              <div className="text-2xl font-semibold mt-1">{totalPurchased}</div>
             </div>
             <div className="p-4 rounded-lg border bg-gradient-to-b from-white to-slate-50">
-              <div className="text-xs text-muted-foreground">Sales Price</div>
-              <div className="text-2xl font-semibold mt-1">{formatMoney(Number(item.selling_price || 0))}</div>
+              <div className="text-xs text-muted-foreground">Used</div>
+              <div className="text-2xl font-semibold mt-1">{totalUsed}</div>
             </div>
             <div className="p-4 rounded-lg border bg-gradient-to-b from-white to-slate-50">
-              <div className="text-xs text-muted-foreground">Total Sold</div>
+              <div className="text-xs text-muted-foreground">Sold</div>
               <div className="text-2xl font-semibold mt-1">{totalSold}</div>
+            </div>
+            <div className={`p-4 rounded-lg border bg-gradient-to-b from-white to-slate-50 ${netChange >= 0 ? 'border-green-200' : 'border-red-200'}`}>
+              <div className="text-xs text-muted-foreground">Net Change</div>
+              <div className={`text-2xl font-semibold mt-1 ${netChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>{netChange}</div>
             </div>
           </div>
         </CardContent>
@@ -429,6 +437,9 @@ export default function ProductView() {
           </TabsTrigger>
           <TabsTrigger value="sales" className="flex items-center gap-2">
             <Package className="w-4 h-4" /> Sales History
+          </TabsTrigger>
+          <TabsTrigger value="stock" className="flex items-center gap-2">
+            <MapPin className="w-4 h-4" /> Stock by Location
           </TabsTrigger>
         </TabsList>
 
@@ -548,6 +559,46 @@ export default function ProductView() {
                           <TableCell className="hidden sm:table-cell text-right">{row.total_price ?? '—'}</TableCell>
                         </TableRow>
                       ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="stock">
+          <Card>
+            <CardHeader>
+              <CardTitle>Stock by Location</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-auto rounded-lg border">
+                <Table className="min-w-[520px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Location</TableHead>
+                      <TableHead className="text-right">Available Qty</TableHead>
+                      <TableHead className="hidden md:table-cell text-right">Share</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {levelsByLocation.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center text-muted-foreground">No stock levels found.</TableCell>
+                      </TableRow>
+                    ) : (
+                      levelsByLocation.map((lvl, idx) => {
+                        const qty = Number(lvl.quantity || 0);
+                        const share = onHand > 0 ? Math.round((qty / onHand) * 100) : 0;
+                        return (
+                          <TableRow key={`${lvl.location_id}-${idx}`}>
+                            <TableCell className="font-medium">{lvl.business_locations?.name || '—'}</TableCell>
+                            <TableCell className="text-right">{qty}</TableCell>
+                            <TableCell className="hidden md:table-cell text-right">{share}%</TableCell>
+                          </TableRow>
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>
