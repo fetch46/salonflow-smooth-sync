@@ -578,22 +578,68 @@ export default function Purchases() {
 
   const fetchAccountsForPayment = useCallback(async (): Promise<AccountOption[]> => {
     try {
-      const { data, error } = await supabase
-        .from("accounts")
-        .select("id, account_code, account_name, account_type, account_subtype, balance")
-        .eq("account_type", "Asset")
-        .in("account_subtype", ["Cash", "Bank"]) // Pay from cash or bank
-        .order("account_code", { ascending: true });
-      if (error) throw error;
+      const orgId = organization?.id || null;
+      let data: any[] | null = null;
+      let error: any = null;
+      try {
+        const res = await supabase
+          .from("accounts")
+          .select("id, account_code, account_name, account_type, account_subtype, balance")
+          .eq("account_type", "Asset")
+          .in("account_subtype", ["Cash", "Bank"]) // Pay from cash or bank
+          .order("account_code", { ascending: true })
+          .maybeSingle === undefined // keep TS quiet in case of version differences
+            ? await supabase
+                .from("accounts")
+                .select("id, account_code, account_name, account_type, account_subtype, balance")
+                .eq("account_type", "Asset")
+                .in("account_subtype", ["Cash", "Bank"]) // Pay from cash or bank
+                .order("account_code", { ascending: true })
+            : undefined;
+        // If organization scoping exists, apply it
+        if (orgId) {
+          const scoped = await supabase
+            .from("accounts")
+            .select("id, account_code, account_name, account_type, account_subtype, balance")
+            .eq("account_type", "Asset")
+            .in("account_subtype", ["Cash", "Bank"]) // Pay from cash or bank
+            .eq("organization_id", orgId)
+            .order("account_code", { ascending: true });
+          data = scoped.data as any[] | null;
+          error = scoped.error;
+        } else {
+          data = (res as any)?.data as any[] | null;
+          error = (res as any)?.error;
+        }
+      } catch (innerErr: any) {
+        error = innerErr;
+      }
+
+      if (error) {
+        const message = String(error?.message || "");
+        if (message.includes("account_subtype") || (message.toLowerCase().includes("column") && message.toLowerCase().includes("does not exist"))) {
+          // Fallback without subtype filter (will include all Asset accounts)
+          const scoped = await supabase
+            .from("accounts")
+            .select("id, account_code, account_name, account_type, balance")
+            .eq("account_type", "Asset")
+            .order("account_code", { ascending: true });
+          if (scoped.error) throw scoped.error;
+          data = scoped.data as any[] | null;
+        } else {
+          throw error;
+        }
+      }
+
       const list = (data || []) as any as AccountOption[];
       setAccounts(list);
       return list;
-    } catch (e) {
+    } catch (e: any) {
       console.warn("Failed to load accounts", e);
       setAccounts([]);
       return [];
     }
-  }, []);
+  }, [organization?.id]);
 
   const openPayDialog = async (purchaseId: string, totalAmount: number) => {
     setPayPurchaseId(purchaseId);

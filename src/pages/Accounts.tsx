@@ -55,12 +55,34 @@ export default function Accounts() {
         setAccounts([]);
         return;
       }
-      const { data, error } = await supabase
-        .from("accounts")
-        .select("id, account_code, account_name, account_type, normal_balance, description, parent_account_id, account_subtype")
-        .eq("organization_id", organization.id)
-        .order("account_code", { ascending: true });
-      if (error) throw error;
+      let data: any[] | null = null;
+      let error: any = null;
+      try {
+        const res = await supabase
+          .from("accounts")
+          .select("id, account_code, account_name, account_type, normal_balance, description, parent_account_id, account_subtype")
+          .eq("organization_id", organization.id)
+          .order("account_code", { ascending: true });
+        data = res.data as any[] | null;
+        error = res.error;
+      } catch (innerErr: any) {
+        error = innerErr;
+      }
+      if (error) {
+        // Fallback: older schemas might not have account_subtype yet
+        const message = String(error?.message || "");
+        if (message.includes("account_subtype") || message.toLowerCase().includes("column") && message.toLowerCase().includes("does not exist")) {
+          const { data: dataFallback, error: errFallback } = await supabase
+            .from("accounts")
+            .select("id, account_code, account_name, account_type, normal_balance, description, parent_account_id")
+            .eq("organization_id", organization.id)
+            .order("account_code", { ascending: true });
+          if (errFallback) throw errFallback;
+          data = dataFallback as any[] | null;
+        } else {
+          throw error;
+        }
+      }
 
       // If no accounts exist, try initializing defaults
       if ((data || []).length === 0 && organization?.id) {
@@ -68,7 +90,7 @@ export default function Accounts() {
           await supabase.rpc('setup_new_organization', { org_id: organization.id });
           const { data: afterInit } = await supabase
             .from("accounts")
-            .select("id, account_code, account_name, account_type, normal_balance, description, parent_account_id, account_subtype")
+            .select("id, account_code, account_name, account_type, normal_balance, description, parent_account_id")
             .eq("organization_id", organization.id)
             .order("account_code", { ascending: true });
           setAccounts(afterInit || []);
@@ -79,11 +101,11 @@ export default function Accounts() {
       }
 
       setAccounts(data || []);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       // Graceful fallback: surface empty state rather than erroring
       setAccounts([]);
-      toast.error("Failed to load accounts");
+      toast.error(e?.message || "Failed to load accounts");
     } finally {
       setLoading(false);
     }
