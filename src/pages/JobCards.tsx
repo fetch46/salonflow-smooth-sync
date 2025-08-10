@@ -52,7 +52,9 @@ import {
   PauseCircle,
   StopCircle,
   BarChart3,
-  PieChart
+  PieChart,
+  List,
+  LayoutGrid
 } from "lucide-react";
 import { format, subDays, isToday, isYesterday, differenceInMinutes, addDays } from "date-fns";
 import { toast } from "sonner";
@@ -131,6 +133,7 @@ export default function JobCards() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all_time");
   const [activeTab, setActiveTab] = useState("all");
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>("list");
   const navigate = useNavigate();
   const [jobCardsWithReceipts, setJobCardsWithReceipts] = useState<Set<string>>(new Set());
 
@@ -474,6 +477,281 @@ export default function JobCards() {
       }));
   }, [jobCards]);
 
+  const renderJobCardsSection = () => {
+    if (currentJobCards.length === 0) {
+      return (
+        <div className="text-center py-16 space-y-4">
+          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
+            <ClipboardList className="w-8 h-8 text-slate-400" />
+          </div>
+          <div className="space-y-2">
+            <p className="text-slate-600 font-medium">
+              {searchTerm || statusFilter !== "all" ? "No job cards found" : "No job cards yet"}
+            </p>
+            <p className="text-slate-400 text-sm">
+              {searchTerm || statusFilter !== "all" 
+                ? "Try adjusting your filters" 
+                : "Create your first job card to get started"
+              }
+            </p>
+          </div>
+          {!searchTerm && statusFilter === "all" && (
+            <CreateButtonGate feature="job_cards" onClick={() => navigate('/job-cards/new')}>
+              <Button 
+                className="bg-indigo-600 hover:bg-indigo-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create First Job Card
+              </Button>
+            </CreateButtonGate>
+          )}
+        </div>
+      );
+    }
+
+    if (viewMode === 'list') {
+      return (
+        <div className="max-h-96 overflow-y-auto divide-y divide-slate-100">
+          {currentJobCards.map((jobCard) => (
+            <div
+              key={jobCard.id}
+              className="flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors"
+            >
+              <div className="flex items-center gap-4 flex-1">
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-medium text-sm">
+                    {jobCard.job_number.slice(-2)}
+                  </div>
+                  {jobCard.priority === 'urgent' && (
+                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                      <Zap className="w-2 h-2 text-white" />
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <h4 className="font-semibold text-slate-900 truncate">
+                      {jobCard.job_number}
+                    </h4>
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(jobCard.status)}
+                      {getPriorityBadge(jobCard.priority)}
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="space-y-1">
+                      <div className="flex items-center text-slate-600">
+                        <User className="w-3 h-3 mr-1" />
+                        {jobCard.client?.full_name || "No client"}
+                      </div>
+                      <div className="flex items-center text-slate-600">
+                        <UserCheck className="w-3 h-3 mr-1" />
+                        {jobCard.staff?.full_name || "Unassigned"}
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <div className="flex items-center text-slate-600">
+                        <Calendar className="w-3 h-3 mr-1" />
+                        {format(new Date(jobCard.created_at), "MMM dd, yyyy")}
+                      </div>
+                      <div className="flex items-center text-slate-600">
+                        <DollarSign className="w-3 h-3 mr-1" />
+                        Ksh {jobCard.total_amount.toFixed(2)}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {jobCard.service_type && (
+                    <div className="mt-2">
+                      <Badge variant="outline" className="text-xs">
+                        {jobCard.service_type}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8">
+                      <MoreHorizontal className="w-4 h-4 mr-2" />
+                      Actions
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52 z-50 bg-background">
+                    <DropdownMenuItem onClick={() => navigate(`/job-cards/${jobCard.id}`)}>
+                      <Eye className="w-4 h-4 mr-2" />
+                      View
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate(`/job-cards/${jobCard.id}/edit`)}>
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <Printer className="w-4 h-4 mr-2" />
+                      Print
+                    </DropdownMenuItem>
+                    {jobCard.status === 'completed' && !jobCardsWithReceipts.has(jobCard.id) && (
+                      <DropdownMenuItem onClick={() => createReceiptFromJobCard(jobCard)}>
+                        <Receipt className="w-4 h-4 mr-2" />
+                        Create Receipt
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={() => handleDeleteJobCard(jobCard.id)}
+                      disabled={jobCardsWithReceipts.has(jobCard.id)}
+                      className={`focus:text-red-600 ${jobCardsWithReceipts.has(jobCard.id) ? 'text-slate-400' : 'text-red-600'}`}
+                      title={jobCardsWithReceipts.has(jobCard.id) ? 'Cannot delete: receipt exists for this job card' : undefined}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Select 
+                  value={jobCard.status} 
+                  onValueChange={(value) => handleStatusUpdate(jobCard.id, value)}
+                >
+                  <SelectTrigger className="w-24 h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {JOB_STATUSES.map((status) => (
+                      <SelectItem key={status.value} value={status.value}>
+                        <div className="flex items-center gap-2">
+                          <status.icon className="w-3 h-3" />
+                          {status.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
+        {currentJobCards.map((jobCard) => (
+          <Card key={jobCard.id} className="border-slate-200 hover:shadow-md transition-shadow">
+            <CardHeader className="pb-2">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 text-white text-sm font-medium">
+                      {jobCard.job_number.slice(-2)}
+                    </span>
+                    <CardTitle className="text-base truncate">{jobCard.job_number}</CardTitle>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {getStatusBadge(jobCard.status)}
+                    {getPriorityBadge(jobCard.priority)}
+                  </div>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52 z-50 bg-background">
+                    <DropdownMenuItem onClick={() => navigate(`/job-cards/${jobCard.id}`)}>
+                      <Eye className="w-4 h-4 mr-2" />
+                      View
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate(`/job-cards/${jobCard.id}/edit`)}>
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit
+                    </DropdownMenuItem>
+                    {jobCard.status === 'completed' && !jobCardsWithReceipts.has(jobCard.id) && (
+                      <DropdownMenuItem onClick={() => createReceiptFromJobCard(jobCard)}>
+                        <Receipt className="w-4 h-4 mr-2" />
+                        Create Receipt
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={() => handleDeleteJobCard(jobCard.id)}
+                      disabled={jobCardsWithReceipts.has(jobCard.id)}
+                      className={`focus:text-red-600 ${jobCardsWithReceipts.has(jobCard.id) ? 'text-slate-400' : 'text-red-600'}`}
+                      title={jobCardsWithReceipts.has(jobCard.id) ? 'Cannot delete: receipt exists for this job card' : undefined}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="space-y-1">
+                  <div className="flex items-center text-slate-600">
+                    <User className="w-3 h-3 mr-1" />
+                    {jobCard.client?.full_name || "No client"}
+                  </div>
+                  <div className="flex items-center text-slate-600">
+                    <UserCheck className="w-3 h-3 mr-1" />
+                    {jobCard.staff?.full_name || "Unassigned"}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center text-slate-600">
+                    <Calendar className="w-3 h-3 mr-1" />
+                    {format(new Date(jobCard.created_at), "MMM dd, yyyy")}
+                  </div>
+                  <div className="flex items-center text-slate-600">
+                    <DollarSign className="w-3 h-3 mr-1" />
+                    Ksh {jobCard.total_amount.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+              {jobCard.service_type && (
+                <div className="mt-3">
+                  <Badge variant="outline" className="text-xs">
+                    {jobCard.service_type}
+                  </Badge>
+                </div>
+              )}
+              <div className="mt-4 flex items-center justify-between">
+                <Select 
+                  value={jobCard.status} 
+                  onValueChange={(value) => handleStatusUpdate(jobCard.id, value)}
+                >
+                  <SelectTrigger className="w-32 h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {JOB_STATUSES.map((status) => (
+                      <SelectItem key={status.value} value={status.value}>
+                        <div className="flex items-center gap-2">
+                          <status.icon className="w-3 h-3" />
+                          {status.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button size="sm" variant="secondary" onClick={() => navigate(`/job-cards/${jobCard.id}`)}>
+                  View Details
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -488,7 +766,7 @@ export default function JobCards() {
   return (
     <div className="flex-1 space-y-6 p-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen">
       {/* Modern Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 sticky top-0 z-30 bg-gradient-to-br from-slate-50 to-slate-100/50 pt-6">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl shadow-lg">
@@ -502,6 +780,17 @@ export default function JobCards() {
         </div>
         
         <div className="flex items-center gap-3">
+          <div className="hidden md:flex rounded-lg border border-slate-200 p-1 bg-white shadow-sm">
+            <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="sm" className="gap-2" onClick={() => setViewMode('list')}>
+              <List className="w-4 h-4" />
+              List
+            </Button>
+            <Button variant={viewMode === 'grid' ? 'default' : 'ghost'} size="sm" className="gap-2" onClick={() => setViewMode('grid')}>
+              <LayoutGrid className="w-4 h-4" />
+              Grid
+            </Button>
+          </div>
+
           <Button 
             variant="outline" 
             onClick={refreshData}
@@ -664,13 +953,13 @@ export default function JobCards() {
                 </Tabs>
 
                 <div className="flex items-center gap-3">
-                  <div className="relative">
+                  <div className="relative w-full md:w-64">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input
                       placeholder="Search job cards..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-9 w-64"
+                      className="pl-9 w-full"
                     />
                   </div>
                   
@@ -709,166 +998,13 @@ export default function JobCards() {
             </CardHeader>
             
             <CardContent className="p-0">
-              {currentJobCards.length === 0 ? (
-                <div className="text-center py-16 space-y-4">
-                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
-                    <ClipboardList className="w-8 h-8 text-slate-400" />
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-slate-600 font-medium">
-                      {searchTerm || statusFilter !== "all" ? "No job cards found" : "No job cards yet"}
-                    </p>
-                    <p className="text-slate-400 text-sm">
-                      {searchTerm || statusFilter !== "all" 
-                        ? "Try adjusting your filters" 
-                        : "Create your first job card to get started"
-                      }
-                    </p>
-                  </div>
-                  {!searchTerm && statusFilter === "all" && (
-                    <CreateButtonGate feature="job_cards" onClick={() => navigate('/job-cards/new')}>
-                      <Button 
-                        className="bg-indigo-600 hover:bg-indigo-700"
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create First Job Card
-                      </Button>
-                    </CreateButtonGate>
-                  )}
-                </div>
-              ) : (
-                <div className="max-h-96 overflow-y-auto">
-                  {currentJobCards.map((jobCard) => (
-                    <div
-                      key={jobCard.id}
-                      className="flex items-center justify-between p-4 border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className="relative">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-medium text-sm">
-                            {jobCard.job_number.slice(-2)}
-                          </div>
-                          {jobCard.priority === 'urgent' && (
-                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                              <Zap className="w-2 h-2 text-white" />
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <h4 className="font-semibold text-slate-900 truncate">
-                              {jobCard.job_number}
-                            </h4>
-                            <div className="flex items-center gap-2">
-                              {getStatusBadge(jobCard.status)}
-                              {getPriorityBadge(jobCard.priority)}
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div className="space-y-1">
-                              <div className="flex items-center text-slate-600">
-                                <User className="w-3 h-3 mr-1" />
-                                {jobCard.client?.full_name || "No client"}
-                              </div>
-                              <div className="flex items-center text-slate-600">
-                                <UserCheck className="w-3 h-3 mr-1" />
-                                {jobCard.staff?.full_name || "Unassigned"}
-                              </div>
-                            </div>
-                            
-                            <div className="space-y-1">
-                              <div className="flex items-center text-slate-600">
-                                <Calendar className="w-3 h-3 mr-1" />
-                                {format(new Date(jobCard.created_at), "MMM dd, yyyy")}
-                              </div>
-                              <div className="flex items-center text-slate-600">
-                                <DollarSign className="w-3 h-3 mr-1" />
-                                Ksh {jobCard.total_amount.toFixed(2)}
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {jobCard.service_type && (
-                            <div className="mt-2">
-                              <Badge variant="outline" className="text-xs">
-                                {jobCard.service_type}
-                              </Badge>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-8">
-                              <MoreHorizontal className="w-4 h-4 mr-2" />
-                              Actions
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-52 z-50 bg-background">
-                            <DropdownMenuItem onClick={() => navigate(`/job-cards/${jobCard.id}`)}>
-                              <Eye className="w-4 h-4 mr-2" />
-                              View
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => navigate(`/job-cards/${jobCard.id}/edit`)}>
-                              <Edit className="w-4 h-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Printer className="w-4 h-4 mr-2" />
-                              Print
-                            </DropdownMenuItem>
-                            {jobCard.status === 'completed' && !jobCardsWithReceipts.has(jobCard.id) && (
-                              <DropdownMenuItem onClick={() => createReceiptFromJobCard(jobCard)}>
-                                <Receipt className="w-4 h-4 mr-2" />
-                                Create Receipt
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteJobCard(jobCard.id)}
-                              disabled={jobCardsWithReceipts.has(jobCard.id)}
-                              className={`focus:text-red-600 ${jobCardsWithReceipts.has(jobCard.id) ? 'text-slate-400' : 'text-red-600'}`}
-                              title={jobCardsWithReceipts.has(jobCard.id) ? 'Cannot delete: receipt exists for this job card' : undefined}
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
- 
-                         <Select 
-                           value={jobCard.status} 
-                           onValueChange={(value) => handleStatusUpdate(jobCard.id, value)}
-                         >
-                           <SelectTrigger className="w-24 h-8">
-                             <SelectValue />
-                           </SelectTrigger>
-                           <SelectContent>
-                             {JOB_STATUSES.map((status) => (
-                               <SelectItem key={status.value} value={status.value}>
-                                 <div className="flex items-center gap-2">
-                                   <status.icon className="w-3 h-3" />
-                                   {status.label}
-                                 </div>
-                               </SelectItem>
-                             ))}
-                           </SelectContent>
-                         </Select>
-                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {renderJobCardsSection()}
             </CardContent>
           </Card>
         </div>
 
         {/* Right Sidebar - Takes 1 column */}
-        <div className="space-y-6">
+        <div className="space-y-6 lg:sticky lg:top-24 self-start">
           {/* Quick Stats */}
           <Card className="shadow-sm border-slate-200">
             <CardHeader className="border-b border-slate-200">
