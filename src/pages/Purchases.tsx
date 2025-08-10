@@ -103,6 +103,7 @@ export default function Purchases() {
 
   // removed inline item add/remove (handled in full page form)
 
+
   useEffect(() => {
     fetchPurchases();
     fetchSuppliers();
