@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { RefreshCw, DollarSign } from "lucide-react";
-import { format } from "date-fns";
+import { format, startOfToday, endOfToday, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
 import { toast } from "sonner";
 import { getReceiptsWithFallback } from "@/utils/mockDatabase";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
@@ -16,6 +16,10 @@ import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Eye, Mail, MessageSquare, MoreHorizontal, Trash2, Printer } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 interface Receipt {
   id: string;
@@ -59,6 +63,16 @@ export default function Receipts() {
   const [bookingNumber, setBookingNumber] = useState<string | null>(null);
   const [createPayment, setCreatePayment] = useState<{ enabled: boolean; amount: string; method: string; reference: string }>({ enabled: false, amount: "", method: "cash", reference: "" });
 
+  // Enhanced UI state
+  const customersById = useMemo(() => {
+    const map: Record<string, string> = {};
+    customers.forEach(c => { map[c.id] = c.full_name; });
+    return map;
+  }, [customers]);
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [quickDate, setQuickDate] = useState<string>("all_time");
+
   const fetchReceipts = async () => {
     try {
       setLoading(true);
@@ -91,7 +105,6 @@ export default function Receipts() {
   };
 
   const handlePrintReceipt = (receipt: Receipt) => {
-    // Open detail page in print mode in a new tab
     window.open(`/receipts/${receipt.id}?print=1`, "_blank");
   };
 
@@ -111,20 +124,37 @@ export default function Receipts() {
   }, [receipts, search, status, customerId, dateFrom, dateTo]);
 
   const outstanding = (r: Receipt) => Math.max(0, (r.total_amount || 0) - (r.amount_paid || 0));
+  const paidPct = (r: Receipt) => {
+    const total = Number(r.total_amount || 0);
+    if (total <= 0) return 0;
+    return Math.min(100, Math.round((Number(r.amount_paid || 0) / total) * 100));
+  };
+
   const totals = useMemo(() => {
     const total = filtered.reduce((sum, r) => sum + (r.total_amount || 0), 0);
     const paid = filtered.reduce((sum, r) => sum + (r.amount_paid || 0), 0);
     const due = total - paid;
-    // Optional tax inclusion for reporting: if enabled, add up all receipt subtotals*rate differences.
-    // Here, as receipts already include tax in total_amount, toggling tax is treated as a display feature: when off, show subtotal-like by subtracting tax_amount.
     const totalWithoutTax = filtered.reduce((sum, r) => sum + ((r.total_amount || 0) - (r.tax_amount || 0)), 0);
     return reportApplyTax ? { total, paid, due } : { total: totalWithoutTax, paid, due: Math.max(0, totalWithoutTax - paid) };
   }, [filtered, reportApplyTax]);
+
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(filtered.length / pageSize)), [filtered.length, pageSize]);
+  const currentPage = useMemo(() => Math.min(page, totalPages), [page, totalPages]);
+  const paginated = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    return filtered.slice(start, end);
+  }, [filtered, currentPage, pageSize]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, status, customerId, dateFrom, dateTo, pageSize]);
 
   const exportCsv = () => {
     const headers = [
       'Receipt Number',
       'Date',
+      'Customer',
       'Status',
       'Subtotal',
       'Tax',
@@ -136,6 +166,7 @@ export default function Receipts() {
     const rows = filtered.map(r => [
       r.receipt_number,
       new Date(r.created_at).toISOString(),
+      r.customer_id ? (customersById[r.customer_id] || 'Customer') : 'Walk-in',
       r.status,
       (r.subtotal || 0).toFixed(2),
       (r.tax_amount || 0).toFixed(2),
@@ -162,10 +193,11 @@ export default function Receipts() {
       toast.error('No receipts selected');
       return;
     }
-    const headers = ['Receipt Number','Date','Status','Total','Paid','Outstanding'];
+    const headers = ['Receipt Number','Date','Customer','Status','Total','Paid','Outstanding'];
     const rows = selected.map(r => [
       r.receipt_number,
       new Date(r.created_at).toISOString(),
+      r.customer_id ? (customersById[r.customer_id] || 'Customer') : 'Walk-in',
       r.status,
       (r.total_amount || 0).toFixed(2),
       (r.amount_paid || 0).toFixed(2),
@@ -251,6 +283,24 @@ export default function Receipts() {
     });
   };
 
+  const applyQuickDate = (value: string) => {
+    setQuickDate(value);
+    const fmt = (d: Date) => d.toISOString().slice(0,10);
+    if (value === 'today') {
+      setDateFrom(fmt(startOfToday()));
+      setDateTo(fmt(endOfToday()));
+    } else if (value === 'this_month') {
+      setDateFrom(fmt(startOfMonth(new Date())));
+      setDateTo(fmt(endOfMonth(new Date())));
+    } else if (value === 'this_year') {
+      setDateFrom(fmt(startOfYear(new Date())));
+      setDateTo(fmt(endOfYear(new Date())));
+    } else {
+      setDateFrom("");
+      setDateTo("");
+    }
+  };
+
   // Fetch eligible job cards (completed and not fully paid)
   const openCreate = async () => {
     setIsCreateOpen(true);
@@ -280,11 +330,9 @@ export default function Receipts() {
       }
       const eligible = (cards || []).filter(c => {
         const rcpts = rcptByJob[c.id] || [];
-        // Include if no receipt exists or receipt exists but not paid
         if (rcpts.length === 0) return true;
         return rcpts.some(r => (r.status !== 'paid') && (Number(r.amount_paid || 0) < Number(r.total_amount || 0)));
       });
-      // Attach display name
       const clientIds = Array.from(new Set(eligible.map(c => c.client_id).filter(Boolean)));
       const clientsById: Record<string, any> = {};
       if (clientIds.length) {
@@ -323,7 +371,7 @@ export default function Receipts() {
               const mappedItems = (items || []).map((it: any) => {
           const svcRate = typeof it.services?.commission_percentage === 'number' ? it.services.commission_percentage : null;
           const overrideRate = typeof it.commission_percentage === 'number' ? it.commission_percentage : null;
-          const rate = (overrideRate ?? svcRate ?? 0) as number; // prefer service item override, else service-level
+          const rate = (overrideRate ?? svcRate ?? 0) as number;
           return ({
             service_id: it.service_id,
             product_id: null,
@@ -339,7 +387,6 @@ export default function Receipts() {
       setJobcardItems(mappedItems);
 
       if (rcpt && rcpt.length > 0) {
-        // Prefer the most recent open/partial
         const open = rcpt.find((r: any) => r.status !== 'paid');
         setExistingReceiptForJob(open || rcpt[0]);
         if (open) {
@@ -347,12 +394,10 @@ export default function Receipts() {
           setCreatePayment({ enabled: true, amount: String(outstandingAmt), method: 'cash', reference: '' });
         }
       } else {
-        // Set default payment amount to total
         const total = Number(jc?.total_amount || 0);
         setCreatePayment({ enabled: false, amount: String(total), method: 'cash', reference: '' });
       }
 
-      // Try to find a booking number (appointment) for same client and date
       if (jc?.client_id && jc?.start_time) {
         const apptDate = new Date(jc.start_time).toISOString().slice(0,10);
         const { data: appts } = await supabase
@@ -390,7 +435,6 @@ export default function Receipts() {
         receiptId = (created as any)?.id;
       }
 
-      // Optional payment
       if (receiptId && createPayment.enabled) {
         const amt = parseFloat(createPayment.amount) || 0;
         if (amt > 0) {
@@ -428,33 +472,76 @@ export default function Receipts() {
   return (
     <div className="flex-1 space-y-6 p-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <h2 className="text-2xl font-bold">Receipts</h2>
+        <div className="space-y-1">
+          <h2 className="text-2xl font-bold">Receipts</h2>
+          <div className="text-sm text-muted-foreground">{filtered.length} result{filtered.length === 1 ? '' : 's'}</div>
+        </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <select className="border rounded px-3 py-2" value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="all">All</option>
-            <option value="open">Open</option>
-            <option value="partial">Partial</option>
-            <option value="paid">Paid</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-          <select className="border rounded px-3 py-2" value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
-            <option value="all">All Customers</option>
-            {customers.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-          </select>
-          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-auto" />
-          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-auto" />
-          <Input placeholder="Search receipts..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full md:max-w-xs" />
-          <Button variant="outline" onClick={exportCsv}>
-            Export CSV
-          </Button>
-          <Button variant="outline" onClick={exportSelectedCsv}>
-            Export Selected
-          </Button>
+          <Button variant="outline" onClick={exportCsv}>Export CSV</Button>
+          <Button variant="outline" onClick={exportSelectedCsv} disabled={selectedIds.size === 0}>Export Selected</Button>
           <Button variant="outline" onClick={refresh} disabled={refreshing}>
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           <Button onClick={openCreate}>Create Receipt</Button>
+        </div>
+      </div>
+
+      <Tabs value={status} onValueChange={setStatus}>
+        <TabsList>
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="open">Open</TabsTrigger>
+          <TabsTrigger value="partial">Partial</TabsTrigger>
+          <TabsTrigger value="paid">Paid</TabsTrigger>
+          <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-1 flex-wrap gap-2 items-end">
+          <div className="w-[220px]">
+            <Select value={customerId} onValueChange={setCustomerId}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Customers" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Customers</SelectItem>
+                {customers.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-[180px]">
+            <Select value={quickDate} onValueChange={applyQuickDate}>
+              <SelectTrigger>
+                <SelectValue placeholder="Date Range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all_time">All Time</SelectItem>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="this_month">This Month</SelectItem>
+                <SelectItem value="this_year">This Year</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-[170px]" />
+          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-[170px]" />
+          <Input placeholder="Search receipts..." value={search} onChange={(e) => setSearch(e.target.value)} className="flex-1 min-w-[200px]" />
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-[120px]">
+            <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+              <SelectTrigger>
+                <SelectValue placeholder="Rows" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10 / page</SelectItem>
+                <SelectItem value="20">20 / page</SelectItem>
+                <SelectItem value="50">50 / page</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -465,17 +552,27 @@ export default function Receipts() {
               <Switch checked={reportApplyTax} onCheckedChange={setReportApplyTax} /> Include Tax
             </span>
           </CardTitle></CardHeader>
-          <CardContent className="text-2xl font-semibold">${totals.total.toFixed(2)}</CardContent>
+          <CardContent className="text-2xl font-semibold">{formatMoney(totals.total)}</CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Paid</CardTitle></CardHeader>
-          <CardContent className="text-2xl font-semibold">${totals.paid.toFixed(2)}</CardContent>
+          <CardContent className="text-2xl font-semibold">{formatMoney(totals.paid)}</CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Outstanding</CardTitle></CardHeader>
-          <CardContent className="text-2xl font-semibold">${totals.due.toFixed(2)}</CardContent>
+          <CardContent className="text-2xl font-semibold">{formatMoney(totals.due)}</CardContent>
         </Card>
       </div>
+
+      {selectedIds.size > 0 && (
+        <div className="flex items-center justify-between rounded-md border p-3 bg-muted/40">
+          <div className="text-sm">{selectedIds.size} selected</div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={exportSelectedCsv}>Export Selected</Button>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Clear</Button>
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -491,29 +588,38 @@ export default function Receipts() {
                   </TableHead>
                   <TableHead>#</TableHead>
                   <TableHead>Date</TableHead>
+                  <TableHead>Customer</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>Paid</TableHead>
-                  <TableHead>Outstanding</TableHead>
+                  <TableHead>Balance</TableHead>
+                  <TableHead>Progress</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map(r => (
+                {paginated.map(r => (
                   <TableRow key={r.id}>
                     <TableCell>
                       <input type="checkbox" checked={selectedIds.has(r.id)} onChange={(e) => toggleSelect(r.id, e.currentTarget.checked)} />
                     </TableCell>
                     <TableCell className="font-medium">{r.receipt_number}</TableCell>
                     <TableCell>{format(new Date(r.created_at), 'MMM dd, yyyy')}</TableCell>
+                    <TableCell>{r.customer_id ? (customersById[r.customer_id] || 'Customer') : 'Walk-in'}</TableCell>
                     <TableCell>
                       <Badge variant={r.status === 'paid' ? 'default' : r.status === 'partial' ? 'outline' : 'secondary'}>
                         {r.status.toUpperCase()}
                       </Badge>
                     </TableCell>
-                    <TableCell>${(r.total_amount || 0).toFixed(2)}</TableCell>
-                    <TableCell>${(r.amount_paid || 0).toFixed(2)}</TableCell>
-                    <TableCell>${outstanding(r).toFixed(2)}</TableCell>
+                    <TableCell>{formatMoney(r.total_amount || 0)}</TableCell>
+                    <TableCell>{formatMoney(r.amount_paid || 0)}</TableCell>
+                    <TableCell>{formatMoney(outstanding(r))}</TableCell>
+                    <TableCell className="w-[180px]">
+                      <div className="flex items-center gap-2">
+                        <Progress value={paidPct(r)} />
+                        <span className="text-xs text-muted-foreground w-10 text-right">{paidPct(r)}%</span>
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end items-center gap-2 flex-wrap">
                         <Button
@@ -578,12 +684,13 @@ export default function Receipts() {
 
           {/* Mobile Cards */}
           <div className="md:hidden space-y-3">
-            {filtered.map(r => (
+            {paginated.map(r => (
               <div key={r.id} className="border rounded-lg p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="font-semibold">{r.receipt_number}</div>
                     <div className="text-sm text-muted-foreground">{format(new Date(r.created_at), 'MMM dd, yyyy')}</div>
+                    <div className="text-sm text-muted-foreground">{r.customer_id ? (customersById[r.customer_id] || 'Customer') : 'Walk-in'}</div>
                   </div>
                   <Badge variant={r.status === 'paid' ? 'default' : r.status === 'partial' ? 'outline' : 'secondary'}>
                     {r.status.toUpperCase()}
@@ -592,16 +699,20 @@ export default function Receipts() {
                 <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
                   <div>
                     <div className="text-muted-foreground">Total</div>
-                    <div className="font-medium">${(r.total_amount || 0).toFixed(2)}</div>
+                    <div className="font-medium">{formatMoney(r.total_amount || 0)}</div>
                   </div>
                   <div>
                     <div className="text-muted-foreground">Paid</div>
-                    <div className="font-medium">${(r.amount_paid || 0).toFixed(2)}</div>
+                    <div className="font-medium">{formatMoney(r.amount_paid || 0)}</div>
                   </div>
                   <div>
                     <div className="text-muted-foreground">Outstanding</div>
-                    <div className="font-medium">${outstanding(r).toFixed(2)}</div>
+                    <div className="font-medium">{formatMoney(outstanding(r))}</div>
                   </div>
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <Progress value={paidPct(r)} />
+                  <span className="text-xs text-muted-foreground w-10 text-right">{paidPct(r)}%</span>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" onClick={() => navigate(`/receipts/${r.id}`)}>
@@ -621,6 +732,30 @@ export default function Receipts() {
                 </div>
               </div>
             ))}
+          </div>
+
+          <div className="mt-4 flex items-center justify-between gap-2">
+            <div className="text-sm text-muted-foreground">Page {currentPage} of {totalPages}</div>
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setPage(p => Math.max(1, p - 1)); }} />
+                </PaginationItem>
+                {Array.from({ length: totalPages }).slice(0, 5).map((_, idx) => {
+                  const pageNum = idx + 1;
+                  return (
+                    <PaginationItem key={pageNum}>
+                      <PaginationLink href="#" isActive={currentPage === pageNum} onClick={(e) => { e.preventDefault(); setPage(pageNum); }}>
+                        {pageNum}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                })}
+                <PaginationItem>
+                  <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setPage(p => Math.min(totalPages, p + 1)); }} />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           </div>
         </CardContent>
       </Card>
@@ -667,7 +802,7 @@ export default function Receipts() {
               <select className="border rounded px-3 py-2 w-full" value={selectedJobcardId} onChange={(e) => onSelectJobcard(e.target.value)}>
                 <option value="">Select a completed, unpaid job card</option>
                 {jobcards.map(j => (
-                  <option key={j.id} value={j.id}>{j.job_number} — {j.client_name || 'No client'} — ${Number(j.total_amount||0).toFixed(2)}</option>
+                  <option key={j.id} value={j.id}>{j.job_number} — {j.client_name || 'No client'} — {formatMoney(Number(j.total_amount||0))}</option>
                 ))}
               </select>
               {existingReceiptForJob && (
@@ -694,7 +829,7 @@ export default function Receipts() {
                   </div>
                   <div>
                     <Label>Total Amount</Label>
-                    <div className="text-sm">${Number(jobcardDetails.total_amount || 0).toFixed(2)}</div>
+                    <div className="text-sm">{formatMoney(Number(jobcardDetails.total_amount || 0))}</div>
                   </div>
                 </div>
                 <div>
@@ -720,8 +855,8 @@ export default function Receipts() {
                               <TableCell>{it.description}</TableCell>
                               <TableCell>{it.staff_name || '—'}</TableCell>
                               <TableCell>{it.quantity}</TableCell>
-                              <TableCell>${Number(it.unit_price).toFixed(2)}</TableCell>
-                              <TableCell>${Number(it.total_price).toFixed(2)}</TableCell>
+                              <TableCell>{formatMoney(Number(it.unit_price))}</TableCell>
+                              <TableCell>{formatMoney(Number(it.total_price))}</TableCell>
                               <TableCell>{Number(it.commission_percentage || 0).toFixed(2)}%</TableCell>
                             </TableRow>
                           ))}
