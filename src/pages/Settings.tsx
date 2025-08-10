@@ -32,17 +32,17 @@ export default function Settings() {
 
   // Company Settings State
   const [companyData, setCompanyData] = useState({
-    name: "SalonSync Demo",
+    name: "",
     address: "",
-    city: "New York",
-        country: "US",
-phone: "+1 (555) 123-4567",
-    email: "info@salonsync.demo",
-    website: "www.salonsync.demo",
-    tax_id: "123-45-6789",
+    city: "",
+        country: "",
+phone: "",
+    email: "",
+    website: "",
+    tax_id: "",
     logo_url: "",
-    timezone: "America/New_York",
-    currency: "USD",
+    timezone: "",
+    currency: "",
     language: "en",
   });
 
