@@ -1031,12 +1031,12 @@ phone: "+1 (555) 123-4567",
                       <div className="text-xs text-muted-foreground">Select the default account to deposit {methodKey.replace("_", " ")} payments</div>
                     </div>
                     <div className="md:col-span-2">
-                      <Select value={depositAccountMap[methodKey] || ""} onValueChange={(v) => setDepositAccountMap(prev => ({ ...prev, [methodKey]: v }))}>
+                      <Select value={depositAccountMap[methodKey] === undefined || depositAccountMap[methodKey] === "" ? "__none__" : depositAccountMap[methodKey]} onValueChange={(v) => setDepositAccountMap(prev => ({ ...prev, [methodKey]: v === "__none__" ? "" : v }))}>
                         <SelectTrigger>
                           <SelectValue placeholder="Choose account" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">— None (fallback to Cash/Bank) —</SelectItem>
+                          <SelectItem value="__none__">— None (fallback to Cash/Bank) —</SelectItem>
                           {depositAccounts.map(acc => (
                             <SelectItem key={acc.id} value={acc.id}>{acc.account_code} · {acc.account_name}{acc.account_subtype ? ` (${acc.account_subtype})` : ""}</SelectItem>
                           ))}
