@@ -15,6 +15,8 @@ interface AccountRow {
   account_code: string;
   account_name: string;
   account_subtype?: string | null;
+  account_type?: string | null;
+  normal_balance?: string | null;
 }
 
 interface TransactionRow {
@@ -52,12 +54,24 @@ export default function Banking() {
     try {
       const { data, error } = await supabase
         .from("accounts")
-        .select("id, account_code, account_name, account_subtype")
+        .select("id, account_code, account_name, account_subtype, account_type, normal_balance")
         .eq("organization_id", organization.id)
         .in("account_subtype", ["Cash", "Bank"])
         .order("account_code", { ascending: true });
       if (error) throw error;
-      const list = (data || []) as any[];
+      let list = (data || []) as any[];
+
+      // Fallback for older schemas without account_subtype
+      if (!list.length) {
+        const { data: fallbackData } = await supabase
+          .from("accounts")
+          .select("id, account_code, account_name, account_subtype, account_type, normal_balance")
+          .eq("organization_id", organization.id)
+          .or("account_code.in.(1001,1002),account_name.ilike.%Cash%,account_name.ilike.%Bank%")
+          .order("account_code", { ascending: true });
+        list = (fallbackData || []) as any[];
+      }
+
       setAccounts(list as AccountRow[]);
       if (list.length > 0 && !selectedAccountId) {
         setSelectedAccountId(list[0].id);
@@ -113,10 +127,9 @@ export default function Banking() {
   type DisplayTxn = TransactionRow & { displayDebit: number; displayCredit: number; runningBalance: number };
 
   const filteredTransactions: DisplayTxn[] = useMemo(() => {
-    // Business rule:
-    // - Payments received from customers => treat as Credit (use debit_amount)
-    // - Payments made to suppliers and Expenses => treat as Debit (use credit_amount)
-    // - Otherwise fall back to natural debit/credit columns
+    // Banking view convention:
+    // - Inflows (to this Cash/Bank account) appear under Credit
+    // - Outflows appear under Debit
     const matchesSearch = (t: TransactionRow) => {
       const q = search.trim().toLowerCase();
       if (!q) return true;
@@ -127,25 +140,18 @@ export default function Banking() {
       );
     };
 
-    const base: Array<Omit<DisplayTxn, "runningBalance">> = (transactions || [])
+    const base: Array<Omit<DisplayTxn, "runningBalance"> > = (transactions || [])
       .filter(matchesSearch)
       .map((t) => {
         const debit = Number(t.debit_amount || 0);
         const credit = Number(t.credit_amount || 0);
-        let displayDebit = debit;
-        let displayCredit = credit;
-        const type = (t.reference_type || "").toLowerCase();
-        if (type === "receipt_payment") {
-          displayDebit = 0;
-          displayCredit = debit; // incoming cash shown as credit in banking view
-        } else if (type === "expense_payment" || type === "purchase_payment") {
-          displayDebit = credit; // outgoing cash shown as debit in banking view
-          displayCredit = 0;
-        }
+        // Map to bank statement presentation for this account
+        const displayCredit = debit;   // money into this account
+        const displayDebit = credit;   // money out of this account
         return { ...t, displayDebit, displayCredit } as any;
       });
 
-    // Compute running balance (credits increase, debits decrease)
+    // Running balance: credits increase, debits decrease
     let bal = 0;
     return base.map((t) => {
       bal += (Number(t.displayCredit || 0) - Number(t.displayDebit || 0));
