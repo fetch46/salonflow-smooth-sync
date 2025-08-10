@@ -75,28 +75,10 @@ const menuItems: MenuItem[] = [
     feature: "appointments",
   },
   {
-    title: "Clients",
-    url: "/clients",
-    icon: Users,
-    feature: "clients",
-  },
-  {
-    title: "Staff",
-    url: "/staff",
-    icon: Users,
-    feature: "staff",
-  },
-  {
     title: "Services",
     url: "/services",
     icon: Scissors,
     feature: "services",
-  },
-  {
-    title: "Job Cards",
-    url: "/job-cards",
-    icon: FileText,
-    feature: "job_cards",
   },
   {
     title: "Inventory",
@@ -159,6 +141,18 @@ const menuItems: MenuItem[] = [
         icon: DollarSign,
         feature: "accounting",
       },
+      {
+        title: "Clients",
+        url: "/clients",
+        icon: Users,
+        feature: "clients",
+      },
+      {
+        title: "Job Cards",
+        url: "/job-cards",
+        icon: FileText,
+        feature: "job_cards",
+      },
     ],
   },
   {
@@ -217,6 +211,12 @@ const menuItems: MenuItem[] = [
         url: "/help",
         icon: HelpCircle,
         feature: "reports",
+      },
+      {
+        title: "Staff",
+        url: "/staff",
+        icon: Users,
+        feature: "staff",
       },
     ],
   },

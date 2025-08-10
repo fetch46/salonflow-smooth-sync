@@ -179,6 +179,8 @@ phone: "+1 (555) 123-4567",
     description: "",
     is_active: true,
   })
+  // Default POS Location (organization setting)
+  const [defaultPosLocationId, setDefaultPosLocationId] = useState<string>("")
 
   const openNewLocation = () => {
     setEditingLocation(null)
@@ -238,6 +240,8 @@ phone: "+1 (555) 123-4567",
       const tax = s.tax_rate_percent
       const parsed = typeof tax === 'number' ? tax : typeof tax === 'string' ? parseFloat(tax) : 0
       setTaxRatePercent(Number.isFinite(parsed) ? String(parsed) : "")
+      // Initialize default POS location from org settings
+      setDefaultPosLocationId(s.pos_default_location_id || "")
     }
   }, [organization])
 
@@ -351,6 +355,22 @@ phone: "+1 (555) 123-4567",
       }
     }
   };
+
+  const handleSaveDefaultPosLocation = async () => {
+    if (!organization) return toast.error('No organization selected');
+    try {
+      await updateOrganization(organization.id, {
+        settings: {
+          ...(organization.settings as any),
+          pos_default_location_id: defaultPosLocationId || null,
+        },
+      } as any)
+      toast.success('Default POS location updated')
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to save default POS location')
+    }
+  }
 
   const fetchStockLocations = async () => {
     if (!organization) return;
@@ -917,14 +937,6 @@ phone: "+1 (555) 123-4567",
                     <Plus className="w-4 h-4 mr-1" />
                     Add Location
                   </Button>
-                </CardTitle>
-                <CardDescription>
-                  Manage your business locations
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Address</TableHead>
