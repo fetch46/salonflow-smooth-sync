@@ -26,6 +26,8 @@ type InventoryItem = {
   unit: string;
   reorder_point: number;
   is_active: boolean;
+  cost_price?: number;
+  selling_price?: number;
 };
 
 // --- Form Components ---
@@ -37,7 +39,9 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem }) => {
     description: "",
     sku: "",
     unit: "",
-    reorder_point: 0
+    reorder_point: 0,
+    cost_price: 0,
+    selling_price: 0,
   });
 
   useEffect(() => {
@@ -48,6 +52,8 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem }) => {
         sku: editingItem.sku || "",
         unit: editingItem.unit || "",
         reorder_point: editingItem.reorder_point || 0,
+        cost_price: (editingItem.cost_price as number) || 0,
+        selling_price: (editingItem.selling_price as number) || 0,
       });
     } else {
       setFormData({
@@ -55,7 +61,9 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem }) => {
         description: "",
         sku: "",
         unit: "",
-        reorder_point: 0
+        reorder_point: 0,
+        cost_price: 0,
+        selling_price: 0,
       });
     }
   }, [editingItem]);
@@ -118,6 +126,33 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem }) => {
                 type="number"
                 value={formData.reorder_point}
                 onChange={(e) => setFormData({ ...formData, reorder_point: parseInt(e.target.value) || 0 })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="cost_price">Cost Price</Label>
+              <Input
+                id="cost_price"
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.cost_price}
+                onChange={(e) => setFormData({ ...formData, cost_price: parseFloat(e.target.value) || 0 })}
+                placeholder="0.00"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="selling_price">Selling Price</Label>
+              <Input
+                id="selling_price"
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.selling_price}
+                onChange={(e) => setFormData({ ...formData, selling_price: parseFloat(e.target.value) || 0 })}
+                placeholder="0.00"
               />
             </div>
           </div>
@@ -216,7 +251,15 @@ export default function Inventory() {
   const handleItemSubmit = async (formData) => {
     try {
       if (editingItem) {
-        const { error } = await supabase.from("inventory_items").update(formData).eq("id", editingItem.id);
+        const { error } = await supabase.from("inventory_items").update({
+          name: formData.name,
+          description: formData.description,
+          sku: formData.sku,
+          unit: formData.unit,
+          reorder_point: formData.reorder_point,
+          cost_price: formData.cost_price,
+          selling_price: formData.selling_price,
+        }).eq("id", editingItem.id);
         if (error) throw error;
         toast({ title: "Success", description: "Product updated successfully" });
       } else {

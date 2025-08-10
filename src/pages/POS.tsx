@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useOrganization } from "@/lib/saas/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -80,6 +81,7 @@ export default function POS() {
 
   const { format: formatMoney } = useOrganizationCurrency();
   const orgTaxRate = useOrganizationTaxRate();
+  const { organization } = useOrganization();
 
   const [paymentData, setPaymentData] = useState({
     payment_method: "",
@@ -98,6 +100,12 @@ export default function POS() {
     fetchProducts();
     fetchCustomers();
   }, []);
+  // Ensure products refetch when organization changes
+  useEffect(() => {
+    if (organization?.id) {
+      fetchProducts();
+    }
+  }, [organization?.id]);
 
   const fetchProducts = async () => {
     try {
@@ -107,6 +115,7 @@ export default function POS() {
         .select("*")
         .eq("is_active", true)
         .eq("type", "good")
+        .eq("organization_id", organization?.id || "")
         .order("name");
 
       if (error) throw error;

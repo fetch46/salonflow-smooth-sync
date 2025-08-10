@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { useOrganization } from "@/lib/saas/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,21 +48,7 @@ export default function ServiceView() {
   const [service, setService] = useState<Service | null>(null);
   const [serviceKits, setServiceKits] = useState<ServiceKit[]>([]);
   const [loading, setLoading] = useState(true);
-  const [salesLoading, setSalesLoading] = useState(false);
-  const [salesHistory, setSalesHistory] = useState<Array<{
-    id: string;
-    receipt_id: string;
-    description: string;
-    quantity: number;
-    unit_price: number;
-    total_price: number;
-    staff_id: string | null;
-    created_at: string;
-    receipt_number?: string | null;
-    receipt_created_at?: string | null;
-    customer_id?: string | null;
-    staff_name?: string | null;
-  }>>([]);
+
 
   const fetchServiceData = useCallback(async () => {
     try {
@@ -72,6 +59,7 @@ export default function ServiceView() {
         .from("services")
         .select("*")
         .eq("id", id)
+        .eq("organization_id", organization?.id || "")
         .single();
 
       if (serviceError) throw serviceError;
@@ -86,7 +74,8 @@ export default function ServiceView() {
             id, name, type, unit, cost_price, selling_price, category
           )
         `)
-        .eq("service_id", id);
+        .eq("service_id", id)
+        .eq("organization_id", organization?.id || "");
 
       if (kitsError) throw kitsError;
       setServiceKits(kitsData || []);
@@ -100,7 +89,7 @@ export default function ServiceView() {
       setLoading(false);
       setSalesLoading(false);
     }
-  }, [id]);
+  }, [id, organization?.id]);
 
   useEffect(() => {
     if (id) {
