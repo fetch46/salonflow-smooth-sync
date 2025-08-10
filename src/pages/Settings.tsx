@@ -421,7 +421,7 @@ phone: "+1 (555) 123-4567",
         }}
         className="grid gap-6 md:grid-cols-[240px_1fr]"
       >
-        <TabsList className="flex h-auto w-full flex-col items-stretch gap-2 rounded-lg border bg-background p-2 md:sticky md:top-6">
+        <TabsList className="flex h-auto w-full flex-col items-stretch gap-2 rounded-lg border bg-background p-2 sticky top-16">
           <TabsTrigger value="company" className="justify-start gap-2 data-[state=active]:bg-muted">
             <Building className="w-4 h-4" />
             Company
@@ -937,6 +937,11 @@ phone: "+1 (555) 123-4567",
                     <Plus className="w-4 h-4 mr-1" />
                     Add Location
                   </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Address</TableHead>
