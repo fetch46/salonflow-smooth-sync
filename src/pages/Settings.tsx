@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,8 @@ import { Building, Users, CreditCard, MessageSquare, MapPin, Plus, Edit2, Trash2
 import { toast } from "sonner";
 import { useOrganization } from "@/lib/saas/hooks";
 import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import type { Database } from "@/integrations/supabase/types";
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("company");
@@ -126,10 +128,75 @@ phone: "+1 (555) 123-4567",
   });
 
   // Locations State
-  const [locations] = useState([
-    { id: "1", name: "Main Location", address: "123 Beauty Street, New York, NY 10001", phone: "+1 (555) 123-4567", manager: "Sarah Johnson", status: "Active" },
-    { id: "2", name: "Downtown Branch", address: "456 Style Avenue, New York, NY 10002", phone: "+1 (555) 234-5678", manager: "Mike Davis", status: "Active" },
-  ]);
+  type StorageLocation = Database['public']['Tables']['storage_locations']['Row']
+  const [stockLocations, setStockLocations] = useState<StorageLocation[]>([])
+  const [locationsLoading, setLocationsLoading] = useState<boolean>(false)
+  const [isLocationDialogOpen, setIsLocationDialogOpen] = useState<boolean>(false)
+  const [editingLocation, setEditingLocation] = useState<StorageLocation | null>(null)
+  const [locationForm, setLocationForm] = useState<{ name: string; description: string; is_active: boolean }>({ name: "", description: "", is_active: true })
+
+  const fetchStockLocations = useCallback(async () => {
+    setLocationsLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('storage_locations')
+        .select('*')
+        .order('name')
+      if (error) throw error
+      setStockLocations(data || [])
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to load stock locations')
+    } finally {
+      setLocationsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchStockLocations()
+  }, [fetchStockLocations])
+
+  const openCreateLocation = () => {
+    setEditingLocation(null)
+    setLocationForm({ name: "", description: "", is_active: true })
+    setIsLocationDialogOpen(true)
+  }
+
+  const openEditLocation = (loc: StorageLocation) => {
+    setEditingLocation(loc)
+    setLocationForm({ name: loc.name, description: loc.description || "", is_active: Boolean(loc.is_active) })
+    setIsLocationDialogOpen(true)
+  }
+
+  const handleSaveLocation = async () => {
+    try {
+      if (!locationForm.name.trim()) {
+        toast.error('Name is required')
+        return
+      }
+      if (editingLocation) {
+        const { error } = await supabase
+          .from('storage_locations')
+          .update({ name: locationForm.name.trim(), description: locationForm.description || null, is_active: locationForm.is_active })
+          .eq('id', editingLocation.id)
+        if (error) throw error
+        toast.success('Location updated')
+      } else {
+        const { error } = await supabase
+          .from('storage_locations')
+          .insert({ name: locationForm.name.trim(), description: locationForm.description || null, is_active: locationForm.is_active })
+        if (error) throw error
+        toast.success('Location created')
+      }
+      setIsLocationDialogOpen(false)
+      setEditingLocation(null)
+      setLocationForm({ name: "", description: "", is_active: true })
+      fetchStockLocations()
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to save location')
+    }
+  }
 
   useEffect(() => {
     (async () => {
@@ -742,44 +809,37 @@ phone: "+1 (555) 123-4567",
               <CardTitle className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <MapPin className="h-5 w-5 text-pink-600" />
-                  Business Locations
+                  Stock Locations
                 </span>
-                <Button className="bg-gradient-to-r from-pink-500 to-purple-600">
+                <Button className="bg-gradient-to-r from-pink-500 to-purple-600" onClick={openCreateLocation}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add Location
                 </Button>
               </CardTitle>
               <CardDescription>
-                Manage your business locations and branches
+                Manage where inventory is stored
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Location Name</TableHead>
-                    <TableHead>Address</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Manager</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Description</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {locations.map((location) => (
+                  {stockLocations.map((location) => (
                     <TableRow key={location.id}>
                       <TableCell className="font-medium">{location.name}</TableCell>
-                      <TableCell>{location.address}</TableCell>
-                      <TableCell>{location.phone}</TableCell>
-                      <TableCell>{location.manager}</TableCell>
-                      <TableCell>{getStatusBadge(location.status)}</TableCell>
+                      <TableCell className="max-w-[400px] truncate">{location.description}</TableCell>
+                      <TableCell>{getStatusBadge(location.is_active ? 'Active' : 'Inactive')}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" onClick={() => openEditLocation(location)}>
                             <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="text-destructive">
-                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -787,6 +847,34 @@ phone: "+1 (555) 123-4567",
                   ))}
                 </TableBody>
               </Table>
+              <Dialog open={isLocationDialogOpen} onOpenChange={setIsLocationDialogOpen}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{editingLocation ? 'Edit Location' : 'Add Location'}</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="loc_name">Name</Label>
+                      <Input id="loc_name" value={locationForm.name} onChange={(e) => setLocationForm({ ...locationForm, name: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="loc_desc">Description</Label>
+                      <Textarea id="loc_desc" value={locationForm.description} onChange={(e) => setLocationForm({ ...locationForm, description: e.target.value })} />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="loc_active">Active</Label>
+                        <p className="text-xs text-muted-foreground">Inactive locations will be hidden in selectors</p>
+                      </div>
+                      <Switch id="loc_active" checked={locationForm.is_active} onCheckedChange={(checked) => setLocationForm({ ...locationForm, is_active: checked })} />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsLocationDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSaveLocation}>{editingLocation ? 'Save Changes' : 'Create Location'}</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
         </TabsContent>

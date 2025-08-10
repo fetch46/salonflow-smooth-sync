@@ -29,6 +29,7 @@ import AccountCreate from "@/pages/AccountCreate";
 import AccountEdit from "@/pages/AccountEdit";
 import POS from "@/pages/POS";
 import InventoryAdjustments from "@/pages/InventoryAdjustments";
+import StockTransfers from "@/pages/StockTransfers";
 import Settings from "@/pages/Settings";
 import JobCards from "@/pages/JobCards";
 import CreateJobCard from "@/pages/CreateJobCard";
@@ -38,6 +39,7 @@ import SuperAdmin from "@/pages/SuperAdmin";
 import ServiceView from "@/pages/ServiceView";
 import Booking from "@/pages/Booking";
 import SupplierProfile from "@/pages/SupplierProfile";
+import ProductView from "@/pages/ProductView";
 
 import NotFound from "@/pages/NotFound";
 import Landing from "@/pages/Landing";
@@ -143,7 +145,9 @@ const AppRoutes = () => {
         
         {/* Inventory Management */}
         <Route path="inventory" element={<Inventory />} />
+        <Route path="inventory/:id" element={<ProductView />} />
         <Route path="inventory-adjustments" element={<InventoryAdjustments />} />
+        <Route path="inventory-transfers" element={<StockTransfers />} />
         
         {/* Financial Management */}
         <Route path="expenses" element={<Expenses />} />

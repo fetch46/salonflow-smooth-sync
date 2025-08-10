@@ -10,9 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Package, Trash2, Edit, X } from "lucide-react";
+import { Plus, Package, Trash2, Edit, MapPin } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "react-router-dom";
 
 // --- Type Definitions ---
 type InventoryItem = {
@@ -26,71 +27,48 @@ type InventoryItem = {
   is_active: boolean;
 };
 
-
-
-type ServiceKit = {
-  id: string;
-  service_id: string;
-  good_id: string;
-  quantity: number;
-  good: InventoryItem;
-};
-
 // --- Form Components ---
 
 // A separate component for the Item Dialog Form
-const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, goodsItems, serviceKits }) => {
+const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem }) => {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    type: "good" as 'good' | 'service',
     sku: "",
     unit: "",
     reorder_point: 0
   });
-  const [kitItems, setKitItems] = useState<Array<{ good_id: string; quantity: number }>>([]);
 
   useEffect(() => {
     if (editingItem) {
-      setFormData(editingItem);
-      if (editingItem.type === 'service') {
-        const kits = serviceKits.filter(kit => kit.service_id === editingItem.id);
-        setKitItems(kits.map(kit => ({
-          good_id: kit.good_id,
-          quantity: kit.quantity
-        })));
-      }
+      setFormData({
+        name: editingItem.name || "",
+        description: editingItem.description || "",
+        sku: editingItem.sku || "",
+        unit: editingItem.unit || "",
+        reorder_point: editingItem.reorder_point || 0,
+      });
     } else {
       setFormData({
         name: "",
         description: "",
-        type: "good",
         sku: "",
         unit: "",
         reorder_point: 0
       });
-      setKitItems([]);
     }
-  }, [editingItem, serviceKits]);
+  }, [editingItem]);
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData, kitItems);
+    onSubmit(formData);
   };
-
-  const addKitItem = () => setKitItems(prev => [...prev, { good_id: "", quantity: 1 }]);
-  const updateKitItem = (index, field, value) => {
-    const newKitItems = [...kitItems];
-    newKitItems[index] = { ...newKitItems[index], [field]: value };
-    setKitItems(newKitItems);
-  };
-  const removeKitItem = (index) => setKitItems(kitItems.filter((_, i) => i !== index));
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{editingItem ? "Edit Item" : "Add New Item"}</DialogTitle>
+          <DialogTitle>{editingItem ? "Edit Product" : "Add New Product"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleFormSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -103,23 +81,6 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, goodsItems, se
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="type">Type</Label>
-              <Select
-                value={formData.type}
-                onValueChange={(value: 'good' | 'service') => {
-                  setFormData(prev => ({ ...prev, type: value, ...(value === 'service' && { unit: 'service', reorder_point: 0 }) }));
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="good">Good</SelectItem>
-                  <SelectItem value="service">Service</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
           <div className="space-y-2">
@@ -131,95 +92,41 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, goodsItems, se
             />
           </div>
 
-          {formData.type === 'good' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="sku">SKU</Label>
-                <Input
-                  id="sku"
-                  value={formData.sku}
-                  onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="unit">Unit</Label>
-                <Input
-                  id="unit"
-                  value={formData.unit}
-                  onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                  placeholder="e.g., piece, bottle, kg"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="reorder-point">Reorder Point</Label>
-                <Input
-                  id="reorder-point"
-                  type="number"
-                  value={formData.reorder_point}
-                  onChange={(e) => setFormData({ ...formData, reorder_point: parseInt(e.target.value) || 0 })}
-                />
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="sku">SKU</Label>
+              <Input
+                id="sku"
+                value={formData.sku}
+                onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+              />
             </div>
-          )}
+            <div className="space-y-2">
+              <Label htmlFor="unit">Unit</Label>
+              <Input
+                id="unit"
+                value={formData.unit}
+                onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                placeholder="e.g., piece, bottle, kg"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reorder-point">Reorder Point</Label>
+              <Input
+                id="reorder-point"
+                type="number"
+                value={formData.reorder_point}
+                onChange={(e) => setFormData({ ...formData, reorder_point: parseInt(e.target.value) || 0 })}
+              />
+            </div>
+          </div>
 
-          {formData.type === 'service' && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <Label className="text-lg font-semibold">Service Kit (Goods Required)</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addKitItem}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add Good
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {kitItems.map((kit, index) => (
-                  <div key={index} className="flex gap-2 items-end">
-                    <div className="flex-1 space-y-1">
-                      <Label className="sr-only">Good</Label>
-                      <Select
-                        value={kit.good_id}
-                        onValueChange={(value) => updateKitItem(index, 'good_id', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a good" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {goodsItems.map((good) => (
-                            <SelectItem key={good.id} value={good.id}>
-                              {good.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="w-24 space-y-1">
-                      <Label className="sr-only">Quantity</Label>
-                      <Input
-                        type="number"
-                        value={kit.quantity}
-                        onChange={(e) => updateKitItem(index, 'quantity', parseInt(e.target.value) || 1)}
-                        min="1"
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeKitItem(index)}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
             <Button type="submit">
-              {editingItem ? "Update" : "Create"} Item
+              {editingItem ? "Update" : "Create"} Product
             </Button>
           </DialogFooter>
         </form>
@@ -228,29 +135,22 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, goodsItems, se
   );
 };
 
-
-
-
 // --- Main Component ---
 export default function Inventory() {
   const [items, setItems] = useState<InventoryItem[]>([]);
-  const [serviceKits, setServiceKits] = useState<ServiceKit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [searchQuery, setSearchQuery] = useState("");
+  const [levels, setLevels] = useState<any[]>([]);
+  const [levelsLoading, setLevelsLoading] = useState<boolean>(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [itemsRes, kitsRes] = await Promise.all([
-        supabase.from("inventory_items").select("*").order("name"),
-        supabase.from("service_kits").select(`*, good:inventory_items!service_kits_good_id_fkey(*)`)
-      ]);
-
-      setItems((itemsRes.data || []) as InventoryItem[]);
-      setServiceKits((kitsRes.data || []) as ServiceKit[]);
+      const { data: itemsRes } = await supabase.from("inventory_items").select("*").order("name");
+      setItems((itemsRes || []) as InventoryItem[]);
     } catch (error) {
       toast({ title: "Error", description: "Failed to fetch inventory data", variant: "destructive" });
     } finally {
@@ -258,49 +158,58 @@ export default function Inventory() {
     }
   }, []);
 
+  const fetchLevels = useCallback(async () => {
+    setLevelsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("inventory_levels")
+        .select(`
+          id,
+          item_id,
+          location_id,
+          quantity,
+          inventory_items ( name, sku ),
+          storage_locations ( name )
+        `)
+        .order("location_id")
+        .order("item_id");
+      if (error) throw error;
+      setLevels(data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLevelsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    fetchLevels();
+  }, [fetchData, fetchLevels]);
 
-  const handleItemSubmit = async (formData, kitItems) => {
+  const handleItemSubmit = async (formData) => {
     try {
       if (editingItem) {
         const { error } = await supabase.from("inventory_items").update(formData).eq("id", editingItem.id);
         if (error) throw error;
-        if (formData.type === 'service') {
-          await supabase.from("service_kits").delete().eq("service_id", editingItem.id);
-          if (kitItems.length > 0) {
-            const { error: kitError } = await supabase.from("service_kits").insert(kitItems.map(kit => ({ service_id: editingItem.id, good_id: kit.good_id, quantity: kit.quantity })));
-            if (kitError) throw kitError;
-          }
-        }
-        toast({ title: "Success", description: "Item updated successfully" });
+        toast({ title: "Success", description: "Product updated successfully" });
       } else {
-        const { data: newItem, error } = await supabase.from("inventory_items").insert(formData).select().single();
+        const payload = { ...formData, type: "good" };
+        const { error } = await supabase.from("inventory_items").insert(payload);
         if (error) throw error;
-        if (formData.type === 'service' && kitItems.length > 0) {
-          const { error: kitError } = await supabase.from("service_kits").insert(kitItems.map(kit => ({ service_id: newItem.id, good_id: kit.good_id, quantity: kit.quantity })));
-          if (kitError) throw kitError;
-        }
-        toast({ title: "Success", description: "Item created successfully" });
+        toast({ title: "Success", description: "Product created successfully" });
       }
       setIsItemDialogOpen(false);
       setEditingItem(null);
       fetchData();
     } catch (error) {
-      toast({ title: "Error", description: "Failed to save item", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to save product", variant: "destructive" });
     }
   };
 
   const handleEditItem = (item: InventoryItem) => {
     setEditingItem(item);
     setIsItemDialogOpen(true);
-  };
-
-  const isLowStock = (item: InventoryItem) => {
-    // Since we removed stock levels, we'll return false for now
-    // This can be updated when inventory adjustments are implemented
-    return false;
   };
 
   const handleDeactivateItem = async (item: InventoryItem) => {
@@ -340,7 +249,6 @@ export default function Inventory() {
   const allGoodsItems = items.filter(item => item.type === 'good');
   const activeGoodsItems = allGoodsItems.filter(item => item.is_active);
   const displayedGoodsItems = statusFilter === 'all' ? allGoodsItems : statusFilter === 'active' ? activeGoodsItems : allGoodsItems.filter(item => !item.is_active);
-  const serviceItems = items.filter(item => item.type === 'service');
   const filteredGoodsItems = displayedGoodsItems.filter(item => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return true;
@@ -380,7 +288,7 @@ export default function Inventory() {
         <h1 className="text-3xl font-bold">Inventory Management</h1>
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => { setEditingItem(null); setIsItemDialogOpen(true); }}>
-            <Plus className="w-4 h-4 mr-2" /> Add Item
+            <Plus className="w-4 h-4 mr-2" /> Add Product
           </Button>
         </div>
       </div>
@@ -390,13 +298,12 @@ export default function Inventory() {
         onClose={() => setIsItemDialogOpen(false)}
         onSubmit={handleItemSubmit}
         editingItem={editingItem}
-        goodsItems={activeGoodsItems}
-        serviceKits={serviceKits}
       />
 
       <Tabs defaultValue="goods" className="space-y-6">
         <TabsList className="grid w-full grid-cols-1 md:w-fit">
           <TabsTrigger value="goods">Products</TabsTrigger>
+          <TabsTrigger value="stock">Stock by Location</TabsTrigger>
         </TabsList>
 
         <TabsContent value="goods">
@@ -446,7 +353,11 @@ export default function Inventory() {
                       {filteredGoodsItems.map((item) => {
                         return (
                           <TableRow key={item.id} className="hover:bg-muted/50">
-                            <TableCell className="font-medium max-w-[320px] truncate">{item.name}</TableCell>
+                            <TableCell className="font-medium max-w-[320px] truncate">
+                              <Link to={`/inventory/${item.id}`} className="hover:underline">
+                                {item.name}
+                              </Link>
+                            </TableCell>
                             <TableCell className="hidden sm:table-cell">{item.sku}</TableCell>
                             <TableCell className="hidden md:table-cell">{item.unit}</TableCell>
                             <TableCell className="hidden lg:table-cell">{item.reorder_point}</TableCell>
@@ -482,6 +393,65 @@ export default function Inventory() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="stock">
+          <Card>
+            <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-primary" />
+                Stock by Location
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {levelsLoading ? (
+                <div className="overflow-auto max-h-[65vh] rounded-lg border">
+                  <Table className="min-w-[720px]">
+                    <TableHeader className="sticky top-0 bg-background z-10">
+                      <TableRow>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Item</TableHead>
+                        <TableHead className="hidden sm:table-cell">SKU</TableHead>
+                        <TableHead className="text-right">Quantity</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <TableRow key={i} className="hover:bg-muted/50">
+                          <TableCell><Skeleton className="h-4 w-[160px]" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-[220px]" /></TableCell>
+                          <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-[120px]" /></TableCell>
+                          <TableCell className="text-right"><Skeleton className="h-4 w-[60px] ml-auto" /></TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="overflow-auto max-h-[65vh] rounded-lg border">
+                  <Table className="min-w-[720px]">
+                    <TableHeader className="sticky top-0 bg-background z-10">
+                      <TableRow>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Item</TableHead>
+                        <TableHead className="hidden sm:table-cell">SKU</TableHead>
+                        <TableHead className="text-right">Quantity</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {levels.map((lvl) => (
+                        <TableRow key={lvl.id} className="hover:bg-muted/50">
+                          <TableCell className="font-medium">{lvl.storage_locations?.name || lvl.location_id}</TableCell>
+                          <TableCell>{lvl.inventory_items?.name || lvl.item_id}</TableCell>
+                          <TableCell className="hidden sm:table-cell">{lvl.inventory_items?.sku || ''}</TableCell>
+                          <TableCell className="text-right">{Number(lvl.quantity || 0)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
       </Tabs>
     </div>
