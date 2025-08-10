@@ -368,7 +368,7 @@ export default function Services() {
         price: formData.price,
         category: formData.category || null,
         is_active: formData.is_active,
-        commission_percentage: formData.commission_percentage ?? 0,
+
       } as const;
 
       if (editingService) {
@@ -737,13 +737,14 @@ export default function Services() {
                     </div>
                     
                     <div>
-         <Input 
+                      <Label htmlFor="commission_percentage">Commission %</Label>
+                      <Input 
                         id="commission_percentage" 
                         type="number" 
                         min="0" 
                         max="100" 
                         step="0.1" 
-
+                        value={formData.commission_percentage}
                         onChange={(e) => setFormData({ ...formData, commission_percentage: parseFloat(e.target.value) || 0 })} 
                         placeholder="10.0"
                       />
