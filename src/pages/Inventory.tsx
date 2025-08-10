@@ -26,8 +26,7 @@ type InventoryItem = {
   unit: string;
   reorder_point: number;
   is_active: boolean;
-  cost_price?: number;
-  selling_price?: number;
+
 };
 
 // --- Form Components ---
@@ -52,8 +51,7 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem }) => {
         sku: editingItem.sku || "",
         unit: editingItem.unit || "",
         reorder_point: editingItem.reorder_point || 0,
-        cost_price: (editingItem.cost_price as number) || 0,
-        selling_price: (editingItem.selling_price as number) || 0,
+
       });
     } else {
       setFormData({
@@ -70,7 +68,34 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem }) => {
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    // Ensure numeric fields are numbers
+    const payload = {
+      ...formData,
+      reorder_point: Number(formData.reorder_point || 0),
+      cost_price: Number(formData.cost_price || 0),
+      selling_price: Number(formData.selling_price || 0),
+    };
+    onSubmit(payload);
+  };
+
+  // Helper to set cost_price from last purchase price when editing existing item
+  const fillCostFromLastPurchase = async () => {
+    if (!editingItem?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from("purchase_items")
+        .select("unit_cost, created_at")
+        .eq("item_id", editingItem.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      const last = (data || [])[0];
+      if (last?.unit_cost != null) {
+        setFormData((prev) => ({ ...prev, cost_price: Number(last.unit_cost) }));
+      }
+    } catch (err) {
+      console.error("Failed to fetch last purchase price", err);
+    }
   };
 
   return (
@@ -132,27 +157,6 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="cost_price">Cost Price</Label>
-              <Input
-                id="cost_price"
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.cost_price}
-                onChange={(e) => setFormData({ ...formData, cost_price: parseFloat(e.target.value) || 0 })}
-                placeholder="0.00"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="selling_price">Selling Price</Label>
-              <Input
-                id="selling_price"
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.selling_price}
-                onChange={(e) => setFormData({ ...formData, selling_price: parseFloat(e.target.value) || 0 })}
-                placeholder="0.00"
               />
             </div>
           </div>
