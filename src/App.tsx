@@ -23,6 +23,7 @@ import ReceiptView from "@/pages/ReceiptView";
 import StaffProfile from "@/pages/StaffProfile";
 import Expenses from "@/pages/Expenses";
 import Purchases from "@/pages/Purchases";
+import PurchaseForm from "@/pages/PurchaseForm";
 import Suppliers from "@/pages/Suppliers";
 import Accounts from "@/pages/Accounts";
 import AccountCreate from "@/pages/AccountCreate";
@@ -162,6 +163,8 @@ const AppRoutes = () => {
         <Route path="receipts" element={<Receipts />} />
         <Route path="receipts/:id" element={<ReceiptView />} />
         <Route path="purchases" element={<Purchases />} />
+        <Route path="purchases/new" element={<PurchaseForm />} />
+        <Route path="purchases/:id/edit" element={<PurchaseForm />} />
         <Route path="suppliers" element={<Suppliers />} />
         <Route path="suppliers/:id" element={<SupplierProfile />} />
         <Route path="accounts" element={<Accounts />} />

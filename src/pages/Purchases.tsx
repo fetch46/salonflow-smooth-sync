@@ -5,17 +5,17 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Search, ShoppingCart, Package, TrendingUp, Truck } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { useToast } from "@/hooks/use-toast";
 import { useSaas } from "@/lib/saas";
-import { useOrganizationTaxRate } from "@/lib/saas/hooks";
-import { Switch } from "@/components/ui/switch";
+// removed modal tax toggle and org tax rate from list page
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Edit3, Truck as TruckIcon, RotateCcw, Trash2, CreditCard, RefreshCw } from "lucide-react";
 
@@ -62,21 +62,17 @@ interface SupplierOption {
 }
 
 export default function Purchases() {
+  const navigate = useNavigate();
   const { organization } = useSaas();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
-  const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const [selectedPurchaseItems, setSelectedPurchaseItems] = useState<PurchaseItem[]>([]);
   const { toast } = useToast();
 
   const { format: formatMoney } = useOrganizationCurrency();
-  const orgTaxRate = useOrganizationTaxRate();
-  const [applyTax, setApplyTax] = useState<boolean>(true);
+  // removed totals calculation (moved to full page form)
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'partial' | 'received' | 'cancelled' | 'closed'>('all');
@@ -95,16 +91,7 @@ export default function Purchases() {
   const [payLoading, setPayLoading] = useState<boolean>(false);
 
 
-  const [formData, setFormData] = useState({
-    purchase_number: "",
-    vendor_name: "",
-    purchase_date: "",
-    subtotal: "",
-    tax_amount: "",
-    total_amount: "",
-    status: "pending",
-    notes: "",
-  });
+  // removed inline create/edit form state
 
   // Receiving workflow state
   const [locations, setLocations] = useState<StorageLocation[]>([]);
@@ -113,384 +100,19 @@ export default function Purchases() {
   const [receiveLocationId, setReceiveLocationId] = useState<string>("");
   const [receiveQuantities, setReceiveQuantities] = useState<Record<string, number>>({});
 
-  const [newItem, setNewItem] = useState({
-    item_id: "",
-    quantity: "",
-    unit_cost: "",
-  });
+  // removed inline item add/remove (handled in full page form)
 
-  const calculateTotals = useCallback(() => {
-    const subtotal = purchaseItems.reduce((sum, item) => sum + item.total_cost, 0);
-    const computedTax = applyTax ? (subtotal * ((orgTaxRate || 0) / 100)) : 0;
-    const total = subtotal + computedTax;
-    
-    setFormData(prev => ({
-      ...prev,
-      subtotal: subtotal.toString(),
-      tax_amount: computedTax.toString(),
-      total_amount: total.toString(),
-    }));
-  }, [purchaseItems, orgTaxRate, applyTax]);
-
-  useEffect(() => {
-    calculateTotals();
-  }, [calculateTotals]);
-
-  const fetchPurchases = useCallback(async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("purchases")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setPurchases(data || []);
-    } catch (error) {
-      console.error("Error fetching purchases:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch purchases",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
-
-  const fetchLocations = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from("business_locations")
-        .select("id, name")
-        .order("name");
-      if (error) throw error;
-      setLocations(data || []);
-    } catch (err) {
-      console.warn("Failed to load business locations", err);
-      setLocations([]);
-    }
-  }, []);
-
-  const fetchInventoryItems = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from("inventory_items")
-        .select("id, name, type")
-        .eq("type", "good")
-        .eq("is_active", true)
-        .order("name");
-
-      if (error) throw error;
-      setInventoryItems(data || []);
-    } catch (error) {
-      console.error("Error fetching inventory items:", error);
-    }
-  }, []);
-
-  const fetchSuppliers = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from("suppliers")
-        .select("id, name")
-        .eq("is_active", true)
-        .order("name");
-      if (error) throw error;
-      setSuppliers((data || []) as SupplierOption[]);
-    } catch (err) {
-      console.warn("Failed to load suppliers", err);
-      setSuppliers([]);
-    }
-  }, []);
-
-  const fetchPurchaseItems = async (purchaseId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("purchase_items")
-        .select(`
-          *,
-          inventory_items (name)
-        `)
-        .eq("purchase_id", purchaseId);
-
-      if (error) throw error;
-      setSelectedPurchaseItems(data || []);
-    } catch (error) {
-      console.error("Error fetching purchase items:", error);
-    }
-  };
-
-  const fetchItemsForEditing = async (purchaseId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("purchase_items")
-        .select(`
-          *,
-          inventory_items (name)
-        `)
-        .eq("purchase_id", purchaseId);
-
-      if (error) throw error;
-      setPurchaseItems(data || []);
-    } catch (error) {
-      console.error("Error fetching items for editing:", error);
-    }
-  };
-
-  // Undo Receiving: reverse inventory levels and clear received quantities
-  const undoReceiving = async (purchaseId: string) => {
-    try {
-      const { data: purchase, error: pErr } = await supabase
-        .from("purchases")
-        .select("id, location_id, status")
-        .eq("id", purchaseId)
-        .single();
-      if (pErr) throw pErr;
-
-      if (!purchase?.location_id) {
-        toast({ title: "Nothing to undo", description: "This purchase has no receiving location set.", variant: "destructive" });
-        return;
-      }
-
-      const { data: items, error: iErr } = await supabase
-        .from("purchase_items")
-        .select("id, item_id, received_quantity")
-        .eq("purchase_id", purchaseId);
-      if (iErr) throw iErr;
-
-      let anyReceived = false;
-      for (const it of items || []) {
-        const receivedQty = Number(it.received_quantity || 0);
-        if (receivedQty > 0) {
-          anyReceived = true;
-          await supabase
-            .from("purchase_items")
-            .update({ received_quantity: 0 })
-            .eq("id", it.id);
-        }
-      }
-
-      if (!anyReceived) {
-        toast({ title: "No received items", description: "There are no received items to undo.", variant: "destructive" });
-        return;
-      }
-
-      // DB triggers will update purchase status back to pending; keep location as-is
-      toast({ title: "Receiving removed", description: "Inventory and received quantities have been reverted." });
-      fetchPurchases();
-    } catch (err) {
-      console.error(err);
-      toast({ title: "Error", description: "Failed to undo receiving", variant: "destructive" });
-    }
-  };
-
-  const generatePurchaseNumber = () => {
-    const timestamp = Date.now().toString().slice(-6);
-    return `PUR-${timestamp}`;
-  };
-
-  const openReceiveDialog = async (purchaseId: string) => {
-    setReceivePurchaseId(purchaseId);
-    await fetchPurchaseItems(purchaseId);
-    await fetchLocations();
-    setReceiveQuantities({});
-    setReceiveLocationId("");
-    setReceiveOpen(true);
-  };
-
-  const submitReceive = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!receivePurchaseId || !receiveLocationId) {
-      toast({ title: "Error", description: "Select a location to receive into", variant: "destructive" });
-      return;
-    }
-    // Require at least one positive quantity
-    const anyPositive = selectedPurchaseItems.some(
-      (item) => Number(receiveQuantities[item.item_id] || 0) > 0
-    );
-    if (!anyPositive) {
-      toast({ title: "Invalid quantities", description: "Enter at least one received quantity greater than zero.", variant: "destructive" });
-      return;
-    }
-    try {
-      // Set receiving location before updating item receipts so DB trigger can post to correct location
-      await supabase.from("purchases").update({ location_id: receiveLocationId }).eq("id", receivePurchaseId);
-
-      // Update received quantities only; DB triggers will sync inventory and status
-      for (const item of selectedPurchaseItems) {
-        const qtyRequested = Number(receiveQuantities[item.item_id] || 0);
-        if (qtyRequested <= 0) continue;
-        const alreadyReceived = Number(item.received_quantity || 0);
-        const expected = Number(item.quantity || 0);
-        const remainingToReceive = Math.max(0, expected - alreadyReceived);
-        const qty = Math.min(qtyRequested, remainingToReceive);
-        if (qty <= 0) continue;
-        const newReceived = Math.min(alreadyReceived + qty, expected);
-        await supabase
-          .from("purchase_items")
-          .update({ received_quantity: newReceived })
-          .eq("id", item.id);
-      }
-
-      toast({ title: "Received", description: "Items received into stock" });
-      setReceiveOpen(false);
-      fetchPurchases();
-    } catch (err) {
-      console.error(err);
-      toast({ title: "Error", description: "Failed to receive items", variant: "destructive" });
-    }
-  };
-
-  const addPurchaseItem = () => {
-    if (!newItem.item_id || !newItem.quantity || !newItem.unit_cost) {
-      toast({
-        title: "Error",
-        description: "Please fill in all item fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const item = inventoryItems.find(i => i.id === newItem.item_id);
-    if (!item) return;
-
-    const totalCost = parseFloat(newItem.quantity) * parseFloat(newItem.unit_cost);
-    
-    setPurchaseItems([
-      ...purchaseItems,
-      {
-        id: `temp-${Date.now()}`,
-        item_id: newItem.item_id,
-        quantity: parseInt(newItem.quantity),
-        unit_cost: parseFloat(newItem.unit_cost),
-        total_cost: totalCost,
-        received_quantity: 0,
-        inventory_items: { name: item.name }
-      }
-    ]);
-
-    setNewItem({ item_id: "", quantity: "", unit_cost: "" });
-  };
-
-  const removePurchaseItem = (index: number) => {
-    setPurchaseItems(purchaseItems.filter((_, i) => i !== index));
-  };
+  // removed totals calculation (moved to full page form)
 
   useEffect(() => {
     fetchPurchases();
-    fetchInventoryItems();
     fetchSuppliers();
-  }, [fetchPurchases, fetchInventoryItems, fetchSuppliers]);
+  }, [fetchPurchases, fetchSuppliers]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      // Require supplier selection
-      if (!formData.vendor_name) {
-        toast({ title: "Supplier required", description: "Please select a supplier before saving.", variant: "destructive" });
-        return;
-      }
+  // removed handleSubmit (migrated to full page form)
 
-      // Compute totals from current items and tax settings to avoid state race conditions
-      const subtotalNow = purchaseItems.reduce((sum, item) => sum + (Number(item.total_cost) || 0), 0);
-      const taxNow = applyTax ? subtotalNow * ((orgTaxRate || 0) / 100) : 0;
-      const totalNow = subtotalNow + taxNow;
-
-      const purchaseData = {
-        ...formData,
-        purchase_number: formData.purchase_number || generatePurchaseNumber(),
-        subtotal: Number(subtotalNow.toFixed(2)),
-        tax_amount: Number(taxNow.toFixed(2)),
-        total_amount: Number(totalNow.toFixed(2)),
-      };
-
-      let purchaseId: string;
-
-      if (editingPurchase) {
-        const { error } = await supabase
-          .from("purchases")
-          .update(purchaseData)
-          .eq("id", editingPurchase.id);
-
-        if (error) throw error;
-        purchaseId = editingPurchase.id;
-
-        // Delete existing purchase items
-        await supabase
-          .from("purchase_items")
-          .delete()
-          .eq("purchase_id", purchaseId);
-
-        toast({
-          title: "Success",
-          description: "Purchase updated successfully",
-        });
-      } else {
-        const { data, error } = await supabase
-          .from("purchases")
-          .insert([purchaseData])
-          .select()
-          .single();
-
-        if (error) throw error;
-        purchaseId = data.id;
-
-        toast({
-          title: "Success",
-          description: "Purchase created successfully",
-        });
-      }
-
-      // Insert purchase items
-      if (purchaseItems.length > 0) {
-        const itemsToInsert = purchaseItems.map(item => ({
-          purchase_id: purchaseId,
-          item_id: item.item_id,
-          quantity: item.quantity,
-          unit_cost: item.unit_cost,
-          total_cost: item.total_cost,
-          received_quantity: item.received_quantity,
-        }));
-
-        const { error: itemsError } = await supabase
-          .from("purchase_items")
-          .insert(itemsToInsert);
-
-        if (itemsError) throw itemsError;
-        // Inventory levels are updated via the Receive workflow, not on purchase save
-      }
-
-      setIsModalOpen(false);
-      setEditingPurchase(null);
-      resetForm();
-      fetchPurchases();
-    } catch (error) {
-      console.error("Error saving purchase:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save purchase",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleEdit = async (purchase: Purchase) => {
-    setEditingPurchase(purchase);
-    setFormData({
-      purchase_number: purchase.purchase_number,
-      vendor_name: purchase.vendor_name,
-      purchase_date: purchase.purchase_date,
-      subtotal: purchase.subtotal.toString(),
-      tax_amount: purchase.tax_amount.toString(),
-      total_amount: purchase.total_amount.toString(),
-      status: purchase.status,
-      notes: purchase.notes || "",
-    });
-    
-    await fetchItemsForEditing(purchase.id);
-    calculateTotals();
-    setIsModalOpen(true);
+  const handleEdit = (purchase: Purchase) => {
+    navigate(`/purchases/${purchase.id}/edit`);
   };
 
   const handleDelete = async (id: string) => {
@@ -531,21 +153,7 @@ export default function Purchases() {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      purchase_number: "",
-      vendor_name: "",
-      purchase_date: "",
-      subtotal: "",
-      tax_amount: "",
-      total_amount: "",
-      status: "pending",
-      notes: "",
-    });
-    setPurchaseItems([]);
-    setSelectedPurchaseItems([]);
-    setNewItem({ item_id: "", quantity: "", unit_cost: "" });
-  };
+  // removed resetForm (no longer needed here)
 
   const filteredPurchases = purchases
     .filter((purchase) => (statusFilter === 'all' ? true : purchase.status === statusFilter))
@@ -745,246 +353,16 @@ export default function Purchases() {
             </div>
           </div>
         </div>
-
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <div className="flex items-center gap-2 self-start lg:self-auto">
-            <DialogTrigger asChild>
-              <Button onClick={() => { setEditingPurchase(null); resetForm(); }} className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-lg">
-                <Plus className="mr-2 h-4 w-4" />
-                Create Purchase
-              </Button>
-            </DialogTrigger>
-            <Button variant="outline" className="shadow" onClick={fetchPurchases}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh
-            </Button>
-          </div>
-          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-semibold tracking-tight">
-                {editingPurchase ? "Edit Purchase" : "Create New Purchase"}
-              </DialogTitle>
-              <DialogDescription className="text-muted-foreground">
-                {editingPurchase ? "Update the purchase details and items. Totals recalculate automatically." : "Fill in purchase details, add items, and totals will auto-calculate."}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="purchase_number">Purchase Number</Label>
-                  <Input
-                    id="purchase_number"
-                    placeholder="Auto-generated if empty"
-                    value={formData.purchase_number}
-                    onChange={(e) => setFormData({ ...formData, purchase_number: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="vendor_name">Vendor</Label>
-                  <Select value={formData.vendor_name} onValueChange={(value) => { const s = suppliers.find(x => x.name === value || x.id === value); setFormData({ ...formData, vendor_name: s?.name || '' }); }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select vendor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {/* Populated from suppliers table */}
-                      {suppliers.map((s) => (
-                        <SelectItem key={s.id} value={s.name || s.id}>{s.name || 'Unnamed Supplier'}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="purchase_date">Purchase Date</Label>
-                  <Input
-                    id="purchase_date"
-                    type="date"
-                    value={formData.purchase_date}
-                    onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="received">Received</SelectItem>
-                      <SelectItem value="partial">Partial</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                      <SelectItem value="closed">Closed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Purchase Items Section */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Purchase Items</h3>
-                
-                {/* Add Item Form */}
-                <div className="grid grid-cols-4 gap-2 items-end">
-                  <div className="space-y-2">
-                    <Label>Product</Label>
-                    <Select value={newItem.item_id} onValueChange={(value) => setNewItem({ ...newItem, item_id: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select product" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {inventoryItems.map((item) => (
-                          <SelectItem key={item.id} value={item.id}>
-                            {item.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Quantity</Label>
-                    <Input
-                      type="number"
-                      placeholder="Qty"
-                      value={newItem.quantity}
-                      onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Unit Cost</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={newItem.unit_cost}
-                      onChange={(e) => setNewItem({ ...newItem, unit_cost: e.target.value })}
-                    />
-                  </div>
-                  <Button type="button" onClick={addPurchaseItem}>
-                    Add Item
-                  </Button>
-                </div>
-
-                {/* Items List */}
-                {purchaseItems.length > 0 && (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Product</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Unit Cost</TableHead>
-                        <TableHead>Total</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {purchaseItems.map((item, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{item.inventory_items?.name || 'Unknown Item'}</TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              min={0}
-                              value={item.quantity}
-                              onChange={(e) => {
-                                const qty = Number(e.target.value || 0);
-                                setPurchaseItems(prev => prev.map((it, i) => i === index ? { ...it, quantity: qty, total_cost: qty * (it.unit_cost || 0) } : it));
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min={0}
-                              value={item.unit_cost}
-                              onChange={(e) => {
-                                const price = Number(e.target.value || 0);
-                                setPurchaseItems(prev => prev.map((it, i) => i === index ? { ...it, unit_cost: price, total_cost: (it.quantity || 0) * price } : it));
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>{formatMoney(item.total_cost)}</TableCell>
-                          <TableCell>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => removePurchaseItem(index)}
-                            >
-                              Remove
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="subtotal">Subtotal</Label>
-                  <Input
-                    id="subtotal"
-                    type="number"
-                    step="0.01"
-                    value={formData.subtotal}
-                    readOnly
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tax_amount">Tax Amount</Label>
-                  <Input
-                    id="tax_amount"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={formData.tax_amount}
-                    readOnly
-                  />
-                  <div className="flex items-center gap-2">
-                    <Switch checked={applyTax} onCheckedChange={setApplyTax} />
-                    <span className="text-sm">Apply Tax ({(orgTaxRate || 0)}%)</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Auto-calculated when enabled.</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="total_amount">Total Amount</Label>
-                  <Input
-                    id="total_amount"
-                    type="number"
-                    step="0.01"
-                    value={formData.total_amount}
-                    readOnly
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Additional notes..."
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                />
-              </div>
-
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">
-                  {editingPurchase ? "Update Purchase" : "Create Purchase"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-2 self-start lg:self-auto">
+          <Button onClick={() => navigate("/purchases/new")} className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-lg">
+            <Plus className="mr-2 h-4 w-4" />
+            Create Purchase
+          </Button>
+          <Button variant="outline" className="shadow" onClick={fetchPurchases}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Enhanced Stats Cards */}
