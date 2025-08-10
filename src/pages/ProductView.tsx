@@ -401,7 +401,7 @@ export default function ProductView() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="p-4 rounded-lg border bg-gradient-to-b from-white to-slate-50">
               <div className="text-xs text-muted-foreground">On Hand</div>
-              <div className="text-2xl font-semibold mt-1">{new Intl.NumberFormat('en-US').format(onHand)}</div>
+              <div className="text-2xl font-semibold mt-1">{new Intl.NumberFormat((typeof navigator !== 'undefined' ? navigator.language : 'en-US')).format(onHand)}</div>
             </div>
             <div className="p-4 rounded-lg border bg-gradient-to-b from-white to-slate-50">
               <div className="text-xs text-muted-foreground">Cost Price</div>

@@ -373,15 +373,17 @@ export function sanitizeOrganizationData(data: any) {
   return updates
 }
 
-export function formatCurrency(amount: number, currency: string = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
+export function formatCurrency(amount: number, currency: string = 'USD', locale?: string): string {
+  const resolvedLocale = locale || (typeof navigator !== 'undefined' ? navigator.language : 'en-US')
+  return new Intl.NumberFormat(resolvedLocale, {
     style: 'currency',
     currency,
   }).format(amount / 100) // Assuming amounts are stored in cents
 }
 
-export function formatNumber(num: number, options?: Intl.NumberFormatOptions): string {
-  return new Intl.NumberFormat('en-US', options).format(num)
+export function formatNumber(num: number, options?: Intl.NumberFormatOptions, locale?: string): string {
+  const resolvedLocale = locale || (typeof navigator !== 'undefined' ? navigator.language : 'en-US')
+  return new Intl.NumberFormat(resolvedLocale, options).format(num)
 }
 
 /**

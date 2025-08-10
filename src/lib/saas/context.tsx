@@ -58,6 +58,7 @@ type SaasAction =
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'CLEAR_ERROR' }
   | { type: 'RESET_STATE' }
+  | { type: 'SET_SYSTEM_SETTINGS'; payload: any | null }
 
 // Initial state
 const initialState: SaasState = {
@@ -74,6 +75,7 @@ const initialState: SaasState = {
   superAdminPermissions: null,
   usageMetrics: {},
   error: null,
+  systemSettings: null,
 }
 
 // Reducer function
@@ -121,6 +123,9 @@ function saasReducer(state: SaasState, action: SaasAction): SaasState {
     
     case 'RESET_STATE':
       return { ...initialState, loading: false }
+    
+    case 'SET_SYSTEM_SETTINGS':
+      return { ...state, systemSettings: action.payload }
     
     default:
       return state
@@ -506,6 +511,21 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [state.user, loadUserOrganizations])
 
+  const loadSystemSettings = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('settings')
+        .eq('slug', 'system')
+        .maybeSingle()
+      if (error) throw error
+      dispatch({ type: 'SET_SYSTEM_SETTINGS', payload: data?.settings || null })
+    } catch (e) {
+      console.warn('Failed to load system settings', e)
+      dispatch({ type: 'SET_SYSTEM_SETTINGS', payload: null })
+    }
+  }, [])
+
   const refreshUsage = useCallback(async (): Promise<void> => {
     try {
       if (!state.organization) return
@@ -592,6 +612,11 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
          } else {
            dispatch({ type: 'SET_LOADING', payload: false })
          }
+
+         // Load system settings in parallel
+         setTimeout(() => {
+           loadSystemSettings()
+         }, 0)
        } catch (error) {
          if (mounted) {
            handleError(error, 'Failed to initialize authentication')
@@ -635,7 +660,7 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
       authSubscription.unsubscribe()
       clearTimeout(timeoutId)
     }
-  }, [loadUserOrganizations, handleError, state.loading])
+  }, [loadUserOrganizations, handleError, state.loading, loadSystemSettings])
 
   // Computed properties
   const isOrganizationOwner = state.organizationRole === 'owner'
@@ -646,6 +671,8 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isTrialing = isSubscriptionTrialing(state.subscriptionStatus)
   const isSubscriptionActiveCheck = isSubscriptionActive(state.subscriptionStatus)
   const daysLeftInTrial = calculateTrialDaysRemaining(state.subscription)
+
+  const locale = (state.systemSettings as any)?.regional_formats_enabled ? (navigator?.language || 'en-US') : 'en-US'
 
   // Context value
   const contextValue: SaasContextType = {
@@ -679,6 +706,9 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
     hasFeature,
     getFeatureAccess,
     canPerformAction: canPerformActionCheck,
+
+    // Formatting/Locale
+    locale,
   }
 
   return (
