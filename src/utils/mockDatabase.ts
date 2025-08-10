@@ -252,6 +252,19 @@ export async function recordReceiptPaymentWithFallback(
     return true;
   } catch (err) {
     console.log('Using mock database for receipt payments');
+    // Guard: prevent fallback posting if period is locked (best-effort)
+    try {
+      const dateStr = (payment.payment_date || new Date().toISOString()).slice(0,10);
+      // Try find organization via receipt
+      const { data: rec } = await supabase.from('receipts').select('organization_id').eq('id', payment.receipt_id).maybeSingle();
+      const orgId = (rec as any)?.organization_id || null;
+      if (orgId) {
+        const locked = await isDateLockedViaRpc(supabase, orgId, dateStr);
+        if (locked) throw new Error('Accounting period is locked for this date');
+      }
+    } catch (guardErr: any) {
+      throw guardErr;
+    }
     const storage = getStorage();
     const nowIso = new Date().toISOString();
     const localPay = {
@@ -707,4 +720,13 @@ export async function getReceiptItemsByServiceWithFallback(
       return [];
     }
   }
+}
+
+export async function isDateLockedViaRpc(supabase: any, organizationId: string, dateStr: string): Promise<boolean> {
+  try {
+    // Prefer RPC if exists
+    const { data, error } = await supabase.rpc('is_date_locked', { p_org: organizationId, p_date: dateStr });
+    if (error) return false;
+    return !!data;
+  } catch { return false; }
 }

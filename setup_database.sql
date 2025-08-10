@@ -202,5 +202,5 @@ BEGIN
     RAISE NOTICE 'Database setup completed successfully!';
 END $$;
 
--- 7. Force PostgREST to reload schema (ensure new tables are visible)
-\i supabase/migrations/20250821100000_reload_schema_after_business_locations.sql
+-- 9. Add Bank Reconciliation & Period Locking
+\i supabase/migrations/20250825090000_add_bank_reconciliation_and_period_lock.sql
