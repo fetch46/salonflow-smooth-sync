@@ -465,6 +465,21 @@ export default function Receipts() {
             reference_number: createPayment.reference || null,
           });
           if (!ok) throw new Error('Failed to record payment');
+
+          // Post to ledger (debit Cash/Bank or mapped account, credit Income)
+          if (organization?.id) {
+            try {
+              await postReceiptPaymentToLedger({
+                organizationId: organization.id,
+                amount: amt,
+                method: createPayment.method,
+                receiptId: receiptId,
+                receiptNumber: jobcardDetails.job_number,
+              });
+            } catch (ledgerErr) {
+              console.warn('Ledger posting failed', ledgerErr);
+            }
+          }
         }
       }
 

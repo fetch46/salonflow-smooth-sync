@@ -100,6 +100,28 @@ async function findDefaultExpenseAccountId(organizationId: string): Promise<stri
   return null;
 }
 
+async function findDepositAccountIdForMethod(organizationId: string, method: string): Promise<string | null> {
+  try {
+    const methodKey = String(method || "").toLowerCase();
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("id, settings")
+      .eq("id", organizationId)
+      .maybeSingle();
+    const map = (org?.settings as any)?.default_deposit_accounts_by_method || {};
+    const candidateId: string | null = map?.[methodKey] || null;
+    if (!candidateId) return null;
+    const { data: acc } = await supabase
+      .from("accounts")
+      .select("id")
+      .eq("id", candidateId)
+      .eq("organization_id", organizationId)
+      .limit(1);
+    if (acc && acc.length) return candidateId;
+  } catch {}
+  return null;
+}
+
 export async function postDoubleEntry(params: LedgerPostParams): Promise<boolean> {
   const {
     organizationId,
@@ -163,13 +185,16 @@ export async function postReceiptPaymentToLedger(opts: {
 }): Promise<boolean> {
   const { organizationId, amount, method, receiptId, receiptNumber, paymentDate, locationId } = opts;
 
+  // Determine asset account using explicit mapping if configured; fallback to subtype
+  const mappedAssetAccountId = await findDepositAccountIdForMethod(organizationId, method);
+
   // Determine asset account: Cash vs Bank
   const isBankLike = ["mpesa", "bank_transfer", "card", "bank", "mpesa_paybill", "mpesa_till"].includes(
     String(method || "").toLowerCase()
   );
   const assetSubtype = isBankLike ? "Bank" : "Cash";
 
-  const assetAccountId = await findAccountIdBySubtype(organizationId, assetSubtype);
+  const assetAccountId = mappedAssetAccountId || (await findAccountIdBySubtype(organizationId, assetSubtype));
   const incomeAccountId = await findDefaultIncomeAccountId(organizationId);
 
   if (!assetAccountId || !incomeAccountId) {

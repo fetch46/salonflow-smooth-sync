@@ -55,6 +55,11 @@ phone: "+1 (555) 123-4567",
   // New: Finance Settings - Tax Rate
   const [taxRatePercent, setTaxRatePercent] = useState<string>("");
 
+  // New: Accounting - Default deposit accounts per payment method
+  type AccountOption = { id: string; account_code: string; account_name: string; account_subtype?: string | null }
+  const [depositAccounts, setDepositAccounts] = useState<AccountOption[]>([])
+  const [depositAccountMap, setDepositAccountMap] = useState<Record<string, string>>({})
+
   // Users & Roles State
   const [users] = useState([
     { id: "1", name: "Admin User", email: "admin@salon.com", role: "Administrator", status: "Active", last_login: "2024-01-15" },
@@ -243,7 +248,30 @@ phone: "+1 (555) 123-4567",
       setTaxRatePercent(Number.isFinite(parsed) ? String(parsed) : "")
       // Initialize default POS location from org settings
       setDefaultPosLocationId(s.pos_default_location_id || "")
+      // Initialize deposit account mapping from org settings
+      const map = (s.default_deposit_accounts_by_method as Record<string, string>) || {}
+      setDepositAccountMap(map)
     }
+  }, [organization])
+
+  // Load selectable deposit accounts (Cash/Bank assets)
+  useEffect(() => {
+    (async () => {
+      if (!organization) return setDepositAccounts([])
+      try {
+        const { data } = await supabase
+          .from('accounts')
+          .select('id, account_code, account_name, account_subtype, account_type')
+          .eq('organization_id', organization.id)
+          .eq('account_type', 'Asset')
+          .in('account_subtype', ['Cash', 'Bank'])
+          .order('account_code')
+        const opts = (data || []).map((a: any) => ({ id: a.id, account_code: a.account_code, account_name: a.account_name, account_subtype: a.account_subtype }))
+        setDepositAccounts(opts)
+      } catch (e) {
+        setDepositAccounts([])
+      }
+    })()
   }, [organization])
 
   const handleCompanySubmit = async (e: React.FormEvent) => {
@@ -373,6 +401,22 @@ phone: "+1 (555) 123-4567",
     }
   }
 
+  const handleSaveDepositAccounts = async () => {
+    if (!organization) return toast.error('No organization selected');
+    try {
+      await updateOrganization(organization.id, {
+        settings: {
+          ...(organization.settings as any),
+          default_deposit_accounts_by_method: depositAccountMap,
+        },
+      } as any)
+      toast.success('Default deposit accounts updated')
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to save default deposit accounts')
+    }
+  }
+
   const fetchStockLocations = async () => {
     if (!organization) return;
     try {
@@ -444,6 +488,10 @@ phone: "+1 (555) 123-4567",
           <TabsTrigger value="locations" className="justify-start gap-2 data-[state=active]:bg-muted">
             <MapPin className="w-4 h-4" />
             Locations
+          </TabsTrigger>
+          <TabsTrigger value="accounting" className="justify-start gap-2 data-[state=active]:bg-muted">
+            <CreditCard className="w-4 h-4" />
+            Accounting
           </TabsTrigger>
         </TabsList>
 
@@ -968,6 +1016,41 @@ phone: "+1 (555) 123-4567",
             </Card>
           </TabsContent>
 
+          {/* Accounting - Default Deposit Accounts */}
+          <TabsContent value="accounting">
+            <Card>
+              <CardHeader>
+                <CardTitle>Default Deposit Accounts</CardTitle>
+                <CardDescription>Map payment methods to the accounts where funds are deposited</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {(["cash", "mpesa", "card", "bank_transfer"] as const).map((methodKey) => (
+                  <div key={methodKey} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                    <div className="md:col-span-1">
+                      <Label className="text-sm capitalize">{methodKey.replace("_", " ")}</Label>
+                      <div className="text-xs text-muted-foreground">Select the default account to deposit {methodKey.replace("_", " ")} payments</div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <Select value={depositAccountMap[methodKey] || ""} onValueChange={(v) => setDepositAccountMap(prev => ({ ...prev, [methodKey]: v }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose account" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">— None (fallback to Cash/Bank) —</SelectItem>
+                          {depositAccounts.map(acc => (
+                            <SelectItem key={acc.id} value={acc.id}>{acc.account_code} · {acc.account_name}{acc.account_subtype ? ` (${acc.account_subtype})` : ""}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex justify-end">
+                  <Button onClick={handleSaveDepositAccounts}>Save</Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </div>
       </Tabs>
     </div>
