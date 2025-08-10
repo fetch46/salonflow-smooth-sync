@@ -8,11 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Search, Package, Users, Building, Edit2, Trash2, Eye, Phone, Mail, MapPin, ExternalLink, CalendarClock } from "lucide-react";
-import { format } from "date-fns";
+import { Plus, Search, Package, Users, Building, Edit2, Trash2, Eye, Phone, Mail, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 interface Supplier {
   id: string;
@@ -39,9 +37,7 @@ export default function Suppliers() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
-  const [viewingSupplier, setViewingSupplier] = useState<Supplier | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     contact_person: "",
@@ -57,6 +53,7 @@ export default function Suppliers() {
     payment_terms: "",
     notes: ""
   });
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchSuppliers();
@@ -448,7 +445,9 @@ export default function Suppliers() {
               {filteredSuppliers.map((supplier) => (
                 <TableRow key={supplier.id}>
                   <TableCell className="font-medium">
-                    {supplier.name}
+                    <button className="text-primary hover:underline" onClick={() => navigate(`/suppliers/${supplier.id}`)}>
+                      {supplier.name}
+                    </button>
                   </TableCell>
                   <TableCell>{supplier.contact_person || "-"}</TableCell>
                   <TableCell>
@@ -489,10 +488,7 @@ export default function Suppliers() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          setViewingSupplier(supplier);
-                          setIsViewModalOpen(true);
-                        }}
+                        onClick={() => navigate(`/suppliers/${supplier.id}`)}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
@@ -519,188 +515,7 @@ export default function Suppliers() {
         </CardContent>
       </Card>
 
-      {/* View Supplier Modal */}
-      <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
-        <DialogContent className="max-w-5xl p-0 overflow-hidden">
-          <div className="bg-gradient-to-r from-muted/60 to-background px-6 pt-6 pb-4">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1">
-                <h2 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
-                  Supplier Details
-                  {viewingSupplier && (
-                    <Badge variant={viewingSupplier.is_active ? "default" : "secondary"}>
-                      {viewingSupplier.is_active ? "Active" : "Inactive"}
-                    </Badge>
-                  )}
-                </h2>
-                <p className="text-sm text-muted-foreground">Complete information about the supplier</p>
-              </div>
-              {viewingSupplier && (
-                <div className="flex items-center gap-2">
-                  {viewingSupplier.phone && (
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={`tel:${viewingSupplier.phone}`}>
-                        <Phone className="h-4 w-4 mr-2" /> Call
-                      </a>
-                    </Button>
-                  )}
-                  {viewingSupplier.email && (
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={`mailto:${viewingSupplier.email}`}>
-                        <Mail className="h-4 w-4 mr-2" /> Email
-                      </a>
-                    </Button>
-                  )}
-                  {normalizeUrl(viewingSupplier.website) && (
-                    <Button size="sm" asChild>
-                      <a href={normalizeUrl(viewingSupplier.website) as string} target="_blank" rel="noreferrer">
-                        <ExternalLink className="h-4 w-4 mr-2" /> Visit Site
-                      </a>
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-          <Separator />
-          {viewingSupplier && (
-            <ScrollArea className="max-h-[70vh]">
-              <div className="p-6">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2 space-y-6">
-                    <div className="rounded-lg border p-5">
-                      <h3 className="text-sm font-semibold text-muted-foreground mb-4">Company & Contact</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label className="text-xs text-muted-foreground">Supplier Name</Label>
-                          <p className="font-medium">{viewingSupplier.name}</p>
-                        </div>
-                        <div>
-                          <Label className="text-xs text-muted-foreground">Contact Person</Label>
-                          <p>{viewingSupplier.contact_person || "Not specified"}</p>
-                        </div>
-                        <div>
-                          <Label className="text-xs text-muted-foreground">Email</Label>
-                          <p>{viewingSupplier.email || "Not specified"}</p>
-                        </div>
-                        <div>
-                          <Label className="text-xs text-muted-foreground">Phone</Label>
-                          <p>{viewingSupplier.phone || "Not specified"}</p>
-                        </div>
-                        <div>
-                          <Label className="text-xs text-muted-foreground">Website</Label>
-                          <p className="truncate">
-                            {viewingSupplier.website ? (
-                              <a
-                                href={normalizeUrl(viewingSupplier.website) as string}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-primary hover:underline"
-                              >
-                                {viewingSupplier.website}
-                              </a>
-                            ) : (
-                              "Not specified"
-                            )}
-                          </p>
-                        </div>
-                        <div>
-                          <Label className="text-xs text-muted-foreground">Tax ID</Label>
-                          <p>{viewingSupplier.tax_id || "Not specified"}</p>
-                        </div>
-                        <div className="md:col-span-2">
-                          <Label className="text-xs text-muted-foreground">Payment Terms</Label>
-                          <p>{viewingSupplier.payment_terms || "Not specified"}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="rounded-lg border p-5">
-                      <h3 className="text-sm font-semibold text-muted-foreground mb-4">Address</h3>
-                      <div className="space-y-2">
-                        <p>
-                          {[
-                            viewingSupplier.address,
-                            viewingSupplier.city,
-                            viewingSupplier.state,
-                            viewingSupplier.postal_code,
-                            viewingSupplier.country
-                          ].filter(Boolean).join(", ") || "Not specified"}
-                        </p>
-                        {(viewingSupplier.city || viewingSupplier.state) && (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <MapPin className="h-4 w-4" />
-                            <span>{[viewingSupplier.city, viewingSupplier.state].filter(Boolean).join(", ")}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {viewingSupplier.notes && (
-                      <div className="rounded-lg border p-5">
-                        <h3 className="text-sm font-semibold text-muted-foreground mb-4">Notes</h3>
-                        <p className="whitespace-pre-wrap leading-relaxed">{viewingSupplier.notes}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-6">
-                    <div className="rounded-lg border p-5">
-                      <h3 className="text-sm font-semibold text-muted-foreground mb-4">Summary</h3>
-                      <div className="space-y-3 text-sm">
-                        <div className="flex items-center justify-between">
-                          <span className="text-muted-foreground">Status</span>
-                          <Badge variant={viewingSupplier.is_active ? "default" : "secondary"}>
-                            {viewingSupplier.is_active ? "Active" : "Inactive"}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-muted-foreground">Created</span>
-                          <div className="flex items-center gap-2">
-                            <CalendarClock className="h-4 w-4 text-muted-foreground" />
-                            <span>{format(new Date(viewingSupplier.created_at), 'MMM dd, yyyy')}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-muted-foreground">Updated</span>
-                          <div className="flex items-center gap-2">
-                            <CalendarClock className="h-4 w-4 text-muted-foreground" />
-                            <span>{format(new Date(viewingSupplier.updated_at), 'MMM dd, yyyy')}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="rounded-lg border p-5">
-                      <h3 className="text-sm font-semibold text-muted-foreground mb-4">Quick Actions</h3>
-                      <div className="grid grid-cols-1 gap-2">
-                        <Button variant="secondary" disabled={!viewingSupplier.phone} asChild>
-                          <a href={viewingSupplier.phone ? `tel:${viewingSupplier.phone}` : undefined}>
-                            <Phone className="h-4 w-4 mr-2" />
-                            Call Supplier
-                          </a>
-                        </Button>
-                        <Button variant="secondary" disabled={!viewingSupplier.email} asChild>
-                          <a href={viewingSupplier.email ? `mailto:${viewingSupplier.email}` : undefined}>
-                            <Mail className="h-4 w-4 mr-2" />
-                            Send Email
-                          </a>
-                        </Button>
-                        <Button variant="secondary" disabled={!normalizeUrl(viewingSupplier.website)} asChild>
-                          <a href={normalizeUrl(viewingSupplier.website) || undefined} target="_blank" rel="noreferrer">
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            Open Website
-                          </a>
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </ScrollArea>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Removed old modal-based Supplier Details view in favor of dedicated page */}
     </div>
   );
 }
