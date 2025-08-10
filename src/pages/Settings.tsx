@@ -17,6 +17,7 @@ import { useOrganization } from "@/lib/saas/hooks";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useSearchParams } from "react-router-dom";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -60,7 +61,7 @@ phone: "+1 (555) 123-4567",
     { id: "3", name: "Mike Davis", email: "mike@salon.com", role: "Staff", status: "Active", last_login: "2024-01-13" },
   ]);
 
-  const [roles] = useState([
+  const [roles, setRoles] = useState([
     { id: "1", name: "Administrator", description: "Full access to all features", permissions: ["all"], users_count: 1 },
     { id: "2", name: "Manager", description: "Manage operations and staff", permissions: ["manage_staff", "view_reports", "manage_inventory"], users_count: 1 },
     { id: "3", name: "Staff", description: "Basic staff access", permissions: ["manage_appointments", "view_clients"], users_count: 3 },
@@ -110,6 +111,29 @@ phone: "+1 (555) 123-4567",
       toast.error('Failed to save role permissions')
     }
   }
+
+  // Master permission catalog for checkbox UI
+  const allPermissions = [
+    { id: "manage_staff", label: "Manage Staff" },
+    { id: "view_reports", label: "View Reports" },
+    { id: "manage_inventory", label: "Manage Inventory" },
+    { id: "manage_appointments", label: "Manage Appointments" },
+    { id: "view_clients", label: "View Clients" },
+    { id: "manage_clients", label: "Manage Clients" },
+    { id: "manage_billing", label: "Manage Billing" },
+    { id: "manage_settings", label: "Manage Settings" },
+  ] as const;
+
+  const toggleRolePermission = (roleId: string, permissionId: string, checked: boolean) => {
+    setRoles(prev => prev.map(r => {
+      if (r.id !== roleId) return r;
+      if (r.permissions.includes("all")) return r; // keep admin as full access
+      const next = checked
+        ? Array.from(new Set([...(r.permissions || []), permissionId]))
+        : (r.permissions || []).filter(p => p !== permissionId);
+      return { ...r, permissions: next };
+    }));
+  };
 
   // Subscription State
   const [subscription] = useState({
@@ -369,221 +393,186 @@ phone: "+1 (555) 123-4567",
 
       {/* Tabs */}
       <Tabs
+        orientation="vertical"
         value={activeTab}
         onValueChange={(val) => {
           setActiveTab(val);
           setSearchParams({ tab: val });
         }}
+        className="grid gap-6 md:grid-cols-[240px_1fr]"
       >
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="company" className="flex items-center gap-2">
+        <TabsList className="flex h-auto w-full flex-col items-stretch gap-2 rounded-lg border bg-background p-2 md:sticky md:top-6">
+          <TabsTrigger value="company" className="justify-start gap-2 data-[state=active]:bg-muted">
             <Building className="w-4 h-4" />
             Company
           </TabsTrigger>
-          <TabsTrigger value="users" className="flex items-center gap-2">
+          <TabsTrigger value="users" className="justify-start gap-2 data-[state=active]:bg-muted">
             <Users className="w-4 h-4" />
             Users & Roles
           </TabsTrigger>
-          <TabsTrigger value="subscription" className="flex items-center gap-2">
+          <TabsTrigger value="subscription" className="justify-start gap-2 data-[state=active]:bg-muted">
             <CreditCard className="w-4 h-4" />
             Subscription
           </TabsTrigger>
-          <TabsTrigger value="communications" className="flex items-center gap-2">
+          <TabsTrigger value="communications" className="justify-start gap-2 data-[state=active]:bg-muted">
             <MessageSquare className="w-4 h-4" />
             Communications
           </TabsTrigger>
-          <TabsTrigger value="locations" className="flex items-center gap-2">
+          <TabsTrigger value="locations" className="justify-start gap-2 data-[state=active]:bg-muted">
             <MapPin className="w-4 h-4" />
             Locations
           </TabsTrigger>
         </TabsList>
 
-        {/* Company Settings */}
-        <TabsContent value="company">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5 text-pink-600" />
-                Company Information
-              </CardTitle>
-              <CardDescription>
-                Update your business details and preferences
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleCompanySubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Business Name</Label>
-                    <Input id="name" value={companyData.name} onChange={(e) => setCompanyData({ ...companyData, name: e.target.value })} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="website">Website</Label>
-                    <Input id="website" value={companyData.website} onChange={(e) => setCompanyData({ ...companyData, website: e.target.value })} />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Input id="address" value={companyData.address} onChange={(e) => setCompanyData({ ...companyData, address: e.target.value })} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="city">City</Label>
-                    <Input id="city" value={companyData.city} onChange={(e) => setCompanyData({ ...companyData, city: e.target.value })} />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="country">Country</Label>
-                    <Select value={selectedCountryCode} onValueChange={setSelectedCountryCode}>
-                      <SelectTrigger id="country">
-                        <SelectValue placeholder="Select country" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {countries.map((c) => (
-                          <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input id="phone" value={companyData.phone} onChange={(e) => setCompanyData({ ...companyData, phone: e.target.value })} />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" value={companyData.email} onChange={(e) => setCompanyData({ ...companyData, email: e.target.value })} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="timezone">Timezone</Label>
-                    <Input id="timezone" value={companyData.timezone} onChange={(e) => setCompanyData({ ...companyData, timezone: e.target.value })} />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="currency">Currency</Label>
-                    <Select value={selectedCurrencyId} onValueChange={setSelectedCurrencyId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select currency" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {currencies.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.code} — {c.name} ({c.symbol})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="logo_url">Logo URL</Label>
-                    <Input id="logo_url" value={companyData.logo_url} onChange={(e) => setCompanyData({ ...companyData, logo_url: e.target.value })} />
-                  </div>
-                </div>
-
-                {/* Finance Settings: Tax Rate */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="tax_rate_percent">Tax Rate (%)</Label>
-                    <Input
-                      id="tax_rate_percent"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={taxRatePercent}
-                      onChange={(e) => setTaxRatePercent(e.target.value)}
-                      placeholder="e.g. 8.5"
-                    />
-                    <p className="text-xs text-muted-foreground">This rate will be used across POS, Invoices, Receipts and Purchases.</p>
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <Button type="submit">Save Changes</Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Users & Roles */}
-        <TabsContent value="users" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* Users */}
+        <div className="space-y-6">
+          {/* Company Settings */}
+          <TabsContent value="company">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-pink-600" />
-                    Users
-                  </span>
-                  <Button size="sm" className="bg-gradient-to-r from-pink-500 to-purple-600">
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add User
-                  </Button>
+                <CardTitle className="flex items-center gap-2">
+                  <Building className="h-5 w-5 text-pink-600" />
+                  Company Information
                 </CardTitle>
+                <CardDescription>
+                  Update your business details and preferences
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {users.map((user) => (
-                    <div key={user.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                          {user.name.split(' ').map(n => n[0]).join('')}
-                        </div>
-                        <div>
-                          <div className="font-medium">{user.name}</div>
-                          <div className="text-sm text-muted-foreground">{user.email}</div>
-                          <div className="flex items-center gap-2 mt-1">
-                            {getRoleIcon(user.role)}
-                            <span className="text-sm">{user.role}</span>
-                            {getStatusBadge(user.status)}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="sm">
-                          <Edit2 className="w-3 h-3" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-destructive">
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
+                <form onSubmit={handleCompanySubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Business Name</Label>
+                      <Input id="name" value={companyData.name} onChange={(e) => setCompanyData({ ...companyData, name: e.target.value })} />
                     </div>
-                  ))}
-                </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="website">Website</Label>
+                      <Input id="website" value={companyData.website} onChange={(e) => setCompanyData({ ...companyData, website: e.target.value })} />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="address">Address</Label>
+                      <Input id="address" value={companyData.address} onChange={(e) => setCompanyData({ ...companyData, address: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="city">City</Label>
+                      <Input id="city" value={companyData.city} onChange={(e) => setCompanyData({ ...companyData, city: e.target.value })} />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="country">Country</Label>
+                      <Select value={selectedCountryCode} onValueChange={setSelectedCountryCode}>
+                        <SelectTrigger id="country">
+                          <SelectValue placeholder="Select country" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {countries.map((c) => (
+                            <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone</Label>
+                      <Input id="phone" value={companyData.phone} onChange={(e) => setCompanyData({ ...companyData, phone: e.target.value })} />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input id="email" value={companyData.email} onChange={(e) => setCompanyData({ ...companyData, email: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="timezone">Timezone</Label>
+                      <Input id="timezone" value={companyData.timezone} onChange={(e) => setCompanyData({ ...companyData, timezone: e.target.value })} />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="currency">Currency</Label>
+                      <Select value={selectedCurrencyId} onValueChange={setSelectedCurrencyId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select currency" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {currencies.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.code} — {c.name} ({c.symbol})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="logo_url">Logo URL</Label>
+                      <Input id="logo_url" value={companyData.logo_url} onChange={(e) => setCompanyData({ ...companyData, logo_url: e.target.value })} />
+                    </div>
+                  </div>
+
+                  {/* Finance Settings: Tax Rate */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="tax_rate_percent">Tax Rate (%)</Label>
+                      <Input
+                        id="tax_rate_percent"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={taxRatePercent}
+                        onChange={(e) => setTaxRatePercent(e.target.value)}
+                        placeholder="e.g. 8.5"
+                      />
+                      <p className="text-xs text-muted-foreground">This rate will be used across POS, Invoices, Receipts and Purchases.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button type="submit">Save Changes</Button>
+                  </div>
+                </form>
               </CardContent>
             </Card>
+          </TabsContent>
 
-            {/* Roles */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-pink-600" />
-                    Roles
-                  </span>
-                  <Button size="sm" className="bg-gradient-to-r from-pink-500 to-purple-600">
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add Role
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {roles.map((role) => (
-                    <div key={role.id} className="p-3 border rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          {getRoleIcon(role.name)}
-                          <span className="font-medium">{role.name}</span>
-                          <Badge variant="outline">{role.users_count} users</Badge>
+          {/* Users & Roles */}
+          <TabsContent value="users" className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Users */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-pink-600" />
+                      Users
+                    </span>
+                    <Button size="sm" className="bg-gradient-to-r from-pink-500 to-purple-600">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add User
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {users.map((user) => (
+                      <div key={user.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                            {user.name.split(' ').map(n => n[0]).join('')}
+                          </div>
+                          <div>
+                            <div className="font-medium">{user.name}</div>
+                            <div className="text-sm text-muted-foreground">{user.email}</div>
+                            <div className="flex items-center gap-2 mt-1">
+                              {getRoleIcon(user.role)}
+                              <span className="text-sm">{user.role}</span>
+                              {getStatusBadge(user.status)}
+                            </div>
+                          </div>
                         </div>
                         <div className="flex gap-1">
                           <Button variant="ghost" size="sm">
@@ -594,371 +583,418 @@ phone: "+1 (555) 123-4567",
                           </Button>
                         </div>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-2">{role.description}</p>
-                      <div className="flex flex-wrap gap-1 mb-3">
-                        {role.permissions.map((permission, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {permission.replace('_', ' ')}
-                          </Badge>
-                        ))}
-                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
 
-                      {/* Organization overrides editor */}
-                      <div className="mt-3 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs">Overrides for this organization</Label>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => addPermissionRow(role.name.toLowerCase())}
-                          >
-                            Add Permission
-                          </Button>
+              {/* Roles */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Shield className="h-5 w-5 text-pink-600" />
+                      Roles
+                    </span>
+                    <Button size="sm" className="bg-gradient-to-r from-pink-500 to-purple-600">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Role
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {roles.map((role) => (
+                      <div key={role.id} className="p-3 border rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            {getRoleIcon(role.name)}
+                            <span className="font-medium">{role.name}</span>
+                            <Badge variant="outline">{role.users_count} users</Badge>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="sm">
+                              <Edit2 className="w-3 h-3" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="text-destructive">
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
                         </div>
-                        <div className="space-y-2">
-                          {(roleOverrides[role.name.toLowerCase()] || []).map((row, idx) => (
-                            <div key={idx} className="grid grid-cols-12 gap-2 items-center">
-                              <div className="col-span-5">
-                                <Select
-                                  value={row.action}
-                                  onValueChange={(v) => updatePermissionRow(role.name.toLowerCase(), idx, 'action', v)}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Action" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="read">View</SelectItem>
-                                    <SelectItem value="create">Create</SelectItem>
-                                    <SelectItem value="update">Edit</SelectItem>
-                                    <SelectItem value="delete">Delete</SelectItem>
-                                    <SelectItem value="approve">Approve</SelectItem>
-                                    <SelectItem value="*">All</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div className="col-span-6">
-                                <Input
-                                  value={row.resource}
-                                  onChange={(e) => updatePermissionRow(role.name.toLowerCase(), idx, 'resource', e.target.value)}
-                                  placeholder="Resource e.g. appointments, job_cards"
-                                />
-                              </div>
-                              <div className="col-span-1 flex justify-end">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => removePermissionRow(role.name.toLowerCase(), idx)}
-                                  className="text-destructive"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </div>
+                        <p className="text-sm text-muted-foreground mb-3">{role.description}</p>
+
+                        {/* Checkbox permissions */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {allPermissions.map((perm) => (
+                            <label key={perm.id} className="flex items-center gap-3 rounded-md border p-2">
+                              <Checkbox
+                                checked={role.permissions.includes("all") ? true : role.permissions.includes(perm.id)}
+                                onCheckedChange={(c) => toggleRolePermission(role.id, perm.id, Boolean(c))}
+                                disabled={role.permissions.includes("all")}
+                              />
+                              <span className="text-sm">{perm.label}</span>
+                            </label>
                           ))}
                         </div>
+
+                        {/* Organization overrides editor */}
+                        <div className="mt-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs">Overrides for this organization</Label>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => addPermissionRow(role.name.toLowerCase())}
+                            >
+                              Add Permission
+                            </Button>
+                          </div>
+                          <div className="space-y-2">
+                            {(roleOverrides[role.name.toLowerCase()] || []).map((row, idx) => (
+                              <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                                <div className="col-span-5">
+                                  <Select
+                                    value={row.action}
+                                    onValueChange={(v) => updatePermissionRow(role.name.toLowerCase(), idx, 'action', v)}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Action" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="read">View</SelectItem>
+                                      <SelectItem value="create">Create</SelectItem>
+                                      <SelectItem value="update">Edit</SelectItem>
+                                      <SelectItem value="delete">Delete</SelectItem>
+                                      <SelectItem value="approve">Approve</SelectItem>
+                                      <SelectItem value="*">All</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="col-span-6">
+                                  <Input
+                                    value={row.resource}
+                                    onChange={(e) => updatePermissionRow(role.name.toLowerCase(), idx, 'resource', e.target.value)}
+                                    placeholder="Resource e.g. appointments, job_cards"
+                                  />
+                                </div>
+                                <div className="col-span-1 flex justify-end">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removePermissionRow(role.name.toLowerCase(), idx)}
+                                    className="text-destructive"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-end mt-4">
+                    <Button onClick={saveRoleOverrides}>Save Role Permissions</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Subscription */}
+          <TabsContent value="subscription">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5 text-pink-600" />
+                  Subscription Management
+                </CardTitle>
+                <CardDescription>
+                  Manage your subscription plan and billing
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Current Plan */}
+                <div className="p-6 border rounded-lg bg-gradient-to-r from-pink-50 to-purple-50">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-xl font-semibold">{subscription.plan} Plan</h3>
+                      <p className="text-muted-foreground">
+                        ${subscription.amount} / {subscription.billing_cycle.toLowerCase()}
+                      </p>
                     </div>
-                  ))}
+                    <Badge className="bg-green-100 text-green-800">
+                      {subscription.status}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Next billing date:</span>
+                      <div className="font-medium">{subscription.next_billing}</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Billing cycle:</span>
+                      <div className="font-medium">{subscription.billing_cycle}</div>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-end mt-4">
-                  <Button onClick={saveRoleOverrides}>Save Role Permissions</Button>
+
+                {/* Features */}
+                <div>
+                  <h4 className="font-semibold mb-3">Current Plan Features</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {subscription.features.map((feature, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span className="text-sm">{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3">
+                  <Button className="bg-gradient-to-r from-pink-500 to-purple-600">
+                    Upgrade Plan
+                  </Button>
+                  <Button variant="outline">
+                    View Billing History
+                  </Button>
+                  <Button variant="outline">
+                    Update Payment Method
+                  </Button>
                 </div>
               </CardContent>
             </Card>
-          </div>
-        </TabsContent>
+          </TabsContent>
 
-        {/* Subscription */}
-        <TabsContent value="subscription">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-pink-600" />
-                Subscription Management
-              </CardTitle>
-              <CardDescription>
-                Manage your subscription plan and billing
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Current Plan */}
-              <div className="p-6 border rounded-lg bg-gradient-to-r from-pink-50 to-purple-50">
-                <div className="flex items-center justify-between mb-4">
+          {/* Communications */}
+          <TabsContent value="communications">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-pink-600" />
+                  Communication Settings
+                </CardTitle>
+                <CardDescription>
+                  Configure notifications and communication preferences
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCommunicationSubmit} className="space-y-6">
+                  {/* Notification Preferences */}
                   <div>
-                    <h3 className="text-xl font-semibold">{subscription.plan} Plan</h3>
-                    <p className="text-muted-foreground">
-                      ${subscription.amount} / {subscription.billing_cycle.toLowerCase()}
-                    </p>
+                    <h4 className="font-semibold mb-4">Notification Preferences</h4>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="email_notifications">Email Notifications</Label>
+                          <p className="text-sm text-muted-foreground">Receive notifications via email</p>
+                        </div>
+                        <Switch
+                          id="email_notifications"
+                          checked={communicationSettings.email_notifications}
+                          onCheckedChange={(checked) => 
+                            setCommunicationSettings({ ...communicationSettings, email_notifications: checked })
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="sms_notifications">SMS Notifications</Label>
+                          <p className="text-sm text-muted-foreground">Receive notifications via SMS</p>
+                        </div>
+                        <Switch
+                          id="sms_notifications"
+                          checked={communicationSettings.sms_notifications}
+                          onCheckedChange={(checked) => 
+                            setCommunicationSettings({ ...communicationSettings, sms_notifications: checked })
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="appointment_reminders">Appointment Reminders</Label>
+                          <p className="text-sm text-muted-foreground">Send automatic appointment reminders</p>
+                        </div>
+                        <Switch
+                          id="appointment_reminders"
+                          checked={communicationSettings.appointment_reminders}
+                          onCheckedChange={(checked) => 
+                            setCommunicationSettings({ ...communicationSettings, appointment_reminders: checked })
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="staff_notifications">Staff Notifications</Label>
+                          <p className="text-sm text-muted-foreground">Notify staff about schedule changes</p>
+                        </div>
+                        <Switch
+                          id="staff_notifications"
+                          checked={communicationSettings.staff_notifications}
+                          onCheckedChange={(checked) => 
+                            setCommunicationSettings({ ...communicationSettings, staff_notifications: checked })
+                          }
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <Badge className="bg-green-100 text-green-800">
-                    {subscription.status}
-                  </Badge>
-                </div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+
+                  {/* Email Settings */}
                   <div>
-                    <span className="text-muted-foreground">Next billing date:</span>
-                    <div className="font-medium">{subscription.next_billing}</div>
+                    <h4 className="font-semibold mb-4">Email Settings</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="smtp_server">SMTP Server</Label>
+                        <Input
+                          id="smtp_server"
+                          value={communicationSettings.smtp_server}
+                          onChange={(e) => setCommunicationSettings({ ...communicationSettings, smtp_server: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="smtp_port">SMTP Port</Label>
+                        <Input
+                          id="smtp_port"
+                          value={communicationSettings.smtp_port}
+                          onChange={(e) => setCommunicationSettings({ ...communicationSettings, smtp_port: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="smtp_username">SMTP Username</Label>
+                        <Input
+                          id="smtp_username"
+                          value={communicationSettings.smtp_username}
+                          onChange={(e) => setCommunicationSettings({ ...communicationSettings, smtp_username: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="smtp_password">SMTP Password</Label>
+                        <Input
+                          id="smtp_password"
+                          type="password"
+                          value={communicationSettings.smtp_password}
+                          onChange={(e) => setCommunicationSettings({ ...communicationSettings, smtp_password: e.target.value })}
+                        />
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Email Signature */}
                   <div>
-                    <span className="text-muted-foreground">Billing cycle:</span>
-                    <div className="font-medium">{subscription.billing_cycle}</div>
+                    <Label htmlFor="email_signature">Email Signature</Label>
+                    <Textarea
+                      id="email_signature"
+                      value={communicationSettings.email_signature}
+                      onChange={(e) => setCommunicationSettings({ ...communicationSettings, email_signature: e.target.value })}
+                      rows={4}
+                    />
                   </div>
-                </div>
-              </div>
 
-              {/* Features */}
-              <div>
-                <h4 className="font-semibold mb-3">Current Plan Features</h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {subscription.features.map((feature, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-sm">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3">
-                <Button className="bg-gradient-to-r from-pink-500 to-purple-600">
-                  Upgrade Plan
-                </Button>
-                <Button variant="outline">
-                  View Billing History
-                </Button>
-                <Button variant="outline">
-                  Update Payment Method
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Communications */}
-        <TabsContent value="communications">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-pink-600" />
-                Communication Settings
-              </CardTitle>
-              <CardDescription>
-                Configure notifications and communication preferences
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleCommunicationSubmit} className="space-y-6">
-                {/* Notification Preferences */}
-                <div>
-                  <h4 className="font-semibold mb-4">Notification Preferences</h4>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="email_notifications">Email Notifications</Label>
-                        <p className="text-sm text-muted-foreground">Receive notifications via email</p>
-                      </div>
-                      <Switch
-                        id="email_notifications"
-                        checked={communicationSettings.email_notifications}
-                        onCheckedChange={(checked) => 
-                          setCommunicationSettings({ ...communicationSettings, email_notifications: checked })
-                        }
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="sms_notifications">SMS Notifications</Label>
-                        <p className="text-sm text-muted-foreground">Receive notifications via SMS</p>
-                      </div>
-                      <Switch
-                        id="sms_notifications"
-                        checked={communicationSettings.sms_notifications}
-                        onCheckedChange={(checked) => 
-                          setCommunicationSettings({ ...communicationSettings, sms_notifications: checked })
-                        }
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="appointment_reminders">Appointment Reminders</Label>
-                        <p className="text-sm text-muted-foreground">Send automatic appointment reminders</p>
-                      </div>
-                      <Switch
-                        id="appointment_reminders"
-                        checked={communicationSettings.appointment_reminders}
-                        onCheckedChange={(checked) => 
-                          setCommunicationSettings({ ...communicationSettings, appointment_reminders: checked })
-                        }
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="staff_notifications">Staff Notifications</Label>
-                        <p className="text-sm text-muted-foreground">Notify staff about schedule changes</p>
-                      </div>
-                      <Switch
-                        id="staff_notifications"
-                        checked={communicationSettings.staff_notifications}
-                        onCheckedChange={(checked) => 
-                          setCommunicationSettings({ ...communicationSettings, staff_notifications: checked })
-                        }
-                      />
-                    </div>
+                  <div className="flex justify-end">
+                    <Button type="submit" className="bg-gradient-to-r from-pink-500 to-purple-600">
+                      Save Communication Settings
+                    </Button>
                   </div>
-                </div>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-                {/* Email Settings */}
-                <div>
-                  <h4 className="font-semibold mb-4">Email Settings</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="smtp_server">SMTP Server</Label>
-                      <Input
-                        id="smtp_server"
-                        value={communicationSettings.smtp_server}
-                        onChange={(e) => setCommunicationSettings({ ...communicationSettings, smtp_server: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="smtp_port">SMTP Port</Label>
-                      <Input
-                        id="smtp_port"
-                        value={communicationSettings.smtp_port}
-                        onChange={(e) => setCommunicationSettings({ ...communicationSettings, smtp_port: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="smtp_username">SMTP Username</Label>
-                      <Input
-                        id="smtp_username"
-                        value={communicationSettings.smtp_username}
-                        onChange={(e) => setCommunicationSettings({ ...communicationSettings, smtp_username: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="smtp_password">SMTP Password</Label>
-                      <Input
-                        id="smtp_password"
-                        type="password"
-                        value={communicationSettings.smtp_password}
-                        onChange={(e) => setCommunicationSettings({ ...communicationSettings, smtp_password: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Email Signature */}
-                <div>
-                  <Label htmlFor="email_signature">Email Signature</Label>
-                  <Textarea
-                    id="email_signature"
-                    value={communicationSettings.email_signature}
-                    onChange={(e) => setCommunicationSettings({ ...communicationSettings, email_signature: e.target.value })}
-                    rows={4}
-                  />
-                </div>
-
-                <div className="flex justify-end">
-                  <Button type="submit" className="bg-gradient-to-r from-pink-500 to-purple-600">
-                    Save Communication Settings
+          {/* Locations */}
+          <TabsContent value="locations">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-pink-600" />
+                    Business Locations
+                  </span>
+                  <Button size="sm" className="bg-gradient-to-r from-pink-500 to-purple-600" onClick={openNewLocation}>
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Location
                   </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Locations */}
-        <TabsContent value="locations">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-pink-600" />
-                  Business Locations
-                </span>
-                <Button size="sm" className="bg-gradient-to-r from-pink-500 to-purple-600" onClick={openNewLocation}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add Location
-                </Button>
-              </CardTitle>
-              <CardDescription>
-                Manage your business locations
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Address</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {stockLocations.length === 0 ? (
+                </CardTitle>
+                <CardDescription>
+                  Manage your business locations
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
-                        No locations yet. Click "Add Location" to create your first location.
-                      </TableCell>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Address</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  ) : (
-                    stockLocations.map((location) => (
-                      <TableRow key={location.id}>
-                        <TableCell className="font-medium">{location.name}</TableCell>
-                        <TableCell className="text-muted-foreground">{location.description}</TableCell>
-                        <TableCell>
-                          <Badge variant={location.is_active ? "default" : "secondary"}>
-                            {location.is_active ? "Active" : "Inactive"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right space-x-2">
-                          <Button variant="ghost" size="sm" onClick={() => openEditLocation(location)}>
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDeleteLocation(location.id)}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                  </TableHeader>
+                  <TableBody>
+                    {stockLocations.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
+                          No locations yet. Click "Add Location" to create your first location.
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-              <UIDialog open={isLocationDialogOpen} onOpenChange={setIsLocationDialogOpen}>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>{editingLocation ? 'Edit Location' : 'Add Location'}</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="loc_name">Name</Label>
-                      <Input id="loc_name" value={locationForm.name} onChange={(e) => setLocationForm({ ...locationForm, name: e.target.value })} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="loc_desc">Address</Label>
-                      <Textarea id="loc_desc" value={locationForm.description} onChange={(e) => setLocationForm({ ...locationForm, description: e.target.value })} />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="loc_active">Active</Label>
-                        <p className="text-xs text-muted-foreground">Inactive locations will be hidden in selectors</p>
+                    ) : (
+                      stockLocations.map((location) => (
+                        <TableRow key={location.id}>
+                          <TableCell className="font-medium">{location.name}</TableCell>
+                          <TableCell className="text-muted-foreground">{location.description}</TableCell>
+                          <TableCell>
+                            <Badge variant={location.is_active ? "default" : "secondary"}>
+                              {location.is_active ? "Active" : "Inactive"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right space-x-2">
+                            <Button variant="ghost" size="sm" onClick={() => openEditLocation(location)}>
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDeleteLocation(location.id)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+                <UIDialog open={isLocationDialogOpen} onOpenChange={setIsLocationDialogOpen}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{editingLocation ? 'Edit Location' : 'Add Location'}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="loc_name">Name</Label>
+                        <Input id="loc_name" value={locationForm.name} onChange={(e) => setLocationForm({ ...locationForm, name: e.target.value })} />
                       </div>
-                      <Switch id="loc_active" checked={locationForm.is_active} onCheckedChange={(checked) => setLocationForm({ ...locationForm, is_active: checked })} />
+                      <div className="space-y-2">
+                        <Label htmlFor="loc_desc">Address</Label>
+                        <Textarea id="loc_desc" value={locationForm.description} onChange={(e) => setLocationForm({ ...locationForm, description: e.target.value })} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="loc_active">Active</Label>
+                          <p className="text-xs text-muted-foreground">Inactive locations will be hidden in selectors</p>
+                        </div>
+                        <Switch id="loc_active" checked={locationForm.is_active} onCheckedChange={(checked) => setLocationForm({ ...locationForm, is_active: checked })} />
+                      </div>
                     </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsLocationDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSaveLocation}>{editingLocation ? 'Save Changes' : 'Create Location'}</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </UIDialog>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsLocationDialogOpen(false)}>Cancel</Button>
+                      <Button onClick={handleSaveLocation}>{editingLocation ? 'Save Changes' : 'Create Location'}</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </UIDialog>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+        </div>
       </Tabs>
     </div>
   );
