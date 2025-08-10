@@ -40,6 +40,7 @@ import ServiceView from "@/pages/ServiceView";
 import Booking from "@/pages/Booking";
 import SupplierProfile from "@/pages/SupplierProfile";
 import ProductView from "@/pages/ProductView";
+import InventoryAdjustmentForm from "@/pages/InventoryAdjustmentForm";
 
 import NotFound from "@/pages/NotFound";
 import Landing from "@/pages/Landing";
@@ -148,6 +149,8 @@ const AppRoutes = () => {
         <Route path="inventory" element={<Inventory />} />
         <Route path="inventory/:id" element={<ProductView />} />
         <Route path="inventory-adjustments" element={<InventoryAdjustments />} />
+        <Route path="inventory-adjustments/new" element={<InventoryAdjustmentForm />} />
+        <Route path="inventory-adjustments/:id/edit" element={<InventoryAdjustmentForm />} />
         <Route path="inventory-transfers" element={<StockTransfers />} />
         
         {/* Financial Management */}
