@@ -18,6 +18,7 @@ import { useSaas } from "@/lib/saas";
 // removed modal tax toggle and org tax rate from list page
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Edit3, Truck as TruckIcon, RotateCcw, Trash2, CreditCard, RefreshCw } from "lucide-react";
+import { postDoubleEntry, findAccountIdByCode } from "@/utils/ledger";
 
 interface AccountOption { id: string; account_code: string; account_name: string; account_type: string; account_subtype: string | null; balance?: number | null }
 
@@ -101,8 +102,6 @@ export default function Purchases() {
   const [receiveQuantities, setReceiveQuantities] = useState<Record<string, number>>({});
 
   // removed inline item add/remove (handled in full page form)
-
-  // removed totals calculation (moved to full page form)
 
   useEffect(() => {
     fetchPurchases();
