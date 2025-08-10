@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Search, Package, TrendingUp, TrendingDown, Edit2, Trash2, AlertTriangle, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { MapPin } from "lucide-react";
 
 interface InventoryItem {
   id: string;
@@ -24,6 +25,11 @@ interface InventoryItem {
   selling_price: number;
   reorder_point: number;
   is_active: boolean;
+}
+
+interface BusinessLocation {
+  id: string;
+  name: string;
 }
 
 interface Adjustment {
@@ -40,6 +46,7 @@ interface Adjustment {
   approved_at: string | null;
   created_at: string;
   updated_at: string;
+  location_id?: string | null;
 }
 
 interface AdjustmentItem {
@@ -82,6 +89,7 @@ const ADJUSTMENT_REASONS = [
 export default function InventoryAdjustments() {
   const [adjustments, setAdjustments] = useState<Adjustment[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [locations, setLocations] = useState<BusinessLocation[]>([]);
   const [adjustmentItems, setAdjustmentItems] = useState<AdjustmentItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -94,7 +102,8 @@ export default function InventoryAdjustments() {
     adjustment_type: "",
     reason: "",
     notes: "",
-    adjustment_number: ""
+    adjustment_number: "",
+    location_id: ""
   });
   const [selectedItems, setSelectedItems] = useState<{
     item_id: string;
@@ -109,6 +118,7 @@ export default function InventoryAdjustments() {
   useEffect(() => {
     fetchAdjustments();
     fetchInventoryItems();
+    fetchLocations();
   }, []);
 
   const fetchAdjustments = async () => {
@@ -141,6 +151,20 @@ export default function InventoryAdjustments() {
       setInventoryItems(data || []);
     } catch (error) {
       console.error("Error fetching inventory items:", error);
+    }
+  };
+
+  const fetchLocations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("business_locations")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name");
+      if (error) throw error;
+      setLocations(data || []);
+    } catch (error) {
+      console.error("Error fetching locations:", error);
     }
   };
 
@@ -186,6 +210,7 @@ export default function InventoryAdjustments() {
         adjustment_number: formData.adjustment_number || generateAdjustmentNumber(),
         total_items: selectedItems.length,
         status: "pending",
+        location_id: formData.location_id || null,
       };
 
       let adjustmentId: string;
@@ -243,7 +268,8 @@ export default function InventoryAdjustments() {
         adjustment_type: "",
         reason: "",
         notes: "",
-        adjustment_number: ""
+        adjustment_number: "",
+        location_id: ""
       });
       setSelectedItems([]);
       fetchAdjustments();
@@ -283,7 +309,8 @@ export default function InventoryAdjustments() {
       adjustment_type: adjustment.adjustment_type,
       reason: adjustment.reason,
       notes: adjustment.notes || "",
-      adjustment_number: adjustment.adjustment_number
+      adjustment_number: adjustment.adjustment_number,
+      location_id: adjustment.location_id || ""
     });
     setIsCreateModalOpen(true);
   };
@@ -481,6 +508,20 @@ export default function InventoryAdjustments() {
               </div>
 
               <div>
+                <Label htmlFor="location">Location</Label>
+                <Select value={formData.location_id} onValueChange={(value) => setFormData({...formData, location_id: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map(loc => (
+                      <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea
                   id="notes"
@@ -662,6 +703,7 @@ export default function InventoryAdjustments() {
                 <TableHead>Date</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Reason</TableHead>
+                <TableHead>Location</TableHead>
                 <TableHead>Items</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
@@ -682,6 +724,7 @@ export default function InventoryAdjustments() {
                     </span>
                   </TableCell>
                   <TableCell>{adjustment.reason}</TableCell>
+                  <TableCell>{locations.find(l => l.id === adjustment.location_id)?.name || '-'}</TableCell>
                   <TableCell>{adjustment.total_items}</TableCell>
                   <TableCell>{getStatusBadge(adjustment.status)}</TableCell>
                   <TableCell>
@@ -780,6 +823,14 @@ export default function InventoryAdjustments() {
                   </CardHeader>
                   <CardContent className="pt-0 text-base font-semibold">
                     {viewingAdjustment.total_items}
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium flex items-center gap-1"><MapPin className="h-3 w-3"/> Location</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0 text-base">
+                    {locations.find(l => l.id === viewingAdjustment.location_id)?.name || '-'}
                   </CardContent>
                 </Card>
               </div>
