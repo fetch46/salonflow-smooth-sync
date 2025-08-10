@@ -12,6 +12,32 @@ export type LedgerPostParams = {
   locationId?: string | null;
 };
 
+let accountTransactionsSupportsLocationIdCache: boolean | null = null;
+async function accountTransactionsSupportsLocationId(): Promise<boolean> {
+  if (accountTransactionsSupportsLocationIdCache !== null) return accountTransactionsSupportsLocationIdCache;
+  try {
+    const { error } = await supabase
+      .from("account_transactions")
+      .select("id, location_id")
+      .limit(1);
+    if (error) {
+      const msg = String(error.message || "").toLowerCase();
+      if (msg.includes("column") && msg.includes("location_id") && msg.includes("does not exist")) {
+        accountTransactionsSupportsLocationIdCache = false;
+        return false;
+      }
+      // Unknown error: default to assuming column exists to avoid data shape drift
+      accountTransactionsSupportsLocationIdCache = true;
+      return true;
+    }
+    accountTransactionsSupportsLocationIdCache = true;
+    return true;
+  } catch {
+    accountTransactionsSupportsLocationIdCache = false;
+    return false;
+  }
+}
+
 async function findAccountIdBySubtype(organizationId: string, subtype: string): Promise<string | null> {
   try {
     // Prefer account_subtype match
@@ -140,30 +166,31 @@ export async function postDoubleEntry(params: LedgerPostParams): Promise<boolean
   const desc = description || "Transaction";
 
   try {
-    const { error } = await supabase
-      .from("account_transactions")
-      .insert([
-        {
-          account_id: debitAccountId,
-          transaction_date: date,
-          description: desc,
-          debit_amount: amount,
-          credit_amount: 0,
-          reference_type: referenceType || null,
-          reference_id: referenceId || null,
-          location_id: locationId || null,
-        },
-        {
-          account_id: creditAccountId,
-          transaction_date: date,
-          description: desc,
-          debit_amount: 0,
-          credit_amount: amount,
-          reference_type: referenceType || null,
-          reference_id: referenceId || null,
-          location_id: locationId || null,
-        },
-      ]);
+    const includeLocation = !!locationId && (await accountTransactionsSupportsLocationId());
+    const debitRow: any = {
+      account_id: debitAccountId,
+      transaction_date: date,
+      description: desc,
+      debit_amount: amount,
+      credit_amount: 0,
+      reference_type: referenceType || null,
+      reference_id: referenceId || null,
+    };
+    const creditRow: any = {
+      account_id: creditAccountId,
+      transaction_date: date,
+      description: desc,
+      debit_amount: 0,
+      credit_amount: amount,
+      reference_type: referenceType || null,
+      reference_id: referenceId || null,
+    };
+    if (includeLocation) {
+      debitRow.location_id = locationId;
+      creditRow.location_id = locationId;
+    }
+
+    const { error } = await supabase.from("account_transactions").insert([debitRow, creditRow]);
     if (error) throw error;
     return true;
   } catch (err) {
