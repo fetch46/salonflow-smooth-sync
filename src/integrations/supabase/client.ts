@@ -5,6 +5,82 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
+function createSupabaseStub() {
+  const stubError = new Error(
+    'Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
+  )
+
+  class FakeBuilder {
+    then(onFulfilled?: any, onRejected?: any) {
+      return Promise.resolve({ data: null, error: stubError }).then(onFulfilled, onRejected)
+    }
+    catch(onRejected?: any) {
+      return Promise.resolve({ data: null, error: stubError }).catch(onRejected)
+    }
+    finally(onFinally?: any) {
+      return Promise.resolve({ data: null, error: stubError }).finally(onFinally)
+    }
+
+    // no-op filter/transform methods for chaining
+    eq() { return this }
+    limit() { return this }
+    order() { return this }
+
+    // query methods return awaitable builder or terminal promise
+    select() { return this }
+    insert() { return this }
+    update() { return this }
+    delete() { return this }
+
+    maybeSingle() { return Promise.resolve({ data: null, error: stubError }) }
+    single() { return Promise.resolve({ data: null, error: stubError }) }
+  }
+
+  const stub = {
+    from(_table: string) {
+      return new FakeBuilder()
+    },
+    rpc(_fn: string, _args?: any) {
+      return Promise.resolve({ data: null, error: stubError })
+    },
+    auth: {
+      async getSession() {
+        return { data: { session: null }, error: stubError }
+      },
+      onAuthStateChange(_cb: any) {
+        return { data: { subscription: { unsubscribe() { /* no-op */ } } }, error: stubError }
+      },
+      async signInWithPassword() {
+        return { data: null, error: stubError }
+      },
+      async signUp() {
+        return { data: null, error: stubError }
+      },
+      async signOut() {
+        return { error: stubError }
+      },
+      async resetPasswordForEmail() {
+        return { data: null, error: stubError }
+      },
+      async signInWithOAuth() {
+        return { data: null, error: stubError }
+      },
+      admin: {
+        async listUsers() {
+          return { data: null, error: stubError }
+        },
+      },
+    },
+  } as any
+
+  // eslint-disable-next-line no-console
+  console.error(
+    'Supabase environment variables are missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable backend features.'
+  )
+
+  return stub
+}
+
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   // eslint-disable-next-line no-console
   console.warn(
@@ -15,10 +91,12 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  auth: {
-    storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
-  }
-});
+export const supabase = (SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY)
+  ? createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth: {
+        storage: localStorage,
+        persistSession: true,
+        autoRefreshToken: true,
+      }
+    })
+  : createSupabaseStub();
