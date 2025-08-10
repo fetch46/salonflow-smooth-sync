@@ -72,7 +72,7 @@ interface Service {
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  commission_rate?: number;
+  commission_percentage?: number | null;
   popularity_score?: number;
   avg_rating?: number;
   total_bookings?: number;
@@ -168,16 +168,15 @@ export default function Services() {
     price: 0,
     category: "",
     is_active: true,
-    commission_rate: 10,
+    commission_percentage: 10,
   });
 
-  // Mock function to enrich services with additional data
+  // Mock function to enrich services with more metrics but without touching persisted fields
   const enrichServices = (services: Service[]): Service[] => {
     return services.map(service => ({
       ...service,
-      commission_rate: 10 + Math.floor(Math.random() * 20), // 10-30%
       popularity_score: Math.floor(Math.random() * 100),
-      avg_rating: 4.0 + Math.random() * 1.0, // 4.0-5.0
+      avg_rating: 4.0 + Math.random() * 1.0,
       total_bookings: Math.floor(Math.random() * 200) + 10
     }));
   };
@@ -356,6 +355,7 @@ export default function Services() {
         price: formData.price,
         category: formData.category || null,
         is_active: formData.is_active,
+        commission_percentage: typeof formData.commission_percentage === 'number' ? formData.commission_percentage : 0,
       } as const;
 
       if (editingService) {
@@ -417,13 +417,14 @@ export default function Services() {
       price: 0,
       category: "",
       is_active: true,
-      commission_rate: 10,
+      commission_percentage: 10,
     });
     setEditingService(null);
     setServiceKits([]);
   };
 
   const handleEdit = (service: Service) => {
+    const cp = Number((service as any).commission_percentage);
     setFormData({
       name: service.name,
       description: service.description || "",
@@ -431,7 +432,7 @@ export default function Services() {
       price: service.price,
       category: service.category || "",
       is_active: service.is_active,
-      commission_rate: service.commission_rate || 10,
+      commission_percentage: !Number.isNaN(cp) ? cp : 10,
     });
     setEditingService(service);
     fetchServiceKits(service.id);
@@ -719,15 +720,15 @@ export default function Services() {
                     </div>
                     
                     <div>
-                      <Label htmlFor="commission_rate">Commission Rate (%)</Label>
+                      <Label htmlFor="commission_percentage">Commission Rate (%)</Label>
                       <Input 
-                        id="commission_rate" 
+                        id="commission_percentage" 
                         type="number" 
                         min="0" 
                         max="100" 
                         step="0.1" 
-                        value={formData.commission_rate} 
-                        onChange={(e) => setFormData({ ...formData, commission_rate: parseFloat(e.target.value) || 0 })} 
+                        value={formData.commission_percentage} 
+                        onChange={(e) => setFormData({ ...formData, commission_percentage: parseFloat(e.target.value) || 0 })} 
                         placeholder="10.0"
                       />
                     </div>
@@ -1329,9 +1330,9 @@ export default function Services() {
                             )}
                           </div>
                           
-                          {service.commission_rate && (
+                          {service.commission_percentage && (
                             <div className="text-xs text-slate-500">
-                              {service.commission_rate}% commission
+                              {service.commission_percentage}% commission
                             </div>
                           )}
                         </div>
