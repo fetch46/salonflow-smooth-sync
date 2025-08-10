@@ -227,6 +227,7 @@ export type Database = {
           status: string
           updated_at: string
           vendor_name: string
+          location_id: string | null
         }
         Insert: {
           amount?: number
@@ -242,6 +243,7 @@ export type Database = {
           status?: string
           updated_at?: string
           vendor_name: string
+          location_id?: string | null
         }
         Update: {
           amount?: number
@@ -257,6 +259,7 @@ export type Database = {
           status?: string
           updated_at?: string
           vendor_name?: string
+          location_id?: string | null
         }
         Relationships: []
       }
@@ -991,6 +994,7 @@ export type Database = {
           total_amount: number
           updated_at: string
           vendor_name: string
+          location_id: string | null
         }
         Insert: {
           created_at?: string
@@ -1004,6 +1008,7 @@ export type Database = {
           total_amount?: number
           updated_at?: string
           vendor_name: string
+          location_id?: string | null
         }
         Update: {
           created_at?: string
@@ -1017,6 +1022,7 @@ export type Database = {
           total_amount?: number
           updated_at?: string
           vendor_name?: string
+          location_id?: string | null
         }
         Relationships: []
       }
@@ -1348,6 +1354,87 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      business_locations: {
+        Row: {
+          id: string
+          organization_id: string
+          name: string
+          code: string | null
+          address: string | null
+          phone: string | null
+          manager_id: string | null
+          is_active: boolean
+          is_default: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          name: string
+          code?: string | null
+          address?: string | null
+          phone?: string | null
+          manager_id?: string | null
+          is_active?: boolean
+          is_default?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          name?: string
+          code?: string | null
+          address?: string | null
+          phone?: string | null
+          manager_id?: string | null
+          is_active?: boolean
+          is_default?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_locations_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_locations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      receipts: {
+        Row: Database['public']['Tables']['receipts']['Row'] & { location_id: string | null }
+        Insert: Database['public']['Tables']['receipts']['Insert'] & { location_id?: string | null }
+        Update: Database['public']['Tables']['receipts']['Update'] & { location_id?: string | null }
+        Relationships: Database['public']['Tables']['receipts']['Relationships']
+      }
+      receipt_items: {
+        Row: Database['public']['Tables']['receipt_items']['Row'] & { location_id: string | null }
+        Insert: Database['public']['Tables']['receipt_items']['Insert'] & { location_id?: string | null }
+        Update: Database['public']['Tables']['receipt_items']['Update'] & { location_id?: string | null }
+        Relationships: Database['public']['Tables']['receipt_items']['Relationships']
+      }
+      receipt_payments: {
+        Row: Database['public']['Tables']['receipt_payments']['Row'] & { location_id: string | null }
+        Insert: Database['public']['Tables']['receipt_payments']['Insert'] & { location_id?: string | null }
+        Update: Database['public']['Tables']['receipt_payments']['Update'] & { location_id?: string | null }
+        Relationships: Database['public']['Tables']['receipt_payments']['Relationships']
+      }
+      account_transactions: {
+        Row: Database['public']['Tables']['account_transactions']['Row'] & { location_id: string | null }
+        Insert: Database['public']['Tables']['account_transactions']['Insert'] & { location_id?: string | null }
+        Update: Database['public']['Tables']['account_transactions']['Update'] & { location_id?: string | null }
+        Relationships: Database['public']['Tables']['account_transactions']['Relationships']
       }
     }
     Views: {

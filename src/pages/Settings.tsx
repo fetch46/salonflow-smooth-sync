@@ -10,6 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Building, Users, CreditCard, MessageSquare, MapPin, Plus, Edit2, Trash2, Crown, Shield, User } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { usePermissions } from "@/lib/saas/hooks";
 import { toast } from "sonner";
 import { useOrganization } from "@/lib/saas/hooks";
 import { supabase } from "@/integrations/supabase/client";
@@ -126,10 +128,90 @@ phone: "+1 (555) 123-4567",
   });
 
   // Locations State
-  const [locations] = useState([
-    { id: "1", name: "Main Location", address: "123 Beauty Street, New York, NY 10001", phone: "+1 (555) 123-4567", manager: "Sarah Johnson", status: "Active" },
-    { id: "2", name: "Downtown Branch", address: "456 Style Avenue, New York, NY 10002", phone: "+1 (555) 234-5678", manager: "Mike Davis", status: "Active" },
-  ]);
+  const { hasMinimumRole } = usePermissions();
+  const [locations, setLocations] = useState<Array<{ id: string; name: string; address?: string | null; phone?: string | null; manager_id?: string | null; is_active: boolean }>>([]);
+  const [locDialogOpen, setLocDialogOpen] = useState(false);
+  const [editingLocation, setEditingLocation] = useState<{ id?: string; name: string; address?: string | null; phone?: string | null; manager_id?: string | null; is_active: boolean }>({ name: "", address: "", phone: "", manager_id: null, is_active: true });
+
+  const loadLocations = async () => {
+    if (!organization) return;
+    const { data, error } = await supabase
+      .from('business_locations')
+      .select('id, name, address, phone, manager_id, is_active')
+      .eq('organization_id', organization.id)
+      .order('name');
+    if (error) {
+      console.error(error);
+      toast.error('Failed to load locations');
+      return;
+    }
+    setLocations(data || []);
+  };
+
+  useEffect(() => { loadLocations(); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organization?.id]);
+
+  const openAddLocation = () => {
+    setEditingLocation({ name: "", address: "", phone: "", manager_id: null, is_active: true });
+    setLocDialogOpen(true);
+  };
+  const openEditLocation = (loc: any) => {
+    setEditingLocation({ id: loc.id, name: loc.name, address: loc.address, phone: loc.phone, manager_id: loc.manager_id, is_active: !!loc.is_active });
+    setLocDialogOpen(true);
+  };
+  const saveLocation = async () => {
+    if (!organization) return toast.error('No organization');
+    if (!editingLocation.name.trim()) return toast.error('Location name required');
+    try {
+      if (editingLocation.id) {
+        const { error } = await supabase
+          .from('business_locations')
+          .update({
+            name: editingLocation.name,
+            address: editingLocation.address,
+            phone: editingLocation.phone,
+            manager_id: editingLocation.manager_id || null,
+            is_active: editingLocation.is_active,
+          })
+          .eq('id', editingLocation.id);
+        if (error) throw error;
+        toast.success('Location updated');
+      } else {
+        const { error } = await supabase
+          .from('business_locations')
+          .insert({
+            organization_id: organization.id,
+            name: editingLocation.name,
+            address: editingLocation.address,
+            phone: editingLocation.phone,
+            manager_id: editingLocation.manager_id || null,
+            is_active: editingLocation.is_active,
+          });
+        if (error) throw error;
+        toast.success('Location added');
+      }
+      setLocDialogOpen(false);
+      await loadLocations();
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to save location');
+    }
+  };
+  const deleteLocation = async (id: string) => {
+    try {
+      // Soft delete -> set inactive to keep historical links
+      const { error } = await supabase
+        .from('business_locations')
+        .update({ is_active: false })
+        .eq('id', id);
+      if (error) throw error;
+      toast.success('Location deactivated');
+      await loadLocations();
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to deactivate location');
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -744,10 +826,12 @@ phone: "+1 (555) 123-4567",
                   <MapPin className="h-5 w-5 text-pink-600" />
                   Business Locations
                 </span>
-                <Button className="bg-gradient-to-r from-pink-500 to-purple-600">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Location
-                </Button>
+                {hasMinimumRole('owner') && (
+                  <Button className="bg-gradient-to-r from-pink-500 to-purple-600" onClick={openAddLocation}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Location
+                  </Button>
+                )}
               </CardTitle>
               <CardDescription>
                 Manage your business locations and branches
@@ -760,7 +844,6 @@ phone: "+1 (555) 123-4567",
                     <TableHead>Location Name</TableHead>
                     <TableHead>Address</TableHead>
                     <TableHead>Phone</TableHead>
-                    <TableHead>Manager</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -769,18 +852,21 @@ phone: "+1 (555) 123-4567",
                   {locations.map((location) => (
                     <TableRow key={location.id}>
                       <TableCell className="font-medium">{location.name}</TableCell>
-                      <TableCell>{location.address}</TableCell>
-                      <TableCell>{location.phone}</TableCell>
-                      <TableCell>{location.manager}</TableCell>
-                      <TableCell>{getStatusBadge(location.status)}</TableCell>
+                      <TableCell>{location.address || ''}</TableCell>
+                      <TableCell>{location.phone || ''}</TableCell>
+                      <TableCell>{getStatusBadge(location.is_active ? 'Active' : 'Inactive')}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="sm">
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="text-destructive">
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          {hasMinimumRole('owner') && (
+                            <>
+                              <Button variant="ghost" size="sm" onClick={() => openEditLocation(location)}>
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="text-destructive" onClick={() => deleteLocation(location.id)}>
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -789,6 +875,35 @@ phone: "+1 (555) 123-4567",
               </Table>
             </CardContent>
           </Card>
+          <Dialog open={locDialogOpen} onOpenChange={setLocDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingLocation.id ? 'Edit Location' : 'Add Location'}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="loc_name">Name</Label>
+                  <Input id="loc_name" value={editingLocation.name} onChange={(e) => setEditingLocation({ ...editingLocation, name: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="loc_address">Address</Label>
+                  <Input id="loc_address" value={editingLocation.address || ''} onChange={(e) => setEditingLocation({ ...editingLocation, address: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="loc_phone">Phone</Label>
+                  <Input id="loc_phone" value={editingLocation.phone || ''} onChange={(e) => setEditingLocation({ ...editingLocation, phone: e.target.value })} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch id="loc_active" checked={editingLocation.is_active} onCheckedChange={(v) => setEditingLocation({ ...editingLocation, is_active: v })} />
+                  <Label htmlFor="loc_active">Active</Label>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setLocDialogOpen(false)}>Cancel</Button>
+                <Button onClick={saveLocation}>{editingLocation.id ? 'Save Changes' : 'Create Location'}</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
       </Tabs>
     </div>
