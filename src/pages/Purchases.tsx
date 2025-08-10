@@ -16,6 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useSaas } from "@/lib/saas";
 import { useOrganizationTaxRate } from "@/lib/saas/hooks";
 import { Switch } from "@/components/ui/switch";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, Edit3, Truck as TruckIcon, RotateCcw, Trash2, CreditCard, RefreshCw } from "lucide-react";
 
 interface AccountOption { id: string; account_code: string; account_name: string; account_type: string; account_subtype: string | null; balance?: number | null }
 
@@ -745,12 +747,18 @@ export default function Purchases() {
         </div>
 
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => { setEditingPurchase(null); resetForm(); }} className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-lg">
-              <Plus className="mr-2 h-4 w-4" />
-              Create Purchase
+          <div className="flex items-center gap-2 self-start lg:self-auto">
+            <DialogTrigger asChild>
+              <Button onClick={() => { setEditingPurchase(null); resetForm(); }} className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-lg">
+                <Plus className="mr-2 h-4 w-4" />
+                Create Purchase
+              </Button>
+            </DialogTrigger>
+            <Button variant="outline" className="shadow" onClick={fetchPurchases}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh
             </Button>
-          </DialogTrigger>
+          </div>
           <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-2xl font-semibold tracking-tight">
@@ -1107,30 +1115,44 @@ export default function Purchases() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => handleEdit(purchase)}>Edit</Button>
-                        {(purchase.status === 'pending' || purchase.status === 'partial') && (
-                          <Button variant="outline" size="sm" onClick={() => openReceiveDialog(purchase.id)}>Receive Items</Button>
-                        )}
-                        {(purchase.status === 'partial' || purchase.status === 'received') && (
-                          <Button variant="outline" size="sm" onClick={() => undoReceiving(purchase.id)}>Undo Receiving</Button>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openPayDialog(purchase.id, Number(purchase.total_amount || 0))}
-                          disabled={purchase.status === 'closed'}
-                        >
-                          Pay
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600"
-                          disabled={purchase.status !== 'pending'}
-                          onClick={() => handleDelete(purchase.id)}
-                        >
-                          Delete
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className="gap-2">
+                              <MoreHorizontal className="h-4 w-4" />
+                              Actions
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={() => handleEdit(purchase)} className="gap-2">
+                              <Edit3 className="h-4 w-4" /> Edit
+                            </DropdownMenuItem>
+                            {(purchase.status === 'pending' || purchase.status === 'partial') && (
+                              <DropdownMenuItem onClick={() => openReceiveDialog(purchase.id)} className="gap-2">
+                                <TruckIcon className="h-4 w-4" /> Receive Items
+                              </DropdownMenuItem>
+                            )}
+                            {(purchase.status === 'partial' || purchase.status === 'received') && (
+                              <DropdownMenuItem onClick={() => undoReceiving(purchase.id)} className="gap-2">
+                                <RotateCcw className="h-4 w-4" /> Undo Receiving
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              onClick={() => openPayDialog(purchase.id, Number(purchase.total_amount || 0))}
+                              className="gap-2"
+                              disabled={purchase.status === 'closed'}
+                            >
+                              <CreditCard className="h-4 w-4" /> Pay
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="gap-2 text-red-600 focus:text-red-600"
+                              disabled={purchase.status !== 'pending'}
+                              onClick={() => handleDelete(purchase.id)}
+                            >
+                              <Trash2 className="h-4 w-4" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   </TableRow>
