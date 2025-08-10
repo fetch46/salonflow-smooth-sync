@@ -222,7 +222,7 @@ export default function ProductView() {
         const accounts = accs || [];
         setIncomeAccounts(accounts.filter((a: any) => a.account_type === 'Income'));
         setExpenseAccounts(accounts.filter((a: any) => a.account_type === 'Expense'));
-        setAssetAccounts(accounts.filter((a: any) => a.account_type === 'Asset'));
+        setAssetAccounts(accounts.filter((a: any) => a.account_type === 'Asset' && (!('account_subtype' in a) || a.account_subtype === 'Stock')));
       } catch (e) {
         // ignore
       } finally {
@@ -602,7 +602,7 @@ export default function ProductView() {
                 onValueChange={(v) => setEditForm({ ...editForm, inventory_account_id: v })}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder={accountsLoading ? 'Loading...' : 'Select asset account'} />
+                  <SelectValue placeholder={accountsLoading ? 'Loading...' : 'Select asset account (Stock)'} />
                 </SelectTrigger>
                 <SelectContent>
                   {assetAccounts.map((a) => (

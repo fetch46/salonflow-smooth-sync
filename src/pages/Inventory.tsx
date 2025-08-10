@@ -130,7 +130,7 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, locations }: {
         const accounts = accs || [];
         setIncomeAccounts(accounts.filter((a: any) => a.account_type === 'Income'));
         setExpenseAccounts(accounts.filter((a: any) => a.account_type === 'Expense'));
-        setAssetAccounts(accounts.filter((a: any) => a.account_type === 'Asset'));
+        setAssetAccounts(accounts.filter((a: any) => a.account_type === 'Asset' && (!('account_subtype' in a) || a.account_subtype === 'Stock')));
 
         if (editingItem?.id) {
           const { data: mapping, error: mapErr } = await supabase
@@ -322,7 +322,7 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, locations }: {
                 onValueChange={(v) => setFormData({ ...formData, inventory_account_id: v })}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder={accountsLoading ? 'Loading...' : 'Select asset account'} />
+                  <SelectValue placeholder={accountsLoading ? 'Loading...' : 'Select asset account (Stock)'} />
                 </SelectTrigger>
                 <SelectContent>
                   {assetAccounts.map((a) => (
