@@ -17,6 +17,8 @@ import { useSaas } from "@/lib/saas";
 import { useOrganizationTaxRate } from "@/lib/saas/hooks";
 import { Switch } from "@/components/ui/switch";
 
+interface AccountOption { id: string; account_code: string; account_name: string; account_type: string; account_subtype: string | null; balance?: number | null }
+
 interface Purchase {
   id: string;
   purchase_number: string;
@@ -73,6 +75,16 @@ export default function Purchases() {
   const { format: formatMoney } = useOrganizationCurrency();
   const orgTaxRate = useOrganizationTaxRate();
   const [applyTax, setApplyTax] = useState<boolean>(true);
+
+  // Pay workflow state
+  const [payOpen, setPayOpen] = useState(false);
+  const [payPurchaseId, setPayPurchaseId] = useState<string | null>(null);
+  const [accounts, setAccounts] = useState<AccountOption[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>("");
+  const [payAmount, setPayAmount] = useState<string>("");
+  const [payDate, setPayDate] = useState<string>(new Date().toISOString().slice(0,10));
+  const [payReference, setPayReference] = useState<string>("");
+  const [payLoading, setPayLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     purchase_number: "",
@@ -558,6 +570,85 @@ export default function Purchases() {
     totalAmount: purchases.filter(p => p.status === 'received').reduce((sum, p) => sum + p.total_amount, 0),
   };
 
+  const fetchAccountsForPayment = useCallback(async (): Promise<AccountOption[]> => {
+    try {
+      const { data, error } = await supabase
+        .from("accounts")
+        .select("id, account_code, account_name, account_type, account_subtype, balance")
+        .eq("account_type", "Asset")
+        .in("account_subtype", ["Cash", "Bank"]) // Pay from cash or bank
+        .order("account_code", { ascending: true });
+      if (error) throw error;
+      const list = (data || []) as any as AccountOption[];
+      setAccounts(list);
+      return list;
+    } catch (e) {
+      console.warn("Failed to load accounts", e);
+      setAccounts([]);
+      return [];
+    }
+  }, []);
+
+  const openPayDialog = async (purchaseId: string, totalAmount: number) => {
+    setPayPurchaseId(purchaseId);
+    const accs = await fetchAccountsForPayment();
+    // Default to cash if present
+    const cash = accs.find(a => a.account_code === '1001') || null;
+    setSelectedAccountId(cash?.id || "");
+    // Try compute remaining balance by summing existing payments if table exists; fallback to total
+    try {
+      const { data } = await supabase
+        .from("purchase_payments")
+        .select("amount")
+        .eq("purchase_id", purchaseId);
+      const paid = (data || []).reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
+      const remaining = Math.max(0, Number(totalAmount || 0) - paid);
+      setPayAmount(String(remaining.toFixed(2)));
+    } catch {
+      setPayAmount(String(Number(totalAmount || 0).toFixed(2)));
+    }
+    setPayReference("");
+    setPayDate(new Date().toISOString().slice(0,10));
+    setPayOpen(true);
+  };
+
+  const submitPay = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!payPurchaseId || !selectedAccountId) {
+      toast({ title: "Error", description: "Select an account", variant: "destructive" });
+      return;
+    }
+    const amt = parseFloat(payAmount || "0");
+    if (isNaN(amt) || amt <= 0) {
+      toast({ title: "Invalid amount", description: "Enter a positive amount", variant: "destructive" });
+      return;
+    }
+    setPayLoading(true);
+    try {
+      const orgId = organization?.id;
+      if (!orgId) throw new Error("No organization");
+      const { error } = await supabase.rpc("pay_purchase", {
+        p_org_id: orgId,
+        p_purchase_id: payPurchaseId,
+        p_account_id: selectedAccountId,
+        p_amount: amt,
+        p_payment_date: payDate,
+        p_reference: payReference || null,
+        p_notes: null,
+      });
+      if (error) throw error;
+      toast({ title: "Paid", description: "Purchase payment recorded" });
+      setPayOpen(false);
+      setPayPurchaseId(null);
+      fetchPurchases();
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: "Error", description: err?.message || "Failed to pay purchase", variant: "destructive" });
+    } finally {
+      setPayLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -902,6 +993,13 @@ export default function Purchases() {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => openPayDialog(purchase.id, Number(purchase.total_amount || 0))}
+                        >
+                          Pay
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           className="text-red-600"
                           disabled={purchase.status === 'received'}
                           onClick={() => handleDelete(purchase.id)}
@@ -946,6 +1044,44 @@ export default function Purchases() {
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setReceiveOpen(false)}>Cancel</Button>
               <Button type="submit">Receive</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pay Dialog */}
+      <Dialog open={payOpen} onOpenChange={setPayOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Pay Purchase</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={submitPay} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Account</Label>
+              <select className="border rounded px-3 py-2 w-full" value={selectedAccountId} onChange={(e) => setSelectedAccountId(e.target.value)}>
+                <option value="">Select account</option>
+                {accounts.map(acc => (
+                  <option key={acc.id} value={acc.id}>{acc.account_code} · {acc.account_name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Amount</Label>
+                <Input type="number" step="0.01" min="0" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Date</Label>
+                <Input type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Reference</Label>
+              <Input value={payReference} onChange={(e) => setPayReference(e.target.value)} placeholder="Optional" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setPayOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={payLoading}>{payLoading ? 'Paying...' : 'Pay'}</Button>
             </div>
           </form>
         </DialogContent>
