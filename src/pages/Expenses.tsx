@@ -290,18 +290,7 @@ export default function Expenses() {
 
         if (error) throw error;
 
-      }
 
-      // If marked as paid, ensure bank transaction exists/updated
-      if (formData.status === 'paid' && paidFromAccountId && saved?.id) {
-        await upsertExpenseBankTransaction(
-          saved.id,
-          amountNumber,
-          formData.expense_date,
-          formData.description,
-          paidFromAccountId,
-          formData.location_id || null
-        );
       }
 
       setIsModalOpen(false);
