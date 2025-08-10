@@ -58,6 +58,7 @@ import {
 } from "lucide-react";
 import { format, subDays, isToday, isYesterday, differenceInMinutes, addDays } from "date-fns";
 import { toast } from "sonner";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { getReceiptsWithFallback } from "@/utils/mockDatabase";
 
 interface JobCard {
@@ -125,6 +126,7 @@ const DATE_FILTERS = [
 ];
 
 export default function JobCards() {
+  const { format: formatMoney, symbol } = useOrganizationCurrency();
   const [jobCards, setJobCards] = useState<JobCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -567,7 +569,7 @@ export default function JobCards() {
                       </div>
                       <div className="flex items-center text-slate-600">
                         <DollarSign className="w-3 h-3 mr-1" />
-                        Ksh {jobCard.total_amount.toFixed(2)}
+                        {formatMoney(jobCard.total_amount)}
                       </div>
                     </div>
                   </div>
@@ -719,7 +721,7 @@ export default function JobCards() {
                   </div>
                   <div className="flex items-center text-slate-600">
                     <DollarSign className="w-3 h-3 mr-1" />
-                    Ksh {jobCard.total_amount.toFixed(2)}
+                    {formatMoney(jobCard.total_amount)}
                   </div>
                 </div>
               </div>
@@ -892,7 +894,7 @@ export default function JobCards() {
             <DollarSign className="h-4 w-4 text-white/80" />
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">Ksh {stats.totalRevenue.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-white">{symbol}{stats.totalRevenue.toLocaleString()}</div>
             <p className="text-xs text-white/80">
               From completed jobs
             </p>

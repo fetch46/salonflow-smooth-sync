@@ -176,7 +176,7 @@ const DATE_FILTERS = [
 ];
 
 export default function Invoices() {
-  const { symbol } = useOrganizationCurrency();
+  const { symbol, format } = useOrganizationCurrency();
   const orgTaxRate = useOrganizationTaxRate();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -1003,7 +1003,7 @@ export default function Invoices() {
             <DollarSign className="h-4 w-4 opacity-80" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalRevenue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{format(totalRevenue, { decimals: 0 })}</div>
             <p className="text-xs opacity-80">
               From {paidInvoices} paid invoices
             </p>
@@ -1016,7 +1016,7 @@ export default function Invoices() {
             <Clock className="h-4 w-4 opacity-80" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${pendingRevenue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{format(pendingRevenue, { decimals: 0 })}</div>
             <p className="text-xs opacity-80">
               {pendingInvoices + overdueInvoices} pending
             </p>
@@ -1031,7 +1031,7 @@ export default function Invoices() {
           <CardContent>
             <div className="text-2xl font-bold">{collectionRate.toFixed(1)}%</div>
             <p className="text-xs opacity-80">
-              Avg: ${averageInvoiceValue.toFixed(0)}
+              Avg: {format(Number(averageInvoiceValue.toFixed(0)), { decimals: 0 })}
             </p>
           </CardContent>
         </Card>
@@ -1180,9 +1180,9 @@ export default function Invoices() {
                     </TableCell>
                     
                     <TableCell>
-                      <div className="font-semibold">${invoice.total_amount.toFixed(2)}</div>
+                      <div className="font-semibold">{symbol}{invoice.total_amount.toFixed(2)}</div>
                       <div className="text-xs text-slate-500">
-                        Tax: ${invoice.tax_amount.toFixed(2)}
+                        Tax: {symbol}{invoice.tax_amount.toFixed(2)}
                       </div>
                     </TableCell>
                     
@@ -1389,7 +1389,7 @@ export default function Invoices() {
                           <TableRow key={item.id}>
                             <TableCell className="font-medium">{item.description}</TableCell>
                             <TableCell>{item.quantity}</TableCell>
-                            <TableCell>${item.unit_price.toFixed(2)}</TableCell>
+                            <TableCell>{symbol}{item.unit_price.toFixed(2)}</TableCell>
                             <TableCell className="font-semibold">{symbol}{item.total_price.toFixed(2)}</TableCell>
                           </TableRow>
                         ))}
@@ -1406,22 +1406,22 @@ export default function Invoices() {
                     <div className="w-64 space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Subtotal:</span>
-                        <span className="font-semibold">${selectedInvoice.subtotal.toFixed(2)}</span>
+                        <span className="font-semibold">{symbol}{selectedInvoice.subtotal.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Tax ({(orgTaxRate || 0)}%):</span>
-                        <span className="font-semibold">${selectedInvoice.tax_amount.toFixed(2)}</span>
+                        <span className="font-semibold">{symbol}{selectedInvoice.tax_amount.toFixed(2)}</span>
                       </div>
                       {selectedInvoice.discount_amount > 0 && (
                         <div className="flex justify-between text-sm text-red-600">
                           <span>Discount:</span>
-                          <span className="font-semibold">-${selectedInvoice.discount_amount.toFixed(2)}</span>
+                          <span className="font-semibold">-{symbol}{selectedInvoice.discount_amount.toFixed(2)}</span>
                         </div>
                       )}
                       <Separator />
                       <div className="flex justify-between text-lg font-bold">
                         <span>Total:</span>
-                        <span className="text-violet-600">${selectedInvoice.total_amount.toFixed(2)}</span>
+                        <span className="text-violet-600">{symbol}{selectedInvoice.total_amount.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>

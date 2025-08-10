@@ -67,7 +67,7 @@ const Dashboard = () => {
   const [error, setError] = useState<string | null>(null);
   
   const { user, organization, subscriptionPlan } = useSaas();
-  const { symbol } = useOrganizationCurrency();
+  const { symbol, format } = useOrganizationCurrency();
 
   // Load today's appointments and staff to show real data on dashboard
   type DashboardAppointment = {
@@ -526,7 +526,7 @@ const Dashboard = () => {
                     Today's Schedule
                   </CardTitle>
                   <CardDescription>
-                    {todayAppointments.length} appointments • ${todayAppointments.reduce((sum, apt) => sum + (apt.price || 0), 0).toLocaleString()} revenue
+                    {todayAppointments.length} appointments • {format(todayAppointments.reduce((sum, apt) => sum + (apt.price || 0), 0), { decimals: 0 })} revenue
                   </CardDescription>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => navigate('/appointments')}>
@@ -577,7 +577,7 @@ const Dashboard = () => {
                             </div>
                             {typeof appointment.price === 'number' && (
                               <div className="text-sm font-semibold text-slate-900">
-                                ${appointment.price}
+                                {symbol}{Number(appointment.price).toLocaleString()}
                               </div>
                             )}
                           </div>
@@ -632,7 +632,7 @@ const Dashboard = () => {
                           )}
                         </div>
                         <div className="flex items-center justify-between text-xs text-slate-500">
-                          <span>${staff.revenue.toLocaleString()}</span>
+                          <span>{symbol}{staff.revenue.toLocaleString()}</span>
                           <span>{staff.appointments} apts</span>
                           <span>{staff.completionRate}%</span>
                         </div>
@@ -716,7 +716,7 @@ const Dashboard = () => {
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm font-medium text-slate-700">Monthly Revenue Goal</span>
-                  <span className="text-sm text-slate-600">$45K / $50K</span>
+                  <span className="text-sm text-slate-600">{symbol}45K / {symbol}50K</span>
                 </div>
                 <Progress value={90} className="h-2" />
               </div>

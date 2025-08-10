@@ -48,7 +48,7 @@ import { CreateButtonGate, FeatureGate, UsageBadge } from "@/components/features
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useNavigate } from "react-router-dom";
-import { useOrganization } from "@/lib/saas/hooks";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 
 interface Staff {
   id: string;
@@ -101,6 +101,7 @@ const MOCK_PERFORMANCE = {
 };
 
 export default function Staff() {
+  const { format: formatMoney } = useOrganizationCurrency();
   const [staff, setStaff] = useState<Staff[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -1088,7 +1089,7 @@ export default function Staff() {
                               </div>
                               <div>
                                 <p className="text-slate-500">Revenue</p>
-                                <p className="font-semibold text-slate-900">${performance.revenue.toLocaleString()}</p>
+                                <p className="font-semibold text-slate-900">{formatMoney(performance.revenue, { decimals: 0 })}</p>
                               </div>
                             </div>
                             <div className="mt-2">
