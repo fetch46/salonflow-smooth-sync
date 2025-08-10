@@ -102,11 +102,31 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, locations }: {
     const loadAccounts = async () => {
       try {
         setAccountsLoading(true);
-        const { data: accs, error } = await supabase
-          .from("accounts")
-          .select("id, account_code, account_name, account_type, account_subtype")
-          .eq("organization_id", organization?.id || "");
-        if (error) throw error;
+        let accs: any[] | null = null;
+        let err: any = null;
+        try {
+          const res = await supabase
+            .from("accounts")
+            .select("id, account_code, account_name, account_type, account_subtype")
+            .eq("organization_id", organization?.id || "");
+          accs = res.data as any[] | null;
+          err = res.error;
+        } catch (innerErr: any) {
+          err = innerErr;
+        }
+        if (err) {
+          const message = String(err?.message || "");
+          if (message.includes("account_subtype") || (message.toLowerCase().includes("column") && message.toLowerCase().includes("does not exist"))) {
+            const { data, error } = await supabase
+              .from("accounts")
+              .select("id, account_code, account_name, account_type")
+              .eq("organization_id", organization?.id || "");
+            if (error) throw error;
+            accs = data as any[] | null;
+          } else {
+            throw err;
+          }
+        }
         const accounts = accs || [];
         setIncomeAccounts(accounts.filter((a: any) => a.account_type === 'Income'));
         setExpenseAccounts(accounts.filter((a: any) => a.account_type === 'Expense'));
