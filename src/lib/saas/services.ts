@@ -34,7 +34,7 @@ export class OrganizationService {
 
         const { data: memberships, error: membershipsError } = await supabase
           .from('organization_users')
-          .select('id, organization_id, user_id, role, is_active, invited_by, invited_at, joined_at, metadata, created_at, updated_at')
+          .select('id, organization_id, user_id, role, is_active, created_at, updated_at')
           .eq('user_id', userId)
           .eq('is_active', true)
 
