@@ -41,6 +41,7 @@ import Booking from "@/pages/Booking";
 import SupplierProfile from "@/pages/SupplierProfile";
 import ProductView from "@/pages/ProductView";
 import InventoryAdjustmentForm from "@/pages/InventoryAdjustmentForm";
+import AccountView from "@/pages/AccountView";
 
 import NotFound from "@/pages/NotFound";
 import Landing from "@/pages/Landing";
@@ -162,6 +163,7 @@ const AppRoutes = () => {
         <Route path="suppliers/:id" element={<SupplierProfile />} />
         <Route path="accounts" element={<Accounts />} />
         <Route path="accounts/new" element={<AccountCreate />} />
+        <Route path="accounts/:id" element={<AccountView />} />
         <Route path="accounts/:id/edit" element={<AccountEdit />} />
         <Route path="payments" element={<Payments />} />
         <Route path="banking" element={<Banking />} />
