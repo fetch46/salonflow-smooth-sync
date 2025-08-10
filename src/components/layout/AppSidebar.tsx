@@ -207,6 +207,12 @@ const menuItems: MenuItem[] = [
         feature: "reports",
       },
       {
+        title: "Regional Settings",
+        url: "/settings?tab=regional",
+        icon: Sliders,
+        feature: "reports",
+      },
+      {
         title: "Profile",
         url: "/profile",
         icon: User,

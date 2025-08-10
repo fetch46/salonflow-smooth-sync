@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useSearchParams } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Globe } from "lucide-react";
 
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -51,6 +52,15 @@ phone: "",
   const [selectedCurrencyId, setSelectedCurrencyId] = useState<string>("");
   const [countries, setCountries] = useState<{ id: string; code: string; name: string; is_active: boolean }[]>([])
   const [selectedCountryCode, setSelectedCountryCode] = useState<string>("US")
+
+  // Regional settings state
+  const [regionalSettings, setRegionalSettings] = useState({
+    date_format: 'MMM dd, yyyy',
+    time_format: '12h',
+    thousand_separator: ',',
+    decimal_separator: '.',
+    currency_decimals: 2,
+  })
 
   // New: Finance Settings - Tax Rate
   const [taxRatePercent, setTaxRatePercent] = useState<string>("");
@@ -242,6 +252,16 @@ phone: "",
       }))
       setSelectedCurrencyId((organization as any).currency_id || "")
       setSelectedCountryCode(s.country || "US")
+      // Load regional settings if present
+      if (s.regional_settings) {
+        setRegionalSettings({
+          date_format: s.regional_settings.date_format || 'MMM dd, yyyy',
+          time_format: s.regional_settings.time_format || '12h',
+          thousand_separator: s.regional_settings.thousand_separator || ',',
+          decimal_separator: s.regional_settings.decimal_separator || '.',
+          currency_decimals: typeof s.regional_settings.currency_decimals === 'number' ? s.regional_settings.currency_decimals : 2,
+        })
+      }
       // Initialize tax rate percent from org settings
       const tax = s.tax_rate_percent
       const parsed = typeof tax === 'number' ? tax : typeof tax === 'string' ? parseFloat(tax) : 0
@@ -331,6 +351,7 @@ phone: "",
           website: companyData.website,
           timezone: companyData.timezone,
           tax_rate_percent: taxRatePercent === '' ? null : parseFloat(taxRatePercent),
+          regional_settings: regionalSettings,
         },
       } as any)
       toast.success("Company settings updated successfully");
@@ -529,6 +550,10 @@ phone: "",
             <CreditCard className="w-4 h-4" />
             Accounting
           </TabsTrigger>
+          <TabsTrigger value="regional" className="justify-start gap-2 data-[state=active]:bg-muted">
+            <Globe className="w-4 h-4" />
+            Regional Settings
+          </TabsTrigger>
         </TabsList>
 
         <div className="space-y-6 min-h-[50vh]">
@@ -642,6 +667,108 @@ phone: "",
                     <Button type="submit">Save Changes</Button>
                   </div>
                 </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Regional Settings */}
+          <TabsContent value="regional">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Globe className="h-5 w-5 text-pink-600" />
+                  Regional & Formatting
+                </CardTitle>
+                <CardDescription>Configure date/time and currency number formatting used across the app</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label>Date format</Label>
+                    <Select
+                      value={regionalSettings.date_format}
+                      onValueChange={(v) => setRegionalSettings(s => ({ ...s, date_format: v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select date format" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="MMM dd, yyyy">Jan 31, 2025</SelectItem>
+                        <SelectItem value="dd/MM/yyyy">31/01/2025</SelectItem>
+                        <SelectItem value="MM/dd/yyyy">01/31/2025</SelectItem>
+                        <SelectItem value="yyyy-MM-dd">2025-01-31</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Time format</Label>
+                    <Select
+                      value={regionalSettings.time_format}
+                      onValueChange={(v) => setRegionalSettings(s => ({ ...s, time_format: v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select time format" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="12h">12-hour (h:mm a)</SelectItem>
+                        <SelectItem value="24h">24-hour (HH:mm)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                  <div className="space-y-2">
+                    <Label>Thousand separator</Label>
+                    <Select
+                      value={regionalSettings.thousand_separator}
+                      onValueChange={(v) => setRegionalSettings(s => ({ ...s, thousand_separator: v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                                            <SelectContent>
+                        <SelectItem value=",">Comma ,</SelectItem>
+                        <SelectItem value=".">Dot .</SelectItem>
+                        <SelectItem value=" ">Space ␠</SelectItem>
+                        <SelectItem value="'">Apostrophe '</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Decimal separator</Label>
+                    <Select
+                      value={regionalSettings.decimal_separator}
+                      onValueChange={(v) => setRegionalSettings(s => ({ ...s, decimal_separator: v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                                            <SelectContent>
+                        <SelectItem value=".">Dot .</SelectItem>
+                        <SelectItem value=",">Comma ,</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Currency decimals</Label>
+                    <Select
+                      value={String(regionalSettings.currency_decimals)}
+                      onValueChange={(v) => setRegionalSettings(s => ({ ...s, currency_decimals: parseInt(v, 10) }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">0</SelectItem>
+                        <SelectItem value="2">2</SelectItem>
+                        <SelectItem value="3">3</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex justify-end mt-6">
+                  <Button onClick={handleCompanySubmit}>Save Changes</Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
