@@ -71,3 +71,18 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+## Database: Ensuring Primary/Foreign Keys
+
+If you are using Supabase, make sure to apply the full schema and the constraint enforcement migration:
+
+1. In Supabase SQL Editor, run `setup_database.sql` from the repo root. It includes all migrations and the constraint enforcement file.
+2. Or expand includes locally and copy the result:
+
+```bash
+node scripts/expand-sql-includes.mjs -i setup_database.sql -o dist/setup_database_expanded.sql
+```
+
+Then copy the contents of `dist/setup_database_expanded.sql` into the Supabase SQL Editor and run it.
+
+The migration `supabase/migrations/20250822000000_enforce_pks_fks.sql` adds/repairs primary keys, foreign keys, unique constraints, and indexes used by the app for lookups and references.

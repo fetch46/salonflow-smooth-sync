@@ -268,19 +268,69 @@ export default function Services() {
 
   const fetchAvailableProducts = useCallback(async () => {
     try {
-      if (!organization?.id) return;
+      // If an organization is selected, try org-scoped query first
+      if (organization?.id) {
+        const { data, error } = await supabase
+          .from("inventory_items")
+          .select("id, name, type, category, unit, cost_price, selling_price")
+          .eq("is_active", true)
+          .eq("type", "good")
+          .eq("organization_id", organization.id)
+          .order("name");
+
+        if (error) {
+          // Fallback for environments where inventory_items doesn't have organization_id or RLS/permission blocks
+          const code = (error as any)?.code;
+          const message = (error as any)?.message || String(error);
+          const isMissingOrgId = code === '42703' || /column\s+("?[\w\.]*organization_id"?)\s+does not exist/i.test(message);
+          const isRlsOrPermission = /permission denied|rls/i.test(message);
+
+          if (isMissingOrgId || isRlsOrPermission) {
+            const { data: fallbackData, error: fallbackError } = await supabase
+              .from("inventory_items")
+              .select("id, name, type, category, unit, cost_price, selling_price")
+              .eq("is_active", true)
+              .eq("type", "good")
+              .order("name");
+            if (fallbackError) throw fallbackError;
+            setAvailableProducts(fallbackData || []);
+            return;
+          }
+
+          throw error;
+        }
+
+        // If org-scoped query returned zero rows, try a compatibility fallback
+        if (!data || data.length === 0) {
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from("inventory_items")
+            .select("id, name, type, category, unit, cost_price, selling_price")
+            .eq("is_active", true)
+            .eq("type", "good")
+            .order("name");
+
+          if (!fallbackError && fallbackData && fallbackData.length > 0) {
+            setAvailableProducts(fallbackData);
+            return;
+          }
+        }
+
+        setAvailableProducts(data || []);
+        return;
+      }
+
+      // No active organization selected: use generic fetch so picker still works
       const { data, error } = await supabase
         .from("inventory_items")
         .select("id, name, type, category, unit, cost_price, selling_price")
         .eq("is_active", true)
-        .eq("organization_id", organization?.id || "")
         .eq("type", "good")
         .order("name");
-
       if (error) throw error;
       setAvailableProducts(data || []);
     } catch (error) {
       console.error("Error fetching products:", error);
+      setAvailableProducts([]);
     }
   }, [organization?.id]);
 
