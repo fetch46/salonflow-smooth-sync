@@ -287,9 +287,9 @@ phone: "+1 (555) 123-4567",
         toast.success('Location updated successfully');
         setIsLocationDialogOpen(false);
         fetchStockLocations();
-      } catch (e) {
+      } catch (e: any) {
         console.error(e);
-        toast.error('Failed to update location');
+        toast.error(`Failed to update location${e?.message ? `: ${e.message}` : ''}`);
       }
     } else {
       try {
@@ -304,9 +304,9 @@ phone: "+1 (555) 123-4567",
         toast.success('Location created successfully');
         setIsLocationDialogOpen(false);
         fetchStockLocations();
-      } catch (e) {
+      } catch (e: any) {
         console.error(e);
-        toast.error('Failed to create location');
+        toast.error(`Failed to create location${e?.message ? `: ${e.message}` : ''}`);
       }
     }
   };
@@ -321,9 +321,9 @@ phone: "+1 (555) 123-4567",
           .eq('id', id);
         toast.success('Location deleted successfully');
         fetchStockLocations();
-      } catch (e) {
+      } catch (e: any) {
         console.error(e);
-        toast.error('Failed to delete location');
+        toast.error(`Failed to delete location${e?.message ? `: ${e.message}` : ''}`);
       }
     }
   };
@@ -337,9 +337,25 @@ phone: "+1 (555) 123-4567",
         .eq('organization_id', organization.id)
         .order('name');
       if (error) {
-        console.error(error);
-        toast.error('Failed to fetch locations');
-        setStockLocations([]);
+        console.warn('Failed to fetch business_locations, attempting fallback to storage_locations', error);
+        // Fallback: use storage_locations if business_locations is not available in this project
+        const { data: altData, error: altError } = await supabase
+          .from('storage_locations')
+          .select('id, name, description')
+          .order('name');
+        if (altError) {
+          console.error(altError);
+          toast.error(`Failed to fetch locations${altError?.message ? `: ${altError.message}` : ''}`);
+          setStockLocations([]);
+          return;
+        }
+        const altMapped = (altData || []).map((row: any) => ({
+          id: row.id,
+          name: row.name,
+          description: row.description ?? null,
+          is_active: true,
+        }));
+        setStockLocations(altMapped);
         return;
       }
       const mapped = (data || []).map((row: any) => ({
@@ -349,9 +365,9 @@ phone: "+1 (555) 123-4567",
         is_active: row.is_active,
       }));
       setStockLocations(mapped);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      toast.error('Failed to fetch locations');
+      toast.error(`Failed to fetch locations${e?.message ? `: ${e.message}` : ''}`);
       setStockLocations([]);
     }
   };

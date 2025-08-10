@@ -60,13 +60,32 @@ const Reports = () => {
   useEffect(() => {
     (async () => {
       if (!org?.id) return;
-      const { data } = await supabase
-        .from('business_locations')
-        .select('id, name')
-        .eq('organization_id', org.id)
-        .eq('is_active', true)
-        .order('name');
-      setLocations(data || []);
+      try {
+        const { data, error } = await supabase
+          .from('business_locations')
+          .select('id, name')
+          .eq('organization_id', org.id)
+          .eq('is_active', true)
+          .order('name');
+        if (error) {
+          console.warn('Failed to fetch business_locations for reports, attempting fallback', error);
+          const { data: altData, error: altError } = await supabase
+            .from('storage_locations')
+            .select('id, name')
+            .order('name');
+          if (altError) {
+            console.error('Failed to fetch fallback storage_locations', altError);
+            setLocations([]);
+            return;
+          }
+          setLocations(altData || []);
+          return;
+        }
+        setLocations(data || []);
+      } catch (e: any) {
+        console.error('Unexpected error loading locations', e);
+        setLocations([]);
+      }
     })();
   }, [org?.id]);
 
