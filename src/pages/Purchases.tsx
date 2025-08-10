@@ -159,13 +159,13 @@ export default function Purchases() {
   const fetchLocations = useCallback(async () => {
     try {
       const { data, error } = await supabase
-        .from("storage_locations")
+        .from("business_locations")
         .select("id, name")
         .order("name");
       if (error) throw error;
       setLocations(data || []);
     } catch (err) {
-      console.warn("Failed to load storage locations", err);
+      console.warn("Failed to load business locations", err);
       setLocations([]);
     }
   }, []);

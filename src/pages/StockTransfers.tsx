@@ -17,7 +17,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 
 interface InventoryItem { id: string; name: string; }
 interface Location { id: string; name: string; }
-interface LevelRow { id: string; item_id: string; location_id: string; quantity: number; inventory_items?: { name: string }; storage_locations?: { name: string }; }
+interface LevelRow { id: string; item_id: string; location_id: string; quantity: number; inventory_items?: { name: string }; business_locations?: { name: string }; }
 
 interface TransferRow { id: string; item_id: string; from_location_id: string; to_location_id: string; quantity: number; created_at: string; updated_at: string; notes?: string; inventory_items?: { name: string }; from_location?: { name: string }; to_location?: { name: string }; }
 
@@ -41,10 +41,10 @@ export default function StockTransfers() {
     try {
       const [itemsRes, locsRes, levelsRes, transfersRes] = await Promise.all([
         supabase.from("inventory_items").select("id, name").eq("type", "good").eq("is_active", true).order("name"),
-        supabase.from("storage_locations").select("id, name").order("name"),
-        supabase.from("inventory_levels").select(`id, item_id, location_id, quantity, inventory_items(name), storage_locations(name)`).order("location_id").order("item_id"),
-        supabase.from("inventory_transfers").select(`id, item_id, from_location_id, to_location_id, quantity, notes, created_at, updated_at, inventory_items(name)`)
-          .order("created_at", { ascending: false })
+        supabase.from("business_locations").select("id, name").order("name"),
+        supabase.from("inventory_levels").select(`id, item_id, location_id, quantity, inventory_items(name), business_locations(name)`).order("location_id").order("item_id"),
+        supabase.from("inventory_transfers").select(`id, item_id, from_location_id, to_location_id, quantity, notes, created_at, updated_at, inventory_items(name)`).
+          order("created_at", { ascending: false })
       ]);
       setItems(itemsRes.data || []);
       setLocations(locsRes.data || []);
@@ -314,7 +314,7 @@ export default function StockTransfers() {
                   <TableBody>
                     {!loading && levels.map(row => (
                       <TableRow key={row.id}>
-                        <TableCell>{row.storage_locations?.name || row.location_id}</TableCell>
+                        <TableCell>{row.business_locations?.name || row.location_id}</TableCell>
                         <TableCell>{row.inventory_items?.name || row.item_id}</TableCell>
                         <TableCell className="text-right">{Number(row.quantity || 0)}</TableCell>
                       </TableRow>

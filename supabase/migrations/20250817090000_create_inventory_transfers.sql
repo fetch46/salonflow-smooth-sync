@@ -4,8 +4,8 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS public.inventory_transfers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   item_id UUID NOT NULL REFERENCES public.inventory_items(id) ON DELETE RESTRICT,
-  from_location_id UUID NOT NULL REFERENCES public.storage_locations(id) ON DELETE RESTRICT,
-  to_location_id UUID NOT NULL REFERENCES public.storage_locations(id) ON DELETE RESTRICT,
+  from_location_id UUID NOT NULL REFERENCES public.business_locations(id) ON DELETE RESTRICT,
+  to_location_id UUID NOT NULL REFERENCES public.business_locations(id) ON DELETE RESTRICT,
   quantity NUMERIC NOT NULL CHECK (quantity > 0),
   notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
