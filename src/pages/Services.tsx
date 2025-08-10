@@ -1330,6 +1330,7 @@ export default function Services() {
                             )}
                           </div>
 
+                            {service.commission_percentage !== null && service.commission_percentage !== undefined && (
                             <div className="text-xs text-slate-500">
                               {service.commission_percentage}% commission
                             </div>
