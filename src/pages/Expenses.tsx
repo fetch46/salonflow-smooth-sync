@@ -538,13 +538,13 @@ export default function Expenses() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="category">Account</Label>
-                      <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+                      <Select value={formData.category} onValueChange={(value) => { const acc = expenseAccounts.find(a => a.account_name === value || a.id === value); setFormData({ ...formData, category: acc?.account_name || '' }); }}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select expense account" />
                         </SelectTrigger>
                         <SelectContent>
                           {expenseAccounts.map(acc => (
-                            <SelectItem key={acc.id} value={acc.account_name}>{acc.account_code} - {acc.account_name}</SelectItem>
+                            <SelectItem key={acc.id} value={acc.account_name || acc.id}>{acc.account_code} - {acc.account_name || 'Unnamed Account'}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
