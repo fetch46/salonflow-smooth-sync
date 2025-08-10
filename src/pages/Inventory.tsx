@@ -622,20 +622,30 @@ export default function Inventory() {
     }
     return map;
   }, [filteredLevels]);
-  const totals = (() => {
+
+  const itemIdToItem: Map<string, InventoryItem> = useMemo(() => {
+    const map = new Map<string, InventoryItem>();
+    for (const it of items) {
+      map.set(String(it.id), it);
+    }
+    return map;
+  }, [items]);
+
+  const totals = useMemo(() => {
     let totalQty = 0;
     let totalCost = 0;
     let totalSales = 0;
     for (const lvl of filteredLevels) {
       const qty = Number(lvl.quantity || 0);
-      const cost = Number(lvl.inventory_items?.cost_price || 0);
-      const price = Number(lvl.inventory_items?.selling_price || 0);
+      const item = itemIdToItem.get(String(lvl.item_id));
+      const cost = Number(item?.cost_price ?? 0);
+      const price = Number(item?.selling_price ?? 0);
       totalQty += qty;
       totalCost += qty * cost;
       totalSales += qty * price;
     }
     return { totalQty, totalCost, totalSales };
-  })();
+  }, [filteredLevels, itemIdToItem]);
 
   const TableSkeleton = () => (
     <div className="overflow-auto max-h-[65vh] rounded-lg border">
@@ -967,8 +977,8 @@ export default function Inventory() {
                       {filteredLevels.map((lvl) => (
                         <TableRow key={lvl.id} className="hover:bg-muted/50">
                           <TableCell className="font-medium">{(lvl as any).business_locations?.name || lvl.location_id}</TableCell>
-                          <TableCell>{lvl.inventory_items?.name || lvl.item_id}</TableCell>
-                          <TableCell className="hidden sm:table-cell">{lvl.inventory_items?.sku || ''}</TableCell>
+                          <TableCell>{itemIdToItem.get(String(lvl.item_id))?.name || lvl.inventory_items?.name || lvl.item_id}</TableCell>
+                          <TableCell className="hidden sm:table-cell">{itemIdToItem.get(String(lvl.item_id))?.sku || lvl.inventory_items?.sku || ''}</TableCell>
                           <TableCell className="text-right">{Number(lvl.quantity || 0)}</TableCell>
                         </TableRow>
                       ))}
