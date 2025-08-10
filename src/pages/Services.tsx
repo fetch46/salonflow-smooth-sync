@@ -187,23 +187,50 @@ export default function Services() {
 
   const fetchServices = useCallback(async () => {
     try {
-      if (!organization?.id) {
-        setServices([]);
-        setLoading(false);
+      setLoading(true);
+
+      // Prefer org-scoped fetch when an organization is selected
+      if (organization?.id) {
+        const { data, error } = await supabase
+          .from("services")
+          .select("*")
+          .eq("organization_id", organization.id)
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          // Fallback for environments where services table doesn't have organization_id yet
+          const message = (error as any)?.message || String(error);
+          const isMissingOrgId = /column\s+\"?organization_id\"?\s+does not exist/i.test(message);
+          const isRlsOrPermission = /permission denied|rls/i.test(message);
+
+          if (isMissingOrgId || isRlsOrPermission) {
+            const { data: fallbackData, error: fallbackError } = await supabase
+              .from("services")
+              .select("*")
+              .order("created_at", { ascending: false });
+
+            if (fallbackError) throw fallbackError;
+            setServices(enrichServices(fallbackData || []));
+            return;
+          }
+
+          throw error;
+        }
+
+        setServices(enrichServices(data || []));
         return;
       }
-      setLoading(true);
+
+      // No active organization selected: try a generic fetch (for public/demo environments)
       const { data, error } = await supabase
         .from("services")
         .select("*")
-        .eq("organization_id", organization?.id || "")
         .order("created_at", { ascending: false });
-
       if (error) throw error;
       setServices(enrichServices(data || []));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching services:", error);
-      toast.error("Failed to fetch services");
+      toast.error(`Failed to fetch services${error?.message ? `: ${error.message}` : ''}`);
     } finally {
       setLoading(false);
     }
