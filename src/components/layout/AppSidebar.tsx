@@ -75,6 +75,56 @@ const menuItems: MenuItem[] = [
     feature: "appointments",
   },
   {
+    title: "Sales",
+    icon: CreditCard,
+    feature: "accounting",
+    subItems: [
+      {
+        title: "Clients",
+        url: "/clients",
+        icon: Users,
+        feature: "clients",
+      },
+      {
+        title: "Receipts",
+        url: "/receipts",
+        icon: FileText,
+        feature: "accounting",
+      },
+      {
+        title: "Payments",
+        url: "/payments",
+        icon: DollarSign,
+        feature: "accounting",
+      },
+      {
+        title: "Job Cards",
+        url: "/job-cards",
+        icon: FileText,
+        feature: "job_cards",
+      },
+    ],
+  },
+    {
+    title: "Purchases",
+    icon: ShoppingCart,
+    feature: "purchases",
+    subItems: [
+      {
+        title: "Suppliers",
+        url: "/suppliers",
+        icon: Building,
+        feature: "suppliers",
+      },
+      {
+        title: "Purchases",
+        url: "/purchases",
+        icon: ShoppingCart,
+        feature: "purchases",
+      },
+    ],
+  },
+  {
     title: "Services",
     url: "/services",
     icon: Scissors,
@@ -102,56 +152,6 @@ const menuItems: MenuItem[] = [
         url: "/inventory-transfers",
         icon: ArrowLeftRight,
         feature: "inventory",
-      },
-    ],
-  },
-  {
-    title: "Purchases",
-    icon: ShoppingCart,
-    feature: "purchases",
-    subItems: [
-      {
-        title: "Suppliers",
-        url: "/suppliers",
-        icon: Building,
-        feature: "suppliers",
-      },
-      {
-        title: "Purchases",
-        url: "/purchases",
-        icon: ShoppingCart,
-        feature: "purchases",
-      },
-    ],
-  },
-  {
-    title: "Sales",
-    icon: CreditCard,
-    feature: "accounting",
-    subItems: [
-      {
-        title: "Receipts",
-        url: "/receipts",
-        icon: FileText,
-        feature: "accounting",
-      },
-      {
-        title: "Payments",
-        url: "/payments",
-        icon: DollarSign,
-        feature: "accounting",
-      },
-      {
-        title: "Clients",
-        url: "/clients",
-        icon: Users,
-        feature: "clients",
-      },
-      {
-        title: "Job Cards",
-        url: "/job-cards",
-        icon: FileText,
-        feature: "job_cards",
       },
     ],
   },
