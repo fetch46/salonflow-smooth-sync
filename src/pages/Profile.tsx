@@ -24,7 +24,7 @@ import {
   X,
   Check,
 } from 'lucide-react';
-import { useSaas } from '@/lib/saas/context';
+import { useSaas } from '@/lib/saas';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 

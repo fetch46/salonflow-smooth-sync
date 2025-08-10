@@ -43,7 +43,7 @@ import {
   CreditCard
 } from "lucide-react";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
-import { useSaas } from "@/lib/saas/context";
+import { useSaas } from "@/lib/saas";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";

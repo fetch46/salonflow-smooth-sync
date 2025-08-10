@@ -14,7 +14,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
 import { FEATURE_CATEGORIES, FEATURE_LABELS } from "@/lib/features";
-import { useSaas } from "@/lib/saas/context";
+import { useSaas } from "@/lib/saas";
 import { SuperAdminService } from "@/lib/saas/services";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 
