@@ -1,0 +1,266 @@
+// Prisma schema for Accounting + Inventory ERP
+// SQLite for local development
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+
+enum Role {
+  ADMIN
+  ACCOUNTANT
+  INVENTORY
+}
+
+enum AccountCategory {
+  ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  EXPENSE
+}
+
+enum MovementType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+enum ReferenceType {
+  SALES_INVOICE
+  PURCHASE_BILL
+  PAYMENT
+  ADJUSTMENT
+  MANUAL
+}
+
+enum InvoiceStatus {
+  DRAFT
+  POSTED
+  PAID
+  PARTIALLY_PAID
+}
+
+enum BillStatus {
+  DRAFT
+  POSTED
+  PAID
+  PARTIALLY_PAID
+}
+
+enum PaymentType {
+  IN
+  OUT
+}
+
+// Core models
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(ACCOUNTANT)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  journalEntries JournalEntry[] @relation("UserJournalEntries")
+}
+
+model Account {
+  id         String           @id @default(cuid())
+  code       String           @unique
+  name       String
+  category   AccountCategory
+  isActive   Boolean          @default(true)
+  parentId   String? 
+  parent     Account?         @relation("AccountToParent", fields: [parentId], references: [id])
+  children   Account[]        @relation("AccountToParent")
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  // Relations
+  journalLines JournalLine[]
+}
+
+model JournalEntry {
+  id            String        @id @default(cuid())
+  date          DateTime
+  memo          String?
+  posted        Boolean       @default(true)
+  createdById   String
+  createdBy     User          @relation("UserJournalEntries", fields: [createdById], references: [id])
+  referenceType ReferenceType
+  referenceId   String?
+  createdAt     DateTime      @default(now())
+  lines         JournalLine[]
+}
+
+model JournalLine {
+  id           String       @id @default(cuid())
+  entryId      String
+  entry        JournalEntry @relation(fields: [entryId], references: [id])
+  accountId    String
+  account      Account      @relation(fields: [accountId], references: [id])
+  description  String?
+  debit        Decimal      @db.Decimal(18, 2)
+  credit       Decimal      @db.Decimal(18, 2)
+  productId    String?
+  product      Product?     @relation(fields: [productId], references: [id])
+  locationId   String?
+  location     StockLocation? @relation(fields: [locationId], references: [id])
+}
+
+model Product {
+  id                 String    @id @default(cuid())
+  sku                String    @unique
+  name               String
+  description        String?
+  unitOfMeasure      String    @default("unit")
+  price              Decimal   @db.Decimal(18, 2)
+  cost               Decimal   @db.Decimal(18, 2)
+  isActive           Boolean   @default(true)
+  reorderPoint       Int       @default(0)
+  inventoryAccountId String
+  inventoryAccount   Account   @relation("ProductInventoryAccount", fields: [inventoryAccountId], references: [id])
+  cogsAccountId      String
+  cogsAccount        Account   @relation("ProductCogsAccount", fields: [cogsAccountId], references: [id])
+  revenueAccountId   String
+  revenueAccount     Account   @relation("ProductRevenueAccount", fields: [revenueAccountId], references: [id])
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  // Relations
+  invoiceItems       SalesInvoiceItem[]
+  billItems          PurchaseBillItem[]
+  stockMovements     StockMovement[]
+}
+
+model StockLocation {
+  id        String          @id @default(cuid())
+  code      String          @unique
+  name      String
+  isActive  Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  movements StockMovement[]
+}
+
+model StockMovement {
+  id             String        @id @default(cuid())
+  productId      String
+  product        Product       @relation(fields: [productId], references: [id])
+  locationId     String
+  location       StockLocation @relation(fields: [locationId], references: [id])
+  date           DateTime      @default(now())
+  movementType   MovementType
+  quantity       Decimal       @db.Decimal(18, 4)
+  costPerUnit    Decimal       @db.Decimal(18, 4)
+  referenceType  ReferenceType
+  referenceId    String?
+  journalEntryId String?
+  journalEntry   JournalEntry? @relation(fields: [journalEntryId], references: [id])
+}
+
+model SalesInvoice {
+  id            String             @id @default(cuid())
+  number        String             @unique
+  date          DateTime
+  customerName  String
+  status        InvoiceStatus      @default(DRAFT)
+  arAccountId   String             // Accounts Receivable account
+  arAccount     Account            @relation("InvoiceAR", fields: [arAccountId], references: [id])
+  revenueAccountId String?         // Optional override; otherwise use product revenue account
+  revenueAccount   Account?        @relation("InvoiceRevenue", fields: [revenueAccountId], references: [id])
+  postedEntryId String?
+  postedEntry   JournalEntry?      @relation(fields: [postedEntryId], references: [id])
+  items         SalesInvoiceItem[]
+  total         Decimal            @db.Decimal(18, 2)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model SalesInvoiceItem {
+  id           String       @id @default(cuid())
+  invoiceId    String
+  invoice      SalesInvoice @relation(fields: [invoiceId], references: [id])
+  productId    String
+  product      Product      @relation(fields: [productId], references: [id])
+  description  String?
+  locationId   String
+  location     StockLocation @relation(fields: [locationId], references: [id])
+  quantity     Decimal      @db.Decimal(18, 4)
+  unitPrice    Decimal      @db.Decimal(18, 2)
+  unitCost     Decimal      @db.Decimal(18, 4) // snapshot of cost at sale time
+  lineTotal    Decimal      @db.Decimal(18, 2)
+}
+
+model PurchaseBill {
+  id            String        @id @default(cuid())
+  number        String        @unique
+  date          DateTime
+  vendorName    String
+  status        BillStatus    @default(DRAFT)
+  apAccountId   String        // Accounts Payable account
+  apAccount     Account       @relation("BillAP", fields: [apAccountId], references: [id])
+  postedEntryId String?
+  postedEntry   JournalEntry? @relation(fields: [postedEntryId], references: [id])
+  items         PurchaseBillItem[]
+  total         Decimal       @db.Decimal(18, 2)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model PurchaseBillItem {
+  id           String        @id @default(cuid())
+  billId       String
+  bill         PurchaseBill  @relation(fields: [billId], references: [id])
+  productId    String
+  product      Product       @relation(fields: [productId], references: [id])
+  description  String?
+  locationId   String
+  location     StockLocation @relation(fields: [locationId], references: [id])
+  quantity     Decimal       @db.Decimal(18, 4)
+  unitCost     Decimal       @db.Decimal(18, 4)
+  lineTotal    Decimal       @db.Decimal(18, 2)
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  date           DateTime      @default(now())
+  amount         Decimal       @db.Decimal(18, 2)
+  type           PaymentType   // IN for customer collection, OUT for vendor payment
+  bankAccountId  String        // Bank/Cash account to impact
+  bankAccount    Account       @relation("PaymentBank", fields: [bankAccountId], references: [id])
+  arAccountId    String?       // when type=IN
+  arAccount      Account?      @relation("PaymentAR", fields: [arAccountId], references: [id])
+  apAccountId    String?       // when type=OUT
+  apAccount      Account?      @relation("PaymentAP", fields: [apAccountId], references: [id])
+  referenceType  ReferenceType
+  referenceId    String?
+  journalEntryId String?
+  journalEntry   JournalEntry? @relation(fields: [journalEntryId], references: [id])
+  reconciled     Boolean       @default(false)
+}
+
+model BankReconciliation {
+  id             String    @id @default(cuid())
+  bankAccountId  String
+  bankAccount    Account   @relation("ReconcileBank", fields: [bankAccountId], references: [id])
+  statementDate  DateTime
+  endingBalance  Decimal   @db.Decimal(18, 2)
+  notes          String?
+  createdAt      DateTime  @default(now())
+  lines          ReconciliationLine[]
+}
+
+model ReconciliationLine {
+  id                 String              @id @default(cuid())
+  reconciliationId   String
+  reconciliation     BankReconciliation  @relation(fields: [reconciliationId], references: [id])
+  paymentId          String
+  payment            Payment             @relation(fields: [paymentId], references: [id])
+}
