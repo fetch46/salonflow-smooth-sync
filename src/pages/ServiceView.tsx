@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { useOrganization } from "@/lib/saas/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { ArrowLeft, Clock, DollarSign, Package, Edit, Scissors } from "lucide-react";
 import { format } from "date-fns";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
+import { getReceiptItemsByServiceWithFallback } from "@/utils/mockDatabase";
 
 interface Service {
   id: string;
@@ -45,6 +49,7 @@ export default function ServiceView() {
   const [serviceKits, setServiceKits] = useState<ServiceKit[]>([]);
   const [loading, setLoading] = useState(true);
 
+
   const fetchServiceData = useCallback(async () => {
     try {
       setLoading(true);
@@ -54,6 +59,7 @@ export default function ServiceView() {
         .from("services")
         .select("*")
         .eq("id", id)
+        .eq("organization_id", organization?.id || "")
         .single();
 
       if (serviceError) throw serviceError;
@@ -68,17 +74,22 @@ export default function ServiceView() {
             id, name, type, unit, cost_price, selling_price, category
           )
         `)
-        .eq("service_id", id);
+        .eq("service_id", id)
+        .eq("organization_id", organization?.id || "");
 
       if (kitsError) throw kitsError;
       setServiceKits(kitsData || []);
-
+      // Fetch sales history for this service
+      setSalesLoading(true);
+      const rows = await getReceiptItemsByServiceWithFallback(supabase, String(id));
+      setSalesHistory(rows);
     } catch (error) {
       console.error("Error fetching service data:", error);
     } finally {
       setLoading(false);
+      setSalesLoading(false);
     }
-  }, [id]);
+  }, [id, organization?.id]);
 
   useEffect(() => {
     if (id) {
@@ -98,6 +109,8 @@ export default function ServiceView() {
   const totalKitCost = serviceKits.reduce((total, kit) => 
     total + (kit.default_quantity * (kit.inventory_items.cost_price || 0)), 0
   );
+  const totalSoldQty = salesHistory.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+  const totalRevenue = salesHistory.reduce((s, r) => s + (Number(r.total_price) || 0), 0);
 
   if (loading) {
     return (
@@ -406,6 +419,79 @@ export default function ServiceView() {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Sales History */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Sales History</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Posted from receipts containing this service
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="p-4 rounded-lg border bg-gradient-to-b from-white to-slate-50">
+                <div className="text-xs text-muted-foreground">Total Sold</div>
+                <div className="text-2xl font-semibold mt-1">{totalSoldQty}</div>
+              </div>
+              <div className="p-4 rounded-lg border bg-gradient-to-b from-white to-slate-50">
+                <div className="text-xs text-muted-foreground">Total Revenue</div>
+                <div className="text-2xl font-semibold mt-1">{formatPrice(totalRevenue)}</div>
+              </div>
+              <div className="p-4 rounded-lg border bg-gradient-to-b from-white to-slate-50">
+                <div className="text-xs text-muted-foreground">Avg Price</div>
+                <div className="text-2xl font-semibold mt-1">{formatPrice(totalSoldQty ? totalRevenue / totalSoldQty : 0)}</div>
+              </div>
+            </div>
+
+            {salesLoading ? (
+              <div className="text-sm text-muted-foreground">Loading sales history...</div>
+            ) : (
+              <div className="overflow-auto rounded-lg border">
+                <Table className="min-w-[880px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Receipt #</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="hidden md:table-cell">Staff</TableHead>
+                      <TableHead className="text-right">Qty</TableHead>
+                      <TableHead className="hidden sm:table-cell text-right">Unit Price</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {salesHistory.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground">No sales recorded.</TableCell>
+                      </TableRow>
+                    ) : (
+                      salesHistory.map((row) => (
+                        <TableRow key={row.id}>
+                          <TableCell>{row.receipt_created_at ? new Date(row.receipt_created_at).toLocaleDateString() : (row.created_at ? new Date(row.created_at).toLocaleDateString() : '—')}</TableCell>
+                          <TableCell className="font-medium">
+                            {row.receipt_number ? (
+                              <button className="text-primary hover:underline" onClick={() => navigate(`/receipts/${row.receipt_id}`)}>
+                                {row.receipt_number}
+                              </button>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="truncate max-w-[280px]">{row.description || '—'}</TableCell>
+                          <TableCell className="hidden md:table-cell">{row.staff_name || '—'}</TableCell>
+                          <TableCell className="text-right">{row.quantity}</TableCell>
+                          <TableCell className="hidden sm:table-cell text-right">{formatPrice(row.unit_price)}</TableCell>
+                          <TableCell className="text-right font-semibold">{formatPrice(row.total_price)}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             )}
           </CardContent>

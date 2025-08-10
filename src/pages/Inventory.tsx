@@ -26,8 +26,7 @@ type InventoryItem = {
   unit: string;
   reorder_point: number;
   is_active: boolean;
-  cost_price?: number | null;
-  selling_price?: number | null;
+
 };
 
 // --- Form Components ---
@@ -52,8 +51,7 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem }) => {
         sku: editingItem.sku || "",
         unit: editingItem.unit || "",
         reorder_point: editingItem.reorder_point || 0,
-        cost_price: Number(editingItem.cost_price || 0),
-        selling_price: Number(editingItem.selling_price || 0),
+
       });
     } else {
       setFormData({
@@ -159,30 +157,6 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="cost-price">Purchase Price</Label>
-                {editingItem?.id ? (
-                  <Button type="button" variant="ghost" className="h-8 px-2" onClick={fillCostFromLastPurchase}>
-                    Use last purchase
-                  </Button>
-                ) : null}
-              </div>
-              <Input
-                id="cost-price"
-                type="number"
-                step="0.01"
-                value={formData.cost_price}
-                onChange={(e) => setFormData({ ...formData, cost_price: parseFloat(e.target.value || '0') })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="selling-price">Sales Price</Label>
-              <Input
-                id="selling-price"
-                type="number"
-                step="0.01"
-                value={formData.selling_price}
-                onChange={(e) => setFormData({ ...formData, selling_price: parseFloat(e.target.value || '0') })}
               />
             </div>
           </div>
@@ -281,7 +255,15 @@ export default function Inventory() {
   const handleItemSubmit = async (formData) => {
     try {
       if (editingItem) {
-        const { error } = await supabase.from("inventory_items").update(formData).eq("id", editingItem.id);
+        const { error } = await supabase.from("inventory_items").update({
+          name: formData.name,
+          description: formData.description,
+          sku: formData.sku,
+          unit: formData.unit,
+          reorder_point: formData.reorder_point,
+          cost_price: formData.cost_price,
+          selling_price: formData.selling_price,
+        }).eq("id", editingItem.id);
         if (error) throw error;
         toast({ title: "Success", description: "Product updated successfully" });
       } else {
