@@ -82,6 +82,16 @@ export default function Purchases() {
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
 
+  // Payments state
+  const [accounts, setAccounts] = useState<AccountOption[]>([]);
+  const [payOpen, setPayOpen] = useState(false);
+  const [payPurchaseId, setPayPurchaseId] = useState<string | null>(null);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>("");
+  const [payAmount, setPayAmount] = useState<string>("");
+  const [payDate, setPayDate] = useState<string>("");
+  const [payReference, setPayReference] = useState<string>("");
+  const [payLoading, setPayLoading] = useState<boolean>(false);
+
 
   const [formData, setFormData] = useState({
     purchase_number: "",
