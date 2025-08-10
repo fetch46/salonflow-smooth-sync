@@ -8,11 +8,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Edit, Trash2, ReceiptText, RefreshCw } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarRange, Download, Edit, Filter, List, MoreVertical, ReceiptText, RefreshCw, Search, Trash2, Bookmark, BookmarkPlus } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { getReceiptsWithFallback, getAllReceiptPaymentsWithFallback, updateReceiptPaymentWithFallback, deleteReceiptPaymentWithFallback } from "@/utils/mockDatabase";
 import { useNavigate } from "react-router-dom";
+import type { DateRange } from "react-day-picker";
 
 interface ReceiptPayment {
   id: string;
@@ -66,6 +72,15 @@ export default function Payments() {
   const [receiptsById, setReceiptsById] = useState<Record<string, ReceiptLite>>({});
   const [clientsById, setClientsById] = useState<Record<string, ClientLite>>({});
   const [searchReceived, setSearchReceived] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [methodFilter, setMethodFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [compact, setCompact] = useState<boolean>(false);
+  type FilterPreset = { id: string; name: string; search: string; method: string; from?: string; to?: string; pageSize: number };
+  const [presets, setPresets] = useState<FilterPreset[]>([]);
+  const [savePresetOpen, setSavePresetOpen] = useState(false);
+  const [newPresetName, setNewPresetName] = useState("");
 
   // Made
   const [expenses, setExpenses] = useState<ExpenseLite[]>([]);
@@ -124,6 +139,63 @@ export default function Payments() {
   };
 
   useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('payments_filter_presets_v1');
+      if (raw) setPresets(JSON.parse(raw));
+      const savedCompact = localStorage.getItem('payments_density_compact');
+      if (savedCompact) setCompact(savedCompact === '1');
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('payments_density_compact', compact ? '1' : '0');
+  }, [compact]);
+
+  const persistPresets = (next: FilterPreset[]) => {
+    setPresets(next);
+    try { localStorage.setItem('payments_filter_presets_v1', JSON.stringify(next)); } catch {}
+  };
+
+  const saveCurrentAsPreset = () => {
+    if (!newPresetName.trim()) { toast.error('Enter a preset name'); return; }
+    const next: FilterPreset = {
+      id: `${Date.now()}`,
+      name: newPresetName.trim(),
+      search: searchReceived,
+      method: methodFilter,
+      from: dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : undefined,
+      to: dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : undefined,
+      pageSize,
+    };
+    const updated = [next, ...presets].slice(0, 20);
+    persistPresets(updated);
+    setNewPresetName("");
+    setSavePresetOpen(false);
+    toast.success('Preset saved');
+  };
+
+  const applyPreset = (p: FilterPreset) => {
+    setSearchReceived(p.search || "");
+    setMethodFilter(p.method || 'all');
+    if (p.from || p.to) {
+      setDateRange({
+        from: p.from ? new Date(`${p.from}T00:00:00`) : undefined,
+        to: p.to ? new Date(`${p.to}T00:00:00`) : undefined,
+      });
+    } else {
+      setDateRange(undefined);
+    }
+    if (p.pageSize) setPageSize(p.pageSize);
+    setPage(1);
+    toast.success(`Applied preset: ${p.name}`);
+  };
+
+  const deletePreset = (id: string) => {
+    const updated = presets.filter(p => p.id !== id);
+    persistPresets(updated);
+    toast.success('Preset deleted');
+  };
 
   const refresh = async () => { setRefreshing(true); await loadData(); setRefreshing(false); };
 
@@ -177,18 +249,31 @@ export default function Payments() {
     return payments.filter(p => {
       const r = receiptsById[p.receipt_id];
       const clientName = r?.customer_id ? (clientsById[r.customer_id]?.full_name || '') : '';
-      return (
+      const matchesQuery = (
         (r?.receipt_number || '').toLowerCase().includes(s) ||
         clientName.toLowerCase().includes(s) ||
         (p.method || '').toLowerCase().includes(s) ||
         (p.reference_number || '').toLowerCase().includes(s)
       );
+
+      const paymentDate = new Date(p.payment_date || r?.created_at || new Date());
+      const inDateRange = dateRange?.from && dateRange?.to
+        ? paymentDate >= new Date(dateRange.from.setHours(0,0,0,0)) && paymentDate <= new Date(dateRange.to.setHours(23,59,59,999))
+        : true;
+
+      const matchesMethod = methodFilter === 'all' ? true : (p.method || '').toLowerCase() === methodFilter.toLowerCase();
+
+      return matchesQuery && inDateRange && matchesMethod;
     });
-  }, [payments, receiptsById, clientsById, searchReceived]);
+  }, [payments, receiptsById, clientsById, searchReceived, dateRange, methodFilter]);
+
+  useEffect(() => { setPage(1); }, [searchReceived, dateRange, methodFilter]);
 
   const totalsReceived = useMemo(() => {
     const total = filteredReceived.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-    return { total };
+    const count = filteredReceived.length;
+    const avg = count ? total / count : 0;
+    return { total, count, avg };
   }, [filteredReceived]);
 
   const filteredExpenses = useMemo(() => {
@@ -208,6 +293,36 @@ export default function Payments() {
       (p.status || '').toLowerCase().includes(s)
     ));
   }, [purchases, searchMade]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredReceived.length / pageSize));
+  const paginatedReceived = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredReceived.slice(start, start + pageSize);
+  }, [filteredReceived, page, pageSize]);
+
+  const exportCsv = () => {
+    try {
+      const headers = ["Receipt #", "Client", "Payment Date", "Amount", "Method", "Reference"];
+      const rows = filteredReceived.map(p => {
+        const r = receiptsById[p.receipt_id];
+        const clientName = r?.customer_id ? (clientsById[r.customer_id]?.full_name || '—') : 'Walk-in';
+        const dateStr = format(new Date(p.payment_date || r?.created_at || new Date()), 'yyyy-MM-dd');
+        return [r?.receipt_number || '—', clientName, dateStr, String(Number(p.amount || 0).toFixed(2)), (p.method || '').toUpperCase(), p.reference_number || '—'];
+      });
+      const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `payments_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error('Failed to export CSV');
+    }
+  };
 
   if (loading) {
     return (
@@ -229,6 +344,10 @@ export default function Payments() {
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
+          <Button variant="outline" onClick={exportCsv}>
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
         </div>
       </div>
 
@@ -244,13 +363,123 @@ export default function Payments() {
               <CardHeader className="pb-2"><CardTitle className="text-sm">Total Received</CardTitle></CardHeader>
               <CardContent className="text-2xl font-semibold">${totalsReceived.total.toFixed(2)}</CardContent>
             </Card>
-            <Card className="md:col-span-2">
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Search</CardTitle></CardHeader>
-              <CardContent>
-                <Input placeholder="Search by receipt, client, method, reference..." value={searchReceived} onChange={(e) => setSearchReceived(e.target.value)} />
-              </CardContent>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Payments Count</CardTitle></CardHeader>
+              <CardContent className="text-2xl font-semibold">{totalsReceived.count}</CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Average Amount</CardTitle></CardHeader>
+              <CardContent className="text-2xl font-semibold">${totalsReceived.avg.toFixed(2)}</CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Filters</CardTitle></CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
+                <div className="relative md:w-[340px] w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    className="pl-9"
+                    placeholder="Search by receipt, client, method, reference..."
+                    value={searchReceived}
+                    onChange={(e) => setSearchReceived(e.target.value)}
+                  />
+                </div>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="justify-start w-full md:w-[260px]">
+                      <CalendarRange className="mr-2 h-4 w-4" />
+                      {dateRange?.from && dateRange?.to ? (
+                        <span>{format(dateRange.from, 'MMM d, yyyy')} - {format(dateRange.to, 'MMM d, yyyy')}</span>
+                      ) : (
+                        <span>Select date range</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0" align="start">
+                    <Calendar
+                      mode="range"
+                      selected={dateRange}
+                      onSelect={setDateRange}
+                      numberOfMonths={2}
+                    />
+                    <div className="flex items-center justify-end gap-2 p-3 pt-0">
+                      <Button variant="ghost" size="sm" onClick={() => setDateRange(undefined)}>Clear</Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                <div className="flex items-center gap-2 w-full md:w-auto">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <Select value={methodFilter} onValueChange={setMethodFilter}>
+                    <SelectTrigger className="w-full md:w-[180px]">
+                      <SelectValue placeholder="Method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Methods</SelectItem>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="card">Card</SelectItem>
+                      <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                      <SelectItem value="mpesa">M-Pesa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button variant="ghost" onClick={() => { setSearchReceived(''); setDateRange(undefined); setMethodFilter('all'); }}>
+                  Clear filters
+                </Button>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full md:w-auto">
+                      <Bookmark className="h-4 w-4 mr-2" /> Presets
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-64">
+                    <DropdownMenuItem onClick={() => setSavePresetOpen(true)}>
+                      <BookmarkPlus className="h-4 w-4 mr-2" /> Save current as preset
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {presets.length === 0 && (
+                      <DropdownMenuLabel className="text-muted-foreground">No presets saved</DropdownMenuLabel>
+                    )}
+                    {presets.map(p => (
+                      <DropdownMenuItem key={p.id} onClick={() => applyPreset(p)} className="flex items-center justify-between">
+                        <span className="truncate">{p.name}</span>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); deletePreset(p.id); }}
+                          aria-label={`Delete ${p.name}`}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Button variant="outline" className="ml-auto" onClick={() => setCompact(c => !c)}>
+                  <List className="h-4 w-4 mr-2" /> {compact ? 'Comfortable' : 'Compact'}
+                </Button>
+
+                <div className="ml-auto flex items-center gap-2">
+                  <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                    <SelectTrigger className="w-[110px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10 / page</SelectItem>
+                      <SelectItem value="25">25 / page</SelectItem>
+                      <SelectItem value="50">50 / page</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
@@ -258,48 +487,75 @@ export default function Payments() {
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
-                <Table className="w-full">
-                  <TableHeader>
+                <Table className={`w-full ${compact ? 'text-sm' : ''}`}>
+                  <TableHeader className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <TableRow>
-                      <TableHead>Receipt #</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Method</TableHead>
-                      <TableHead>Reference</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Receipt #</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Client</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Date</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Amount</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Method</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Reference</TableHead>
+                      <TableHead className={`text-right ${compact ? 'py-2' : ''}`}>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredReceived.map((p) => {
+                    {paginatedReceived.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={7} className={`text-center text-muted-foreground ${compact ? 'py-6' : 'h-24'}`}>
+                          No payments found. Adjust filters or try a different search.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {paginatedReceived.map((p) => {
                       const r = receiptsById[p.receipt_id];
                       const clientName = r?.customer_id ? (clientsById[r.customer_id]?.full_name || '—') : 'Walk-in';
                       return (
-                        <TableRow key={p.id}>
-                          <TableCell className="font-medium">{r?.receipt_number || '—'}</TableCell>
-                          <TableCell>{clientName}</TableCell>
-                          <TableCell>{format(new Date(p.payment_date || r?.created_at || new Date()), 'MMM dd, yyyy')}</TableCell>
-                          <TableCell>${Number(p.amount || 0).toFixed(2)}</TableCell>
-                          <TableCell>{(p.method || '').toUpperCase()}</TableCell>
-                          <TableCell>{p.reference_number || '—'}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button variant="outline" size="sm" onClick={() => r?.id && navigate(`/receipts/${r.id}`)}>
-                                <ReceiptText className="w-4 h-4 mr-2" /> View Payment Receipt
-                              </Button>
-                              <Button variant="outline" size="sm" onClick={() => openEdit(p)}>
-                                <Edit className="w-4 h-4 mr-2" /> Edit Payment
-                              </Button>
-                              <Button variant="outline" size="sm" className="text-red-600" onClick={() => deletePayment(p)}>
-                                <Trash2 className="w-4 h-4 mr-2" /> Delete Payment
-                              </Button>
-                            </div>
+                        <TableRow key={p.id} className="hover:bg-muted/50">
+                          <TableCell className={`font-medium ${compact ? 'py-2' : ''}`}>{r?.receipt_number || '—'}</TableCell>
+                          <TableCell className={compact ? 'py-2' : ''}>{clientName}</TableCell>
+                          <TableCell className={compact ? 'py-2' : ''}>{format(new Date(p.payment_date || r?.created_at || new Date()), 'MMM dd, yyyy')}</TableCell>
+                          <TableCell className={compact ? 'py-2' : ''}>${Number(p.amount || 0).toFixed(2)}</TableCell>
+                          <TableCell className={compact ? 'py-2' : ''}>{(p.method || '').toUpperCase()}</TableCell>
+                          <TableCell className={compact ? 'py-2' : ''}>{p.reference_number || '—'}</TableCell>
+                          <TableCell className={`text-right ${compact ? 'py-2' : ''}`}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuItem onClick={() => r?.id && navigate(`/receipts/${r.id}`)}>
+                                  <ReceiptText className="mr-2 h-4 w-4" /> View Payment Receipt
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openEdit(p)}>
+                                  <Edit className="mr-2 h-4 w-4" /> Edit Payment
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-red-600" onClick={() => deletePayment(p)}>
+                                  <Trash2 className="mr-2 h-4 w-4" /> Delete Payment
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
                       );
                     })}
                   </TableBody>
                 </Table>
+              </div>
+              <div className="mt-4">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious onClick={() => setPage(p => Math.max(1, p - 1))} />
+                    </PaginationItem>
+                    <span className="px-2 text-sm text-muted-foreground">Page {page} of {totalPages}</span>
+                    <PaginationItem>
+                      <PaginationNext onClick={() => setPage(p => Math.min(totalPages, p + 1))} />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
               </div>
             </CardContent>
           </Card>
@@ -310,7 +566,10 @@ export default function Payments() {
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Search</CardTitle></CardHeader>
               <CardContent>
-                <Input placeholder="Search expenses & purchases..." value={searchMade} onChange={(e) => setSearchMade(e.target.value)} />
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input className="pl-9" placeholder="Search expenses & purchases..." value={searchMade} onChange={(e) => setSearchMade(e.target.value)} />
+                </div>
               </CardContent>
             </Card>
             <Card>
@@ -332,46 +591,58 @@ export default function Payments() {
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
-                <Table className="w-full">
-                  <TableHeader>
+                <Table className={`w-full ${compact ? 'text-sm' : ''}`}>
+                  <TableHeader className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <TableRow>
-                      <TableHead>Expense #</TableHead>
-                      <TableHead>Vendor</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Method</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Expense #</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Vendor</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Date</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Amount</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Method</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Status</TableHead>
+                      <TableHead className={`text-right ${compact ? 'py-2' : ''}`}>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
+                    {filteredExpenses.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={7} className={`text-center text-muted-foreground ${compact ? 'py-6' : 'h-24'}`}>No expenses found.</TableCell>
+                      </TableRow>
+                    )}
                     {filteredExpenses.map((e) => (
-                      <TableRow key={e.id}>
-                        <TableCell className="font-medium">{e.expense_number}</TableCell>
-                        <TableCell>{e.vendor_name}</TableCell>
-                        <TableCell>{format(new Date(e.expense_date), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell>${Number(e.amount || 0).toFixed(2)}</TableCell>
-                        <TableCell>{e.payment_method || '—'}</TableCell>
-                        <TableCell>
+                      <TableRow key={e.id} className="hover:bg-muted/50">
+                        <TableCell className={`font-medium ${compact ? 'py-2' : ''}`}>{e.expense_number}</TableCell>
+                        <TableCell className={compact ? 'py-2' : ''}>{e.vendor_name}</TableCell>
+                        <TableCell className={compact ? 'py-2' : ''}>{format(new Date(e.expense_date), 'MMM dd, yyyy')}</TableCell>
+                        <TableCell className={compact ? 'py-2' : ''}>${Number(e.amount || 0).toFixed(2)}</TableCell>
+                        <TableCell className={compact ? 'py-2' : ''}>{e.payment_method || '—'}</TableCell>
+                        <TableCell className={compact ? 'py-2' : ''}>
                           <Badge className={e.status === 'paid' ? 'bg-green-100 text-green-800' : e.status === 'approved' ? 'bg-blue-100 text-blue-800' : e.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}>
                             {e.status.toUpperCase()}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" onClick={() => { if (e.receipt_url) window.open(e.receipt_url, '_blank'); }} disabled={!e.receipt_url}>
-                              <ReceiptText className="w-4 h-4 mr-2" /> View Payment Receipt
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => navigate('/expenses')}>
-                              <Edit className="w-4 h-4 mr-2" /> Edit Payment
-                            </Button>
-                            <Button variant="outline" size="sm" className="text-red-600" onClick={async () => {
-                              if (!confirm('Delete this expense?')) return;
-                              try { await supabase.from('expenses').delete().eq('id', e.id); toast.success('Expense deleted'); loadData(); } catch { toast.error('Failed to delete expense'); }
-                            }}>
-                              <Trash2 className="w-4 h-4 mr-2" /> Delete Payment
-                            </Button>
-                          </div>
+                        <TableCell className={`text-right ${compact ? 'py-2' : ''}`}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => { if (e.receipt_url) window.open(e.receipt_url, '_blank'); }} disabled={!e.receipt_url}>
+                                <ReceiptText className="mr-2 h-4 w-4" /> View Payment Receipt
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate('/expenses')}>
+                                <Edit className="mr-2 h-4 w-4" /> Edit Payment
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-red-600" onClick={async () => {
+                                if (!confirm('Delete this expense?')) return;
+                                try { await supabase.from('expenses').delete().eq('id', e.id); toast.success('Expense deleted'); loadData(); } catch { toast.error('Failed to delete expense'); }
+                              }}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete Payment
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -387,44 +658,56 @@ export default function Payments() {
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
-                <Table className="w-full">
-                  <TableHeader>
+                <Table className={`w-full ${compact ? 'text-sm' : ''}`}>
+                  <TableHeader className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <TableRow>
-                      <TableHead>Purchase #</TableHead>
-                      <TableHead>Vendor</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Purchase #</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Vendor</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Date</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Amount</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Status</TableHead>
+                      <TableHead className={`text-right ${compact ? 'py-2' : ''}`}>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
+                    {filteredPurchases.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className={`text-center text-muted-foreground ${compact ? 'py-6' : 'h-24'}`}>No purchases found.</TableCell>
+                      </TableRow>
+                    )}
                     {filteredPurchases.map((p) => (
-                      <TableRow key={p.id}>
-                        <TableCell className="font-medium">{p.purchase_number}</TableCell>
-                        <TableCell>{p.vendor_name}</TableCell>
-                        <TableCell>{format(new Date(p.purchase_date || p.created_at || new Date()), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell>${Number(p.total_amount || 0).toFixed(2)}</TableCell>
-                        <TableCell>
+                      <TableRow key={p.id} className="hover:bg-muted/50">
+                        <TableCell className={`font-medium ${compact ? 'py-2' : ''}`}>{p.purchase_number}</TableCell>
+                        <TableCell className={compact ? 'py-2' : ''}>{p.vendor_name}</TableCell>
+                        <TableCell className={compact ? 'py-2' : ''}>{format(new Date(p.purchase_date || p.created_at || new Date()), 'MMM dd, yyyy')}</TableCell>
+                        <TableCell className={compact ? 'py-2' : ''}>${Number(p.total_amount || 0).toFixed(2)}</TableCell>
+                        <TableCell className={compact ? 'py-2' : ''}>
                           <Badge className={p.status === 'received' ? 'bg-green-100 text-green-800' : p.status === 'partial' ? 'bg-blue-100 text-blue-800' : p.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}>
                             {p.status.toUpperCase()}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" disabled>
-                              <ReceiptText className="w-4 h-4 mr-2" /> View Payment Receipt
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => navigate('/purchases')}>
-                              <Edit className="w-4 h-4 mr-2" /> Edit Payment
-                            </Button>
-                            <Button variant="outline" size="sm" className="text-red-600" onClick={async () => {
-                              if (!confirm('Delete this purchase?')) return;
-                              try { await supabase.from('purchases').delete().eq('id', p.id); toast.success('Purchase deleted'); loadData(); } catch { toast.error('Failed to delete purchase'); }
-                            }}>
-                              <Trash2 className="w-4 h-4 mr-2" /> Delete Payment
-                            </Button>
-                          </div>
+                        <TableCell className={`text-right ${compact ? 'py-2' : ''}`}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem disabled>
+                                <ReceiptText className="mr-2 h-4 w-4" /> View Payment Receipt
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate('/purchases')}>
+                                <Edit className="mr-2 h-4 w-4" /> Edit Payment
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-red-600" onClick={async () => {
+                                if (!confirm('Delete this purchase?')) return;
+                                try { await supabase.from('purchases').delete().eq('id', p.id); toast.success('Purchase deleted'); loadData(); } catch { toast.error('Failed to delete purchase'); }
+                              }}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete Payment
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -435,6 +718,24 @@ export default function Payments() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={savePresetOpen} onOpenChange={setSavePresetOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Save filter preset</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Preset name</Label>
+              <Input value={newPresetName} onChange={(e) => setNewPresetName(e.target.value)} placeholder="e.g. Last 30 days - Card" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setSavePresetOpen(false)}>Cancel</Button>
+              <Button onClick={saveCurrentAsPreset}>Save</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-w-md">
