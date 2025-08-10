@@ -52,7 +52,7 @@ interface AdjustmentItem {
   unit_cost: number;
   total_cost: number;
   notes: string | null;
-  inventory_items?: { name: string; sku: string; unit: string };
+  inventory_items?: { name: string; sku: string; unit: string; selling_price?: number; cost_price?: number };
 }
 
 const ADJUSTMENT_TYPES = [
@@ -150,7 +150,7 @@ export default function InventoryAdjustments() {
         .from("inventory_adjustment_items")
         .select(`
           *,
-          inventory_items (name, sku, unit)
+          inventory_items (name, sku, unit, selling_price, cost_price)
         `)
         .eq("adjustment_id", adjustmentId);
 
@@ -392,6 +392,11 @@ export default function InventoryAdjustments() {
   const approvedCount = adjustments.filter(adj => adj.status === "approved").length;
   const positiveAdjustments = adjustmentItems.filter(item => item.difference > 0).length;
   const negativeAdjustments = adjustmentItems.filter(item => item.difference < 0).length;
+
+  const totalQtyIncrease = adjustmentItems.reduce((sum, i) => sum + (i.difference > 0 ? i.difference : 0), 0);
+  const totalQtyDecrease = adjustmentItems.reduce((sum, i) => sum + (i.difference < 0 ? Math.abs(i.difference) : 0), 0);
+  const totalCostValue = adjustmentItems.reduce((sum, i) => sum + Math.abs(i.difference) * (i.unit_cost ?? 0), 0);
+  const totalSalesValue = adjustmentItems.reduce((sum, i) => sum + Math.abs(i.difference) * (i.inventory_items?.selling_price ?? 0), 0);
 
   return (
     <div className="p-6 space-y-6">
@@ -723,78 +728,154 @@ export default function InventoryAdjustments() {
 
       {/* View Adjustment Modal */}
       <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Adjustment Details</DialogTitle>
+            <DialogTitle className="flex items-center gap-3">
+              <span>Adjustment Details</span>
+              {viewingAdjustment && (
+                <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+                  {viewingAdjustment.adjustment_number}
+                </span>
+              )}
+            </DialogTitle>
             <DialogDescription>
-              View details of the inventory adjustment
+              Review the full breakdown, including cost and sales valuation.
             </DialogDescription>
           </DialogHeader>
           {viewingAdjustment && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Adjustment Number</Label>
-                  <p className="font-medium">{viewingAdjustment.adjustment_number}</p>
-                </div>
-                <div>
-                  <Label>Date</Label>
-                  <p>{format(new Date(viewingAdjustment.adjustment_date), 'MMM dd, yyyy')}</p>
-                </div>
-                <div>
-                  <Label>Type</Label>
-                  <p className={getAdjustmentTypeColor(viewingAdjustment.adjustment_type)}>
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium">Date</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0 text-base">
+                    {format(new Date(viewingAdjustment.adjustment_date), 'MMM dd, yyyy')}
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium">Type</CardTitle>
+                  </CardHeader>
+                  <CardContent className={`pt-0 text-base ${getAdjustmentTypeColor(viewingAdjustment.adjustment_type)}`}>
                     {viewingAdjustment.adjustment_type}
-                  </p>
-                </div>
-                <div>
-                  <Label>Status</Label>
-                  <div>{getStatusBadge(viewingAdjustment.status)}</div>
-                </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium">Status</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    {getStatusBadge(viewingAdjustment.status)}
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium">Total Items</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0 text-base font-semibold">
+                    {viewingAdjustment.total_items}
+                  </CardContent>
+                </Card>
               </div>
-              
-              <div>
-                <Label>Reason</Label>
-                <p>{viewingAdjustment.reason}</p>
+
+              <div className="grid gap-4 md:grid-cols-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Qty Increase</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-green-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xl font-bold text-green-600">{totalQtyIncrease}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Qty Decrease</CardTitle>
+                    <TrendingDown className="h-4 w-4 text-red-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xl font-bold text-red-600">{totalQtyDecrease}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Cost Value</CardTitle>
+                    <Package className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xl font-bold">${totalCostValue.toFixed(2)}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Sales Value</CardTitle>
+                    <Package className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xl font-bold">${totalSalesValue.toFixed(2)}</div>
+                  </CardContent>
+                </Card>
               </div>
-              
-              {viewingAdjustment.notes && (
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label>Notes</Label>
-                  <p>{viewingAdjustment.notes}</p>
+                  <Label>Reason</Label>
+                  <p>{viewingAdjustment.reason}</p>
                 </div>
-              )}
+                {viewingAdjustment.notes && (
+                  <div>
+                    <Label>Notes</Label>
+                    <p>{viewingAdjustment.notes}</p>
+                  </div>
+                )}
+              </div>
 
               <div>
                 <Label>Adjustment Items</Label>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead>Current</TableHead>
-                      <TableHead>Adjusted</TableHead>
-                      <TableHead>Difference</TableHead>
-                      <TableHead>Unit Cost</TableHead>
-                      <TableHead>Total Cost</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {adjustmentItems.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          {item.inventory_items?.name} ({item.inventory_items?.sku})
-                        </TableCell>
-                        <TableCell>{item.current_quantity}</TableCell>
-                        <TableCell>{item.adjusted_quantity}</TableCell>
-                        <TableCell className={item.difference > 0 ? "text-green-600" : item.difference < 0 ? "text-red-600" : ""}>
-                          {item.difference > 0 ? "+" : ""}{item.difference}
-                        </TableCell>
-                        <TableCell>${item.unit_cost.toFixed(2)}</TableCell>
-                        <TableCell>${item.total_cost.toFixed(2)}</TableCell>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Current</TableHead>
+                        <TableHead>Adjusted</TableHead>
+                        <TableHead>Difference</TableHead>
+                        <TableHead>Unit Cost</TableHead>
+                        <TableHead>Cost Value</TableHead>
+                        <TableHead>Unit Sales</TableHead>
+                        <TableHead>Sales Value</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {adjustmentItems.map((item) => {
+                        const absDiff = Math.abs(item.difference);
+                        const unitSales = item.inventory_items?.selling_price ?? 0;
+                        const salesValue = absDiff * unitSales;
+                        const costValue = absDiff * (item.unit_cost ?? 0);
+                        return (
+                          <TableRow key={item.id}>
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{item.inventory_items?.name}</span>
+                                <span className="text-xs text-muted-foreground">{item.inventory_items?.sku}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>{item.current_quantity}</TableCell>
+                            <TableCell>{item.adjusted_quantity}</TableCell>
+                            <TableCell className={item.difference > 0 ? "text-green-600" : item.difference < 0 ? "text-red-600" : ""}>
+                              {item.difference > 0 ? "+" : ""}{item.difference}
+                            </TableCell>
+                            <TableCell>${(item.unit_cost ?? 0).toFixed(2)}</TableCell>
+                            <TableCell>${costValue.toFixed(2)}</TableCell>
+                            <TableCell>${unitSales.toFixed(2)}</TableCell>
+                            <TableCell>${salesValue.toFixed(2)}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
             </div>
           )}
