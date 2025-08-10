@@ -390,6 +390,8 @@ export const useFeatureGuard = (feature: string) => {
 export const useOrganizationCurrency = () => {
   const { organization } = useSaas()
   const { locale } = useSaas()
+  // Pull regional settings from org
+  const regional = (organization?.settings as any)?.regional_settings || null
   const [currency, setCurrency] = useState<{ id: string; code: string; symbol: string } | null>(null)
   const [loading, setLoading] = useState(false)
   const [rate, setRate] = useState<number>(1)
@@ -443,15 +445,23 @@ export const useOrganizationCurrency = () => {
   const format = useCallback(
     (amount: number | null | undefined, opts?: { decimals?: number }) => {
       const n = typeof amount === 'number' ? amount : 0
-      const decimals = opts?.decimals ?? 2
+      const decimals = opts?.decimals ?? (regional?.currency_decimals ?? 2)
       const sym = currency?.symbol ?? '$'
-      const formatted = new Intl.NumberFormat(locale || 'en-US', {
+      // Build a formatter respecting custom separators if provided
+      const parts = new Intl.NumberFormat(locale || 'en-US', {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
-      }).format(n)
+      }).formatToParts(n)
+      const ts = regional?.thousand_separator ?? undefined
+      const ds = regional?.decimal_separator ?? undefined
+      const formatted = parts.map(p => {
+        if (p.type === 'group' && ts) return ts
+        if (p.type === 'decimal' && ds) return ds
+        return p.value
+      }).join('')
       return `${sym}${formatted}`
     },
-    [currency, locale]
+    [currency, locale, regional]
   )
 
   // Convert a USD amount expressed in cents to the organization currency (major units)
@@ -470,11 +480,11 @@ export const useOrganizationCurrency = () => {
       const code = currency?.code ?? 'USD'
       // Default decimals: 0 for truly zero-decimal currencies only
       const zeroDecimalCodes = new Set(['JPY', 'KRW'])
-      const decimals = zeroDecimalCodes.has(code) ? 0 : 2
+      const decimals = zeroDecimalCodes.has(code) ? 0 : (regional?.currency_decimals ?? 2)
       const major = convertUsdCentsToOrgMajor(usdCents)
       return format(major, { decimals })
     },
-    [currency, convertUsdCentsToOrgMajor, format]
+    [currency, convertUsdCentsToOrgMajor, format, regional]
   )
 
   return { 
@@ -498,4 +508,10 @@ export const useOrganizationTaxRate = () => {
     return Number.isFinite(parsed) ? parsed : 0
   }, [organization])
   return taxRate
+}
+
+export const useRegionalSettings = () => {
+  const { organization } = useSaas()
+  const settings = (organization?.settings as any) || {}
+  return settings.regional_settings || null
 }

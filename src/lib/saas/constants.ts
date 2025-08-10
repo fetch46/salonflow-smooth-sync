@@ -195,6 +195,14 @@ export const DEFAULT_ORGANIZATION_SETTINGS = {
   currency: 'USD',
   date_format: 'MM/DD/YYYY',
   time_format: '12h',
+  // Organization-wide regional settings used by UI formatters
+  regional_settings: {
+    date_format: 'MMM dd, yyyy',
+    time_format: '12h',
+    thousand_separator: ',',
+    decimal_separator: '.',
+    currency_decimals: 2,
+  },
   business_hours: {
     monday: { open: '09:00', close: '17:00', closed: false },
     tuesday: { open: '09:00', close: '17:00', closed: false },

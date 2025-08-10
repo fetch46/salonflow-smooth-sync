@@ -671,9 +671,14 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isTrialing = isSubscriptionTrialing(state.subscriptionStatus)
   const isSubscriptionActiveCheck = isSubscriptionActive(state.subscriptionStatus)
   const daysLeftInTrial = calculateTrialDaysRemaining(state.subscription)
-
+ 
   const locale = (state.systemSettings as any)?.regional_formats_enabled ? (navigator?.language || 'en-US') : 'en-US'
-
+  const regionalSettings = (() => {
+    const org = state.organization
+    const s = (org?.settings as any) || {}
+    return s.regional_settings || null
+  })()
+ 
   // Context value
   const contextValue: SaasContextType = {
     // State
@@ -706,9 +711,11 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
     hasFeature,
     getFeatureAccess,
     canPerformAction: canPerformActionCheck,
-
+ 
     // Formatting/Locale
     locale,
+    // @ts-expect-error expose regional settings for consumers without typing explosion
+    regionalSettings,
   }
 
   return (
