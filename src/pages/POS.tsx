@@ -676,7 +676,7 @@ export default function POS() {
           {currentSale && (
             <div className="space-y-4">
               <div className="text-center">
-                <h3 className="text-lg font-semibold">SalonSync</h3>
+                <h3 className="text-lg font-semibold">AURA OS</h3>
                 <p className="text-sm text-muted-foreground">Thank you for your purchase!</p>
               </div>
               

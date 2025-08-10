@@ -773,7 +773,7 @@ const Register = () => {
               </div>
             </div>
             <CardTitle className="text-3xl font-bold text-foreground">
-              Join SalonSync
+              Join AURA OS
             </CardTitle>
             <CardDescription className="text-base">
               Create your professional salon management account

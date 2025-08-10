@@ -174,7 +174,7 @@ const Landing = () => {
     loadSettings();
 
     // SEO: Title and meta description
-    document.title = "SalonSync — Modern Salon Software";
+    document.title = "AURA OS — Modern Salon Software";
     const desc =
       "All‑in‑one salon software for bookings, POS, and growth. Simple to start, powerful at scale.";
     const meta = document.querySelector('meta[name="description"]');
@@ -231,7 +231,7 @@ const Landing = () => {
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <Calendar className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold text-foreground">SalonSync</span>
+            <span className="text-xl font-bold text-foreground">AURA OS</span>
           </div>
           <nav className="hidden md:flex items-center space-x-6">
             <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</a>
