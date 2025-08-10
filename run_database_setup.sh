@@ -48,7 +48,7 @@ if [ $? -eq 0 ]; then
     echo "   • Row Level Security (RLS) policies"
     echo "   • Comprehensive indexing"
     echo "   • Default subscription plans"
-    echo "   • Default storage locations"
+    echo "   • Default business locations"
     echo "   • Default accounting structure"
     echo ""
     echo "📚 Check DATABASE_STRUCTURE.md for complete documentation"

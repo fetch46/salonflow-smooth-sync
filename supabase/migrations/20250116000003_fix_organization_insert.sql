@@ -143,7 +143,7 @@ BEGIN
             'staff', 'clients', 'services', 'inventory_items', 'service_kits',
             'appointments', 'job_cards', 'expenses', 'purchases', 'suppliers',
             'accounts', 'sales', 'inventory_adjustments', 'job_card_products',
-            'account_transactions', 'purchase_items', 'inventory_levels', 'storage_locations'
+            'account_transactions', 'purchase_items', 'inventory_levels', 'business_locations'
         ])
     LOOP
         -- Check if SELECT policy exists

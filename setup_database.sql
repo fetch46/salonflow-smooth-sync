@@ -136,7 +136,7 @@ DO $$
 DECLARE
     required_tables TEXT[] := ARRAY[
         'profiles', 'clients', 'staff', 'services', 'appointments', 
-        'inventory_items', 'storage_locations', 'inventory_levels', 
+        'inventory_items', 'business_locations', 'inventory_levels', 
         'service_kits', 'job_cards', 'job_card_products', 'expenses', 
         'purchases', 'purchase_items', 'suppliers', 'accounts', 
         'account_transactions', 'sales', 'sale_items', 'invoices', 

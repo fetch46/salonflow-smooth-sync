@@ -454,7 +454,7 @@ export default function Inventory() {
     }
   }, []);
 
-  // New: fetch storage locations
+  // New: fetch business locations
   const fetchLocations = useCallback(async () => {
     setLocationsLoading(true);
     try {
