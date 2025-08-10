@@ -74,6 +74,12 @@ export default function Purchases() {
   const orgTaxRate = useOrganizationTaxRate();
   const [applyTax, setApplyTax] = useState<boolean>(true);
 
+  // New: listing filters
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [vendorFilter, setVendorFilter] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
+
   const [formData, setFormData] = useState({
     purchase_number: "",
     vendor_name: "",
@@ -529,11 +535,21 @@ export default function Purchases() {
     setNewItem({ item_id: "", quantity: "", unit_cost: "" });
   };
 
-  const filteredPurchases = purchases.filter((purchase) =>
-    purchase.purchase_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    purchase.vendor_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    purchase.status.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredPurchases = purchases
+    .filter((purchase) => (statusFilter === 'all' ? true : purchase.status === statusFilter))
+    .filter((purchase) => (vendorFilter === 'all' ? true : purchase.vendor_name === vendorFilter))
+    .filter((purchase) => {
+      if (!dateFrom && !dateTo) return true;
+      const d = (purchase.purchase_date || purchase.created_at || '').slice(0, 10);
+      if (dateFrom && d < dateFrom) return false;
+      if (dateTo && d > dateTo) return false;
+      return true;
+    })
+    .filter((purchase) =>
+      purchase.purchase_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      purchase.vendor_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      purchase.status.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
   const getStatusBadge = (status: string) => {
     const statusColors = {
@@ -570,12 +586,24 @@ export default function Purchases() {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Purchases</h2>
+    <div className="flex-1 space-y-6 p-4 sm:p-6 pb-24 sm:pb-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen overflow-x-hidden">
+      {/* Modern Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-gradient-to-br from-emerald-600 to-green-600 rounded-xl shadow-lg">
+              <ShoppingCart className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Purchases</h1>
+              <p className="text-slate-600">Manage vendor purchases and stock intake.</p>
+            </div>
+          </div>
+        </div>
+
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => { setEditingPurchase(null); resetForm(); }}>
+            <Button onClick={() => { setEditingPurchase(null); resetForm(); }} className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-lg">
               <Plus className="mr-2 h-4 w-4" />
               Create Purchase
             </Button>
@@ -807,68 +835,107 @@ export default function Purchases() {
         </Dialog>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Purchases</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+      {/* Enhanced Stats Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="relative overflow-hidden border-0 shadow-lg">
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-600 to-slate-700 opacity-95" />
+          <CardHeader className="relative pb-2">
+            <CardTitle className="text-sm font-medium text-white/90">Total Purchases</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-white">{stats.total}</div>
           </CardContent>
         </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+
+        <Card className="relative overflow-hidden border-0 shadow-lg">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-500 to-amber-600 opacity-95" />
+          <CardHeader className="relative pb-2">
+            <CardTitle className="text-sm font-medium text-white/90">Pending</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pending}</div>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-white">{stats.pending}</div>
           </CardContent>
         </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Received</CardTitle>
-            <Truck className="h-4 w-4 text-muted-foreground" />
+
+        <Card className="relative overflow-hidden border-0 shadow-lg">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600 opacity-95" />
+          <CardHeader className="relative pb-2">
+            <CardTitle className="text-sm font-medium text-white/90">Received</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.received}</div>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-white">{stats.received}</div>
           </CardContent>
         </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Value</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+
+        <Card className="relative overflow-hidden border-0 shadow-lg">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-emerald-600 opacity-95" />
+          <CardHeader className="relative pb-2">
+            <CardTitle className="text-sm font-medium text-white/90">Total Value</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatMoney(stats.totalAmount)}</div>
-            <p className="text-xs text-muted-foreground">Received orders</p>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold text-white">{formatMoney(stats.totalAmount)}</div>
+            <p className="text-xs text-white/80">Received orders</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search */}
-      <div className="flex items-center space-x-2">
-        <Search className="h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search purchases..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full md:max-w-md lg:max-w-lg"
-        />
+      {/* Filters and Search */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="flex items-center gap-2 col-span-2">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search purchases..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full"
+          />
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Status</Label>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="partial">Partial</SelectItem>
+              <SelectItem value="received">Received</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Vendor</Label>
+          <Select value={vendorFilter} onValueChange={setVendorFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="All vendors" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              {suppliers.map((s) => (
+                <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid grid-cols-2 gap-2 col-span-2 lg:col-span-4">
+          <div>
+            <Label className="text-xs text-muted-foreground">From</Label>
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">To</Label>
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          </div>
+        </div>
       </div>
 
       {/* Purchases Table */}
       <Card>
         <CardHeader>
           <CardTitle>All Purchases</CardTitle>
-          <CardDescription>
-            Manage your product purchases and track stock replenishment.
-          </CardDescription>
+          <CardDescription>Manage your product purchases and track stock replenishment.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -888,10 +955,10 @@ export default function Purchases() {
                   <TableRow key={purchase.id}>
                     <TableCell className="font-medium">{purchase.purchase_number}</TableCell>
                     <TableCell>{purchase.vendor_name}</TableCell>
-                    <TableCell>{format(new Date(purchase.created_at), 'MMM dd, yyyy')}</TableCell>
+                    <TableCell>{format(new Date(purchase.purchase_date || purchase.created_at), 'MMM dd, yyyy')}</TableCell>
                     <TableCell>{formatMoney(purchase.total_amount)}</TableCell>
                     <TableCell>
-                      <Badge className={getStatusBadge(purchase.status).props.className}>{purchase.status.toUpperCase()}</Badge>
+                      {getStatusBadge(purchase.status)}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
