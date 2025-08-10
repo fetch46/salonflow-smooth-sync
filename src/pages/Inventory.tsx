@@ -18,6 +18,8 @@ import { Link } from "react-router-dom";
 import { useMemo } from "react";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Columns3 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { useOrganization } from "@/lib/saas/hooks";
 
 // --- Type Definitions ---
 type InventoryItem = {
@@ -29,13 +31,15 @@ type InventoryItem = {
   unit: string;
   reorder_point: number;
   is_active: boolean;
-
+  cost_price?: number | null;
+  selling_price?: number | null;
 };
 
 // --- Form Components ---
 
 // A separate component for the Item Dialog Form
-const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem }) => {
+const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, locations }: { isOpen: boolean; onClose: (open: boolean) => void; onSubmit: (data: any) => Promise<void> | void; editingItem: any; locations: { id: string; name: string }[]; }) => {
+  const { organization } = useOrganization();
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -44,7 +48,18 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem }) => {
     reorder_point: 0,
     cost_price: 0,
     selling_price: 0,
+    is_taxable: false,
+    sales_account_id: "",
+    purchase_account_id: "",
+    inventory_account_id: "",
+    opening_stock_quantity: 0,
+    opening_stock_location_id: "",
   });
+
+  const [accountsLoading, setAccountsLoading] = useState<boolean>(false);
+  const [incomeAccounts, setIncomeAccounts] = useState<any[]>([]);
+  const [expenseAccounts, setExpenseAccounts] = useState<any[]>([]);
+  const [assetAccounts, setAssetAccounts] = useState<any[]>([]);
 
   useEffect(() => {
     if (editingItem) {
@@ -54,7 +69,14 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem }) => {
         sku: editingItem.sku || "",
         unit: editingItem.unit || "",
         reorder_point: editingItem.reorder_point || 0,
-
+        cost_price: Number(editingItem.cost_price || 0),
+        selling_price: Number(editingItem.selling_price || 0),
+        is_taxable: false,
+        sales_account_id: "",
+        purchase_account_id: "",
+        inventory_account_id: "",
+        opening_stock_quantity: 0,
+        opening_stock_location_id: "",
       });
     } else {
       setFormData({
@@ -65,9 +87,55 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem }) => {
         reorder_point: 0,
         cost_price: 0,
         selling_price: 0,
+        is_taxable: false,
+        sales_account_id: "",
+        purchase_account_id: "",
+        inventory_account_id: "",
+        opening_stock_quantity: 0,
+        opening_stock_location_id: "",
       });
     }
   }, [editingItem]);
+
+  // Load accounts and existing mapping if editing
+  useEffect(() => {
+    const loadAccounts = async () => {
+      try {
+        setAccountsLoading(true);
+        const { data: accs, error } = await supabase
+          .from("accounts")
+          .select("id, account_code, account_name, account_type, account_subtype")
+          .eq("organization_id", organization?.id || "");
+        if (error) throw error;
+        const accounts = accs || [];
+        setIncomeAccounts(accounts.filter((a: any) => a.account_type === 'Income'));
+        setExpenseAccounts(accounts.filter((a: any) => a.account_type === 'Expense'));
+        setAssetAccounts(accounts.filter((a: any) => a.account_type === 'Asset'));
+
+        if (editingItem?.id) {
+          const { data: mapping, error: mapErr } = await supabase
+            .from("inventory_item_accounts")
+            .select("sales_account_id, purchase_account_id, inventory_account_id, is_taxable")
+            .eq("item_id", editingItem.id)
+            .maybeSingle();
+          if (!mapErr && mapping) {
+            setFormData((prev) => ({
+              ...prev,
+              sales_account_id: mapping.sales_account_id || "",
+              purchase_account_id: mapping.purchase_account_id || "",
+              inventory_account_id: mapping.inventory_account_id || "",
+              is_taxable: !!mapping.is_taxable,
+            }));
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load accounts or item mapping', e);
+      } finally {
+        setAccountsLoading(false);
+      }
+    };
+    loadAccounts();
+  }, [organization?.id, editingItem?.id]);
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
@@ -118,6 +186,14 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem }) => {
                 required
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="sku">SKU</Label>
+              <Input
+                id="sku"
+                value={formData.sku}
+                onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -130,14 +206,6 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem }) => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="sku">SKU</Label>
-              <Input
-                id="sku"
-                value={formData.sku}
-                onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-              />
-            </div>
             <div className="space-y-2">
               <Label htmlFor="unit">Unit</Label>
               <Input
@@ -156,7 +224,127 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem }) => {
                 onChange={(e) => setFormData({ ...formData, reorder_point: parseInt(e.target.value) || 0 })}
               />
             </div>
+            <div className="space-y-2">
+              <Label>Taxable</Label>
+              <div className="flex h-10 items-center px-3 rounded-md border">
+                <Switch checked={formData.is_taxable} onCheckedChange={(v) => setFormData({ ...formData, is_taxable: v })} />
+                <span className="ml-2 text-sm text-muted-foreground">Charge tax when selling this item</span>
+              </div>
+            </div>
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="cost_price">Purchase Price</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="cost_price"
+                  type="number"
+                  step="0.01"
+                  value={formData.cost_price}
+                  onChange={(e) => setFormData({ ...formData, cost_price: parseFloat(e.target.value || '0') })}
+                />
+                <Button type="button" variant="outline" onClick={fillCostFromLastPurchase} disabled={!editingItem?.id}>
+                  Use last purchase
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="selling_price">Selling Price</Label>
+              <Input
+                id="selling_price"
+                type="number"
+                step="0.01"
+                value={formData.selling_price}
+                onChange={(e) => setFormData({ ...formData, selling_price: parseFloat(e.target.value || '0') })}
+              />
+            </div>
+          </div>
+
+          {/* Accounts selection */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label>Sales Account</Label>
+              <Select
+                value={formData.sales_account_id}
+                onValueChange={(v) => setFormData({ ...formData, sales_account_id: v })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={accountsLoading ? 'Loading...' : 'Select income account'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {incomeAccounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{`${a.account_code} - ${a.account_name}`}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Purchase Account</Label>
+              <Select
+                value={formData.purchase_account_id}
+                onValueChange={(v) => setFormData({ ...formData, purchase_account_id: v })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={accountsLoading ? 'Loading...' : 'Select expense account'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {expenseAccounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{`${a.account_code} - ${a.account_name}`}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Inventory Account</Label>
+              <Select
+                value={formData.inventory_account_id}
+                onValueChange={(v) => setFormData({ ...formData, inventory_account_id: v })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={accountsLoading ? 'Loading...' : 'Select asset account'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {assetAccounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{`${a.account_code} - ${a.account_name}`}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Opening stock section (only when creating a new item) */}
+          {!editingItem && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="opening_stock_quantity">Opening Stock Quantity</Label>
+                <Input
+                  id="opening_stock_quantity"
+                  type="number"
+                  value={formData.opening_stock_quantity}
+                  onChange={(e) => setFormData({ ...formData, opening_stock_quantity: parseFloat(e.target.value || '0') })}
+                />
+              </div>
+              {Number(formData.opening_stock_quantity || 0) > 0 && (
+                <div className="space-y-2">
+                  <Label>Opening Stock Location</Label>
+                  <Select
+                    value={formData.opening_stock_location_id}
+                    onValueChange={(v) => setFormData({ ...formData, opening_stock_location_id: v })}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {locations.map((loc) => (
+                        <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
@@ -296,11 +484,52 @@ export default function Inventory() {
           selling_price: formData.selling_price,
         }).eq("id", editingItem.id);
         if (error) throw error;
+        // Upsert per-item account mapping and tax flag
+        await supabase.from('inventory_item_accounts').upsert({
+          item_id: editingItem.id,
+          sales_account_id: formData.sales_account_id || null,
+          purchase_account_id: formData.purchase_account_id || null,
+          inventory_account_id: formData.inventory_account_id || null,
+          is_taxable: !!formData.is_taxable,
+        }, { onConflict: 'item_id' });
         toast({ title: "Success", description: "Product updated successfully" });
       } else {
         const payload = { ...formData, type: "good" };
-        const { error } = await supabase.from("inventory_items").insert(payload);
+        const { data: inserted, error } = await supabase
+          .from("inventory_items")
+          .insert({
+            name: payload.name,
+            description: payload.description,
+            sku: payload.sku,
+            unit: payload.unit,
+            reorder_point: payload.reorder_point,
+            cost_price: payload.cost_price,
+            selling_price: payload.selling_price,
+            type: 'good',
+          })
+          .select('id')
+          .single();
         if (error) throw error;
+        const newItemId = inserted?.id;
+        if (newItemId) {
+          // Save mapping
+          await supabase.from('inventory_item_accounts').upsert({
+            item_id: newItemId,
+            sales_account_id: formData.sales_account_id || null,
+            purchase_account_id: formData.purchase_account_id || null,
+            inventory_account_id: formData.inventory_account_id || null,
+            is_taxable: !!formData.is_taxable,
+          }, { onConflict: 'item_id' });
+          // Opening stock if provided
+          const openingQty = Number(formData.opening_stock_quantity || 0);
+          if (openingQty > 0 && formData.opening_stock_location_id) {
+            await supabase.from('inventory_levels').upsert({
+              item_id: newItemId,
+              location_id: formData.opening_stock_location_id,
+              quantity: openingQty,
+            });
+          }
+        }
         toast({ title: "Success", description: "Product created successfully" });
       }
       setIsItemDialogOpen(false);
@@ -488,6 +717,7 @@ export default function Inventory() {
         onClose={() => setIsItemDialogOpen(false)}
         onSubmit={handleItemSubmit}
         editingItem={editingItem}
+        locations={locations}
       />
 
       <Tabs defaultValue="goods" className="space-y-6">
