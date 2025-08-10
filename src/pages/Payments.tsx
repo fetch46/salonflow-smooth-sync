@@ -8,11 +8,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Edit, Trash2, ReceiptText, RefreshCw } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarRange, Download, Edit, Filter, MoreVertical, ReceiptText, RefreshCw, Search, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { getReceiptsWithFallback, getAllReceiptPaymentsWithFallback, updateReceiptPaymentWithFallback, deleteReceiptPaymentWithFallback } from "@/utils/mockDatabase";
 import { useNavigate } from "react-router-dom";
+import type { DateRange } from "react-day-picker";
 
 interface ReceiptPayment {
   id: string;
@@ -66,6 +72,10 @@ export default function Payments() {
   const [receiptsById, setReceiptsById] = useState<Record<string, ReceiptLite>>({});
   const [clientsById, setClientsById] = useState<Record<string, ClientLite>>({});
   const [searchReceived, setSearchReceived] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [methodFilter, setMethodFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   // Made
   const [expenses, setExpenses] = useState<ExpenseLite[]>([]);
@@ -177,18 +187,31 @@ export default function Payments() {
     return payments.filter(p => {
       const r = receiptsById[p.receipt_id];
       const clientName = r?.customer_id ? (clientsById[r.customer_id]?.full_name || '') : '';
-      return (
+      const matchesQuery = (
         (r?.receipt_number || '').toLowerCase().includes(s) ||
         clientName.toLowerCase().includes(s) ||
         (p.method || '').toLowerCase().includes(s) ||
         (p.reference_number || '').toLowerCase().includes(s)
       );
+
+      const paymentDate = new Date(p.payment_date || r?.created_at || new Date());
+      const inDateRange = dateRange?.from && dateRange?.to
+        ? paymentDate >= new Date(dateRange.from.setHours(0,0,0,0)) && paymentDate <= new Date(dateRange.to.setHours(23,59,59,999))
+        : true;
+
+      const matchesMethod = methodFilter === 'all' ? true : (p.method || '').toLowerCase() === methodFilter.toLowerCase();
+
+      return matchesQuery && inDateRange && matchesMethod;
     });
-  }, [payments, receiptsById, clientsById, searchReceived]);
+  }, [payments, receiptsById, clientsById, searchReceived, dateRange, methodFilter]);
+
+  useEffect(() => { setPage(1); }, [searchReceived, dateRange, methodFilter]);
 
   const totalsReceived = useMemo(() => {
     const total = filteredReceived.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-    return { total };
+    const count = filteredReceived.length;
+    const avg = count ? total / count : 0;
+    return { total, count, avg };
   }, [filteredReceived]);
 
   const filteredExpenses = useMemo(() => {
@@ -208,6 +231,36 @@ export default function Payments() {
       (p.status || '').toLowerCase().includes(s)
     ));
   }, [purchases, searchMade]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredReceived.length / pageSize));
+  const paginatedReceived = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredReceived.slice(start, start + pageSize);
+  }, [filteredReceived, page, pageSize]);
+
+  const exportCsv = () => {
+    try {
+      const headers = ["Receipt #", "Client", "Payment Date", "Amount", "Method", "Reference"];
+      const rows = filteredReceived.map(p => {
+        const r = receiptsById[p.receipt_id];
+        const clientName = r?.customer_id ? (clientsById[r.customer_id]?.full_name || '—') : 'Walk-in';
+        const dateStr = format(new Date(p.payment_date || r?.created_at || new Date()), 'yyyy-MM-dd');
+        return [r?.receipt_number || '—', clientName, dateStr, String(Number(p.amount || 0).toFixed(2)), (p.method || '').toUpperCase(), p.reference_number || '—'];
+      });
+      const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `payments_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error('Failed to export CSV');
+    }
+  };
 
   if (loading) {
     return (
@@ -229,6 +282,10 @@ export default function Payments() {
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
+          <Button variant="outline" onClick={exportCsv}>
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
         </div>
       </div>
 
@@ -244,13 +301,87 @@ export default function Payments() {
               <CardHeader className="pb-2"><CardTitle className="text-sm">Total Received</CardTitle></CardHeader>
               <CardContent className="text-2xl font-semibold">${totalsReceived.total.toFixed(2)}</CardContent>
             </Card>
-            <Card className="md:col-span-2">
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Search</CardTitle></CardHeader>
-              <CardContent>
-                <Input placeholder="Search by receipt, client, method, reference..." value={searchReceived} onChange={(e) => setSearchReceived(e.target.value)} />
-              </CardContent>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Payments Count</CardTitle></CardHeader>
+              <CardContent className="text-2xl font-semibold">{totalsReceived.count}</CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Average Amount</CardTitle></CardHeader>
+              <CardContent className="text-2xl font-semibold">${totalsReceived.avg.toFixed(2)}</CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Filters</CardTitle></CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
+                <div className="relative md:w-[340px] w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    className="pl-9"
+                    placeholder="Search by receipt, client, method, reference..."
+                    value={searchReceived}
+                    onChange={(e) => setSearchReceived(e.target.value)}
+                  />
+                </div>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="justify-start w-full md:w-[260px]">
+                      <CalendarRange className="mr-2 h-4 w-4" />
+                      {dateRange?.from && dateRange?.to ? (
+                        <span>{format(dateRange.from, 'MMM d, yyyy')} - {format(dateRange.to, 'MMM d, yyyy')}</span>
+                      ) : (
+                        <span>Select date range</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0" align="start">
+                    <Calendar
+                      mode="range"
+                      selected={dateRange}
+                      onSelect={setDateRange}
+                      numberOfMonths={2}
+                    />
+                    <div className="flex items-center justify-end gap-2 p-3 pt-0">
+                      <Button variant="ghost" size="sm" onClick={() => setDateRange(undefined)}>Clear</Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                <div className="flex items-center gap-2 w-full md:w-auto">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <Select value={methodFilter} onValueChange={setMethodFilter}>
+                    <SelectTrigger className="w-full md:w-[180px]">
+                      <SelectValue placeholder="Method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Methods</SelectItem>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="card">Card</SelectItem>
+                      <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                      <SelectItem value="mpesa">M-Pesa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button variant="ghost" onClick={() => { setSearchReceived(''); setDateRange(undefined); setMethodFilter('all'); }}>
+                  Clear filters
+                </Button>
+
+                <div className="ml-auto flex items-center gap-2">
+                  <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                    <SelectTrigger className="w-[110px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10 / page</SelectItem>
+                      <SelectItem value="25">25 / page</SelectItem>
+                      <SelectItem value="50">50 / page</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
@@ -259,7 +390,7 @@ export default function Payments() {
             <CardContent>
               <div className="overflow-x-auto">
                 <Table className="w-full">
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <TableRow>
                       <TableHead>Receipt #</TableHead>
                       <TableHead>Client</TableHead>
@@ -271,11 +402,18 @@ export default function Payments() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredReceived.map((p) => {
+                    {paginatedReceived.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                          No payments found. Adjust filters or try a different search.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {paginatedReceived.map((p) => {
                       const r = receiptsById[p.receipt_id];
                       const clientName = r?.customer_id ? (clientsById[r.customer_id]?.full_name || '—') : 'Walk-in';
                       return (
-                        <TableRow key={p.id}>
+                        <TableRow key={p.id} className="hover:bg-muted/50">
                           <TableCell className="font-medium">{r?.receipt_number || '—'}</TableCell>
                           <TableCell>{clientName}</TableCell>
                           <TableCell>{format(new Date(p.payment_date || r?.created_at || new Date()), 'MMM dd, yyyy')}</TableCell>
@@ -283,23 +421,43 @@ export default function Payments() {
                           <TableCell>{(p.method || '').toUpperCase()}</TableCell>
                           <TableCell>{p.reference_number || '—'}</TableCell>
                           <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button variant="outline" size="sm" onClick={() => r?.id && navigate(`/receipts/${r.id}`)}>
-                                <ReceiptText className="w-4 h-4 mr-2" /> View Payment Receipt
-                              </Button>
-                              <Button variant="outline" size="sm" onClick={() => openEdit(p)}>
-                                <Edit className="w-4 h-4 mr-2" /> Edit Payment
-                              </Button>
-                              <Button variant="outline" size="sm" className="text-red-600" onClick={() => deletePayment(p)}>
-                                <Trash2 className="w-4 h-4 mr-2" /> Delete Payment
-                              </Button>
-                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuItem onClick={() => r?.id && navigate(`/receipts/${r.id}`)}>
+                                  <ReceiptText className="mr-2 h-4 w-4" /> View Payment Receipt
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openEdit(p)}>
+                                  <Edit className="mr-2 h-4 w-4" /> Edit Payment
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-red-600" onClick={() => deletePayment(p)}>
+                                  <Trash2 className="mr-2 h-4 w-4" /> Delete Payment
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
                       );
                     })}
                   </TableBody>
                 </Table>
+              </div>
+              <div className="mt-4">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious onClick={() => setPage(p => Math.max(1, p - 1))} />
+                    </PaginationItem>
+                    <span className="px-2 text-sm text-muted-foreground">Page {page} of {totalPages}</span>
+                    <PaginationItem>
+                      <PaginationNext onClick={() => setPage(p => Math.min(totalPages, p + 1))} />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
               </div>
             </CardContent>
           </Card>
@@ -310,7 +468,10 @@ export default function Payments() {
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Search</CardTitle></CardHeader>
               <CardContent>
-                <Input placeholder="Search expenses & purchases..." value={searchMade} onChange={(e) => setSearchMade(e.target.value)} />
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input className="pl-9" placeholder="Search expenses & purchases..." value={searchMade} onChange={(e) => setSearchMade(e.target.value)} />
+                </div>
               </CardContent>
             </Card>
             <Card>
@@ -333,7 +494,7 @@ export default function Payments() {
             <CardContent>
               <div className="overflow-x-auto">
                 <Table className="w-full">
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <TableRow>
                       <TableHead>Expense #</TableHead>
                       <TableHead>Vendor</TableHead>
@@ -345,8 +506,13 @@ export default function Payments() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
+                    {filteredExpenses.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">No expenses found.</TableCell>
+                      </TableRow>
+                    )}
                     {filteredExpenses.map((e) => (
-                      <TableRow key={e.id}>
+                      <TableRow key={e.id} className="hover:bg-muted/50">
                         <TableCell className="font-medium">{e.expense_number}</TableCell>
                         <TableCell>{e.vendor_name}</TableCell>
                         <TableCell>{format(new Date(e.expense_date), 'MMM dd, yyyy')}</TableCell>
@@ -358,20 +524,27 @@ export default function Payments() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" onClick={() => { if (e.receipt_url) window.open(e.receipt_url, '_blank'); }} disabled={!e.receipt_url}>
-                              <ReceiptText className="w-4 h-4 mr-2" /> View Payment Receipt
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => navigate('/expenses')}>
-                              <Edit className="w-4 h-4 mr-2" /> Edit Payment
-                            </Button>
-                            <Button variant="outline" size="sm" className="text-red-600" onClick={async () => {
-                              if (!confirm('Delete this expense?')) return;
-                              try { await supabase.from('expenses').delete().eq('id', e.id); toast.success('Expense deleted'); loadData(); } catch { toast.error('Failed to delete expense'); }
-                            }}>
-                              <Trash2 className="w-4 h-4 mr-2" /> Delete Payment
-                            </Button>
-                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => { if (e.receipt_url) window.open(e.receipt_url, '_blank'); }} disabled={!e.receipt_url}>
+                                <ReceiptText className="mr-2 h-4 w-4" /> View Payment Receipt
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate('/expenses')}>
+                                <Edit className="mr-2 h-4 w-4" /> Edit Payment
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-red-600" onClick={async () => {
+                                if (!confirm('Delete this expense?')) return;
+                                try { await supabase.from('expenses').delete().eq('id', e.id); toast.success('Expense deleted'); loadData(); } catch { toast.error('Failed to delete expense'); }
+                              }}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete Payment
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -388,7 +561,7 @@ export default function Payments() {
             <CardContent>
               <div className="overflow-x-auto">
                 <Table className="w-full">
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <TableRow>
                       <TableHead>Purchase #</TableHead>
                       <TableHead>Vendor</TableHead>
@@ -399,8 +572,13 @@ export default function Payments() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
+                    {filteredPurchases.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">No purchases found.</TableCell>
+                      </TableRow>
+                    )}
                     {filteredPurchases.map((p) => (
-                      <TableRow key={p.id}>
+                      <TableRow key={p.id} className="hover:bg-muted/50">
                         <TableCell className="font-medium">{p.purchase_number}</TableCell>
                         <TableCell>{p.vendor_name}</TableCell>
                         <TableCell>{format(new Date(p.purchase_date || p.created_at || new Date()), 'MMM dd, yyyy')}</TableCell>
@@ -411,20 +589,27 @@ export default function Payments() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" disabled>
-                              <ReceiptText className="w-4 h-4 mr-2" /> View Payment Receipt
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => navigate('/purchases')}>
-                              <Edit className="w-4 h-4 mr-2" /> Edit Payment
-                            </Button>
-                            <Button variant="outline" size="sm" className="text-red-600" onClick={async () => {
-                              if (!confirm('Delete this purchase?')) return;
-                              try { await supabase.from('purchases').delete().eq('id', p.id); toast.success('Purchase deleted'); loadData(); } catch { toast.error('Failed to delete purchase'); }
-                            }}>
-                              <Trash2 className="w-4 h-4 mr-2" /> Delete Payment
-                            </Button>
-                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem disabled>
+                                <ReceiptText className="mr-2 h-4 w-4" /> View Payment Receipt
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate('/purchases')}>
+                                <Edit className="mr-2 h-4 w-4" /> Edit Payment
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-red-600" onClick={async () => {
+                                if (!confirm('Delete this purchase?')) return;
+                                try { await supabase.from('purchases').delete().eq('id', p.id); toast.success('Purchase deleted'); loadData(); } catch { toast.error('Failed to delete purchase'); }
+                              }}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete Payment
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
