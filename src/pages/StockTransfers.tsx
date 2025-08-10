@@ -18,8 +18,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { addDays, format, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays } from "date-fns";
 import { DateRange } from "react-day-picker";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 
 interface InventoryItem { id: string; name: string; cost_price?: number | null; selling_price?: number | null; unit?: string | null }
 interface Location { id: string; name: string; }
@@ -317,19 +315,6 @@ export default function StockTransfers() {
     return { totalTransfers, totalQuantity, uniqueItems, uniqueLocations };
   }, [filteredTransfers]);
 
-  const chartData = useMemo(() => {
-    // Group by date (YYYY-MM-DD)
-    const map = new Map<string, number>();
-    filteredTransfers.forEach((t) => {
-      const key = new Date(t.created_at).toISOString().slice(0, 10);
-      map.set(key, (map.get(key) || 0) + Number(t.quantity || 0));
-    });
-    const entries = Array.from(map.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([date, qty]) => ({ date, qty }));
-    return entries;
-  }, [filteredTransfers]);
-
   const applyQuickRange = (key: string) => {
     setQuickRange(key);
     const today = new Date();
@@ -411,37 +396,7 @@ export default function StockTransfers() {
       </div>
 
       {/* Trend Chart + Filters */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="md:col-span-2">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Transfer Quantity Trend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={{ qty: { label: "Quantity", color: "hsl(var(--primary))" } }}
-              className="h-[180px] w-full"
-            >
-              <AreaChart data={chartData} margin={{ left: 12, right: 12 }}>
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v) => format(new Date(v), "MM/dd")}
-                  minTickGap={24}
-                />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Area
-                  dataKey="qty"
-                  type="monotone"
-                  stroke="var(--color-qty)"
-                  fill="var(--color-qty)"
-                  fillOpacity={0.15}
-                />
-              </AreaChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Filters</CardTitle>
