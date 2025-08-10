@@ -81,6 +81,10 @@ export function AppTopbar() {
         <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0">
           <SidebarTrigger className="md:hidden" />
 
+          <Button size="sm" className="inline-flex bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700" onClick={() => navigate('/pos')}>
+            POS
+          </Button>
+
           {organizations.length > 1 && (
             <Select value={organization?.id || ""} onValueChange={switchOrganization}>
               <SelectTrigger className="w-44 md:w-56 bg-muted/50">
