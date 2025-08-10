@@ -233,7 +233,8 @@ export default function InventoryAdjustments() {
       fetchAdjustments();
     } catch (error) {
       console.error("Error approving adjustment:", error);
-      toast.error("Failed to approve adjustment");
+      const message = (error as any)?.message || (typeof error === "string" ? error : "");
+      toast.error(message ? `Failed to approve adjustment: ${message}` : "Failed to approve adjustment");
     } finally {
       setLoading(false);
     }
