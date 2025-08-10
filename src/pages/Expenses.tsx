@@ -13,6 +13,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Plus, Search, Receipt, DollarSign, TrendingUp, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { useSaas } from "@/lib/saas";
 
 interface Expense {
   id: string;
@@ -30,6 +31,14 @@ interface Expense {
   updated_at: string;
 }
 
+interface AccountOption {
+  id: string;
+  account_code: string;
+  account_name: string;
+  account_type: string;
+  account_subtype: string | null;
+}
+
 export default function Expenses() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -37,6 +46,7 @@ export default function Expenses() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const { toast } = useToast();
+  const { organization } = useSaas();
 
   const [formData, setFormData] = useState({
     expense_number: "",
@@ -50,6 +60,8 @@ export default function Expenses() {
     status: "pending",
     notes: "",
   });
+
+  const [expenseAccounts, setExpenseAccounts] = useState<AccountOption[]>([]);
 
   const fetchExpenses = useCallback(async () => {
     try {
@@ -76,6 +88,63 @@ export default function Expenses() {
   useEffect(() => {
     fetchExpenses();
   }, [fetchExpenses]);
+
+  const fetchExpenseAccounts = useCallback(async () => {
+    try {
+      const orgId = organization?.id || null;
+
+      // Try subtype-aware query first
+      let data: any[] | null = null;
+      let error: any = null;
+      try {
+        const baseSel = supabase
+          .from("accounts")
+          .select("id, account_code, account_name, account_type, account_subtype")
+          .eq("account_type", "Expense")
+          .eq("account_subtype", "Expense")
+          .order("account_code", { ascending: true });
+        if (orgId) {
+          const scoped = await baseSel.eq("organization_id", orgId);
+          data = scoped.data as any[] | null;
+          error = scoped.error;
+        } else {
+          const res = await baseSel;
+          data = (res as any).data as any[] | null;
+          error = (res as any).error;
+        }
+      } catch (innerErr: any) {
+        error = innerErr;
+      }
+
+      if (error) {
+        const message = String(error?.message || "");
+        if (message.includes("account_subtype") || (message.toLowerCase().includes("column") && message.toLowerCase().includes("does not exist"))) {
+          // Fallback: filter only by type
+          const baseSel = supabase
+            .from("accounts")
+            .select("id, account_code, account_name, account_type")
+            .eq("account_type", "Expense")
+            .order("account_code", { ascending: true });
+          const scoped = orgId ? await baseSel.eq("organization_id", orgId) : await baseSel;
+          if (scoped.error) throw scoped.error;
+          data = scoped.data as any[] | null;
+        } else {
+          throw error;
+        }
+      }
+
+      setExpenseAccounts((data || []) as AccountOption[]);
+    } catch (err) {
+      console.warn("Failed to load expense accounts", err);
+      setExpenseAccounts([]);
+    }
+  }, [organization?.id]);
+
+  useEffect(() => {
+    if (isModalOpen) {
+      fetchExpenseAccounts();
+    }
+  }, [isModalOpen, fetchExpenseAccounts]);
 
 
   const generateExpenseNumber = () => {
@@ -307,19 +376,15 @@ export default function Expenses() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="category">Category</Label>
+                    <Label htmlFor="category">Account</Label>
                     <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
+                        <SelectValue placeholder="Select expense account" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Office Supplies">Office Supplies</SelectItem>
-                        <SelectItem value="Utilities">Utilities</SelectItem>
-                        <SelectItem value="Marketing">Marketing</SelectItem>
-                        <SelectItem value="Travel">Travel</SelectItem>
-                        <SelectItem value="Equipment">Equipment</SelectItem>
-                        <SelectItem value="Professional Services">Professional Services</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
+                        {expenseAccounts.map(acc => (
+                          <SelectItem key={acc.id} value={acc.account_name}>{acc.account_code} - {acc.account_name}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
