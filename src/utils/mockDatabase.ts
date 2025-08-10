@@ -628,3 +628,83 @@ export async function deleteReceiptPaymentWithFallback(supabase: any, id: string
     return true;
   }
 }
+
+export async function getReceiptItemsByServiceWithFallback(
+  supabase: any,
+  serviceId: string
+): Promise<Array<{
+  id: string;
+  receipt_id: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  staff_id: string | null;
+  created_at: string;
+  receipt_number?: string | null;
+  receipt_created_at?: string | null;
+  customer_id?: string | null;
+  staff_name?: string | null;
+}>> {
+  try {
+    const { data, error } = await supabase
+      .from('receipt_items')
+      .select(`
+        id, receipt_id, description, quantity, unit_price, total_price, staff_id, created_at,
+        receipts:receipt_id ( id, receipt_number, created_at, customer_id ),
+        staff:staff_id ( id, full_name )
+      `)
+      .eq('service_id', serviceId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+
+    const rows = (data || []).map((it: any) => ({
+      id: it.id,
+      receipt_id: it.receipt_id,
+      description: it.description,
+      quantity: Number(it.quantity) || 0,
+      unit_price: Number(it.unit_price) || 0,
+      total_price: Number(it.total_price) || 0,
+      staff_id: it.staff_id || null,
+      created_at: it.created_at,
+      receipt_number: it.receipts?.receipt_number || null,
+      receipt_created_at: it.receipts?.created_at || null,
+      customer_id: it.receipts?.customer_id || null,
+      staff_name: it.staff?.full_name || null,
+    }));
+
+    return rows;
+  } catch (err) {
+    // Fallback to local storage
+    try {
+      const storage = getStorage();
+      const items = (storage.receipt_items || []).filter((x: any) => x.service_id === serviceId);
+      const receiptsById: Record<string, any> = {};
+      for (const r of (storage.receipts || [])) {
+        receiptsById[r.id] = r;
+      }
+      return items
+        .map((it: any) => {
+          const rec = receiptsById[it.receipt_id] || null;
+          return {
+            id: it.id,
+            receipt_id: it.receipt_id,
+            description: it.description || 'Item',
+            quantity: Number(it.quantity) || 0,
+            unit_price: Number(it.unit_price) || 0,
+            total_price: Number(it.total_price) || ((Number(it.quantity) || 0) * (Number(it.unit_price) || 0)),
+            staff_id: it.staff_id || null,
+            created_at: it.created_at,
+            receipt_number: rec?.receipt_number || null,
+            receipt_created_at: rec?.created_at || null,
+            customer_id: rec?.customer_id || null,
+            staff_name: null,
+          };
+        })
+        .sort((a: any, b: any) => String(b.created_at).localeCompare(String(a.created_at)));
+    } catch (e) {
+      console.error('Local fallback failed for getReceiptItemsByServiceWithFallback', e);
+      return [];
+    }
+  }
+}
