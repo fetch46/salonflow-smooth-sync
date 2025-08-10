@@ -15,6 +15,9 @@ import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
+import { useMemo } from "react";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Columns3 } from "lucide-react";
 
 // --- Type Definitions ---
 type InventoryItem = {
@@ -184,6 +187,23 @@ export default function Inventory() {
   const [locationsLoading, setLocationsLoading] = useState<boolean>(false);
   const [selectedLocationId, setSelectedLocationId] = useState<string>("all");
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const defaultVisibleColumns = {
+    sku: true,
+    unit: true,
+    quantity: true,
+    reorder_point: true,
+    status: true,
+  } as const;
+  const [visibleColumns, setVisibleColumns] = useState<{ sku: boolean; unit: boolean; quantity: boolean; reorder_point: boolean; status: boolean }>(
+    () => {
+      try {
+        const stored = localStorage.getItem('inventory_visible_columns');
+        return stored ? { ...defaultVisibleColumns, ...JSON.parse(stored) } : { ...defaultVisibleColumns };
+      } catch {
+        return { ...defaultVisibleColumns };
+      }
+    }
+  );
 
   // Currency formatter
   const { format: formatMoney } = useOrganizationCurrency();
@@ -255,6 +275,13 @@ export default function Inventory() {
     fetchLevels();
     fetchLocations();
   }, [fetchData, fetchLevels, fetchLocations]);
+
+  // Persist visible columns
+  useEffect(() => {
+    try {
+      localStorage.setItem('inventory_visible_columns', JSON.stringify(visibleColumns));
+    } catch { /* ignore */ }
+  }, [visibleColumns]);
 
   const handleItemSubmit = async (formData) => {
     try {
@@ -334,6 +361,16 @@ export default function Inventory() {
 
   // New: filter levels by selected location and compute metrics
   const filteredLevels = selectedLocationId === 'all' ? levels : levels.filter(l => l.location_id === selectedLocationId);
+  // Map item -> quantity across filtered levels (all locations or selected location)
+  const itemIdToQty: Map<string, number> = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const lvl of filteredLevels) {
+      const id = String(lvl.item_id);
+      const prev = map.get(id) || 0;
+      map.set(id, prev + Number(lvl.quantity || 0));
+    }
+    return map;
+  }, [filteredLevels]);
   const totals = (() => {
     let totalQty = 0;
     let totalCost = 0;
@@ -357,8 +394,10 @@ export default function Inventory() {
             <TableHead>Name</TableHead>
             <TableHead className="hidden sm:table-cell">SKU</TableHead>
             <TableHead className="hidden md:table-cell">Unit</TableHead>
+            <TableHead className="text-right hidden lg:table-cell">Quantity</TableHead>
             <TableHead className="hidden lg:table-cell">Reorder Point</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -367,8 +406,10 @@ export default function Inventory() {
               <TableCell><Skeleton className="h-4 w-[180px]" /></TableCell>
               <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-[120px]" /></TableCell>
               <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
+              <TableCell className="text-right hidden lg:table-cell"><Skeleton className="h-4 w-[60px] ml-auto" /></TableCell>
               <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-[60px]" /></TableCell>
               <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+              <TableCell className="text-right"><Skeleton className="h-4 w-[80px] ml-auto" /></TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -482,6 +523,45 @@ export default function Inventory() {
                     </SelectContent>
                   </Select>
                 </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="ml-auto">
+                      <Columns3 className="w-4 h-4 mr-2" /> Columns
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuCheckboxItem
+                      checked={visibleColumns.quantity}
+                      onCheckedChange={(v) => setVisibleColumns((prev) => ({ ...prev, quantity: !!v }))}
+                    >
+                      Quantity
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                      checked={visibleColumns.sku}
+                      onCheckedChange={(v) => setVisibleColumns((prev) => ({ ...prev, sku: !!v }))}
+                    >
+                      SKU
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                      checked={visibleColumns.unit}
+                      onCheckedChange={(v) => setVisibleColumns((prev) => ({ ...prev, unit: !!v }))}
+                    >
+                      Unit
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                      checked={visibleColumns.reorder_point}
+                      onCheckedChange={(v) => setVisibleColumns((prev) => ({ ...prev, reorder_point: !!v }))}
+                    >
+                      Reorder Point
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                      checked={visibleColumns.status}
+                      onCheckedChange={(v) => setVisibleColumns((prev) => ({ ...prev, status: !!v }))}
+                    >
+                      Status
+                    </DropdownMenuCheckboxItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </CardHeader>
             <CardContent>
@@ -491,10 +571,21 @@ export default function Inventory() {
                     <TableHeader className="sticky top-0 bg-background z-10">
                       <TableRow>
                         <TableHead>Name</TableHead>
-                        <TableHead className="hidden sm:table-cell">SKU</TableHead>
-                        <TableHead className="hidden md:table-cell">Unit</TableHead>
-                        <TableHead className="hidden lg:table-cell">Reorder Point</TableHead>
-                        <TableHead>Status</TableHead>
+                        {visibleColumns.sku && (
+                          <TableHead className="hidden sm:table-cell">SKU</TableHead>
+                        )}
+                        {visibleColumns.unit && (
+                          <TableHead className="hidden md:table-cell">Unit</TableHead>
+                        )}
+                        {visibleColumns.quantity && (
+                          <TableHead className="text-right">Quantity</TableHead>
+                        )}
+                        {visibleColumns.reorder_point && (
+                          <TableHead className="hidden lg:table-cell">Reorder Point</TableHead>
+                        )}
+                        {visibleColumns.status && (
+                          <TableHead>Status</TableHead>
+                        )}
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -507,16 +598,27 @@ export default function Inventory() {
                                 {item.name}
                               </Link>
                             </TableCell>
-                            <TableCell className="hidden sm:table-cell">{item.sku}</TableCell>
-                            <TableCell className="hidden md:table-cell">{item.unit}</TableCell>
-                            <TableCell className="hidden lg:table-cell">{item.reorder_point}</TableCell>
-                            <TableCell>
-                              {item.is_active ? (
-                                <Badge variant="secondary">Active</Badge>
-                              ) : (
-                                <Badge variant="outline">Inactive</Badge>
-                              )}
-                            </TableCell>
+                            {visibleColumns.sku && (
+                              <TableCell className="hidden sm:table-cell">{item.sku}</TableCell>
+                            )}
+                            {visibleColumns.unit && (
+                              <TableCell className="hidden md:table-cell">{item.unit}</TableCell>
+                            )}
+                            {visibleColumns.quantity && (
+                              <TableCell className="text-right">{new Intl.NumberFormat('en-US').format(itemIdToQty.get(item.id) || 0)}</TableCell>
+                            )}
+                            {visibleColumns.reorder_point && (
+                              <TableCell className="hidden lg:table-cell">{item.reorder_point}</TableCell>
+                            )}
+                            {visibleColumns.status && (
+                              <TableCell>
+                                {item.is_active ? (
+                                  <Badge variant="secondary">Active</Badge>
+                                ) : (
+                                  <Badge variant="outline">Inactive</Badge>
+                                )}
+                              </TableCell>
+                            )}
                             <TableCell className="text-right">
                               <Button variant="ghost" size="sm" onClick={() => handleEditItem(item)}>
                                 <Edit className="w-4 h-4" />
