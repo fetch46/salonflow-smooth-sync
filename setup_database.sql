@@ -201,3 +201,6 @@ DO $$
 BEGIN
     RAISE NOTICE 'Database setup completed successfully!';
 END $$;
+
+-- 7. Force PostgREST to reload schema (ensure new tables are visible)
+\i supabase/migrations/20250821100000_reload_schema_after_business_locations.sql
