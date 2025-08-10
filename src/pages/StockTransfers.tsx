@@ -461,7 +461,6 @@ export default function StockTransfers() {
       <Tabs defaultValue="new" className="space-y-6">
         <TabsList>
           <TabsTrigger value="new">New Transfer</TabsTrigger>
-          <TabsTrigger value="levels">Levels</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 
@@ -535,37 +534,6 @@ export default function StockTransfers() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="levels">
-          {/* Levels Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Current Levels</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table className="w-full">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Item</TableHead>
-                      <TableHead className="text-right">Quantity</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {!loading &&
-                      levels.map((row) => (
-                        <TableRow key={row.id}>
-                          <TableCell>{row.business_locations?.name || row.location_id}</TableCell>
-                          <TableCell>{row.inventory_items?.name || row.item_id}</TableCell>
-                          <TableCell className="text-right">{Number(row.quantity || 0)}</TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="history">
           <Card>

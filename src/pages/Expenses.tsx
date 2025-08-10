@@ -278,6 +278,8 @@ export default function Expenses() {
         location_id: formData.location_id || null,
       } as any;
 
+      let saved: Expense | null = null;
+
       if (editingExpense) {
         const { data: updated, error } = await supabase
           .from("expenses")
@@ -287,19 +289,36 @@ export default function Expenses() {
           .single();
 
         if (error) throw error;
-
-        }
+        saved = (updated || null) as Expense | null;
         toast({
           title: "Success",
           description: "Expense updated successfully",
         });
       } else {
+        const { data: created, error } = await supabase
+          .from("expenses")
+          .insert([expenseData])
+          .select("*")
+          .single();
 
-        }
+        if (error) throw error;
+        saved = (created || null) as Expense | null;
         toast({
           title: "Success",
           description: "Expense created successfully",
         });
+      }
+
+      // If marked as paid, ensure bank transaction exists/updated
+      if (formData.status === 'paid' && paidFromAccountId && saved?.id) {
+        await upsertExpenseBankTransaction(
+          saved.id,
+          amountNumber,
+          formData.expense_date,
+          formData.description,
+          paidFromAccountId,
+          formData.location_id || null
+        );
       }
 
       setIsModalOpen(false);
