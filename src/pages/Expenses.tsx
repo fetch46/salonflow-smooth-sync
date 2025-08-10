@@ -107,6 +107,20 @@ export default function Expenses() {
     }
   };
 
+  const fetchLocations = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("business_locations")
+        .select("id, name")
+        .order("name");
+      if (error) throw error;
+      setLocations((data || []) as LocationOption[]);
+    } catch (err) {
+      console.warn("Failed to load business locations", err);
+      setLocations([]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchExpenses();
     fetchLocations();
@@ -182,20 +196,6 @@ export default function Expenses() {
     } catch (err) {
       console.warn("Failed to load payment accounts", err);
       setPaymentAccounts([]);
-    }
-  }, []);
-
-  const fetchLocations = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from("business_locations")
-        .select("id, name")
-        .order("name");
-      if (error) throw error;
-      setLocations((data || []) as LocationOption[]);
-    } catch (err) {
-      console.warn("Failed to load business locations", err);
-      setLocations([]);
     }
   }, []);
 
