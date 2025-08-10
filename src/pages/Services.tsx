@@ -1330,6 +1330,7 @@ export default function Services() {
                             )}
                           </div>
 
+                          {typeof service.commission_percentage === 'number' && (
                             <div className="text-xs text-slate-500">
                               {service.commission_percentage}% commission
                             </div>

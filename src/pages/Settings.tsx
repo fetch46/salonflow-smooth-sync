@@ -130,7 +130,12 @@ phone: "+1 (555) 123-4567",
   });
 
   // Locations State
+  const [stockLocations, setStockLocations] = useState<{ id: string; name: string; description?: string; is_active: boolean }[]>([]);
+  const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
+  const [editingLocation, setEditingLocation] = useState<{ id: string; name: string; description?: string; is_active: boolean } | null>(null);
+  const [locationForm, setLocationForm] = useState({ name: "", description: "", is_active: true });
 
+  const [locDialogOpen, setLocDialogOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -226,6 +231,81 @@ phone: "+1 (555) 123-4567",
       </Badge>
     );
   };
+
+  const handleSaveLocation = async () => {
+    if (!organization) return toast.error('No organization selected');
+    if (editingLocation) {
+      try {
+        await supabase
+          .from('stock_locations')
+          .update({
+            name: locationForm.name,
+            description: locationForm.description,
+            is_active: locationForm.is_active,
+          })
+          .eq('id', editingLocation.id);
+        toast.success('Location updated successfully');
+        setIsLocationDialogOpen(false);
+        fetchStockLocations();
+      } catch (e) {
+        console.error(e);
+        toast.error('Failed to update location');
+      }
+    } else {
+      try {
+        await supabase
+          .from('stock_locations')
+          .insert({
+            organization_id: organization.id,
+            name: locationForm.name,
+            description: locationForm.description,
+            is_active: locationForm.is_active,
+          });
+        toast.success('Location created successfully');
+        setIsLocationDialogOpen(false);
+        fetchStockLocations();
+      } catch (e) {
+        console.error(e);
+        toast.error('Failed to create location');
+      }
+    }
+  };
+
+  const handleDeleteLocation = async (id: string) => {
+    if (!organization) return toast.error('No organization selected');
+    if (window.confirm('Are you sure you want to delete this location?')) {
+      try {
+        await supabase
+          .from('stock_locations')
+          .delete()
+          .eq('id', id);
+        toast.success('Location deleted successfully');
+        fetchStockLocations();
+      } catch (e) {
+        console.error(e);
+        toast.error('Failed to delete location');
+      }
+    }
+  };
+
+  const fetchStockLocations = async () => {
+    if (!organization) return;
+    try {
+      const { data } = await supabase
+        .from('stock_locations')
+        .select('*')
+        .eq('organization_id', organization.id)
+        .order('name');
+      setStockLocations(data || []);
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to fetch stock locations');
+    }
+  };
+
+  useEffect(() => {
+    fetchStockLocations();
+  }, [organization]);
 
   return (
     <div className="flex-1 space-y-6 p-8 pt-6">
@@ -764,7 +844,17 @@ phone: "+1 (555) 123-4567",
                   {stockLocations.map((location) => (
                     <TableRow key={location.id}>
                       <TableCell className="font-medium">{location.name}</TableCell>
-
+                      <TableCell>
+                        <div className="flex justify-between items-center gap-2">
+                          <Badge variant={location.is_active ? 'default' : 'secondary'}>
+                            {location.is_active ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button size="sm" variant="outline" onClick={() => { setEditingLocation(location); setLocationForm({ name: location.name, description: location.description || '' }); setIsLocationDialogOpen(true); }}>Edit</Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleDeleteLocation(location.id)}>Delete</Button>
                         </div>
                       </TableCell>
                     </TableRow>
