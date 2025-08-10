@@ -7,8 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Package, ShoppingCart, ClipboardList, Pencil } from "lucide-react";
+import { ArrowLeft, Package, ShoppingCart, ClipboardList, Pencil, Settings } from "lucide-react";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { useOrganization } from "@/lib/saas/hooks";
 
 interface InventoryItem {
   id: string;
@@ -52,6 +57,13 @@ interface SalesHistoryRow {
   sales?: { sale_number: string; created_at: string; customer_name?: string | null } | null;
 }
 
+interface ItemAccountMapping {
+  sales_account_id: string | null;
+  purchase_account_id: string | null;
+  inventory_account_id: string | null;
+  is_taxable: boolean;
+}
+
 export default function ProductView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -62,6 +74,22 @@ export default function ProductView() {
   const [salesHistory, setSalesHistory] = useState<SalesHistoryRow[]>([]);
   const [onHand, setOnHand] = useState<number>(0);
   const { format: formatMoney } = useOrganizationCurrency();
+
+  // Accounts mapping state
+  const { organization } = useOrganization();
+  const [mapping, setMapping] = useState<ItemAccountMapping | null>(null);
+  const [accountDisplay, setAccountDisplay] = useState<Record<string, { code: string; name: string }> | null>(null);
+  const [accountsLoading, setAccountsLoading] = useState<boolean>(false);
+  const [incomeAccounts, setIncomeAccounts] = useState<any[]>([]);
+  const [expenseAccounts, setExpenseAccounts] = useState<any[]>([]);
+  const [assetAccounts, setAssetAccounts] = useState<any[]>([]);
+  const [isEditAccountsOpen, setIsEditAccountsOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    sales_account_id: "",
+    purchase_account_id: "",
+    inventory_account_id: "",
+    is_taxable: false,
+  });
 
   useEffect(() => {
     const load = async () => {
@@ -114,9 +142,142 @@ export default function ProductView() {
     load();
   }, [id]);
 
+  // Load mapping and display accounts
+  useEffect(() => {
+    const loadMappingAndAccounts = async () => {
+      if (!id) return;
+      try {
+        const { data: mapData } = await supabase
+          .from("inventory_item_accounts")
+          .select("sales_account_id, purchase_account_id, inventory_account_id, is_taxable")
+          .eq("item_id", id)
+          .maybeSingle();
+
+        const m: ItemAccountMapping = {
+          sales_account_id: mapData?.sales_account_id || null,
+          purchase_account_id: mapData?.purchase_account_id || null,
+          inventory_account_id: mapData?.inventory_account_id || null,
+          is_taxable: !!mapData?.is_taxable,
+        };
+        setMapping(m);
+        setEditForm({
+          sales_account_id: m.sales_account_id || "",
+          purchase_account_id: m.purchase_account_id || "",
+          inventory_account_id: m.inventory_account_id || "",
+          is_taxable: m.is_taxable,
+        });
+
+        const ids = [m.sales_account_id, m.purchase_account_id, m.inventory_account_id].filter(Boolean) as string[];
+        if (ids.length > 0) {
+          const { data: accounts } = await supabase
+            .from("accounts")
+            .select("id, account_code, account_name")
+            .in("id", ids);
+          const map: Record<string, { code: string; name: string }> = {};
+          for (const a of accounts || []) {
+            map[a.id] = { code: a.account_code, name: a.account_name } as any;
+          }
+          setAccountDisplay(map);
+        } else {
+          setAccountDisplay(null);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    loadMappingAndAccounts();
+  }, [id]);
+
+  // Load selectable accounts for editing
+  useEffect(() => {
+    const loadSelectableAccounts = async () => {
+      if (!organization?.id) return;
+      try {
+        setAccountsLoading(true);
+        let accs: any[] | null = null;
+        let err: any = null;
+        try {
+          const res = await supabase
+            .from("accounts")
+            .select("id, account_code, account_name, account_type, account_subtype")
+            .eq("organization_id", organization.id);
+          accs = res.data as any[] | null;
+          err = res.error;
+        } catch (innerErr: any) {
+          err = innerErr;
+        }
+        if (err) {
+          const message = String(err?.message || "");
+          if (message.includes("account_subtype") || (message.toLowerCase().includes("column") && message.toLowerCase().includes("does not exist"))) {
+            const { data, error } = await supabase
+              .from("accounts")
+              .select("id, account_code, account_name, account_type")
+              .eq("organization_id", organization.id);
+            if (error) throw error;
+            accs = data as any[] | null;
+          } else {
+            throw err;
+          }
+        }
+        const accounts = accs || [];
+        setIncomeAccounts(accounts.filter((a: any) => a.account_type === 'Income'));
+        setExpenseAccounts(accounts.filter((a: any) => a.account_type === 'Expense'));
+        setAssetAccounts(accounts.filter((a: any) => a.account_type === 'Asset'));
+      } catch (e) {
+        // ignore
+      } finally {
+        setAccountsLoading(false);
+      }
+    };
+    loadSelectableAccounts();
+  }, [organization?.id]);
+
   const totalPurchased = useMemo(() => purchaseHistory.reduce((s, r) => s + (Number(r.quantity) || 0), 0), [purchaseHistory]);
   const totalUsed = useMemo(() => usageHistory.reduce((s, r) => s + (Number(r.quantity_used) || 0), 0), [usageHistory]);
   const totalSold = useMemo(() => salesHistory.reduce((s, r) => s + (Number(r.quantity) || 0), 0), [salesHistory]);
+
+  const saveAccounts = async () => {
+    if (!id) return;
+    try {
+      await supabase.from('inventory_item_accounts').upsert({
+        item_id: id,
+        sales_account_id: editForm.sales_account_id || null,
+        purchase_account_id: editForm.purchase_account_id || null,
+        inventory_account_id: editForm.inventory_account_id || null,
+        is_taxable: !!editForm.is_taxable,
+      }, { onConflict: 'item_id' });
+      setIsEditAccountsOpen(false);
+      // reload mapping
+      const { data: mapData } = await supabase
+        .from("inventory_item_accounts")
+        .select("sales_account_id, purchase_account_id, inventory_account_id, is_taxable")
+        .eq("item_id", id)
+        .maybeSingle();
+      const m: ItemAccountMapping = {
+        sales_account_id: mapData?.sales_account_id || null,
+        purchase_account_id: mapData?.purchase_account_id || null,
+        inventory_account_id: mapData?.inventory_account_id || null,
+        is_taxable: !!mapData?.is_taxable,
+      };
+      setMapping(m);
+      const ids = [m.sales_account_id, m.purchase_account_id, m.inventory_account_id].filter(Boolean) as string[];
+      if (ids.length > 0) {
+        const { data: accounts } = await supabase
+          .from("accounts")
+          .select("id, account_code, account_name")
+          .in("id", ids);
+        const map: Record<string, { code: string; name: string }> = {};
+        for (const a of accounts || []) {
+          map[a.id] = { code: a.account_code, name: a.account_name } as any;
+        }
+        setAccountDisplay(map);
+      } else {
+        setAccountDisplay(null);
+      }
+    } catch (e) {
+      // noop
+    }
+  };
 
   if (loading) {
     return (
@@ -157,14 +318,80 @@ export default function ProductView() {
           <div className="text-sm text-muted-foreground">SKU: {item.sku || '—'} • Unit: {item.unit || '—'} • Reorder point: {item.reorder_point ?? '—'}</div>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => navigate(`/inventory`)} variant="outline">
-            Inventory
+          <Button onClick={() => setIsEditAccountsOpen(true)} variant="outline">
+            <Settings className="w-4 h-4 mr-2" /> Edit Accounts
           </Button>
           <Button onClick={() => navigate(`/inventory`)}>
             <Pencil className="w-4 h-4 mr-2" /> Edit
           </Button>
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div>
+                <div className="text-xs text-muted-foreground">Description</div>
+                <div className="text-sm">{item.description || '—'}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs text-muted-foreground">Cost Price</div>
+                  <div className="font-medium">{formatMoney(Number(item.cost_price || 0))}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Sales Price</div>
+                  <div className="font-medium">{formatMoney(Number(item.selling_price || 0))}</div>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="text-sm font-medium">Accounting & Tax</div>
+              <div className="text-xs text-muted-foreground">These accounts apply when you sell or purchase this item.</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                <div className="p-3 rounded border">
+                  <div className="text-xs text-muted-foreground">Sales Account</div>
+                  <div className="text-sm">
+                    {mapping?.sales_account_id && accountDisplay?.[mapping.sales_account_id] ? (
+                      `${accountDisplay[mapping.sales_account_id].code} — ${accountDisplay[mapping.sales_account_id].name}`
+                    ) : (
+                      '—'
+                    )}
+                  </div>
+                </div>
+                <div className="p-3 rounded border">
+                  <div className="text-xs text-muted-foreground">Purchase Account</div>
+                  <div className="text-sm">
+                    {mapping?.purchase_account_id && accountDisplay?.[mapping.purchase_account_id] ? (
+                      `${accountDisplay[mapping.purchase_account_id].code} — ${accountDisplay[mapping.purchase_account_id].name}`
+                    ) : (
+                      '—'
+                    )}
+                  </div>
+                </div>
+                <div className="p-3 rounded border">
+                  <div className="text-xs text-muted-foreground">Inventory Account</div>
+                  <div className="text-sm">
+                    {mapping?.inventory_account_id && accountDisplay?.[mapping.inventory_account_id] ? (
+                      `${accountDisplay[mapping.inventory_account_id].code} — ${accountDisplay[mapping.inventory_account_id].name}`
+                    ) : (
+                      '—'
+                    )}
+                  </div>
+                </div>
+                <div className="p-3 rounded border">
+                  <div className="text-xs text-muted-foreground">Taxable</div>
+                  <div className="text-sm">{mapping?.is_taxable ? 'Yes' : 'No'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -329,6 +556,75 @@ export default function ProductView() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={isEditAccountsOpen} onOpenChange={setIsEditAccountsOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Edit Accounts</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Sales Account</Label>
+              <Select
+                value={editForm.sales_account_id}
+                onValueChange={(v) => setEditForm({ ...editForm, sales_account_id: v })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={accountsLoading ? 'Loading...' : 'Select income account'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {incomeAccounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{`${a.account_code} - ${a.account_name}`}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Purchase Account</Label>
+              <Select
+                value={editForm.purchase_account_id}
+                onValueChange={(v) => setEditForm({ ...editForm, purchase_account_id: v })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={accountsLoading ? 'Loading...' : 'Select expense account'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {expenseAccounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{`${a.account_code} - ${a.account_name}`}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Inventory Account</Label>
+              <Select
+                value={editForm.inventory_account_id}
+                onValueChange={(v) => setEditForm({ ...editForm, inventory_account_id: v })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={accountsLoading ? 'Loading...' : 'Select asset account'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {assetAccounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{`${a.account_code} - ${a.account_name}`}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Taxable</Label>
+              <div className="flex h-10 items-center px-3 rounded-md border">
+                <Switch checked={editForm.is_taxable} onCheckedChange={(v) => setEditForm({ ...editForm, is_taxable: v })} />
+                <span className="ml-2 text-sm text-muted-foreground">Charge tax when selling this item</span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditAccountsOpen(false)}>Cancel</Button>
+            <Button onClick={saveAccounts}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
