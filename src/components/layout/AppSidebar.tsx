@@ -161,19 +161,25 @@ const menuItems: MenuItem[] = [
       },
     ],
   },
-  {
-    title: "Accountant",
-    icon: DollarSign,
-    feature: "expenses",
-    subItems: [
-      {
-        title: "Chart of Accounts",
-        url: "/accounts",
-        icon: Calculator,
-        feature: "accounting",
+        {
+        title: "Accountant",
+        icon: DollarSign,
+        feature: "expenses",
+        subItems: [
+          {
+            title: "Chart of Accounts",
+            url: "/accounts",
+            icon: Calculator,
+            feature: "accounting",
+          },
+          {
+            title: "Banking",
+            url: "/banking",
+            icon: CreditCard,
+            feature: "accounting",
+          },
+        ],
       },
-    ],
-  },
   {
     title: "Reports",
     icon: TrendingUp,
