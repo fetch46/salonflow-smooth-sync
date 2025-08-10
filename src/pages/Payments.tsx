@@ -19,6 +19,9 @@ import { toast } from "sonner";
 import { getReceiptsWithFallback, getAllReceiptPaymentsWithFallback, updateReceiptPaymentWithFallback, deleteReceiptPaymentWithFallback } from "@/utils/mockDatabase";
 import { useNavigate } from "react-router-dom";
 import type { DateRange } from "react-day-picker";
+import { useSaas } from "@/lib/saas";
+import { DollarSign, Plus } from "lucide-react";
+import { postReceiptPaymentWithAccount, postReceiptPaymentToLedger } from "@/utils/ledger";
 
 interface ReceiptPayment {
   id: string;
@@ -91,6 +94,23 @@ export default function Payments() {
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState<ReceiptPayment | null>(null);
   const [editForm, setEditForm] = useState({ amount: "", method: "cash", reference_number: "", payment_date: "" });
+
+  // Create payment received dialog
+  const { organization } = useSaas();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createStatus, setCreateStatus] = useState<"unpaid" | "pending">("unpaid");
+  const [receiptOptions, setReceiptOptions] = useState<Array<{ id: string; receipt_number: string; customer_id: string | null; total_amount: number; amount_paid: number; status: string; created_at: string }>>([]);
+  const [receiptSearch, setReceiptSearch] = useState("");
+  const [selectedReceiptId, setSelectedReceiptId] = useState<string>("");
+  const [createForm, setCreateForm] = useState({
+    amount: "",
+    method: "cash",
+    reference: "",
+    payment_date: new Date().toISOString().slice(0,10),
+    account_id: "",
+  });
+  const [assetAccounts, setAssetAccounts] = useState<Array<{ id: string; account_code: string; account_name: string; account_subtype?: string | null }>>([]);
+  const [creating, setCreating] = useState(false);
 
   const loadData = async () => {
     try {
@@ -324,6 +344,133 @@ export default function Payments() {
     }
   };
 
+  const openCreatePayment = async () => {
+    setCreateOpen(true);
+    setSelectedReceiptId("");
+    setReceiptSearch("");
+    setCreateStatus("unpaid");
+    setCreateForm({ amount: "", method: "cash", reference: "", payment_date: new Date().toISOString().slice(0,10), account_id: "" });
+    try {
+      const rcpts = (await getReceiptsWithFallback(supabase)) as any[];
+      setReceiptOptions(rcpts as any);
+    } catch {
+      setReceiptOptions([]);
+    }
+    try {
+      if (organization?.id) {
+        // Try with subtype first
+        let data: any[] | null = null;
+        let error: any = null;
+        try {
+          const res = await supabase
+            .from("accounts")
+            .select("id, account_code, account_name, account_type, account_subtype")
+            .eq("organization_id", organization.id)
+            .eq("account_type", "Asset")
+            .order("account_code", { ascending: true });
+          data = res.data as any[] | null;
+          error = res.error;
+        } catch (err: any) {
+          error = err;
+        }
+        if (error) {
+          const res = await supabase
+            .from("accounts")
+            .select("id, account_code, account_name, account_type")
+            .eq("organization_id", organization.id)
+            .order("account_code", { ascending: true });
+          data = res.data as any[] | null;
+        }
+        const filtered = (data || []).filter((a: any) => (a.account_type === "Asset") && (!a.account_subtype || ["Cash","Bank"].includes(a.account_subtype)));
+        setAssetAccounts(filtered.map((a: any) => ({ id: a.id, account_code: a.account_code, account_name: a.account_name, account_subtype: (a as any).account_subtype || null })));
+      } else {
+        setAssetAccounts([]);
+      }
+    } catch {
+      setAssetAccounts([]);
+    }
+  };
+
+  const outstandingById = useMemo(() => {
+    const map: Record<string, number> = {};
+    (receiptOptions || []).forEach((r) => {
+      const total = Number(r.total_amount || 0);
+      const paid = Number(r.amount_paid || 0);
+      map[r.id] = Math.max(0, total - paid);
+    });
+    return map;
+  }, [receiptOptions]);
+
+  const filteredReceiptOptions = useMemo(() => {
+    const s = receiptSearch.toLowerCase();
+    return (receiptOptions || [])
+      .filter(r => createStatus === "unpaid" ? (r.status === "open") : (r.status === "partial"))
+      .filter(r => r.receipt_number.toLowerCase().includes(s));
+  }, [receiptOptions, receiptSearch, createStatus]);
+
+  const onSelectReceipt = (id: string) => {
+    setSelectedReceiptId(id);
+    const outstanding = outstandingById[id] || 0;
+    setCreateForm(prev => ({ ...prev, amount: String(outstanding > 0 ? outstanding.toFixed(2) : "") }));
+  };
+
+  const submitCreatePayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedReceiptId) { toast.error("Select a receipt"); return; }
+    const r = receiptOptions.find(x => x.id === selectedReceiptId);
+    const outstanding = r ? Math.max(0, Number(r.total_amount || 0) - Number(r.amount_paid || 0)) : 0;
+    const amt = parseFloat(createForm.amount) || 0;
+    if (amt <= 0 || (outstanding > 0 && amt > outstanding + 0.0001)) { toast.error("Invalid amount"); return; }
+    try {
+      setCreating(true);
+      const { recordReceiptPaymentWithFallback } = await import("@/utils/mockDatabase");
+      const ok = await recordReceiptPaymentWithFallback(supabase, {
+        receipt_id: selectedReceiptId,
+        amount: amt,
+        method: createForm.method,
+        reference_number: createForm.reference || null,
+        payment_date: createForm.payment_date,
+      });
+      if (!ok) throw new Error("Failed to record payment");
+
+      // Post to ledger
+      try {
+        if (organization?.id) {
+          if (createForm.account_id) {
+            await postReceiptPaymentWithAccount({
+              organizationId: organization.id,
+              amount: amt,
+              depositAccountId: createForm.account_id,
+              receiptId: selectedReceiptId,
+              receiptNumber: r?.receipt_number,
+              paymentDate: createForm.payment_date,
+            });
+          } else {
+            await postReceiptPaymentToLedger({
+              organizationId: organization.id,
+              amount: amt,
+              method: createForm.method,
+              receiptId: selectedReceiptId,
+              receiptNumber: r?.receipt_number,
+              paymentDate: createForm.payment_date,
+            });
+          }
+        }
+      } catch (ledgerErr) {
+        console.warn("Ledger posting failed", ledgerErr);
+      }
+
+      toast.success("Payment recorded");
+      setCreateOpen(false);
+      await loadData();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to record payment");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[300px]">
@@ -340,6 +487,9 @@ export default function Payments() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h2 className="text-2xl font-bold">Payments</h2>
         <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="default" onClick={openCreatePayment}>
+            <DollarSign className="w-4 h-4 mr-2" /> Record Payment Received
+          </Button>
           <Button variant="outline" onClick={refresh} disabled={refreshing}>
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
@@ -769,6 +919,106 @@ export default function Payments() {
               <Button type="submit">Save</Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Record Payment Received</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Label>Status</Label>
+                <Select value={createStatus} onValueChange={(v) => setCreateStatus(v as any)}>
+                  <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unpaid">Unpaid</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input className="pl-9" placeholder="Search receipts..." value={receiptSearch} onChange={(e) => setReceiptSearch(e.target.value)} />
+              </div>
+              <div className="border rounded h-[260px] overflow-auto">
+                <Table className="w-full text-sm">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">Select</TableHead>
+                      <TableHead>Receipt #</TableHead>
+                      <TableHead>Outstanding</TableHead>
+                      <TableHead>Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredReceiptOptions.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground py-6">No receipts</TableCell>
+                      </TableRow>
+                    )}
+                    {filteredReceiptOptions.map((r) => {
+                      const outstanding = outstandingById[r.id] || 0;
+                      return (
+                        <TableRow key={r.id} className="hover:bg-muted/50">
+                          <TableCell>
+                            <input type="radio" name="selectedReceipt" checked={selectedReceiptId === r.id} onChange={() => onSelectReceipt(r.id)} />
+                          </TableCell>
+                          <TableCell className="font-medium">{r.receipt_number}</TableCell>
+                          <TableCell>${outstanding.toFixed(2)}</TableCell>
+                          <TableCell>{format(new Date(r.created_at), 'MMM dd, yyyy')}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            <form onSubmit={submitCreatePayment} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Amount</Label>
+                <Input type="number" step="0.01" value={createForm.amount} onChange={(e) => setCreateForm(prev => ({ ...prev, amount: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Method</Label>
+                <Select value={createForm.method} onValueChange={(v) => setCreateForm(prev => ({ ...prev, method: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="card">Card</SelectItem>
+                    <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                    <SelectItem value="mpesa">M-Pesa</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Reference (optional)</Label>
+                <Input value={createForm.reference} onChange={(e) => setCreateForm(prev => ({ ...prev, reference: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Payment Date</Label>
+                <Input type="date" value={createForm.payment_date} onChange={(e) => setCreateForm(prev => ({ ...prev, payment_date: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Deposit to (Cash/Bank)</Label>
+                <Select value={createForm.account_id} onValueChange={(v) => setCreateForm(prev => ({ ...prev, account_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder={assetAccounts.length ? "Select account" : "No accounts available"} /></SelectTrigger>
+                  <SelectContent>
+                    {assetAccounts.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>{a.account_code} - {a.account_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={creating || !selectedReceiptId}>Save Payment</Button>
+              </div>
+            </form>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
