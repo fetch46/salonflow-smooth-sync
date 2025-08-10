@@ -79,31 +79,14 @@ export default function InventoryAdjustmentForm() {
     location_id: ""
   });
   const [selectedItems, setSelectedItems] = useState<AdjustmentItemForm[]>([]);
-  const [supportsLocation, setSupportsLocation] = useState<boolean>(true);
+  // Location selection is always supported in current schema
 
   useEffect(() => {
     fetchInventoryItems();
     fetchLocations();
   }, []);
 
-  useEffect(() => {
-    // Detect if the backend supports the location_id column to avoid schema cache errors
-    (async () => {
-      try {
-        const { error } = await supabase
-          .from("inventory_adjustments")
-          .select("location_id")
-          .limit(0);
-        if (error) {
-          setSupportsLocation(false);
-        } else {
-          setSupportsLocation(true);
-        }
-      } catch {
-        setSupportsLocation(false);
-      }
-    })();
-  }, []);
+  // Removed backend capability probe to prevent RLS-related false negatives
 
   useEffect(() => {
     if (isEdit && id) {
@@ -172,11 +155,17 @@ export default function InventoryAdjustmentForm() {
     try {
       const { data, error } = await supabase
         .from("business_locations")
-        .select("id, name")
+        .select("id, name, is_default")
         .eq("is_active", true)
         .order("name");
       if (error) throw error;
-      setLocations(data || []);
+      const locs = (data as (BusinessLocation & { is_default?: boolean })[] | null) || [];
+      setLocations(locs);
+      // If creating a new adjustment and no location selected yet, default to org default or first active
+      if (!isEdit && !formData.location_id && locs.length > 0) {
+        const preferred = locs.find(l => (l as any).is_default) || locs[0];
+        setFormData((prev) => ({ ...prev, location_id: preferred.id }));
+      }
     } catch (error) {
       console.error("Error fetching locations:", error);
     }
@@ -240,7 +229,7 @@ export default function InventoryAdjustmentForm() {
       return;
     }
 
-    if (supportsLocation && locations.length > 0 && !formData.location_id) {
+    if (locations.length > 0 && !formData.location_id) {
       toast.error("Please select a location");
       return;
     }
@@ -271,7 +260,7 @@ export default function InventoryAdjustmentForm() {
         status: "pending",
       };
 
-      if (supportsLocation && formData.location_id) {
+      if (formData.location_id) {
         adjustmentData.location_id = formData.location_id;
       }
 
@@ -404,23 +393,21 @@ export default function InventoryAdjustmentForm() {
               </div>
             </div>
 
-            {supportsLocation && (
-              <div>
-                <Label htmlFor="location">Location</Label>
-                <Select value={formData.location_id} onValueChange={(value) => setFormData({ ...formData, location_id: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {locations.map((loc) => (
-                      <SelectItem key={loc.id} value={loc.id}>
-                        {loc.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div>
+              <Label htmlFor="location">Location</Label>
+              <Select value={formData.location_id} onValueChange={(value) => setFormData({ ...formData, location_id: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc.id} value={loc.id}>
+                      {loc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             <div>
               <Label htmlFor="notes">Notes</Label>
