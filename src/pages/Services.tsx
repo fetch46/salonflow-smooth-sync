@@ -77,6 +77,7 @@ interface Service {
   popularity_score?: number;
   avg_rating?: number;
   total_bookings?: number;
+  location_id?: string | null;
 }
 
 interface ServiceKit {
@@ -148,6 +149,7 @@ export default function Services() {
   const [serviceKits, setServiceKits] = useState<ServiceKit[]>([]);
   const [viewMode, setViewMode] = useState<"cards" | "table">("table");
   const [selectedProductId, setSelectedProductId] = useState<string>("");
+  const [locations, setLocations] = useState<{ id: string; name: string; is_default?: boolean }[]>([]);
  
   const { format: formatCurrency } = useOrganizationCurrency();
   const { organization } = useOrganization();
@@ -172,6 +174,7 @@ export default function Services() {
     category: "",
     is_active: true,
     commission_percentage: 10,
+    location_id: "",
   });
 
   // Mock function to enrich services with more metrics but without touching persisted fields
@@ -268,10 +271,52 @@ export default function Services() {
     }
   }, [organization?.id]);
 
+  const fetchLocations = useCallback(async () => {
+    try {
+      if (!organization?.id) return;
+      const { data, error } = await supabase
+        .from("business_locations")
+        .select("id, name, is_default")
+        .eq("organization_id", organization.id)
+        .eq("is_active", true)
+        .order("is_default", { ascending: false })
+        .order("name");
+
+      if (error) throw error;
+      setLocations(data || []);
+    } catch (error) {
+      console.warn("Failed to fetch business_locations, attempting fallback to storage_locations", error);
+      try {
+        const { data: storage, error: storageErr } = await supabase
+          .from("storage_locations")
+          .select("id, name")
+          .order("name");
+        if (storageErr) throw storageErr;
+        setLocations((storage as any) || []);
+      } catch (fallbackErr) {
+        console.error("Failed to fetch storage_locations fallback:", fallbackErr);
+      }
+    }
+  }, [organization?.id]);
+
   useEffect(() => {
     fetchServices();
     fetchAvailableProducts();
+    fetchLocations();
   }, [fetchServices, fetchAvailableProducts]);
+  // include fetchLocations in deps without causing eslint issues by disabling inline, or just list explicitly
+  useEffect(() => { fetchLocations(); }, [fetchLocations]);
+
+  // Auto-select default location on open when creating new service
+  useEffect(() => {
+    if (!isModalOpen) return;
+    if (editingService) return;
+    if (formData.location_id) return;
+    const preferred = locations.find(l => (l as any).is_default) || locations[0];
+    if (preferred?.id) {
+      setFormData(prev => ({ ...prev, location_id: preferred.id }));
+    }
+  }, [isModalOpen, editingService, locations, formData.location_id]);
 
   const fetchServiceMetrics = useCallback(async () => {
     try {
@@ -386,6 +431,11 @@ export default function Services() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      if (!formData.location_id) {
+        toast.error("Please select a location");
+        return;
+      }
+
       let serviceId = editingService?.id;
 
       // Only send columns that exist on the services table
@@ -396,15 +446,43 @@ export default function Services() {
         price: formData.price,
         category: formData.category || null,
         is_active: formData.is_active,
+        location_id: formData.location_id,
 
       } as const;
 
       if (editingService) {
-        const { error } = await supabase
-          .from("services")
-          .update(payload)
-          .eq("id", editingService.id);
-        if (error) throw error;
+        // Try update with location_id; retry without if column missing
+        let updError: any | null = null
+        try {
+          const { error } = await supabase
+            .from("services")
+            .update(payload)
+            .eq("id", editingService.id)
+          updError = error
+        } catch (e: any) {
+          updError = e
+        }
+        if (updError) {
+          const code = updError?.code
+          const message = updError?.message || String(updError)
+          const isMissingLocationId = code === '42703' || /column\s+("?[\w\.]*location_id"?)\s+does not exist/i.test(message)
+          if (isMissingLocationId) {
+            const { error: retryError } = await supabase
+              .from("services")
+              .update({
+                name: payload.name,
+                description: payload.description,
+                duration_minutes: payload.duration_minutes,
+                price: payload.price,
+                category: payload.category,
+                is_active: payload.is_active,
+              })
+              .eq("id", editingService.id)
+            if (retryError) throw retryError
+          } else {
+            throw updError
+          }
+        }
       } else {
         if (!organization?.id) throw new Error("No active organization selected");
         const insertPayload = { ...payload, organization_id: organization.id } as any;
@@ -425,10 +503,18 @@ export default function Services() {
           const code = (error as any)?.code
           const message = (error as any)?.message || String(error)
           const isMissingOrgId = code === '42703' || /column\s+("?[\w\.]*organization_id"?)\s+does not exist/i.test(message)
-          if (isMissingOrgId) {
+          const isMissingLocationId = code === '42703' || /column\s+("?[\w\.]*location_id"?)\s+does not exist/i.test(message)
+          if (isMissingOrgId || isMissingLocationId) {
             const { data: retryData, error: retryError } = await supabase
               .from("services")
-              .insert([{ ...payload }])
+              .insert([{ 
+                name: payload.name,
+                description: payload.description,
+                duration_minutes: payload.duration_minutes,
+                price: payload.price,
+                category: payload.category,
+                is_active: payload.is_active,
+              }])
               .select('id')
               .maybeSingle()
             if (retryError) throw retryError
@@ -498,6 +584,7 @@ export default function Services() {
       category: "",
       is_active: true,
       commission_percentage: 10,
+      location_id: "",
     });
     setEditingService(null);
     setServiceKits([]);
@@ -513,6 +600,7 @@ export default function Services() {
       category: service.category || "",
       is_active: service.is_active,
       commission_percentage: isNaN(cp) ? 0 : cp,
+      location_id: (service as any).location_id || "",
     });
     setEditingService(service);
     fetchServiceKits(service.id);
@@ -762,6 +850,25 @@ export default function Services() {
                               </SelectItem>
                             );
                           })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="location_id">Location *</Label>
+                      <Select 
+                        value={formData.location_id}
+                        onValueChange={(value) => setFormData({ ...formData, location_id: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={locations.length ? "Select a location" : "No locations found"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {locations.map((loc) => (
+                            <SelectItem key={loc.id} value={loc.id}>
+                              {loc.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
