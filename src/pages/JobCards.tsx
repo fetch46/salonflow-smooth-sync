@@ -149,9 +149,10 @@ export default function JobCards() {
     }));
   };
 
-  const fetchJobCards = useCallback(async () => {
+  const fetchJobCards = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = !!opts?.silent;
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       let data: any[] | null = null;
       try {
         const res = await supabase
@@ -223,7 +224,7 @@ export default function JobCards() {
       console.error("Error fetching job cards:", error);
       toast.error("Failed to fetch job cards");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -233,7 +234,7 @@ export default function JobCards() {
   const refreshData = async () => {
     try {
       setRefreshing(true);
-      await fetchJobCards();
+      await fetchJobCards({ silent: true });
       toast.success("Data refreshed successfully");
     } catch (error) {
       toast.error("Failed to refresh data");
@@ -264,8 +265,15 @@ export default function JobCards() {
         .eq('id', id);
       
       if (error) throw error;
+      // Optimistically update UI
+      setJobCards((prev) => prev.filter((c) => c.id !== id));
+      setJobCardsWithReceipts((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
       toast.success("Job card deleted successfully");
-      fetchJobCards();
+      await fetchJobCards({ silent: true });
     } catch (error) {
       console.error('Error deleting job card:', error);
       toast.error("Failed to delete job card");
@@ -289,7 +297,7 @@ export default function JobCards() {
 
       if (error) throw error;
       toast.success('Job card status updated');
-      fetchJobCards();
+      await fetchJobCards({ silent: true });
     } catch (error) {
       console.error('Error updating status:', error);
       toast.error('Failed to update status');
