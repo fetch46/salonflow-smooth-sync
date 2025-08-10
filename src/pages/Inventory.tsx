@@ -381,8 +381,10 @@ export default function Inventory() {
     quantity: true,
     reorder_point: true,
     status: true,
+    selling_price: false,
+    purchase_price: false,
   } as const;
-  const [visibleColumns, setVisibleColumns] = useState<{ sku: boolean; unit: boolean; quantity: boolean; reorder_point: boolean; status: boolean }>(
+  const [visibleColumns, setVisibleColumns] = useState<{ sku: boolean; unit: boolean; quantity: boolean; reorder_point: boolean; status: boolean; selling_price: boolean; purchase_price: boolean }>(
     () => {
       try {
         const stored = localStorage.getItem('inventory_visible_columns');
@@ -790,6 +792,18 @@ export default function Inventory() {
                     >
                       Status
                     </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                      checked={visibleColumns.selling_price}
+                      onCheckedChange={(v) => setVisibleColumns((prev) => ({ ...prev, selling_price: !!v }))}
+                    >
+                      Selling Price
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                      checked={visibleColumns.purchase_price}
+                      onCheckedChange={(v) => setVisibleColumns((prev) => ({ ...prev, purchase_price: !!v }))}
+                    >
+                      Purchase Price
+                    </DropdownMenuCheckboxItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -806,6 +820,12 @@ export default function Inventory() {
                         )}
                         {visibleColumns.unit && (
                           <TableHead className="hidden md:table-cell">Unit</TableHead>
+                        )}
+                        {visibleColumns.selling_price && (
+                          <TableHead className="hidden lg:table-cell">Selling Price</TableHead>
+                        )}
+                        {visibleColumns.purchase_price && (
+                          <TableHead className="hidden lg:table-cell">Purchase Price</TableHead>
                         )}
                         {visibleColumns.quantity && (
                           <TableHead className="text-right">Quantity</TableHead>
@@ -833,6 +853,12 @@ export default function Inventory() {
                             )}
                             {visibleColumns.unit && (
                               <TableCell className="hidden md:table-cell">{item.unit}</TableCell>
+                            )}
+                            {visibleColumns.selling_price && (
+                              <TableCell className="hidden lg:table-cell">{formatMoney(Number(item.selling_price || 0))}</TableCell>
+                            )}
+                            {visibleColumns.purchase_price && (
+                              <TableCell className="hidden lg:table-cell">{formatMoney(Number(item.cost_price || 0))}</TableCell>
                             )}
                             {visibleColumns.quantity && (
                               <TableCell className="text-right">{new Intl.NumberFormat('en-US').format(itemIdToQty.get(item.id) || 0)}</TableCell>
