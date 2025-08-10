@@ -18,6 +18,7 @@ import { createSaasError, sanitizeOrganizationData } from './utils'
 export class OrganizationService {
   static async getUserOrganizations(userId: string): Promise<OrganizationUser[]> {
     try {
+      // Primary approach: fetch memberships with embedded organization via foreign relation
       const { data, error } = await supabase
         .from('organization_users')
         .select(`
@@ -27,7 +28,40 @@ export class OrganizationService {
         .eq('user_id', userId)
         .eq('is_active', true)
 
-      if (error) throw error
+      if (error) {
+        // Fallback: fetch memberships first, then fetch organizations separately
+        console.warn('Relational fetch for user organizations failed; attempting fallback without join', error)
+
+        const { data: memberships, error: membershipsError } = await supabase
+          .from('organization_users')
+          .select('id, organization_id, user_id, role, is_active, invited_by, invited_at, joined_at, metadata, created_at, updated_at')
+          .eq('user_id', userId)
+          .eq('is_active', true)
+
+        if (membershipsError) throw membershipsError
+
+        if (!memberships || memberships.length === 0) return []
+
+        const orgIds = Array.from(new Set(memberships.map(m => m.organization_id)))
+
+        const { data: orgs, error: orgsError } = await supabase
+          .from('organizations')
+          .select('*')
+          .in('id', orgIds)
+
+        if (orgsError) throw orgsError
+
+        const orgIdToOrg = new Map<string, Organization>()
+        ;(orgs || []).forEach(o => orgIdToOrg.set(o.id, o as Organization))
+
+        const result: OrganizationUser[] = memberships.map(m => ({
+          ...m,
+          organizations: orgIdToOrg.get(m.organization_id) || null,
+        })) as OrganizationUser[]
+
+        return result
+      }
+
       return data || []
     } catch (error) {
       throw createSaasError('SERVER_ERROR', 'Failed to fetch user organizations', error)

@@ -261,7 +261,8 @@ export function isSaasError(error: any): error is SaasError {
 
 export function getErrorMessage(error: unknown): string {
   if (isSaasError(error)) {
-    return error.message
+    const detailsMessage = typeof (error as any).details?.message === 'string' ? (error as any).details.message : undefined
+    return detailsMessage ? `${error.message}: ${detailsMessage}` : error.message
   }
   
   if (error instanceof Error) {
