@@ -1217,6 +1217,44 @@ export type Database = {
         Update: Database['public']['Tables']['account_transactions']['Update'] & { location_id?: string | null }
         Relationships: Database['public']['Tables']['account_transactions']['Relationships']
       }
+      inventory_item_accounts: {
+        Row: {
+          item_id: string
+          sales_account_id: string | null
+          purchase_account_id: string | null
+          inventory_account_id: string | null
+          is_taxable: boolean | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          item_id: string
+          sales_account_id?: string | null
+          purchase_account_id?: string | null
+          inventory_account_id?: string | null
+          is_taxable?: boolean | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          item_id?: string
+          sales_account_id?: string | null
+          purchase_account_id?: string | null
+          inventory_account_id?: string | null
+          is_taxable?: boolean | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_item_accounts_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: true
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
