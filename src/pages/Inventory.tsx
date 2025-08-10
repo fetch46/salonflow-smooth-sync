@@ -20,6 +20,7 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import { Columns3 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useOrganization } from "@/lib/saas/hooks";
+import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 // --- Type Definitions ---
 type InventoryItem = {
@@ -395,6 +396,8 @@ export default function Inventory() {
   const [locationsLoading, setLocationsLoading] = useState<boolean>(false);
   const [selectedLocationId, setSelectedLocationId] = useState<string>("all");
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [page, setPage] = useState<number>(1);
+  const pageSize = 10;
   const defaultVisibleColumns = {
     sku: true,
     unit: true,
@@ -609,6 +612,13 @@ export default function Inventory() {
     if (!q) return true;
     return item.name.toLowerCase().includes(q) || (item.sku || '').toLowerCase().includes(q);
   });
+  const totalPages = Math.max(1, Math.ceil(filteredGoodsItems.length / pageSize));
+  const paginatedGoodsItems = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredGoodsItems.slice(start, start + pageSize);
+  }, [filteredGoodsItems, page]);
+
+  useEffect(() => { setPage(1); }, [searchQuery, statusFilter]);
 
   // New: filter levels by selected location and compute metrics
   const filteredLevels = selectedLocationId === 'all' ? levels : levels.filter(l => l.location_id === selectedLocationId);
@@ -840,105 +850,120 @@ export default function Inventory() {
             </CardHeader>
             <CardContent>
               {isLoading ? <TableSkeleton /> : (
-                <div className="overflow-auto max-h-[65vh] rounded-lg border">
-                  <Table className="min-w-[720px]">
-                    <TableHeader className="sticky top-0 bg-background z-10">
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        {visibleColumns.sku && (
-                          <TableHead className="hidden sm:table-cell">SKU</TableHead>
-                        )}
-                        {visibleColumns.unit && (
-                          <TableHead className="hidden md:table-cell">Unit</TableHead>
-                        )}
-                        {visibleColumns.selling_price && (
-                          <TableHead className="hidden lg:table-cell">Selling Price</TableHead>
-                        )}
-                        {visibleColumns.purchase_price && (
-                          <TableHead className="hidden lg:table-cell">Purchase Price</TableHead>
-                        )}
-                        {visibleColumns.quantity && (
-                          <TableHead className="text-right">Quantity</TableHead>
-                        )}
-                        {visibleColumns.reorder_point && (
-                          <TableHead className="hidden lg:table-cell">Reorder Point</TableHead>
-                        )}
-                        {visibleColumns.status && (
-                          <TableHead>Status</TableHead>
-                        )}
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredGoodsItems.map((item) => {
-                        return (
-                          <TableRow key={item.id} className="hover:bg-muted/50">
-                            <TableCell className="font-medium max-w-[320px] truncate">
-                              <Link to={`/inventory/${item.id}`} className="hover:underline">
-                                {item.name}
-                              </Link>
-                            </TableCell>
-                            {visibleColumns.sku && (
-                              <TableCell className="hidden sm:table-cell">{item.sku}</TableCell>
-                            )}
-                            {visibleColumns.unit && (
-                              <TableCell className="hidden md:table-cell">{item.unit}</TableCell>
-                            )}
-                            {visibleColumns.selling_price && (
-                              <TableCell className="hidden lg:table-cell">{formatMoney(Number(item.selling_price || 0))}</TableCell>
-                            )}
-                            {visibleColumns.purchase_price && (
-                              <TableCell className="hidden lg:table-cell">{formatMoney(Number(item.cost_price || 0))}</TableCell>
-                            )}
-                            {visibleColumns.quantity && (
-                              <TableCell className="text-right">{new Intl.NumberFormat('en-US').format(itemIdToQty.get(item.id) || 0)}</TableCell>
-                            )}
-                            {visibleColumns.reorder_point && (
-                              <TableCell className="hidden lg:table-cell">{item.reorder_point}</TableCell>
-                            )}
-                            {visibleColumns.status && (
-                              <TableCell>
-                                {item.is_active ? (
-                                  <Badge variant="secondary">Active</Badge>
-                                ) : (
-                                  <Badge variant="outline">Inactive</Badge>
-                                )}
+                <div className="space-y-4">
+                  <div className="overflow-auto max-h-[65vh] rounded-lg border">
+                    <Table className="min-w-[720px]">
+                      <TableHeader className="sticky top-0 bg-background z-10">
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          {visibleColumns.sku && (
+                            <TableHead className="hidden sm:table-cell">SKU</TableHead>
+                          )}
+                          {visibleColumns.unit && (
+                            <TableHead className="hidden md:table-cell">Unit</TableHead>
+                          )}
+                          {visibleColumns.selling_price && (
+                            <TableHead className="hidden lg:table-cell">Selling Price</TableHead>
+                          )}
+                          {visibleColumns.purchase_price && (
+                            <TableHead className="hidden lg:table-cell">Purchase Price</TableHead>
+                          )}
+                          {visibleColumns.quantity && (
+                            <TableHead className="text-right">Quantity</TableHead>
+                          )}
+                          {visibleColumns.reorder_point && (
+                            <TableHead className="hidden lg:table-cell">Reorder Point</TableHead>
+                          )}
+                          {visibleColumns.status && (
+                            <TableHead>Status</TableHead>
+                          )}
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedGoodsItems.map((item) => {
+                          return (
+                            <TableRow key={item.id} className="hover:bg-muted/50">
+                              <TableCell className="font-medium max-w-[320px] truncate">
+                                <Link to={`/inventory/${item.id}`} className="hover:underline">
+                                  {item.name}
+                                </Link>
                               </TableCell>
-                            )}
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="w-4 h-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem asChild>
-                                    <Link to={`/inventory/${item.id}`} className="flex items-center">
-                                      <Eye className="w-4 h-4 mr-2" /> View Product
-                                    </Link>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onSelect={() => handleEditItem(item)}>
-                                    <Edit className="w-4 h-4 mr-2" /> Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
+                              {visibleColumns.sku && (
+                                <TableCell className="hidden sm:table-cell">{item.sku}</TableCell>
+                              )}
+                              {visibleColumns.unit && (
+                                <TableCell className="hidden md:table-cell">{item.unit}</TableCell>
+                              )}
+                              {visibleColumns.selling_price && (
+                                <TableCell className="hidden lg:table-cell">{formatMoney(Number(item.selling_price || 0))}</TableCell>
+                              )}
+                              {visibleColumns.purchase_price && (
+                                <TableCell className="hidden lg:table-cell">{formatMoney(Number(item.cost_price || 0))}</TableCell>
+                              )}
+                              {visibleColumns.quantity && (
+                                <TableCell className="text-right">{new Intl.NumberFormat('en-US').format(itemIdToQty.get(item.id) || 0)}</TableCell>
+                              )}
+                              {visibleColumns.reorder_point && (
+                                <TableCell className="hidden lg:table-cell">{item.reorder_point}</TableCell>
+                              )}
+                              {visibleColumns.status && (
+                                <TableCell>
                                   {item.is_active ? (
-                                    <DropdownMenuItem onSelect={() => handleDeactivateItem(item)} className="text-red-600">
-                                      <Trash2 className="w-4 h-4 mr-2" /> Deactivate
-                                    </DropdownMenuItem>
+                                    <Badge variant="secondary">Active</Badge>
                                   ) : (
-                                    <DropdownMenuItem onSelect={() => handleActivateItem(item)} className="text-green-600">
-                                      <CheckCircle2 className="w-4 h-4 mr-2" /> Activate
-                                    </DropdownMenuItem>
+                                    <Badge variant="outline">Inactive</Badge>
                                   )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                                </TableCell>
+                              )}
+                              <TableCell className="text-right">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                      <MoreHorizontal className="w-4 h-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem asChild>
+                                      <Link to={`/inventory/${item.id}`} className="flex items-center">
+                                        <Eye className="w-4 h-4 mr-2" /> View Product
+                                      </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => handleEditItem(item)}>
+                                      <Edit className="w-4 h-4 mr-2" /> Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    {item.is_active ? (
+                                      <DropdownMenuItem onSelect={() => handleDeactivateItem(item)} className="text-red-600">
+                                        <Trash2 className="w-4 h-4 mr-2" /> Deactivate
+                                      </DropdownMenuItem>
+                                    ) : (
+                                      <DropdownMenuItem onSelect={() => handleActivateItem(item)} className="text-green-600">
+                                        <CheckCircle2 className="w-4 h-4 mr-2" /> Activate
+                                      </DropdownMenuItem>
+                                    )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="mt-4">
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious onClick={() => setPage(p => Math.max(1, p - 1))} />
+                        </PaginationItem>
+                        <span className="px-2 text-sm text-muted-foreground">Page {page} of {totalPages}</span>
+                        <PaginationItem>
+                          <PaginationNext onClick={() => setPage(p => Math.min(totalPages, p + 1))} />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
                 </div>
               )}
             </CardContent>
