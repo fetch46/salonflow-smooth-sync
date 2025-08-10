@@ -148,7 +148,7 @@ export default function ReceiptView() {
         heightLeft -= pageHeight;
       }
 
-      const fileName = `receipt_${receipt?.receipt_number || id}.pdf`;
+      const fileName = `sales_receipt_${receipt?.receipt_number || id}.pdf`;
       pdf.save(fileName);
     } catch (e) {
       console.error(e);
@@ -478,7 +478,7 @@ export default function ReceiptView() {
             </Button>
             <Button className="bg-violet-600 hover:bg-violet-700" onClick={openEdit}>
               <Edit2 className="w-4 h-4 mr-2" />
-              Edit Receipt
+              Edit Sales Receipt
             </Button>
           </div>
         </div>
@@ -553,12 +553,12 @@ export default function ReceiptView() {
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Edit Receipt</DialogTitle>
+            <DialogTitle>Edit Sales Receipt</DialogTitle>
           </DialogHeader>
           <form onSubmit={submitEdit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Receipt Number</Label>
+                <Label>Sales Receipt Number</Label>
                 <Input value={editForm.receipt_number} onChange={(e) => setEditForm(prev => ({ ...prev, receipt_number: e.target.value }))} />
               </div>
               <div className="space-y-2">

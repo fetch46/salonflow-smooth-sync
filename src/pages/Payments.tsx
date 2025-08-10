@@ -302,7 +302,7 @@ export default function Payments() {
 
   const exportCsv = () => {
     try {
-      const headers = ["Receipt #", "Client", "Payment Date", "Amount", "Method", "Reference"];
+      const headers = ["Sales Receipt #", "Client", "Payment Date", "Amount", "Method", "Reference"];
       const rows = filteredReceived.map(p => {
         const r = receiptsById[p.receipt_id];
         const clientName = r?.customer_id ? (clientsById[r.customer_id]?.full_name || '—') : 'Walk-in';
@@ -381,7 +381,7 @@ export default function Payments() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     className="pl-9"
-                    placeholder="Search by receipt, client, method, reference..."
+                                         placeholder="Search by sales receipt, client, method, reference..."
                     value={searchReceived}
                     onChange={(e) => setSearchReceived(e.target.value)}
                   />
@@ -490,7 +490,7 @@ export default function Payments() {
                 <Table className={`w-full ${compact ? 'text-sm' : ''}`}>
                   <TableHeader className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <TableRow>
-                      <TableHead className={compact ? 'py-2' : ''}>Receipt #</TableHead>
+                                             <TableHead className={compact ? 'py-2' : ''}>Sales Receipt #</TableHead>
                       <TableHead className={compact ? 'py-2' : ''}>Client</TableHead>
                       <TableHead className={compact ? 'py-2' : ''}>Date</TableHead>
                       <TableHead className={compact ? 'py-2' : ''}>Amount</TableHead>
@@ -527,7 +527,7 @@ export default function Payments() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-48">
                                 <DropdownMenuItem onClick={() => r?.id && navigate(`/receipts/${r.id}`)}>
-                                  <ReceiptText className="mr-2 h-4 w-4" /> View Payment Receipt
+                                  <ReceiptText className="mr-2 h-4 w-4" /> View Sales Receipt
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => openEdit(p)}>
                                   <Edit className="mr-2 h-4 w-4" /> Edit Payment
@@ -628,10 +628,10 @@ export default function Payments() {
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem onClick={() => { if (e.receipt_url) window.open(e.receipt_url, '_blank'); }} disabled={!e.receipt_url}>
-                                <ReceiptText className="mr-2 h-4 w-4" /> View Payment Receipt
-                              </DropdownMenuItem>
+                                                          <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuItem onClick={() => { if (e.receipt_url) window.open(e.receipt_url, '_blank'); }} disabled={!e.receipt_url}>
+                                  <ReceiptText className="mr-2 h-4 w-4" /> View Sales Receipt
+                                </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => navigate('/expenses')}>
                                 <Edit className="mr-2 h-4 w-4" /> Edit Payment
                               </DropdownMenuItem>
@@ -693,10 +693,10 @@ export default function Payments() {
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem disabled>
-                                <ReceiptText className="mr-2 h-4 w-4" /> View Payment Receipt
-                              </DropdownMenuItem>
+                                                          <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuItem disabled>
+                                  <ReceiptText className="mr-2 h-4 w-4" /> View Sales Receipt
+                                </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => navigate('/purchases')}>
                                 <Edit className="mr-2 h-4 w-4" /> Edit Payment
                               </DropdownMenuItem>

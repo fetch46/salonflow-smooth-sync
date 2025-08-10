@@ -1043,7 +1043,7 @@ const Reports = () => {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
                     <CardTitle>Product Usage History</CardTitle>
-                    <p className="text-sm text-slate-600">Detailed movements from Purchases, Sales/Receipts, Inventory Adjustments and Service Kits</p>
+                    <p className="text-sm text-slate-600">Detailed movements from Purchases, Sales/Sales Receipts, Inventory Adjustments and Service Kits</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="space-y-1">

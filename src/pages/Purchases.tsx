@@ -98,9 +98,9 @@ export default function Purchases() {
 
   // Receiving workflow migrated to full pages (Goods Received)
 
-  
-  // Fetch suppliers for the vendor filter
-  const fetchSuppliers = useCallback(async () => {
+ 
+  // Fetch suppliers for the vendor filter (deduplicated)
+  const fetchSuppliersAlt = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from("suppliers")
@@ -265,8 +265,8 @@ export default function Purchases() {
   
   useEffect(() => {
     fetchPurchases();
-    fetchSuppliers();
-  }, [fetchPurchases, fetchSuppliers]);
+    fetchSuppliersAlt();
+  }, [fetchPurchases, fetchSuppliersAlt]);
 
   // removed handleSubmit (migrated to full page form)
 

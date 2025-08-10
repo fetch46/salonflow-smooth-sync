@@ -155,7 +155,7 @@ export default function Receipts() {
 
   const exportCsv = () => {
     const headers = [
-      'Receipt Number',
+      'Sales Receipt Number',
       'Date',
       'Customer',
       'Status',
@@ -183,7 +183,7 @@ export default function Receipts() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `receipts_${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `sales_receipts_${new Date().toISOString().slice(0,10)}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -193,10 +193,10 @@ export default function Receipts() {
   const exportSelectedCsv = () => {
     const selected = filtered.filter(r => selectedIds.has(r.id));
     if (selected.length === 0) {
-      toast.error('No receipts selected');
+      toast.error('No sales receipts selected');
       return;
     }
-    const headers = ['Receipt Number','Date','Customer','Status','Total','Paid','Outstanding'];
+    const headers = ['Sales Receipt Number','Date','Customer','Status','Total','Paid','Outstanding'];
     const rows = selected.map(r => [
       r.receipt_number,
       new Date(r.created_at).toISOString(),
@@ -211,7 +211,7 @@ export default function Receipts() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `receipts_selected_${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `sales_receipts_selected_${new Date().toISOString().slice(0,10)}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -277,7 +277,7 @@ export default function Receipts() {
     try {
       const { deleteReceiptWithFallback } = await import('@/utils/mockDatabase');
       await deleteReceiptWithFallback(supabase, receipt.id);
-      toast.success('Receipt deleted');
+      toast.success('Sales receipt deleted');
       fetchReceipts();
     } catch (error) {
       console.error(error);
@@ -497,7 +497,7 @@ export default function Receipts() {
       <div className="flex items-center justify-center min-h-[300px]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
-          <p className="mt-2 text-muted-foreground">Loading receipts...</p>
+          <p className="mt-2 text-muted-foreground">Loading sales receipts...</p>
         </div>
       </div>
     );
@@ -507,7 +507,7 @@ export default function Receipts() {
     <div className="flex-1 space-y-6 p-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold">Receipts</h2>
+          <h2 className="text-2xl font-bold">Sales Receipts</h2>
           <div className="text-sm text-muted-foreground">{filtered.length} result{filtered.length === 1 ? '' : 's'}</div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -517,7 +517,7 @@ export default function Receipts() {
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button onClick={openCreate}>Create Receipt</Button>
+          <Button onClick={openCreate}>Create Sales Receipt</Button>
         </div>
       </div>
 
@@ -561,7 +561,7 @@ export default function Receipts() {
           </div>
           <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-[170px]" />
           <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-[170px]" />
-          <Input placeholder="Search receipts..." value={search} onChange={(e) => setSearch(e.target.value)} className="flex-1 min-w-[200px]" />
+          <Input placeholder="Search sales receipts..." value={search} onChange={(e) => setSearch(e.target.value)} className="flex-1 min-w-[200px]" />
         </div>
         <div className="flex items-center gap-2">
           <div className="w-[120px]">
@@ -610,7 +610,7 @@ export default function Receipts() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Receipts</CardTitle>
+          <CardTitle>All Sales Receipts</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="hidden md:block overflow-x-auto">
