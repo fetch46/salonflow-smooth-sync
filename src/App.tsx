@@ -44,9 +44,6 @@ import SupplierProfile from "@/pages/SupplierProfile";
 import ProductView from "@/pages/ProductView";
 import InventoryAdjustmentForm from "@/pages/InventoryAdjustmentForm";
 import AccountView from "@/pages/AccountView";
-import PurchaseView from "@/pages/PurchaseView";
-import GoodsReceived from "@/pages/GoodsReceived";
-import GoodsReceivedForm from "@/pages/GoodsReceivedForm";
 
 import NotFound from "@/pages/NotFound";
 import Landing from "@/pages/Landing";
@@ -163,6 +160,8 @@ const AppRoutes = () => {
         
         {/* Financial Management */}
         <Route path="expenses" element={<Expenses />} />
+        <Route path="expenses/new" element={<ExpenseForm />} />
+        <Route path="expenses/:id/edit" element={<ExpenseForm />} />
         <Route path="receipts" element={<Receipts />} />
         <Route path="receipts/:id" element={<ReceiptView />} />
         <Route path="purchases" element={<Purchases />} />

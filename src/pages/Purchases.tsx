@@ -125,6 +125,171 @@ export default function Purchases() {
     }
   }, []);
 
+  
+  // Fetch suppliers for the vendor filter
+  const fetchSuppliers = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("suppliers")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name");
+      if (error) throw error;
+      setSuppliers((data || []) as SupplierOption[]);
+    } catch (err) {
+      console.warn("Failed to load suppliers", err);
+      setSuppliers([]);
+    }
+  }, []);
+
+  // Fetch purchases list
+  const fetchPurchases = useCallback(async () => {
+    try {
+      setLoading(true);
+      let query = supabase
+        .from("purchases")
+        .select("id, purchase_number, vendor_name, purchase_date, subtotal, tax_amount, total_amount, status, notes, created_at, updated_at")
+        .order("created_at", { ascending: false });
+      if (organization?.id) {
+        try {
+          // Scope by organization if column exists
+          query = query.eq("organization_id", organization.id);
+        } catch {}
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      setPurchases((data || []) as Purchase[]);
+    } catch (err) {
+      console.error("Error fetching purchases:", err);
+      setPurchases([]);
+      toast({ title: "Error", description: "Failed to load purchases", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }, [organization?.id, toast]);
+
+  // Open Receive dialog: load items, locations, and default location
+  const openReceiveDialog = async (purchaseId: string) => {
+    try {
+      setReceivePurchaseId(purchaseId);
+      // Load locations, items and purchase (for existing location)
+      const [locsRes, itemsRes, purchaseRes] = await Promise.all([
+        supabase.from("business_locations").select("id, name").order("name"),
+        supabase
+          .from("purchase_items")
+          .select(`id, item_id, quantity, unit_cost, total_cost, received_quantity, inventory_items (name)`) 
+          .eq("purchase_id", purchaseId),
+        supabase.from("purchases").select("location_id").eq("id", purchaseId).single(),
+      ]);
+
+      if (locsRes.error) throw locsRes.error;
+      if (itemsRes.error) throw itemsRes.error;
+
+      const locs = (locsRes.data || []) as StorageLocation[];
+      setLocations(locs);
+      setSelectedPurchaseItems((itemsRes.data || []) as unknown as PurchaseItem[]);
+
+      const existingLocationId = (purchaseRes.data as any)?.location_id || "";
+      const defaultLocationId = existingLocationId || (locs.length > 0 ? locs[0].id : "");
+      setReceiveLocationId(defaultLocationId);
+
+      // Pre-fill quantities with remaining amounts (optional: keep empty to force user input)
+      const prefill: Record<string, number> = {};
+      (itemsRes.data || []).forEach((it: any) => {
+        const remaining = Math.max(0, Number(it.quantity || 0) - Number(it.received_quantity || 0));
+        if (remaining > 0) prefill[it.item_id] = remaining;
+      });
+      setReceiveQuantities(prefill);
+
+      setReceiveOpen(true);
+    } catch (err: any) {
+      console.error("Error opening receive dialog:", err);
+      toast({ title: "Error", description: err?.message || "Failed to open receive dialog", variant: "destructive" });
+    }
+  };
+
+  // Submit receiving quantities
+  const submitReceive = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!receivePurchaseId) return;
+    try {
+      if (!receiveLocationId) {
+        toast({ title: "Select location", description: "Please choose a location to receive into.", variant: "destructive" });
+        return;
+      }
+
+      // Update purchase location
+      const { error: upErr } = await supabase
+        .from("purchases")
+        .update({ location_id: receiveLocationId })
+        .eq("id", receivePurchaseId);
+      if (upErr) throw upErr;
+
+      // Prepare and run item updates
+      const updates = selectedPurchaseItems
+        .map((it) => {
+          const add = Number(receiveQuantities[it.item_id] || 0);
+          if (!add || add <= 0) return null;
+          const currentReceived = Number(it.received_quantity || 0);
+          const maxQty = Number(it.quantity || 0);
+          const newReceived = Math.min(maxQty, currentReceived + add);
+          if (newReceived === currentReceived) return null;
+          return { id: it.id, received_quantity: newReceived };
+        })
+        .filter(Boolean) as { id: string; received_quantity: number }[];
+
+      if (updates.length === 0) {
+        toast({ title: "No quantities", description: "Enter at least one quantity to receive.", variant: "destructive" });
+        return;
+      }
+
+      // Supabase: update per item id in parallel
+      await Promise.all(
+        updates.map((u) =>
+          supabase.from("purchase_items").update({ received_quantity: u.received_quantity }).eq("id", u.id)
+        )
+      );
+
+      toast({ title: "Received", description: "Items received successfully" });
+      setReceiveOpen(false);
+      setReceivePurchaseId(null);
+      setReceiveQuantities({});
+      setSelectedPurchaseItems([]);
+      await fetchPurchases();
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: "Error", description: err?.message || "Failed to receive items", variant: "destructive" });
+    }
+  };
+
+  // Undo all receiving for a purchase
+  const undoReceiving = async (purchaseId: string) => {
+    try {
+      const { data: items, error } = await supabase
+        .from("purchase_items")
+        .select("id, received_quantity")
+        .eq("purchase_id", purchaseId);
+      if (error) throw error;
+
+      const toReset = (items || []).filter((it: any) => Number(it.received_quantity || 0) > 0);
+      if (toReset.length === 0) {
+        toast({ title: "Nothing to undo", description: "No items have been received for this purchase." });
+        return;
+      }
+
+      await Promise.all(
+        toReset.map((it: any) => supabase.from("purchase_items").update({ received_quantity: 0 }).eq("id", it.id))
+      );
+
+      toast({ title: "Receiving undone", description: "All received quantities reset" });
+      await fetchPurchases();
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: "Error", description: err?.message || "Failed to undo receiving", variant: "destructive" });
+    }
+  };
+
+  
   useEffect(() => {
     fetchPurchases();
     fetchSuppliers();
