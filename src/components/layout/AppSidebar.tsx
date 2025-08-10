@@ -207,16 +207,16 @@ const menuItems: MenuItem[] = [
         feature: "reports",
       },
       {
-        title: "Help & Support",
-        url: "/help",
-        icon: HelpCircle,
-        feature: "reports",
-      },
-      {
         title: "Staff",
         url: "/staff",
         icon: Users,
         feature: "staff",
+      },
+      {
+        title: "Help & Support",
+        url: "/help",
+        icon: HelpCircle,
+        feature: "reports",
       },
     ],
   },
