@@ -129,112 +129,6 @@ phone: "+1 (555) 123-4567",
   });
 
   // Locations State
-  
-  const [stockLocations, setStockLocations] = useState<Database['public']['Tables']['storage_locations']['Row'][]>([])
-  const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false)
-  const [editingLocation, setEditingLocation] = useState<Database['public']['Tables']['storage_locations']['Row'] | null>(null)
-  const [locationForm, setLocationForm] = useState<{ name: string; description: string; is_active: boolean }>({
-    name: '',
-    description: '',
-    is_active: true,
-  })
-
-  const fetchLocations = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('storage_locations')
-        .select('*')
-        .order('name')
-      if (error) throw error
-      setStockLocations(data || [])
-    } catch (e) {
-      console.error(e)
-      toast.error('Failed to Load Locations')
-    }
-  }, [])
-
-  useEffect(() => { fetchLocations() }, [fetchLocations])
-
-  const openNewLocation = () => {
-    setEditingLocation(null)
-    setLocationForm({ name: '', description: '', is_active: true })
-    setIsLocationDialogOpen(true)
-  }
-
-  const openEditLocation = (loc: Database['public']['Tables']['storage_locations']['Row']) => {
-    setEditingLocation(loc)
-    setLocationForm({
-      name: loc.name || '',
-      description: loc.description || '',
-      is_active: !!loc.is_active,
-    })
-    setIsLocationDialogOpen(true)
-  }
-
-  const handleSaveLocation = async () => {
-    try {
-      if (!locationForm.name.trim()) {
-        toast.error('Name is required')
-        return
-      }
-      if (editingLocation) {
-        const { error } = await supabase
-          .from('storage_locations')
-          .update({
-            name: locationForm.name,
-            description: locationForm.description,
-            is_active: locationForm.is_active,
-          })
-          .eq('id', editingLocation.id)
-        if (error) throw error
-        toast.success('Location updated')
-      } else {
-        const { error } = await supabase
-          .from('storage_locations')
-          .insert([{ 
-            name: locationForm.name,
-            description: locationForm.description,
-            is_active: locationForm.is_active,
-          }])
-        if (error) throw error
-        toast.success('Location created')
-      }
-      setIsLocationDialogOpen(false)
-      await fetchLocations()
-    } catch (e) {
-      console.error(e)
-      toast.error('Failed to Save Locations')
-    }
-  }
-
-  const toggleLocationActive = async (loc: Database['public']['Tables']['storage_locations']['Row']) => {
-    try {
-      const { error } = await supabase
-        .from('storage_locations')
-        .update({ is_active: !loc.is_active })
-        .eq('id', loc.id)
-      if (error) throw error
-      await fetchLocations()
-    } catch (e) {
-      console.error(e)
-      toast.error('Failed to Save Locations')
-    }
-  }
-
-  const deleteLocation = async (loc: Database['public']['Tables']['storage_locations']['Row']) => {
-    try {
-      const { error } = await supabase
-        .from('storage_locations')
-        .update({ is_active: false })
-        .eq('id', loc.id)
-      if (error) throw error
-      toast.success('Location deactivated')
-      await fetchLocations()
-    } catch (e) {
-      console.error(e)
-      toast.error('Failed to Save Locations')
-    }
-  }
 
   useEffect(() => {
     (async () => {
@@ -330,6 +224,81 @@ phone: "+1 (555) 123-4567",
       </Badge>
     );
   };
+
+  const handleSaveLocation = async () => {
+    if (!organization) return toast.error('No organization selected');
+    if (editingLocation) {
+      try {
+        await supabase
+          .from('stock_locations')
+          .update({
+            name: locationForm.name,
+            description: locationForm.description,
+            is_active: locationForm.is_active,
+          })
+          .eq('id', editingLocation.id);
+        toast.success('Location updated successfully');
+        setIsLocationDialogOpen(false);
+        fetchStockLocations();
+      } catch (e) {
+        console.error(e);
+        toast.error('Failed to update location');
+      }
+    } else {
+      try {
+        await supabase
+          .from('stock_locations')
+          .insert({
+            organization_id: organization.id,
+            name: locationForm.name,
+            description: locationForm.description,
+            is_active: locationForm.is_active,
+          });
+        toast.success('Location created successfully');
+        setIsLocationDialogOpen(false);
+        fetchStockLocations();
+      } catch (e) {
+        console.error(e);
+        toast.error('Failed to create location');
+      }
+    }
+  };
+
+  const handleDeleteLocation = async (id: string) => {
+    if (!organization) return toast.error('No organization selected');
+    if (window.confirm('Are you sure you want to delete this location?')) {
+      try {
+        await supabase
+          .from('stock_locations')
+          .delete()
+          .eq('id', id);
+        toast.success('Location deleted successfully');
+        fetchStockLocations();
+      } catch (e) {
+        console.error(e);
+        toast.error('Failed to delete location');
+      }
+    }
+  };
+
+  const fetchStockLocations = async () => {
+    if (!organization) return;
+    try {
+      const { data } = await supabase
+        .from('stock_locations')
+        .select('*')
+        .eq('organization_id', organization.id)
+        .order('name');
+      setStockLocations(data || []);
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to fetch stock locations');
+    }
+  };
+
+  useEffect(() => {
+    fetchStockLocations();
+  }, [organization]);
 
   return (
     <div className="flex-1 space-y-6 p-8 pt-6">
@@ -872,22 +841,7 @@ phone: "+1 (555) 123-4567",
                   {stockLocations.map((location) => (
                     <TableRow key={location.id}>
                       <TableCell className="font-medium">{location.name}</TableCell>
-                      <TableCell>{location.description || '-'}</TableCell>
-                      <TableCell>
-                        <Badge variant={location.is_active ? 'default' : 'secondary'}>
-                          {location.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right space-x-1">
-                        <Button variant="outline" size="sm" onClick={() => openEditLocation(location)}>
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => toggleLocationActive(location)}>
-                          {location.is_active ? 'Deactivate' : 'Activate'}
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => deleteLocation(location)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+
                       </TableCell>
                     </TableRow>
                   ))}

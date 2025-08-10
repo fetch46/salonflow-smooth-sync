@@ -239,7 +239,12 @@ export default function Purchases() {
     try {
       // Apply inventory level updates and track received per item
       for (const item of selectedPurchaseItems) {
-        const qty = Number(receiveQuantities[item.item_id] || 0);
+        const qtyRequested = Number(receiveQuantities[item.item_id] || 0);
+        if (qtyRequested <= 0) continue;
+        const alreadyReceived = Number(item.received_quantity || 0);
+        const expected = Number(item.quantity || 0);
+        const remainingToReceive = Math.max(0, expected - alreadyReceived);
+        const qty = Math.min(qtyRequested, remainingToReceive);
         if (qty <= 0) continue;
         const { data: levels } = await supabase
           .from("inventory_levels")
@@ -259,7 +264,7 @@ export default function Purchases() {
             .insert([{ item_id: item.item_id, location_id: receiveLocationId, quantity: qty }]);
         }
         // Update purchase_items.received_quantity
-        const newReceived = Math.min((item.received_quantity || 0) + qty, item.quantity || 0);
+        const newReceived = Math.min(alreadyReceived + qty, expected);
         await supabase
           .from("purchase_items")
           .update({ received_quantity: newReceived })
@@ -278,7 +283,7 @@ export default function Purchases() {
         const anyReceived = refreshedItems.some(it => Number(it.received_quantity || 0) > 0);
         status = fully === total ? "received" : (anyReceived ? "partial" : "pending");
       }
-      await supabase.from("purchases").update({ status }).eq("id", receivePurchaseId);
+      await supabase.from("purchases").update({ status, location_id: receiveLocationId }).eq("id", receivePurchaseId);
 
       toast({ title: "Received", description: "Items received into stock", });
       setReceiveOpen(false);
@@ -334,6 +339,12 @@ export default function Purchases() {
     e.preventDefault();
     
     try {
+      // Require supplier selection
+      if (!formData.vendor_name) {
+        toast({ title: "Supplier required", description: "Please select a supplier before saving.", variant: "destructive" });
+        return;
+      }
+
       // Compute totals from current items and tax settings to avoid state race conditions
       const subtotalNow = purchaseItems.reduce((sum, item) => sum + (Number(item.total_cost) || 0), 0);
       const taxNow = applyTax ? subtotalNow * ((orgTaxRate || 0) / 100) : 0;
@@ -438,6 +449,48 @@ export default function Purchases() {
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this purchase?")) {
       try {
+        // Ensure only unpaid (not fully received) purchases can be deleted
+        const { data: purchase, error: fetchErr } = await supabase
+          .from("purchases")
+          .select("id, status, location_id")
+          .eq("id", id)
+          .single();
+        if (fetchErr) throw fetchErr;
+
+        if (!purchase || purchase.status === 'received') {
+          toast({ title: "Not allowed", description: "Received purchases cannot be deleted.", variant: "destructive" });
+          return;
+        }
+
+        const { data: items, error: itemsErr } = await supabase
+          .from("purchase_items")
+          .select("item_id, received_quantity")
+          .eq("purchase_id", id);
+        if (itemsErr) throw itemsErr;
+
+        // Reverse any received inventory for partial receipts at the purchase location
+        if (purchase.location_id) {
+          for (const it of (items || [])) {
+            const receivedQty = Number(it.received_quantity || 0);
+            if (receivedQty > 0) {
+              const { data: levels } = await supabase
+                .from("inventory_levels")
+                .select("id, quantity")
+                .eq("item_id", it.item_id)
+                .eq("location_id", purchase.location_id)
+                .limit(1);
+              if (levels && levels.length > 0) {
+                const level = levels[0];
+                const newQty = Math.max(0, Number(level.quantity || 0) - receivedQty);
+                await supabase
+                  .from("inventory_levels")
+                  .update({ quantity: newQty })
+                  .eq("id", level.id);
+              }
+            }
+          }
+        }
+
         const { error } = await supabase
           .from("purchases")
           .delete()
@@ -846,7 +899,15 @@ export default function Purchases() {
                         {(purchase.status === 'pending' || purchase.status === 'partial') && (
                           <Button variant="outline" size="sm" onClick={() => openReceiveDialog(purchase.id)}>Receive Items</Button>
                         )}
-                        <Button variant="outline" size="sm" className="text-red-600" onClick={() => handleDelete(purchase.id)}>Delete</Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600"
+                          disabled={purchase.status === 'received'}
+                          onClick={() => handleDelete(purchase.id)}
+                        >
+                          Delete
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
