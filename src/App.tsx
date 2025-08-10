@@ -37,6 +37,7 @@ import JobCardView from "@/pages/JobCardView";
 import SuperAdmin from "@/pages/SuperAdmin";
 import ServiceView from "@/pages/ServiceView";
 import Booking from "@/pages/Booking";
+import SupplierProfile from "@/pages/SupplierProfile";
 
 import NotFound from "@/pages/NotFound";
 import Landing from "@/pages/Landing";
@@ -145,27 +146,27 @@ const AppRoutes = () => {
         <Route path="inventory-adjustments" element={<InventoryAdjustments />} />
         
         {/* Financial Management */}
-                 <Route path="expenses" element={<Expenses />} />
-         <Route path="receipts" element={<Receipts />} />
-         <Route path="receipts/:id" element={<ReceiptView />} />
+        <Route path="expenses" element={<Expenses />} />
+        <Route path="receipts" element={<Receipts />} />
+        <Route path="receipts/:id" element={<ReceiptView />} />
         <Route path="purchases" element={<Purchases />} />
         <Route path="suppliers" element={<Suppliers />} />
+        <Route path="suppliers/:id" element={<SupplierProfile />} />
         <Route path="accounts" element={<Accounts />} />
         <Route path="accounts/new" element={<AccountCreate />} />
         <Route path="accounts/:id/edit" element={<AccountEdit />} />
         <Route path="payments" element={<Payments />} />
         
-                 {/* Operations */}
-         <Route path="job-cards" element={<JobCards />} />
-         <Route path="job-cards/new" element={<CreateJobCard />} />
-         <Route path="job-cards/:id" element={<JobCardView />} />
-         <Route path="job-cards/:id/edit" element={<EditJobCard />} />
-         <Route path="pos" element={<POS />} />
+        {/* Operations */}
+        <Route path="job-cards" element={<JobCards />} />
+        <Route path="job-cards/new" element={<CreateJobCard />} />
+        <Route path="job-cards/:id" element={<JobCardView />} />
+        <Route path="job-cards/:id/edit" element={<EditJobCard />} />
+        <Route path="pos" element={<POS />} />
         <Route path="booking" element={<Booking />} />
         
-        
         {/* Settings & Support */}
-                 <Route path="settings" element={<Settings />} />
+        <Route path="settings" element={<Settings />} />
         <Route path="billing-history" element={<BillingHistory />} />
         <Route path="payment-method" element={<PaymentMethod />} />
         <Route path="upgrade-plan" element={<UpgradePlan />} />
