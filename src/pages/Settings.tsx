@@ -331,11 +331,17 @@ phone: "+1 (555) 123-4567",
   const fetchStockLocations = async () => {
     if (!organization) return;
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('business_locations')
         .select('id, name, address, is_active')
         .eq('organization_id', organization.id)
         .order('name');
+      if (error) {
+        console.error(error);
+        toast.error('Failed to fetch locations');
+        setStockLocations([]);
+        return;
+      }
       const mapped = (data || []).map((row: any) => ({
         id: row.id,
         name: row.name,
@@ -345,7 +351,8 @@ phone: "+1 (555) 123-4567",
       setStockLocations(mapped);
     } catch (e) {
       console.error(e);
-      toast.error('Failed to fetch stock locations');
+      toast.error('Failed to fetch locations');
+      setStockLocations([]);
     }
   };
 
@@ -897,25 +904,33 @@ phone: "+1 (555) 123-4567",
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {stockLocations.map((location) => (
-                    <TableRow key={location.id}>
-                      <TableCell className="font-medium">{location.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{location.description}</TableCell>
-                      <TableCell>
-                        <Badge variant={location.is_active ? "default" : "secondary"}>
-                          {location.is_active ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button variant="ghost" size="sm" onClick={() => openEditLocation(location)}>
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDeleteLocation(location.id)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                  {stockLocations.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
+                        No locations yet. Click "Add Location" to create your first location.
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    stockLocations.map((location) => (
+                      <TableRow key={location.id}>
+                        <TableCell className="font-medium">{location.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{location.description}</TableCell>
+                        <TableCell>
+                          <Badge variant={location.is_active ? "default" : "secondary"}>
+                            {location.is_active ? "Active" : "Inactive"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right space-x-2">
+                          <Button variant="ghost" size="sm" onClick={() => openEditLocation(location)}>
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDeleteLocation(location.id)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
               <UIDialog open={isLocationDialogOpen} onOpenChange={setIsLocationDialogOpen}>
