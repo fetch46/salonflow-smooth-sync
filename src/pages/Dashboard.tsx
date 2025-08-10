@@ -184,42 +184,42 @@ const Dashboard = () => {
         const staffUtilizationToday = staffCount > 0 ? Math.round((utilizedStaffToday / (staffCount || 1)) * 100) : 0;
         const staffUtilizationYesterday = staffCount > 0 ? Math.round((utilizedStaffYesterday / (staffCount || 1)) * 100) : 0;
 
-        // Revenue from sales (prefer sale_date if exists, else created_at range)
+        // Revenue from receipts (prefer receipt_date if exists, else created_at range)
         let revenueToday = 0;
         let revenueYesterday = 0;
         try {
-          const { data: salesToday, error: salesTodayErr } = await supabase
-            .from('sales')
+          const { data: receiptsToday, error: receiptsTodayErr } = await supabase
+            .from('receipts')
             .select('total_amount')
-            .eq('sale_date', todayStr);
-          if (salesTodayErr) throw salesTodayErr;
-          revenueToday = (salesToday || []).reduce((sum: number, s: any) => sum + (Number(s.total_amount) || 0), 0);
+            .eq('receipt_date', todayStr);
+          if (receiptsTodayErr) throw receiptsTodayErr;
+          revenueToday = (receiptsToday || []).reduce((sum: number, r: any) => sum + (Number(r.total_amount) || 0), 0);
         } catch (_) {
-          const { data: salesToday, error: salesTodayErr } = await supabase
-            .from('sales')
+          const { data: receiptsToday, error: receiptsTodayErr } = await supabase
+            .from('receipts')
             .select('total_amount, created_at')
             .gte('created_at', startOfDay(today).toISOString())
             .lte('created_at', endOfDay(today).toISOString());
-          if (!salesTodayErr) {
-            revenueToday = (salesToday || []).reduce((sum: number, s: any) => sum + (Number(s.total_amount) || 0), 0);
+          if (!receiptsTodayErr) {
+            revenueToday = (receiptsToday || []).reduce((sum: number, r: any) => sum + (Number(r.total_amount) || 0), 0);
           }
         }
 
         try {
-          const { data: salesYesterday, error: salesYesterdayErr } = await supabase
-            .from('sales')
+          const { data: receiptsYesterday, error: receiptsYesterdayErr } = await supabase
+            .from('receipts')
             .select('total_amount')
-            .eq('sale_date', yesterdayStr);
-          if (salesYesterdayErr) throw salesYesterdayErr;
-          revenueYesterday = (salesYesterday || []).reduce((sum: number, s: any) => sum + (Number(s.total_amount) || 0), 0);
+            .eq('receipt_date', yesterdayStr);
+          if (receiptsYesterdayErr) throw receiptsYesterdayErr;
+          revenueYesterday = (receiptsYesterday || []).reduce((sum: number, r: any) => sum + (Number(r.total_amount) || 0), 0);
         } catch (_) {
-          const { data: salesYesterday, error: salesYesterdayErr } = await supabase
-            .from('sales')
+          const { data: receiptsYesterday, error: receiptsYesterdayErr } = await supabase
+            .from('receipts')
             .select('total_amount, created_at')
             .gte('created_at', startOfDay(yesterday).toISOString())
             .lte('created_at', endOfDay(yesterday).toISOString());
-          if (!salesYesterdayErr) {
-            revenueYesterday = (salesYesterday || []).reduce((sum: number, s: any) => sum + (Number(s.total_amount) || 0), 0);
+          if (!receiptsYesterdayErr) {
+            revenueYesterday = (receiptsYesterday || []).reduce((sum: number, r: any) => sum + (Number(r.total_amount) || 0), 0);
           }
         }
 
