@@ -13,6 +13,8 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Plus, Search, Receipt, DollarSign, TrendingUp, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { useSaas } from "@/lib/saas";
+import { postExpensePaymentToLedger } from "@/utils/ledger";
 
 interface Expense {
   id: string;
@@ -37,6 +39,7 @@ export default function Expenses() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const { toast } = useToast();
+  const { organization } = useSaas();
 
   const [formData, setFormData] = useState({
     expense_number: "",
@@ -100,16 +103,48 @@ export default function Expenses() {
           .eq("id", editingExpense.id);
 
         if (error) throw error;
+        // If marked paid now, post ledger
+        if (organization?.id && expenseData.status === 'paid') {
+          try {
+            await postExpensePaymentToLedger({
+              organizationId: organization.id,
+              amount: Number(expenseData.amount || 0),
+              method: String(expenseData.payment_method || 'Cash'),
+              expenseId: editingExpense.id,
+              expenseNumber: expenseData.expense_number,
+              paymentDate: expenseData.expense_date,
+            });
+          } catch (ledgerErr) {
+            console.warn('Ledger posting failed (expense update)', ledgerErr);
+          }
+        }
         toast({
           title: "Success",
           description: "Expense updated successfully",
         });
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("expenses")
-          .insert([expenseData]);
+          .insert([expenseData])
+          .select('id')
+          .maybeSingle();
 
         if (error) throw error;
+        // If created as paid, post ledger
+        if (organization?.id && expenseData.status === 'paid' && data?.id) {
+          try {
+            await postExpensePaymentToLedger({
+              organizationId: organization.id,
+              amount: Number(expenseData.amount || 0),
+              method: String(expenseData.payment_method || 'Cash'),
+              expenseId: data.id,
+              expenseNumber: expenseData.expense_number,
+              paymentDate: expenseData.expense_date,
+            });
+          } catch (ledgerErr) {
+            console.warn('Ledger posting failed (expense create)', ledgerErr);
+          }
+        }
         toast({
           title: "Success",
           description: "Expense created successfully",
