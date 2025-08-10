@@ -38,6 +38,7 @@ import SuperAdmin from "@/pages/SuperAdmin";
 import ServiceView from "@/pages/ServiceView";
 import Booking from "@/pages/Booking";
 import SupplierProfile from "@/pages/SupplierProfile";
+import ProductView from "@/pages/ProductView";
 
 import NotFound from "@/pages/NotFound";
 import Landing from "@/pages/Landing";
@@ -143,6 +144,7 @@ const AppRoutes = () => {
         
         {/* Inventory Management */}
         <Route path="inventory" element={<Inventory />} />
+        <Route path="inventory/:id" element={<ProductView />} />
         <Route path="inventory-adjustments" element={<InventoryAdjustments />} />
         
         {/* Financial Management */}
