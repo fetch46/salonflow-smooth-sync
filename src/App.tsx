@@ -51,6 +51,7 @@ import Profile from "@/pages/Profile";
 import Help from "@/pages/Help";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Payments from "@/pages/Payments";
+import Banking from "@/pages/Banking";
 
 // Super Admin Pages
 import AdminDashboard from "@/pages/admin/AdminDashboard";
@@ -160,6 +161,7 @@ const AppRoutes = () => {
         <Route path="accounts/new" element={<AccountCreate />} />
         <Route path="accounts/:id/edit" element={<AccountEdit />} />
         <Route path="payments" element={<Payments />} />
+        <Route path="banking" element={<Banking />} />
         
         {/* Operations */}
         <Route path="job-cards" element={<JobCards />} />
