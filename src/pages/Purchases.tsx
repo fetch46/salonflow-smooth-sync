@@ -84,7 +84,7 @@ export default function Purchases() {
 
   // Payments state
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
-  const [payOpen, setPayOpen] = useState(false);
+  const [isPayDialogOpen, setIsPayDialogOpen] = useState(false);
   const [payPurchaseId, setPayPurchaseId] = useState<string | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [payAmount, setPayAmount] = useState<string>("");
@@ -615,7 +615,7 @@ export default function Purchases() {
     }
     setPayReference("");
     setPayDate(new Date().toISOString().slice(0,10));
-    setPayOpen(true);
+    setIsPayDialogOpen(true);
   };
 
   const submitPay = async (e: React.FormEvent) => {
@@ -644,7 +644,7 @@ export default function Purchases() {
       });
       if (error) throw error;
       toast({ title: "Paid", description: "Purchase payment recorded" });
-      setPayOpen(false);
+      setIsPayDialogOpen(false);
       setPayPurchaseId(null);
       fetchPurchases();
     } catch (err: any) {
@@ -1110,7 +1110,7 @@ export default function Purchases() {
       </Dialog>
 
       {/* Pay Dialog */}
-      <Dialog open={payOpen} onOpenChange={setPayOpen}>
+      <Dialog open={isPayDialogOpen} onOpenChange={setIsPayDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl">Pay Purchase</DialogTitle>
@@ -1140,7 +1140,7 @@ export default function Purchases() {
               <Input value={payReference} onChange={(e) => setPayReference(e.target.value)} placeholder="Optional" />
             </div>
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setPayOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setIsPayDialogOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={payLoading}>{payLoading ? 'Paying...' : 'Pay'}</Button>
             </div>
           </form>
