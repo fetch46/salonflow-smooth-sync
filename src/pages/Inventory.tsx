@@ -10,13 +10,13 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Package, Trash2, Edit, MapPin, RefreshCw } from "lucide-react";
+import { Plus, Package, Trash2, Edit, MapPin, RefreshCw, MoreHorizontal, Eye, CheckCircle2 } from "lucide-react";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { useMemo } from "react";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Columns3 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useOrganization } from "@/lib/saas/hooks";
@@ -906,18 +906,33 @@ export default function Inventory() {
                               </TableCell>
                             )}
                             <TableCell className="text-right">
-                              <Button variant="ghost" size="sm" onClick={() => handleEditItem(item)}>
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              {item.is_active ? (
-                                <Button variant="ghost" size="sm" onClick={() => handleDeactivateItem(item)}>
-                                  <Trash2 className="w-4 h-4 text-red-600" />
-                                </Button>
-                              ) : (
-                                <Button variant="ghost" size="sm" onClick={() => handleActivateItem(item)}>
-                                  Activate
-                                </Button>
-                              )}
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon">
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem asChild>
+                                    <Link to={`/inventory/${item.id}`} className="flex items-center">
+                                      <Eye className="w-4 h-4 mr-2" /> View Product
+                                    </Link>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => handleEditItem(item)}>
+                                    <Edit className="w-4 h-4 mr-2" /> Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  {item.is_active ? (
+                                    <DropdownMenuItem onSelect={() => handleDeactivateItem(item)} className="text-red-600">
+                                      <Trash2 className="w-4 h-4 mr-2" /> Deactivate
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem onSelect={() => handleActivateItem(item)} className="text-green-600">
+                                      <CheckCircle2 className="w-4 h-4 mr-2" /> Activate
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </TableCell>
                           </TableRow>
                         );
