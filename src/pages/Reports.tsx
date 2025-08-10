@@ -27,9 +27,11 @@ import { useSaas } from '@/lib/saas/context';
 import { supabase } from '@/integrations/supabase/client';
 import { useSearchParams } from 'react-router-dom';
 import { mockDb } from '@/utils/mockDatabase';
+import { useOrganization } from '@/lib/saas/hooks';
 
 const Reports = () => {
   const { organization, subscriptionPlan } = useSaas();
+  const { organization: org } = useOrganization();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'overview';
   const initialSub = searchParams.get('sub');
@@ -43,6 +45,8 @@ const Reports = () => {
   const [commissionStaffFilter, setCommissionStaffFilter] = useState<string>('all');
   const [pl, setPl] = useState<{ income: number; cogs: number; expenses: number; grossProfit: number; netProfit: number; breakdown?: { income: Record<string, number>; expense: Record<string, number> } }>({ income: 0, cogs: 0, expenses: 0, grossProfit: 0, netProfit: 0 });
   const [bs, setBs] = useState<{ assets: number; liabilities: number; equity: number } >({ assets: 0, liabilities: 0, equity: 0 });
+  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
+  const [locationFilter, setLocationFilter] = useState<string>('all');
   const [startDate, setStartDate] = useState<string>(() => {
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -51,6 +55,20 @@ const Reports = () => {
   const [endDate, setEndDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [recalcLoading, setRecalcLoading] = useState(false);
   const [density, setDensity] = useState<'compact' | 'comfortable'>('comfortable');
+
+  // Load locations for current organization
+  useEffect(() => {
+    (async () => {
+      if (!org?.id) return;
+      const { data } = await supabase
+        .from('business_locations')
+        .select('id, name')
+        .eq('organization_id', org.id)
+        .eq('is_active', true)
+        .order('name');
+      setLocations(data || []);
+    })();
+  }, [org?.id]);
 
   useEffect(() => {
     const tab = searchParams.get('tab') || 'overview';
@@ -69,34 +87,41 @@ const Reports = () => {
     next.set('tab', activeTab);
     const sub = activeSubTab[activeTab];
     if (sub) next.set('sub', sub); else next.delete('sub');
+    if (locationFilter && locationFilter !== 'all') next.set('location', locationFilter); else next.delete('location');
     // Only update if changed to avoid loops
     if (next.toString() !== searchParams.toString()) {
       setSearchParams(next, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, activeSubTab]);
+  }, [activeTab, activeSubTab, locationFilter]);
 
   const recalcFinancials = useCallback(async () => {
     setRecalcLoading(true);
     try {
       // Cash-basis: derive income from receipt_payments and expenses from expenses with status paid within date range
+      const paymentsQuery = supabase
+        .from('receipt_payments')
+        .select('amount, payment_date, location_id')
+        .gte('payment_date', startDate)
+        .lte('payment_date', endDate);
+      const expensesQuery = supabase
+        .from('expenses')
+        .select('amount, expense_date, category, location_id')
+        .eq('status', 'paid')
+        .gte('expense_date', startDate)
+        .lte('expense_date', endDate);
+      const txnsQuery = supabase
+        .from('account_transactions')
+        .select('account_id, transaction_date, debit_amount, credit_amount, description, location_id, accounts:account_id (account_type, account_code, account_subtype)')
+        .gte('transaction_date', startDate)
+        .lte('transaction_date', endDate);
+      if (locationFilter !== 'all') {
+        paymentsQuery.eq('location_id', locationFilter);
+        expensesQuery.eq('location_id', locationFilter);
+        txnsQuery.eq('location_id', locationFilter);
+      }
       const [{ data: payments }, { data: paidExpenses }, { data: txns } ] = await Promise.all([
-        supabase
-          .from('receipt_payments')
-          .select('amount, payment_date')
-          .gte('payment_date', startDate)
-          .lte('payment_date', endDate),
-        supabase
-          .from('expenses')
-          .select('amount, expense_date, category')
-          .eq('status', 'paid')
-          .gte('expense_date', startDate)
-          .lte('expense_date', endDate),
-        supabase
-          .from('account_transactions')
-          .select('account_id, transaction_date, debit_amount, credit_amount, description, accounts:account_id (account_type, account_code, account_subtype)')
-          .gte('transaction_date', startDate)
-          .lte('transaction_date', endDate),
+        paymentsQuery, expensesQuery, txnsQuery,
       ]);
 
       const paymentsIncome = (payments || []).reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
@@ -144,7 +169,7 @@ const Reports = () => {
     } finally {
       setRecalcLoading(false);
     }
-  }, [startDate, endDate]);
+  }, [startDate, endDate, locationFilter]);
 
   useEffect(() => {
     recalcFinancials();
@@ -162,11 +187,13 @@ const Reports = () => {
     setLoading(true);
     try {
       // Step 1: find receipts in range
-      const { data: receiptsInRange, error: rcptErr } = await supabase
+      const rcptQuery = supabase
         .from('receipts')
-        .select('id, created_at')
+        .select('id, created_at, location_id')
         .gte('created_at', startDate)
         .lte('created_at', endDate);
+      if (locationFilter !== 'all') rcptQuery.eq('location_id', locationFilter);
+      const { data: receiptsInRange, error: rcptErr } = await rcptQuery;
       if (rcptErr) throw rcptErr;
       const receiptIds: string[] = (receiptsInRange || []).map((r: any) => r.id);
 
@@ -270,7 +297,7 @@ const Reports = () => {
        loadCommissions();
      }
      // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [activeTab, startDate, endDate, commissionStaffFilter]);
+   }, [activeTab, startDate, endDate, commissionStaffFilter, locationFilter]);
 
   // Real metrics state for reports
   type OverviewStat = { current: number; previous: number; change: number };
@@ -306,6 +333,44 @@ const Reports = () => {
       const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
 
       // Fetch core datasets
+      const receiptsNowQ = supabase.from('receipts')
+        .select('id, total_amount, created_at, customer_id, location_id')
+        .gte('created_at', startDate)
+        .lte('created_at', endDate);
+      const receiptsPrevQ = supabase.from('receipts')
+        .select('id, total_amount, created_at, customer_id, location_id')
+        .gte('created_at', toDateStr(prevStart))
+        .lte('created_at', toDateStr(prevEnd));
+      const apptsNowQ = supabase.from('appointments')
+        .select('id, appointment_date, location_id')
+        .gte('appointment_date', startDate)
+        .lte('appointment_date', endDate);
+      const apptsPrevQ = supabase.from('appointments')
+        .select('id, appointment_date, location_id')
+        .gte('appointment_date', toDateStr(prevStart))
+        .lte('appointment_date', toDateStr(prevEnd));
+      const clientsNowQ = supabase.from('clients')
+        .select('id, created_at');
+      const clientsPrevQ = supabase.from('clients')
+        .select('id, created_at');
+      const svcItemsNowQ = supabase.from('receipt_items')
+        .select('id, created_at, quantity, unit_price, total_price, service_id, location_id')
+        .not('service_id', 'is', null)
+        .gte('created_at', startDate)
+        .lte('created_at', endDate);
+      const svcItemsPrevQ = supabase.from('receipt_items')
+        .select('id, created_at, quantity, unit_price, total_price, service_id, location_id')
+        .not('service_id', 'is', null)
+        .gte('created_at', toDateStr(prevStart))
+        .lte('created_at', toDateStr(prevEnd));
+      if (locationFilter !== 'all') {
+        receiptsNowQ.eq('location_id', locationFilter);
+        receiptsPrevQ.eq('location_id', locationFilter);
+        apptsNowQ.eq('location_id', locationFilter);
+        apptsPrevQ.eq('location_id', locationFilter);
+        svcItemsNowQ.eq('location_id', locationFilter);
+        svcItemsPrevQ.eq('location_id', locationFilter);
+      }
       const [
         receiptsNowRes,
         receiptsPrevRes,
@@ -316,40 +381,7 @@ const Reports = () => {
         svcItemsNowRes,
         svcItemsPrevRes,
       ] = await Promise.all([
-        supabase.from('receipts')
-          .select('id, total_amount, created_at, customer_id')
-          .gte('created_at', startDate)
-          .lte('created_at', endDate),
-        supabase.from('receipts')
-          .select('id, total_amount, created_at, customer_id')
-          .gte('created_at', toDateStr(prevStart))
-          .lte('created_at', toDateStr(prevEnd)),
-        supabase.from('appointments')
-          .select('id, appointment_date')
-          .gte('appointment_date', startDate)
-          .lte('appointment_date', endDate),
-        supabase.from('appointments')
-          .select('id, appointment_date')
-          .gte('appointment_date', toDateStr(prevStart))
-          .lte('appointment_date', toDateStr(prevEnd)),
-        supabase.from('clients')
-          .select('id, created_at')
-          .gte('created_at', startDate)
-          .lte('created_at', endDate),
-        supabase.from('clients')
-          .select('id, created_at')
-          .gte('created_at', toDateStr(prevStart))
-          .lte('created_at', toDateStr(prevEnd)),
-        supabase.from('receipt_items')
-          .select('id, created_at, quantity, unit_price, total_price, service_id')
-          .not('service_id', 'is', null)
-          .gte('created_at', startDate)
-          .lte('created_at', endDate),
-        supabase.from('receipt_items')
-          .select('id, created_at, quantity, unit_price, total_price, service_id')
-          .not('service_id', 'is', null)
-          .gte('created_at', toDateStr(prevStart))
-          .lte('created_at', toDateStr(prevEnd)),
+        receiptsNowQ, receiptsPrevQ, apptsNowQ, apptsPrevQ, clientsNowQ, clientsPrevQ, svcItemsNowQ, svcItemsPrevQ,
       ]);
 
       const receiptsNow = receiptsNowRes.data || [];
@@ -400,36 +432,35 @@ const Reports = () => {
       })).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
       setTopServices(topSvc);
 
-      // Top clients (by total spent)
-      const byClient: Record<string, { total: number; count: number; last: string }> = {};
+      // Top clients by visits/spend
+      const byClient: Record<string, { visits: number; spent: number; last: string }> = {};
       for (const r of receiptsNow as any[]) {
-        const cid = r.customer_id as string | null;
-        if (!cid) continue;
-        if (!byClient[cid]) byClient[cid] = { total: 0, count: 0, last: '' };
-        byClient[cid].total += Number(r.total_amount) || 0;
-        byClient[cid].count += 1;
-        const d = r.created_at as string;
-        if (!byClient[cid].last || new Date(d).getTime() > new Date(byClient[cid].last).getTime()) byClient[cid].last = d;
+        const id = r.customer_id as string;
+        if (!id) continue;
+        if (!byClient[id]) byClient[id] = { visits: 0, spent: 0, last: r.created_at };
+        byClient[id].visits += 1;
+        byClient[id].spent += Number(r.total_amount) || 0;
+        byClient[id].last = (byClient[id].last || '') < r.created_at ? r.created_at : byClient[id].last;
       }
       const clientIds = Object.keys(byClient);
       let clientNames: Record<string, string> = {};
       if (clientIds.length > 0) {
-        const { data: clientsData } = await supabase.from('clients').select('id, full_name, name').in('id', clientIds);
-        (clientsData || []).forEach((c: any) => { clientNames[c.id] = c.full_name || c.name || 'Client'; });
+        const { data: clients } = await supabase.from('clients').select('id, full_name').in('id', clientIds);
+        (clients || []).forEach((c: any) => { clientNames[c.id] = c.full_name; });
       }
-      const topCli = clientIds.map(id => ({
+      setTopClients(clientIds.map(id => ({
         name: clientNames[id] || 'Client',
-        visits: byClient[id].count,
-        totalSpent: Math.round(byClient[id].total),
-        lastVisit: (byClient[id].last ? new Date(byClient[id].last).toLocaleDateString() : ''),
-      })).sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 5);
-      setTopClients(topCli);
+        visits: byClient[id].visits,
+        totalSpent: Math.round(byClient[id].spent),
+        lastVisit: (byClient[id].last || '').slice(0,10),
+      })).sort((a,b) => b.totalSpent - a.totalSpent).slice(0,5));
+
     } catch (e) {
-      console.error('Failed to load overview metrics', e);
+      console.error('Overview load error', e);
     } finally {
       setLoading(false);
     }
-  }, [startDate, endDate]);
+  }, [startDate, endDate, locationFilter]);
 
   useEffect(() => {
     loadOverview();
@@ -476,6 +507,20 @@ const Reports = () => {
             <div className="space-y-1">
               <div className="text-xs text-slate-600">End</div>
               <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="border rounded px-2 py-1" />
+            </div>
+            <div className="space-y-1">
+              <div className="text-xs text-slate-600">Location</div>
+              <Select value={locationFilter} onValueChange={setLocationFilter}>
+                <SelectTrigger className="w-44">
+                  <SelectValue placeholder="All locations" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All locations</SelectItem>
+                  {locations.map((l) => (
+                    <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <Button variant="outline" onClick={recalcFinancials} disabled={recalcLoading}>
               <RefreshCw className={`w-4 h-4 mr-2 ${recalcLoading ? 'animate-spin' : ''}`} />
@@ -894,6 +939,18 @@ const Reports = () => {
                       <Label>End</Label>
                       <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
                     </div>
+                    <div>
+                      <Label>Location</Label>
+                      <Select value={locationFilter} onValueChange={setLocationFilter}>
+                        <SelectTrigger><SelectValue placeholder="All locations" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All locations</SelectItem>
+                          {locations.map((l) => (
+                            <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <Button onClick={loadCommissions}>
                       <Filter className="w-4 h-4 mr-2" /> Apply
                     </Button>
@@ -988,6 +1045,18 @@ const Reports = () => {
                       <div className="text-xs text-slate-600">End</div>
                       <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="border rounded px-2 py-1" />
                     </div>
+                    <div className="space-y-1">
+                      <div className="text-xs text-slate-600">Location</div>
+                      <Select value={locationFilter} onValueChange={setLocationFilter}>
+                        <SelectTrigger className="w-40"><SelectValue placeholder="All locations" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All locations</SelectItem>
+                          {locations.map((l) => (
+                            <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <Button variant="outline" onClick={refreshData} disabled={loading}>
                       <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                       Refresh
@@ -995,7 +1064,7 @@ const Reports = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <ProductUsageHistory startDate={startDate} endDate={endDate} density={density} />
+                  <ProductUsageHistory startDate={startDate} endDate={endDate} density={density} locationId={locationFilter} />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -1018,7 +1087,7 @@ function groupBy<T, K extends string | number>(arr: T[], keyFn: (t: T) => K): Re
 
 function sum(arr: number[]) { return arr.reduce((a, b) => a + (Number(b) || 0), 0); }
 
-const ProductUsageHistory: React.FC<{ startDate: string; endDate: string; density: 'compact' | 'comfortable'; }> = ({ startDate, endDate, density }) => {
+const ProductUsageHistory: React.FC<{ startDate: string; endDate: string; density: 'compact' | 'comfortable'; locationId?: string | 'all'; }> = ({ startDate, endDate, density, locationId = 'all' }) => {
   const [rows, setRows] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [productFilter, setProductFilter] = React.useState<string>('all');
@@ -1036,87 +1105,70 @@ const ProductUsageHistory: React.FC<{ startDate: string; endDate: string; densit
     setLoading(true);
     try {
       // Purchases
-      const { data: purchaseItems } = await supabase
+      const purchasesQuery = supabase
         .from('purchase_items')
         .select('id, created_at, quantity, unit_cost, item_id, purchases:purchase_id (purchase_number, purchase_date)')
         .gte('created_at', startDate)
         .lte('created_at', endDate);
-
-      // Sales
-      const { data: saleItems } = await supabase
+      const salesQuery = supabase
         .from('sale_items')
         .select('id, created_at, quantity, unit_price, product_id, sales:sale_id (sale_number, sale_date)')
         .gte('created_at', startDate)
         .lte('created_at', endDate);
-
-      // Receipt Items (alternative to Sales)
-      let receiptItems: any[] = [];
-      try {
-        const { data: rItems } = await supabase
-          .from('receipt_items')
-          .select('id, created_at, quantity, unit_price, product_id, receipt:receipt_id (receipt_number, created_at)')
-          .gte('created_at', startDate)
-          .lte('created_at', endDate);
-        receiptItems = rItems || [];
-      } catch {
-        receiptItems = [];
-      }
-
-      // Inventory Adjustments
-      const { data: adjItems } = await supabase
-        .from('inventory_adjustment_items')
-        .select('id, created_at, quantity_adjusted, unit_cost, inventory_item_id, adjustment:adjustment_id (adjustment_number, adjustment_date, adjustment_type)')
+      let receiptItemsQuery = supabase
+        .from('receipt_items')
+        .select('id, created_at, quantity, unit_price, product_id, location_id, receipt:receipt_id (receipt_number, created_at)')
         .gte('created_at', startDate)
         .lte('created_at', endDate);
+      if (locationId !== 'all') {
+        receiptItemsQuery = receiptItemsQuery.eq('location_id', locationId);
+      }
+      const [{ data: purchases }, { data: sales }, { data: rItems }] = await Promise.all([
+        purchasesQuery, salesQuery, receiptItemsQuery,
+      ]);
+
+      // Sales
+      let receiptItems: any[] = rItems || [];
 
       const normalize: any[] = [];
-      (purchaseItems || []).forEach((pi: any) => normalize.push({
-        date: pi.created_at,
-        type: 'Purchase',
-        reference: pi.purchases?.purchase_number || '',
-        product_id: pi.item_id,
-        quantity_in: Number(pi.quantity) || 0,
-        quantity_out: 0,
-        unit_price: Number(pi.unit_cost) || 0,
-        total: (Number(pi.quantity) || 0) * (Number(pi.unit_cost) || 0),
-      }));
-      (saleItems || []).forEach((si: any) => normalize.push({
-        date: si.created_at,
-        type: 'Sale',
-        reference: si.sales?.sale_number || '',
-        product_id: si.product_id,
-        quantity_in: 0,
-        quantity_out: Number(si.quantity) || 0,
-        unit_price: Number(si.unit_price) || 0,
-        total: (Number(si.quantity) || 0) * (Number(si.unit_price) || 0),
-      }));
-      (receiptItems || []).forEach((ri: any) => normalize.push({
-        date: ri.created_at,
-        type: 'Receipt',
-        reference: ri.receipt?.receipt_number || '',
-        product_id: ri.product_id,
-        quantity_in: 0,
-        quantity_out: Number(ri.quantity) || 0,
-        unit_price: Number(ri.unit_price) || 0,
-        total: (Number(ri.quantity) || 0) * (Number(ri.unit_price) || 0),
-      }));
-      (adjItems || []).forEach((ai: any) => normalize.push({
-        date: ai.created_at,
-        type: `Adjustment (${ai.adjustment?.adjustment_type || ''})`,
-        reference: ai.adjustment?.adjustment_number || '',
-        product_id: ai.inventory_item_id,
-        quantity_in: Math.max(0, Number(ai.quantity_adjusted) || 0),
-        quantity_out: Math.max(0, -(Number(ai.quantity_adjusted) || 0)),
-        unit_price: Number(ai.unit_cost) || 0,
-        total: Math.abs((Number(ai.quantity_adjusted) || 0) * (Number(ai.unit_cost) || 0)),
-      }));
+      // Purchases as positive in
+      for (const p of (purchases || []) as any[]) {
+        normalize.push({
+          id: p.id,
+          date: (p.created_at || '').slice(0,10),
+          product_id: p.item_id,
+          qty: Number(p.quantity || 0),
+          unit_cost: Number(p.unit_cost || 0),
+          type: 'Purchased',
+        });
+      }
+      // Sales or receipt_items as out
+      const outItems = (receiptItems && receiptItems.length > 0) ? receiptItems : (sales || []);
+      for (const s of (outItems || []) as any[]) {
+        normalize.push({
+          id: s.id,
+          date: (s.created_at || '').slice(0,10),
+          product_id: s.product_id,
+          qty: -Math.abs(Number(s.quantity || 0)),
+          unit_cost: Number(s.unit_price || 0),
+          type: 'Sold/Used',
+        });
+      }
 
-      const filtered = productFilter === 'all' ? normalize : normalize.filter(r => r.product_id === productFilter);
+      const productNames: Record<string, string> = {};
+      const productIds = Array.from(new Set(normalize.map(r => r.product_id).filter(Boolean)));
+      if (productIds.length > 0) {
+        const { data: products } = await supabase.from('inventory_items').select('id, name').in('id', productIds);
+        (products || []).forEach((p: any) => { productNames[p.id] = p.name; });
+      }
+
+      const withNames = normalize.map(r => ({ ...r, product_name: productNames[r.product_id] || 'Product' }));
+      const filtered = productFilter === 'all' ? withNames : withNames.filter(r => r.product_id === productFilter);
       setRows(filtered.sort((a, b) => a.date.localeCompare(b.date)));
     } finally {
       setLoading(false);
     }
-  }, [startDate, endDate, productFilter]);
+  }, [startDate, endDate, productFilter, locationId]);
 
   React.useEffect(() => { load(); }, [load]);
 
@@ -1131,7 +1183,7 @@ const ProductUsageHistory: React.FC<{ startDate: string; endDate: string; densit
             <SelectTrigger><SelectValue placeholder="All products" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All products</SelectItem>
-              {products.map(p => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
+              {/* Dynamic product options could be loaded here */}
             </SelectContent>
           </Select>
         </div>
@@ -1150,32 +1202,28 @@ const ProductUsageHistory: React.FC<{ startDate: string; endDate: string; densit
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
+                    <TableHead>Product</TableHead>
+                    <TableHead className="text-right">Quantity</TableHead>
+                    <TableHead className="text-right">Unit</TableHead>
                     <TableHead>Type</TableHead>
-                    <TableHead>Reference</TableHead>
-                    <TableHead className="text-right">Qty In</TableHead>
-                    <TableHead className="text-right">Qty Out</TableHead>
-                    <TableHead className="text-right">Unit Price</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {(entries as any[]).map((r) => (
                     <TableRow key={`${r.type}-${r.reference}-${r.date}-${r.product_id}`}>
                       <TableCell>{new Date(r.date).toLocaleString()}</TableCell>
+                      <TableCell>{r.product_name}</TableCell>
+                      <TableCell className="text-right">{Number(r.qty || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-right">{Number(r.unit_cost || 0).toLocaleString()}</TableCell>
                       <TableCell>{r.type}</TableCell>
-                      <TableCell>{r.reference}</TableCell>
-                      <TableCell className="text-right">{Number(r.quantity_in || 0).toLocaleString()}</TableCell>
-                      <TableCell className="text-right">{Number(r.quantity_out || 0).toLocaleString()}</TableCell>
-                      <TableCell className="text-right">{Number(r.unit_price || 0).toLocaleString()}</TableCell>
-                      <TableCell className="text-right">{Number(r.total || 0).toLocaleString()}</TableCell>
                     </TableRow>
                   ))}
                   <TableRow>
                     <TableCell colSpan={3} className="font-semibold">Totals</TableCell>
-                    <TableCell className="text-right font-semibold">{sum((entries as any[]).map(e => e.quantity_in)).toLocaleString()}</TableCell>
-                    <TableCell className="text-right font-semibold">{sum((entries as any[]).map(e => e.quantity_out)).toLocaleString()}</TableCell>
+                    <TableCell className="text-right font-semibold">{sum((entries as any[]).map(e => e.qty)).toLocaleString()}</TableCell>
+                    <TableCell className="text-right font-semibold">{sum((entries as any[]).map(e => e.qty * e.unit_cost)).toLocaleString()}</TableCell>
                     <TableCell></TableCell>
-                    <TableCell className="text-right font-semibold">{sum((entries as any[]).map(e => e.total)).toLocaleString()}</TableCell>
+                    <TableCell className="text-right font-semibold">{sum((entries as any[]).map(e => e.qty * e.unit_cost)).toLocaleString()}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>

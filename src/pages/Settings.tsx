@@ -10,6 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Building, Users, CreditCard, MessageSquare, MapPin, Plus, Edit2, Trash2, Crown, Shield, User } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { usePermissions } from "@/lib/saas/hooks";
 import { toast } from "sonner";
 import { useOrganization } from "@/lib/saas/hooks";
 import { supabase } from "@/integrations/supabase/client";
@@ -128,75 +130,7 @@ phone: "+1 (555) 123-4567",
   });
 
   // Locations State
-  type StorageLocation = Database['public']['Tables']['storage_locations']['Row']
-  const [stockLocations, setStockLocations] = useState<StorageLocation[]>([])
-  const [locationsLoading, setLocationsLoading] = useState<boolean>(false)
-  const [isLocationDialogOpen, setIsLocationDialogOpen] = useState<boolean>(false)
-  const [editingLocation, setEditingLocation] = useState<StorageLocation | null>(null)
-  const [locationForm, setLocationForm] = useState<{ name: string; description: string; is_active: boolean }>({ name: "", description: "", is_active: true })
 
-  const fetchStockLocations = useCallback(async () => {
-    setLocationsLoading(true)
-    try {
-      const { data, error } = await supabase
-        .from('storage_locations')
-        .select('*')
-        .order('name')
-      if (error) throw error
-      setStockLocations(data || [])
-    } catch (e) {
-      console.error(e)
-      toast.error('Failed to load stock locations')
-    } finally {
-      setLocationsLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchStockLocations()
-  }, [fetchStockLocations])
-
-  const openCreateLocation = () => {
-    setEditingLocation(null)
-    setLocationForm({ name: "", description: "", is_active: true })
-    setIsLocationDialogOpen(true)
-  }
-
-  const openEditLocation = (loc: StorageLocation) => {
-    setEditingLocation(loc)
-    setLocationForm({ name: loc.name, description: loc.description || "", is_active: Boolean(loc.is_active) })
-    setIsLocationDialogOpen(true)
-  }
-
-  const handleSaveLocation = async () => {
-    try {
-      if (!locationForm.name.trim()) {
-        toast.error('Name is required')
-        return
-      }
-      if (editingLocation) {
-        const { error } = await supabase
-          .from('storage_locations')
-          .update({ name: locationForm.name.trim(), description: locationForm.description || null, is_active: locationForm.is_active })
-          .eq('id', editingLocation.id)
-        if (error) throw error
-        toast.success('Location updated')
-      } else {
-        const { error } = await supabase
-          .from('storage_locations')
-          .insert({ name: locationForm.name.trim(), description: locationForm.description || null, is_active: locationForm.is_active })
-        if (error) throw error
-        toast.success('Location created')
-      }
-      setIsLocationDialogOpen(false)
-      setEditingLocation(null)
-      setLocationForm({ name: "", description: "", is_active: true })
-      fetchStockLocations()
-    } catch (e) {
-      console.error(e)
-      toast.error('Failed to save location')
-    }
-  }
 
   useEffect(() => {
     (async () => {
@@ -811,10 +745,7 @@ phone: "+1 (555) 123-4567",
                   <MapPin className="h-5 w-5 text-pink-600" />
                   Stock Locations
                 </span>
-                <Button className="bg-gradient-to-r from-pink-500 to-purple-600" onClick={openCreateLocation}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Location
-                </Button>
+
               </CardTitle>
               <CardDescription>
                 Manage where inventory is stored
@@ -824,8 +755,7 @@ phone: "+1 (555) 123-4567",
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Description</TableHead>
+
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -834,13 +764,7 @@ phone: "+1 (555) 123-4567",
                   {stockLocations.map((location) => (
                     <TableRow key={location.id}>
                       <TableCell className="font-medium">{location.name}</TableCell>
-                      <TableCell className="max-w-[400px] truncate">{location.description}</TableCell>
-                      <TableCell>{getStatusBadge(location.is_active ? 'Active' : 'Inactive')}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => openEditLocation(location)}>
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
+
                         </div>
                       </TableCell>
                     </TableRow>
@@ -877,6 +801,35 @@ phone: "+1 (555) 123-4567",
               </Dialog>
             </CardContent>
           </Card>
+          <Dialog open={locDialogOpen} onOpenChange={setLocDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingLocation.id ? 'Edit Location' : 'Add Location'}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="loc_name">Name</Label>
+                  <Input id="loc_name" value={editingLocation.name} onChange={(e) => setEditingLocation({ ...editingLocation, name: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="loc_address">Address</Label>
+                  <Input id="loc_address" value={editingLocation.address || ''} onChange={(e) => setEditingLocation({ ...editingLocation, address: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="loc_phone">Phone</Label>
+                  <Input id="loc_phone" value={editingLocation.phone || ''} onChange={(e) => setEditingLocation({ ...editingLocation, phone: e.target.value })} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch id="loc_active" checked={editingLocation.is_active} onCheckedChange={(v) => setEditingLocation({ ...editingLocation, is_active: v })} />
+                  <Label htmlFor="loc_active">Active</Label>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setLocDialogOpen(false)}>Cancel</Button>
+                <Button onClick={saveLocation}>{editingLocation.id ? 'Save Changes' : 'Create Location'}</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
       </Tabs>
     </div>
