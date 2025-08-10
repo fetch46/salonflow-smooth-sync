@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, CreditCard, Search, Upload, Lock, Unlock, FileDown } from "lucide-react";
 import { useSaas } from "@/lib/saas";
+import { postAccountTransfer } from "@/utils/ledger";
 
 
 interface AccountRow {
@@ -34,6 +35,13 @@ export default function Banking() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
+
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferFromId, setTransferFromId] = useState<string>("");
+  const [transferToId, setTransferToId] = useState<string>("");
+  const [transferAmount, setTransferAmount] = useState<string>("");
+  const [transferDate, setTransferDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [transferLoading, setTransferLoading] = useState(false);
 
 
   const loadAccounts = useCallback(async () => {
@@ -130,7 +138,7 @@ export default function Banking() {
         if (type === "receipt_payment") {
           displayDebit = 0;
           displayCredit = debit; // incoming cash shown as credit in banking view
-        } else if (type === "expense" || type === "purchase_payment") {
+        } else if (type === "expense_payment" || type === "purchase_payment") {
           displayDebit = credit; // outgoing cash shown as debit in banking view
           displayCredit = 0;
         }
@@ -146,6 +154,56 @@ export default function Banking() {
   }, [transactions, search]);
 
   const selectedAccount = useMemo(() => accounts.find(a => a.id === selectedAccountId), [accounts, selectedAccountId]);
+
+  const openTransfer = () => {
+    setTransferFromId(selectedAccountId || "");
+    setTransferToId("");
+    setTransferAmount("");
+    setTransferDate(new Date().toISOString().slice(0, 10));
+    setTransferOpen(true);
+  };
+
+  const doTransfer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!organization?.id) return;
+    const amount = parseFloat(transferAmount);
+    if (!transferFromId || !transferToId) {
+      window.alert("Please select both source and destination accounts");
+      return;
+    }
+    if (transferFromId === transferToId) {
+      window.alert("Source and destination accounts must be different");
+      return;
+    }
+    if (!amount || amount <= 0) {
+      window.alert("Please enter a valid amount greater than 0");
+      return;
+    }
+
+    try {
+      setTransferLoading(true);
+      const fromAcc = accounts.find(a => a.id === transferFromId);
+      const toAcc = accounts.find(a => a.id === transferToId);
+      const desc = `Transfer from ${fromAcc?.account_name || "Account"} to ${toAcc?.account_name || "Account"}`;
+      const ok = await postAccountTransfer({
+        organizationId: organization.id,
+        amount,
+        fromAccountId: transferFromId,
+        toAccountId: transferToId,
+        transferDate,
+        description: desc,
+        locationId: null,
+      });
+      if (!ok) throw new Error("Transfer failed");
+      setTransferOpen(false);
+      await onRefresh();
+    } catch (err) {
+      console.error(err);
+      window.alert("Transfer failed. Please try again.");
+    } finally {
+      setTransferLoading(false);
+    }
+  };
 
   return (
     <div className="flex-1 space-y-6 p-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen">
@@ -167,6 +225,10 @@ export default function Banking() {
           <Button variant="outline" onClick={onRefresh} disabled={refreshing}>
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
             Refresh
+          </Button>
+          <Button onClick={openTransfer}>
+            <Upload className="w-4 h-4 mr-2" />
+            Transfer
           </Button>
 
         </div>
