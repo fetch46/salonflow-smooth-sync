@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-// import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/label";
 // import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // import { Textarea } from "@/components/ui/textarea";
 import { Plus, Search, Package, TrendingUp, TrendingDown, Edit2, Trash2, AlertTriangle, CheckCircle } from "lucide-react";
@@ -317,42 +317,6 @@ export default function InventoryAdjustments() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const addItemToAdjustment = () => {
-    setSelectedItems([...selectedItems, {
-      item_id: "",
-      current_quantity: 0,
-      adjusted_quantity: 0,
-      difference: 0,
-      unit_cost: 0,
-      total_cost: 0,
-      notes: ""
-    }]);
-  };
-
-  const removeItemFromAdjustment = (index: number) => {
-    const updatedItems = selectedItems.filter((_, i) => i !== index);
-    setSelectedItems(updatedItems);
-  };
-
-  const updateSelectedItem = (index: number, field: string, value: any) => {
-    const updatedItems = [...selectedItems];
-    updatedItems[index] = { ...updatedItems[index], [field]: value };
-    
-    // Calculate difference and total cost
-    if (field === 'current_quantity' || field === 'adjusted_quantity') {
-      const current = field === 'current_quantity' ? value : updatedItems[index].current_quantity;
-      const adjusted = field === 'adjusted_quantity' ? value : updatedItems[index].adjusted_quantity;
-      updatedItems[index].difference = adjusted - current;
-      updatedItems[index].total_cost = Math.abs(updatedItems[index].difference) * updatedItems[index].unit_cost;
-    }
-    
-    if (field === 'unit_cost') {
-      updatedItems[index].total_cost = Math.abs(updatedItems[index].difference) * value;
-    }
-    
-    setSelectedItems(updatedItems);
   };
 
   const getStatusBadge = (status: string) => {
