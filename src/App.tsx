@@ -37,6 +37,7 @@ import EditJobCard from "@/pages/EditJobCard";
 import JobCardView from "@/pages/JobCardView";
 import SuperAdmin from "@/pages/SuperAdmin";
 import ServiceView from "@/pages/ServiceView";
+import ServiceForm from "@/pages/ServiceForm";
 import Booking from "@/pages/Booking";
 import SupplierProfile from "@/pages/SupplierProfile";
 import ProductView from "@/pages/ProductView";
@@ -143,7 +144,9 @@ const AppRoutes = () => {
         <Route path="staff" element={<Staff />} />
         <Route path="staff/:id" element={<StaffProfile />} />
         <Route path="services" element={<Services />} />
+        <Route path="services/new" element={<ServiceForm />} />
         <Route path="services/:id" element={<ServiceView />} />
+        <Route path="services/:id/edit" element={<ServiceForm />} />
         
         {/* Inventory Management */}
         <Route path="inventory" element={<Inventory />} />
