@@ -1,12 +1,15 @@
--- Create storage locations table
-CREATE TABLE public.storage_locations (
-  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  name TEXT NOT NULL,
-  description TEXT,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
-);
+-- Legacy storage locations migration retained for history; superseded by business_locations
+-- The following block is no longer applied in modern setups.
+-- CREATE TABLE public.storage_locations (
+--   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+--   name TEXT NOT NULL,
+--   description TEXT,
+--   is_active BOOLEAN DEFAULT true,
+--   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+--   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+-- );
+
+-- The rest of this file created sample data for legacy storage locations; left as comments.
 
 -- Create inventory items table
 CREATE TABLE public.inventory_items (
@@ -26,7 +29,7 @@ CREATE TABLE public.inventory_items (
 CREATE TABLE public.inventory_levels (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   item_id UUID NOT NULL REFERENCES public.inventory_items(id) ON DELETE CASCADE,
-  location_id UUID NOT NULL REFERENCES public.storage_locations(id) ON DELETE CASCADE,
+  location_id UUID NOT NULL REFERENCES public.business_locations(id) ON DELETE CASCADE,
   quantity INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),

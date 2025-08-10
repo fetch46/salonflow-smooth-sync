@@ -6,6 +6,8 @@
 
 -- Also include business locations and related columns
 \i supabase/migrations/20250812090000_add_business_locations_and_location_filters.sql
+-- Migrate prior storage_locations usage to business_locations
+\i supabase/migrations/20250820093000_migrate_storage_locations_to_business_locations.sql
 
 -- 2. Ensure all required functions exist
 -- Create organization creation function if it doesn't exist
@@ -116,14 +118,15 @@ ON CONFLICT (slug) DO UPDATE SET
     is_active = EXCLUDED.is_active,
     sort_order = EXCLUDED.sort_order;
 
--- 4. Create default storage locations if they don't exist
-INSERT INTO storage_locations (name, description) VALUES
-('Main Storage', 'Primary storage area'),
-('Back Room', 'Secondary storage area'),
-('Front Desk', 'Front desk storage'),
-('Treatment Room 1', 'Storage in treatment room 1'),
-('Treatment Room 2', 'Storage in treatment room 2')
-ON CONFLICT (name) DO NOTHING;
+-- 4. Create default business locations if they don't exist (per organization should be created via app workflow).
+-- For demo environments without org scoping, insert a generic default.
+INSERT INTO public.business_locations (organization_id, name, is_active, is_default)
+SELECT o.id, 'Main Location', true, true
+FROM public.organizations o
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.business_locations bl WHERE bl.organization_id = o.id
+);
+
 
 -- 5. Verify all tables exist and have correct structure
 DO $$

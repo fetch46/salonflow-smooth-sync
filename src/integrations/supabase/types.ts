@@ -453,7 +453,7 @@ export type Database = {
             foreignKeyName: "inventory_levels_location_id_fkey"
             columns: ["location_id"]
             isOneToOne: false
-            referencedRelation: "storage_locations"
+            referencedRelation: "business_locations"
             referencedColumns: ["id"]
           },
         ]
@@ -1143,218 +1143,6 @@ export type Database = {
         }
         Relationships: []
       }
-      storage_locations: {
-        Row: {
-          created_at: string
-          description: string | null
-          id: string
-          is_active: boolean | null
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean | null
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean | null
-          name?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      subscription_plans: {
-        Row: {
-          created_at: string | null
-          description: string | null
-          features: Json | null
-          id: string
-          is_active: boolean | null
-          max_locations: number | null
-          max_users: number | null
-          name: string
-          price_monthly: number
-          price_yearly: number
-          slug: string
-          sort_order: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          description?: string | null
-          features?: Json | null
-          id?: string
-          is_active?: boolean | null
-          max_locations?: number | null
-          max_users?: number | null
-          name: string
-          price_monthly: number
-          price_yearly: number
-          slug: string
-          sort_order?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          description?: string | null
-          features?: Json | null
-          id?: string
-          is_active?: boolean | null
-          max_locations?: number | null
-          max_users?: number | null
-          name?: string
-          price_monthly?: number
-          price_yearly?: number
-          slug?: string
-          sort_order?: number | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      super_admins: {
-        Row: {
-          created_at: string
-          granted_at: string
-          granted_by: string | null
-          id: string
-          is_active: boolean | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          granted_at?: string
-          granted_by?: string | null
-          id?: string
-          is_active?: boolean | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          granted_at?: string
-          granted_by?: string | null
-          id?: string
-          is_active?: boolean | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      suppliers: {
-        Row: {
-          address: string | null
-          city: string | null
-          contact_person: string | null
-          country: string | null
-          created_at: string
-          email: string | null
-          id: string
-          is_active: boolean | null
-          name: string
-          notes: string | null
-          payment_terms: string | null
-          phone: string | null
-          postal_code: string | null
-          state: string | null
-          tax_id: string | null
-          updated_at: string
-          website: string | null
-        }
-        Insert: {
-          address?: string | null
-          city?: string | null
-          contact_person?: string | null
-          country?: string | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          is_active?: boolean | null
-          name: string
-          notes?: string | null
-          payment_terms?: string | null
-          phone?: string | null
-          postal_code?: string | null
-          state?: string | null
-          tax_id?: string | null
-          updated_at?: string
-          website?: string | null
-        }
-        Update: {
-          address?: string | null
-          city?: string | null
-          contact_person?: string | null
-          country?: string | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          is_active?: boolean | null
-          name?: string
-          notes?: string | null
-          payment_terms?: string | null
-          phone?: string | null
-          postal_code?: string | null
-          state?: string | null
-          tax_id?: string | null
-          updated_at?: string
-          website?: string | null
-        }
-        Relationships: []
-      }
-      user_invitations: {
-        Row: {
-          accepted_at: string | null
-          created_at: string
-          email: string
-          expires_at: string
-          id: string
-          invited_by: string
-          organization_id: string
-          role: string
-          token: string
-          updated_at: string
-        }
-        Insert: {
-          accepted_at?: string | null
-          created_at?: string
-          email: string
-          expires_at: string
-          id?: string
-          invited_by: string
-          organization_id: string
-          role?: string
-          token: string
-          updated_at?: string
-        }
-        Update: {
-          accepted_at?: string | null
-          created_at?: string
-          email?: string
-          expires_at?: string
-          id?: string
-          invited_by?: string
-          organization_id?: string
-          role?: string
-          token?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_invitations_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       business_locations: {
         Row: {
           id: string
@@ -1397,19 +1185,12 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "business_locations_manager_id_fkey"
-            columns: ["manager_id"]
-            isOneToOne: false
-            referencedRelation: "staff"
+            foreignKeyName: "business_locations_organization_id_fkey",
+            columns: ["organization_id"],
+            isOneToOne: false,
+            referencedRelation: "organizations",
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "business_locations_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
+          }
         ]
       }
       receipts: {

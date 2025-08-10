@@ -285,17 +285,8 @@ export default function Services() {
       if (error) throw error;
       setLocations(data || []);
     } catch (error) {
-      console.warn("Failed to fetch business_locations, attempting fallback to storage_locations", error);
-      try {
-        const { data: storage, error: storageErr } = await supabase
-          .from("storage_locations")
-          .select("id, name")
-          .order("name");
-        if (storageErr) throw storageErr;
-        setLocations((storage as any) || []);
-      } catch (fallbackErr) {
-        console.error("Failed to fetch storage_locations fallback:", fallbackErr);
-      }
+      console.warn("Failed to fetch business_locations", error);
+              setLocations([]);
     }
   }, [organization?.id]);
 

@@ -231,7 +231,7 @@ export default function Inventory() {
           location_id,
           quantity,
           inventory_items ( name, sku, cost_price, selling_price ),
-          storage_locations ( name )
+          business_locations ( name )
         `)
         .order("location_id")
         .order("item_id");
@@ -249,7 +249,7 @@ export default function Inventory() {
     setLocationsLoading(true);
     try {
       const { data, error } = await supabase
-        .from("storage_locations")
+        .from("business_locations")
         .select("id, name")
         .order("name");
       if (error) throw error;
@@ -690,7 +690,7 @@ export default function Inventory() {
                     <TableBody>
                       {filteredLevels.map((lvl) => (
                         <TableRow key={lvl.id} className="hover:bg-muted/50">
-                          <TableCell className="font-medium">{lvl.storage_locations?.name || lvl.location_id}</TableCell>
+                          <TableCell className="font-medium">{(lvl as any).business_locations?.name || lvl.location_id}</TableCell>
                           <TableCell>{lvl.inventory_items?.name || lvl.item_id}</TableCell>
                           <TableCell className="hidden sm:table-cell">{lvl.inventory_items?.sku || ''}</TableCell>
                           <TableCell className="text-right">{Number(lvl.quantity || 0)}</TableCell>

@@ -336,28 +336,7 @@ phone: "+1 (555) 123-4567",
         .select('id, name, address, is_active')
         .eq('organization_id', organization.id)
         .order('name');
-      if (error) {
-        console.warn('Failed to fetch business_locations, attempting fallback to storage_locations', error);
-        // Fallback: use storage_locations if business_locations is not available in this project
-        const { data: altData, error: altError } = await supabase
-          .from('storage_locations')
-          .select('id, name, description')
-          .order('name');
-        if (altError) {
-          console.error(altError);
-          toast.error(`Failed to fetch locations${altError?.message ? `: ${altError.message}` : ''}`);
-          setStockLocations([]);
-          return;
-        }
-        const altMapped = (altData || []).map((row: any) => ({
-          id: row.id,
-          name: row.name,
-          description: row.description ?? null,
-          is_active: true,
-        }));
-        setStockLocations(altMapped);
-        return;
-      }
+      if (error) throw error;
       const mapped = (data || []).map((row: any) => ({
         id: row.id,
         name: row.name,

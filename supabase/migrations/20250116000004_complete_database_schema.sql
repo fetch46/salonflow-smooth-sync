@@ -102,21 +102,26 @@ CREATE TABLE IF NOT EXISTS inventory_items (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7. STORAGE_LOCATIONS TABLE (update if exists, create if not)
-CREATE TABLE IF NOT EXISTS storage_locations (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name TEXT NOT NULL,
-    description TEXT,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+-- 7. BUSINESS_LOCATIONS TABLE (ensure exists)
+CREATE TABLE IF NOT EXISTS public.business_locations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  code TEXT,
+  address TEXT,
+  phone TEXT,
+  manager_id UUID REFERENCES public.staff(id),
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  is_default BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- 8. INVENTORY_LEVELS TABLE (update if exists, create if not)
 CREATE TABLE IF NOT EXISTS inventory_levels (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     item_id UUID NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
-    location_id UUID NOT NULL REFERENCES storage_locations(id) ON DELETE CASCADE,
+    location_id UUID NOT NULL REFERENCES public.business_locations(id) ON DELETE CASCADE,
     quantity DECIMAL(10,2) DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -534,7 +539,7 @@ CREATE INDEX IF NOT EXISTS idx_inventory_items_category ON inventory_items(categ
 CREATE INDEX IF NOT EXISTS idx_appointment_services_appointment_id ON appointment_services(appointment_id);
 CREATE INDEX IF NOT EXISTS idx_appointment_services_service_id ON appointment_services(service_id);
 CREATE INDEX IF NOT EXISTS idx_appointment_services_staff_id ON appointment_services(staff_id);
-CREATE INDEX IF NOT EXISTS idx_storage_locations_name ON storage_locations(name);
+-- storage_locations index no longer needed; business_locations managed separately
 CREATE INDEX IF NOT EXISTS idx_inventory_levels_item_location ON inventory_levels(item_id, location_id);
 CREATE INDEX IF NOT EXISTS idx_service_kits_organization_id ON service_kits(organization_id);
 CREATE INDEX IF NOT EXISTS idx_service_kits_service_id ON service_kits(service_id);
