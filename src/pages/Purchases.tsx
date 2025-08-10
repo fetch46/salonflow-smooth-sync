@@ -77,7 +77,7 @@ export default function Purchases() {
   const [applyTax, setApplyTax] = useState<boolean>(true);
 
   // Filters
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'partial' | 'received' | 'cancelled'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'partial' | 'received' | 'cancelled' | 'closed'>('all');
   const [vendorFilter, setVendorFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
@@ -300,6 +300,14 @@ export default function Purchases() {
     e.preventDefault();
     if (!receivePurchaseId || !receiveLocationId) {
       toast({ title: "Error", description: "Select a location to receive into", variant: "destructive" });
+      return;
+    }
+    // Require at least one positive quantity
+    const anyPositive = selectedPurchaseItems.some(
+      (item) => Number(receiveQuantities[item.item_id] || 0) > 0
+    );
+    if (!anyPositive) {
+      toast({ title: "Invalid quantities", description: "Enter at least one received quantity greater than zero.", variant: "destructive" });
       return;
     }
     try {
@@ -559,7 +567,8 @@ export default function Purchases() {
       received: "bg-green-100 text-green-800",
       partial: "bg-blue-100 text-blue-800",
       cancelled: "bg-red-100 text-red-800",
-    };
+      closed: "bg-gray-200 text-gray-800",
+    } as const;
 
     return (
       <Badge className={statusColors[status as keyof typeof statusColors] || "bg-gray-100 text-gray-800"}>
@@ -800,6 +809,7 @@ export default function Purchases() {
                       <SelectItem value="received">Received</SelectItem>
                       <SelectItem value="partial">Partial</SelectItem>
                       <SelectItem value="cancelled">Cancelled</SelectItem>
+                      <SelectItem value="closed">Closed</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1036,6 +1046,7 @@ export default function Purchases() {
               <SelectItem value="partial">Partial</SelectItem>
               <SelectItem value="received">Received</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectItem value="closed">Closed</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -1107,6 +1118,7 @@ export default function Purchases() {
                           variant="outline"
                           size="sm"
                           onClick={() => openPayDialog(purchase.id, Number(purchase.total_amount || 0))}
+                          disabled={purchase.status === 'closed'}
                         >
                           Pay
                         </Button>
@@ -1149,7 +1161,7 @@ export default function Purchases() {
                 {selectedPurchaseItems.map(it => (
                   <div key={it.item_id} className="flex items-center gap-2">
                     <div className="w-64 truncate">{it.inventory_items?.name || it.item_id}</div>
-                    <Input type="number" min={0} placeholder={`0 / ${it.quantity}`} value={receiveQuantities[it.item_id] ?? ''} onChange={(e) => setReceiveQuantities(prev => ({ ...prev, [it.item_id]: Number(e.target.value) }))} />
+                    <Input type="number" min={1} placeholder={`0 / ${it.quantity}`} value={receiveQuantities[it.item_id] ?? ''} onChange={(e) => setReceiveQuantities(prev => ({ ...prev, [it.item_id]: Number(e.target.value) }))} />
                   </div>
                 ))}
               </div>
@@ -1181,7 +1193,7 @@ export default function Purchases() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Amount</Label>
-                <Input type="number" step="0.01" min="0" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} />
+                <Input type="number" step="0.01" min="0.01" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Date</Label>
