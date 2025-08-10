@@ -17,6 +17,7 @@ import html2canvas from 'html2canvas';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 export default function ReceiptView() {
   const { id } = useParams();
@@ -34,7 +35,7 @@ export default function ReceiptView() {
   const printRef = useRef<HTMLDivElement>(null);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState<{ status: string; notes: string; receipt_number: string }>({ status: 'open', notes: '', receipt_number: '' });
+  const [editForm, setEditForm] = useState<{ status: string; notes: string; receipt_number: string; subtotal: number; tax_amount: number; discount_amount: number }>({ status: 'open', notes: '', receipt_number: '', subtotal: 0, tax_amount: 0, discount_amount: 0 });
 
   // Internal: job services and staff for commissions
   const [jobServices, setJobServices] = useState<any[]>([]);
@@ -74,7 +75,7 @@ export default function ReceiptView() {
           if (jobCardId) {
             const { data: jcs } = await supabase
               .from('job_card_services')
-              .select('service_id, staff_id, commission_percentage, services:service_id(name), staff:staff_id(full_name)')
+              .select('service_id, staff_id, quantity, unit_price, commission_percentage, services:service_id(name), staff:staff_id(full_name)')
               .eq('job_card_id', jobCardId);
             setJobServices(jcs || []);
             // Build staff map from jcs
@@ -160,7 +161,10 @@ export default function ReceiptView() {
     setEditForm({
       status: receipt.status || 'open',
       notes: receipt.notes || '',
-      receipt_number: receipt.receipt_number || ''
+      receipt_number: receipt.receipt_number || '',
+      subtotal: Number(receipt.subtotal || 0),
+      tax_amount: Number(receipt.tax_amount || 0),
+      discount_amount: Number(receipt.discount_amount || 0),
     });
     setIsEditOpen(true);
   };
@@ -169,10 +173,15 @@ export default function ReceiptView() {
     e.preventDefault();
     try {
       const { updateReceiptWithFallback } = await import('@/utils/mockDatabase');
+      const computedTotal = Number(editForm.subtotal || 0) + Number(editForm.tax_amount || 0) - Number(editForm.discount_amount || 0);
       await updateReceiptWithFallback(supabase, String(id), {
         status: editForm.status,
         notes: editForm.notes,
         receipt_number: editForm.receipt_number,
+        subtotal: Number(editForm.subtotal || 0),
+        tax_amount: Number(editForm.tax_amount || 0),
+        discount_amount: Number(editForm.discount_amount || 0),
+        total_amount: Number(computedTotal < 0 ? 0 : computedTotal),
       });
       toast.success('Receipt updated');
       setIsEditOpen(false);
@@ -225,6 +234,21 @@ export default function ReceiptView() {
     }
     return Object.values(out).sort((a, b) => b.commission_due - a.commission_due);
   }, [itemsWithCommission, staffById]);
+
+  const displayItems = useMemo(() => {
+    if ((items || []).length > 0) return items;
+    // Fallback: derive from job card services when receipt_items are missing
+    if ((jobServices || []).length > 0) {
+      return (jobServices || []).map((js: any, idx: number) => ({
+        id: `fb_${idx}`,
+        description: js.services?.name || 'Service',
+        quantity: js.quantity || 1,
+        unit_price: Number(js.unit_price || 0),
+        total_price: Number(js.quantity || 1) * Number(js.unit_price || 0),
+      }));
+    }
+    return [] as any[];
+  }, [items, jobServices]);
 
   if (loading) return <div className="p-6">Loading...</div>;
   if (!receipt) return <div className="p-6">Receipt not found</div>;
@@ -326,7 +350,7 @@ export default function ReceiptView() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            {items.length === 0 ? (
+            {displayItems.length === 0 ? (
               <div className="text-center py-8 space-y-2">
                 <FileText className="w-8 h-8 text-slate-300 mx-auto" />
                 <p className="text-slate-500">No items found for this receipt</p>
@@ -342,7 +366,7 @@ export default function ReceiptView() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {items.map((it) => (
+                  {displayItems.map((it: any) => (
                     <TableRow key={it.id}>
                       <TableCell className="font-medium">{it.description}</TableCell>
                       <TableCell>{it.quantity}</TableCell>
@@ -527,27 +551,45 @@ export default function ReceiptView() {
       )}
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Edit Receipt</DialogTitle>
           </DialogHeader>
-          <form onSubmit={submitEdit} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Receipt Number</Label>
-              <Input value={editForm.receipt_number} onChange={(e) => setEditForm(prev => ({ ...prev, receipt_number: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <select className="border rounded px-3 py-2 w-full" value={editForm.status} onChange={(e) => setEditForm(prev => ({ ...prev, status: e.target.value }))}>
-                <option value="open">Open</option>
-                <option value="partial">Partial</option>
-                <option value="paid">Paid</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label>Notes</Label>
-              <Input value={editForm.notes} onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))} />
+          <form onSubmit={submitEdit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Receipt Number</Label>
+                <Input value={editForm.receipt_number} onChange={(e) => setEditForm(prev => ({ ...prev, receipt_number: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <select className="border rounded px-3 py-2 w-full" value={editForm.status} onChange={(e) => setEditForm(prev => ({ ...prev, status: e.target.value }))}>
+                  <option value="open">Open</option>
+                  <option value="partial">Partial</option>
+                  <option value="paid">Paid</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Subtotal</Label>
+                <Input type="number" step="0.01" value={editForm.subtotal} onChange={(e) => setEditForm(prev => ({ ...prev, subtotal: Number(e.target.value || 0) }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Tax</Label>
+                <Input type="number" step="0.01" value={editForm.tax_amount} onChange={(e) => setEditForm(prev => ({ ...prev, tax_amount: Number(e.target.value || 0) }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Discount</Label>
+                <Input type="number" step="0.01" value={editForm.discount_amount} onChange={(e) => setEditForm(prev => ({ ...prev, discount_amount: Number(e.target.value || 0) }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Total (auto)</Label>
+                <Input disabled value={(Number(editForm.subtotal || 0) + Number(editForm.tax_amount || 0) - Number(editForm.discount_amount || 0)).toFixed(2)} />
+              </div>
+              <div className="md:col-span-2 space-y-2">
+                <Label>Notes</Label>
+                <Textarea value={editForm.notes} onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))} />
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
