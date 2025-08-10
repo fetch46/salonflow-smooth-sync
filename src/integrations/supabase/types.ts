@@ -803,6 +803,10 @@ export type Database = {
           role: string
           updated_at: string | null
           user_id: string
+          invited_by: string | null
+          invited_at: string | null
+          joined_at: string | null
+          metadata: Json | null
         }
         Insert: {
           created_at?: string | null
@@ -812,6 +816,10 @@ export type Database = {
           role?: string
           updated_at?: string | null
           user_id: string
+          invited_by?: string | null
+          invited_at?: string | null
+          joined_at?: string | null
+          metadata?: Json | null
         }
         Update: {
           created_at?: string | null
@@ -821,6 +829,10 @@ export type Database = {
           role?: string
           updated_at?: string | null
           user_id?: string
+          invited_by?: string | null
+          invited_at?: string | null
+          joined_at?: string | null
+          metadata?: Json | null
         }
         Relationships: [
           {

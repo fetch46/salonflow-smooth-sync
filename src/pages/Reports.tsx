@@ -23,7 +23,7 @@ import {
   Target,
   Package,
 } from 'lucide-react';
-import { useSaas } from '@/lib/saas/context';
+import { useSaas } from '@/lib/saas';
 import { supabase } from '@/integrations/supabase/client';
 import { useSearchParams } from 'react-router-dom';
 import { mockDb } from '@/utils/mockDatabase';

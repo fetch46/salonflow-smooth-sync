@@ -47,6 +47,7 @@ interface Service {
   duration_minutes: number;
   price: number;
   category: string;
+  commission_percentage?: number | null;
 }
 
 interface ClientRow {
@@ -369,6 +370,10 @@ export default function Appointments() {
         if (selectedService) {
           current.duration_minutes = selectedService.duration_minutes;
           current.price = selectedService.price;
+          current.commission_percentage =
+            typeof selectedService.commission_percentage === 'number'
+              ? Number(selectedService.commission_percentage)
+              : undefined;
         }
       } else if (field === 'staff_id') {
         current.staff_id = String(value);

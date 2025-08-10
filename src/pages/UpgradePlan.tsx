@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { PLAN_FEATURES } from "@/lib/features";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useSaas } from "@/lib/saas/context";
+import { useSaas } from "@/lib/saas";
 import { useEffect, useState } from "react";
 import { SubscriptionService } from "@/lib/saas/services";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";

@@ -11,6 +11,11 @@
 \i supabase/migrations/20250812090000_add_business_locations_and_location_filters.sql
 -- Migrate prior storage_locations usage to business_locations
 \i supabase/migrations/20250820093000_migrate_storage_locations_to_business_locations.sql
+-- Ensure organization_users has invitation fields
+\i supabase/migrations/20250901093000_add_org_users_invitation_fields.sql
+
+-- Ensure ledger table exists
+\i supabase/migrations/20250831090000_create_account_transactions.sql
 
 -- 2. Ensure all required functions exist
 -- Create organization creation function if it doesn't exist

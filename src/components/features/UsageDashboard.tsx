@@ -5,7 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useFeatureGating } from '@/hooks/useFeatureGating';
-import { useSaas } from '@/lib/saas/context';
+import { useSaas } from '@/lib/saas';
 import { FEATURE_LABELS, FEATURE_CATEGORIES } from '@/lib/features';
 import { 
   Users, 

@@ -198,12 +198,10 @@ const AppRoutes = () => {
 function App() {
   return (
     <ErrorBoundary>
-      <SaasProvider>
-        <Router>
-          <AppRoutes />
-          <Toaster />
-        </Router>
-      </SaasProvider>
+      <Router>
+        <AppRoutes />
+        <Toaster />
+      </Router>
     </ErrorBoundary>
   );
 }
