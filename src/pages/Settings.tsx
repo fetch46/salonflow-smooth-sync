@@ -417,12 +417,14 @@ phone: "+1 (555) 123-4567",
         orientation="vertical"
         value={activeTab}
         onValueChange={(val) => {
+          const y = window.scrollY;
           setActiveTab(val);
           setSearchParams({ tab: val });
+          requestAnimationFrame(() => window.scrollTo({ top: y }));
         }}
-        className="grid gap-6 md:grid-cols-[240px_1fr]"
+        className="grid gap-6 md:grid-cols-[240px_1fr] items-start"
       >
-        <TabsList className="flex h-auto w-full flex-col items-stretch gap-2 rounded-lg border bg-background p-2 sticky top-16">
+        <TabsList className="flex h-auto w-full flex-col items-stretch gap-2 rounded-lg border bg-background p-2 sticky top-16 z-30">
           <TabsTrigger value="company" className="justify-start gap-2 data-[state=active]:bg-muted">
             <Building className="w-4 h-4" />
             Company
@@ -445,7 +447,7 @@ phone: "+1 (555) 123-4567",
           </TabsTrigger>
         </TabsList>
 
-        <div className="space-y-6">
+        <div className="space-y-6 min-h-[50vh]">
           {/* Company Settings */}
           <TabsContent value="company">
             <Card>
