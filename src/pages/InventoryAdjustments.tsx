@@ -175,6 +175,49 @@ export default function InventoryAdjustments() {
 
   const handleApproveAdjustment = async (adjustment: Adjustment) => {
     try {
+      if (!adjustment.location_id) {
+        toast.error("This adjustment has no location set. Please edit and select a location before approval.");
+        return;
+      }
+
+      setLoading(true);
+
+      // Load items for this adjustment to apply quantity changes at the selected location
+      const { data: items, error: itemsErr } = await supabase
+        .from("inventory_adjustment_items")
+        .select("item_id, difference, adjusted_quantity")
+        .eq("adjustment_id", adjustment.id);
+      if (itemsErr) throw itemsErr;
+
+      // Apply item quantity changes per location
+      for (const item of items || []) {
+        // Fetch existing level for item/location
+        const { data: levelRows, error: levelErr } = await supabase
+          .from("inventory_levels")
+          .select("id, quantity")
+          .eq("item_id", item.item_id)
+          .eq("location_id", adjustment.location_id)
+          .limit(1);
+        if (levelErr) throw levelErr;
+
+        const existing = (levelRows || [])[0];
+        if (existing) {
+          const newQty = (existing.quantity ?? 0) + (item.difference ?? 0);
+          const { error: updErr } = await supabase
+            .from("inventory_levels")
+            .update({ quantity: newQty })
+            .eq("id", existing.id);
+          if (updErr) throw updErr;
+        } else {
+          // No existing level row => assume current was 0 and set to adjusted quantity
+          const { error: insErr } = await supabase
+            .from("inventory_levels")
+            .insert([{ item_id: item.item_id, location_id: adjustment.location_id, quantity: item.adjusted_quantity ?? (item.difference ?? 0) }]);
+          if (insErr) throw insErr;
+        }
+      }
+
+      // Finally, mark the adjustment as approved
       const { error } = await supabase
         .from("inventory_adjustments")
         .update({ 
@@ -191,6 +234,8 @@ export default function InventoryAdjustments() {
     } catch (error) {
       console.error("Error approving adjustment:", error);
       toast.error("Failed to approve adjustment");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -203,15 +248,56 @@ export default function InventoryAdjustments() {
     
     try {
       setLoading(true);
-      // Load the adjustment to check status
+      // Load the adjustment to check status and location
       const { data: adj, error: adjErr } = await supabase
         .from("inventory_adjustments")
-        .select("id, status")
+        .select("id, status, location_id")
         .eq("id", adjustmentId)
         .single();
       if (adjErr) throw adjErr;
 
-      // If approved, the DB BEFORE DELETE trigger will revert quantities. Nothing to do client-side.
+      // If approved, revert stock before deleting
+      if (adj?.status === 'approved') {
+        if (!adj.location_id) {
+          throw new Error("Approved adjustment is missing location; cannot safely revert stock.");
+        }
+
+        const { data: items, error: itemsErr } = await supabase
+          .from("inventory_adjustment_items")
+          .select("item_id, difference, adjusted_quantity")
+          .eq("adjustment_id", adjustmentId);
+        if (itemsErr) throw itemsErr;
+
+        for (const item of items || []) {
+          const { data: levelRows, error: levelErr } = await supabase
+            .from("inventory_levels")
+            .select("id, quantity")
+            .eq("item_id", item.item_id)
+            .eq("location_id", adj.location_id)
+            .limit(1);
+          if (levelErr) throw levelErr;
+
+          const existing = (levelRows || [])[0];
+          // Revert by subtracting the difference
+          if (existing) {
+            const newQty = (existing.quantity ?? 0) - (item.difference ?? 0);
+            const { error: updErr } = await supabase
+              .from("inventory_levels")
+              .update({ quantity: newQty })
+              .eq("id", existing.id);
+            if (updErr) throw updErr;
+          } else {
+            // No existing level row; create it back to the presumed pre-approval quantity (adjusted - difference = current)
+            const presumedCurrent = (item.adjusted_quantity ?? 0) - (item.difference ?? 0);
+            const { error: insErr } = await supabase
+              .from("inventory_levels")
+              .insert([{ item_id: item.item_id, location_id: adj.location_id, quantity: presumedCurrent }]);
+            if (insErr) throw insErr;
+          }
+        }
+      }
+
+      // Proceed with delete
       const { error } = await supabase
         .from("inventory_adjustments")
         .delete()
