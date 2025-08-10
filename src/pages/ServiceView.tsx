@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { useOrganization } from "@/lib/saas/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ export default function ServiceView() {
   const [service, setService] = useState<Service | null>(null);
   const [serviceKits, setServiceKits] = useState<ServiceKit[]>([]);
   const [loading, setLoading] = useState(true);
+  const { organization } = useOrganization();
 
   const fetchServiceData = useCallback(async () => {
     try {
@@ -54,6 +56,7 @@ export default function ServiceView() {
         .from("services")
         .select("*")
         .eq("id", id)
+        .eq("organization_id", organization?.id || "")
         .single();
 
       if (serviceError) throw serviceError;
@@ -68,7 +71,8 @@ export default function ServiceView() {
             id, name, type, unit, cost_price, selling_price, category
           )
         `)
-        .eq("service_id", id);
+        .eq("service_id", id)
+        .eq("organization_id", organization?.id || "");
 
       if (kitsError) throw kitsError;
       setServiceKits(kitsData || []);
@@ -78,7 +82,7 @@ export default function ServiceView() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, organization?.id]);
 
   useEffect(() => {
     if (id) {

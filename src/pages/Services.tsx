@@ -61,6 +61,7 @@ import {
 import { format } from "date-fns";
 import ServicesTable from "@/components/services/ServicesTable";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { useOrganization } from "@/lib/saas/hooks";
 
 interface Service {
   id: string;
@@ -146,8 +147,10 @@ export default function Services() {
   const [availableProducts, setAvailableProducts] = useState<{ id: string; name: string; type: string; category: string | null; unit: string | null; cost_price: number | null; selling_price: number | null }[]>([]);
   const [serviceKits, setServiceKits] = useState<ServiceKit[]>([]);
   const [viewMode, setViewMode] = useState<"cards" | "table">("table");
+  const [selectedProductId, setSelectedProductId] = useState<string>("");
  
   const { format: formatCurrency } = useOrganizationCurrency();
+  const { organization } = useOrganization();
 
   const [serviceMetrics, setServiceMetrics] = useState<{
     totalRevenue: number;
@@ -184,10 +187,16 @@ export default function Services() {
 
   const fetchServices = useCallback(async () => {
     try {
+      if (!organization?.id) {
+        setServices([]);
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       const { data, error } = await supabase
         .from("services")
         .select("*")
+        .eq("organization_id", organization?.id || "")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -198,7 +207,7 @@ export default function Services() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [organization?.id]);
 
   const refreshData = async () => {
     try {
@@ -215,10 +224,13 @@ export default function Services() {
 
   const fetchAvailableProducts = useCallback(async () => {
     try {
+      if (!organization?.id) return;
       const { data, error } = await supabase
         .from("inventory_items")
         .select("id, name, type, category, unit, cost_price, selling_price")
         .eq("is_active", true)
+        .eq("organization_id", organization?.id || "")
+        .eq("type", "good")
         .order("name");
 
       if (error) throw error;
@@ -226,7 +238,7 @@ export default function Services() {
     } catch (error) {
       console.error("Error fetching products:", error);
     }
-  }, []);
+  }, [organization?.id]);
 
   useEffect(() => {
     fetchServices();
@@ -356,7 +368,7 @@ export default function Services() {
         price: formData.price,
         category: formData.category || null,
         is_active: formData.is_active,
-
+        commission_percentage: formData.commission_percentage ?? 0,
       } as const;
 
       if (editingService) {
@@ -366,9 +378,11 @@ export default function Services() {
           .eq("id", editingService.id);
         if (error) throw error;
       } else {
+        if (!organization?.id) throw new Error("No active organization selected");
+        const insertPayload = { ...payload, organization_id: organization.id } as any;
         const { data, error } = await supabase
           .from("services")
-          .insert([payload])
+          .insert([insertPayload])
           .select('id')
           .maybeSingle();
         if (error) throw error;
@@ -386,10 +400,12 @@ export default function Services() {
           .eq("service_id", serviceId);
 
         if (serviceKits.length > 0) {
+          if (!organization?.id) throw new Error("No active organization selected");
           const kitData = serviceKits.map(kit => ({
             service_id: serviceId!,
             good_id: kit.good_id,
-            default_quantity: kit.default_quantity
+            default_quantity: kit.default_quantity,
+            organization_id: organization.id,
           }));
 
           const { error: kitError } = await supabase
@@ -433,7 +449,7 @@ export default function Services() {
       price: service.price,
       category: service.category || "",
       is_active: service.is_active,
-
+      commission_percentage: isNaN(cp) ? 0 : cp,
     });
     setEditingService(service);
     fetchServiceKits(service.id);
@@ -766,7 +782,7 @@ export default function Services() {
                   {/* Add Product Selection */}
                   <div>
                     <Label htmlFor="addProduct">Add Product to Kit</Label>
-                    <Select value={undefined} onValueChange={addKitItem}>
+                    <Select value={selectedProductId} onValueChange={(value) => { addKitItem(value); setSelectedProductId("") }}> 
                       <SelectTrigger>
                         <SelectValue placeholder="Select a product to add..." />
                       </SelectTrigger>
