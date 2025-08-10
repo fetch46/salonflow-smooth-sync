@@ -22,6 +22,7 @@ import {
   Sparkles,
   User,
   HelpCircle,
+  ArrowLeftRight,
 } from "lucide-react";
 import {
   Sidebar,
@@ -107,6 +108,12 @@ const menuItems: MenuItem[] = [
         url: "/inventory-adjustments",
         icon: Sliders,
         feature: "inventory_adjustments",
+      },
+      {
+        title: "Transfers",
+        url: "/inventory-transfers",
+        icon: ArrowLeftRight,
+        feature: "inventory",
       },
     ],
   },

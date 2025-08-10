@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,8 @@ import { usePermissions } from "@/lib/saas/hooks";
 import { toast } from "sonner";
 import { useOrganization } from "@/lib/saas/hooks";
 import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import type { Database } from "@/integrations/supabase/types";
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("company");
@@ -128,90 +130,7 @@ phone: "+1 (555) 123-4567",
   });
 
   // Locations State
-  const { hasMinimumRole } = usePermissions();
-  const [locations, setLocations] = useState<Array<{ id: string; name: string; address?: string | null; phone?: string | null; manager_id?: string | null; is_active: boolean }>>([]);
-  const [locDialogOpen, setLocDialogOpen] = useState(false);
-  const [editingLocation, setEditingLocation] = useState<{ id?: string; name: string; address?: string | null; phone?: string | null; manager_id?: string | null; is_active: boolean }>({ name: "", address: "", phone: "", manager_id: null, is_active: true });
 
-  const loadLocations = async () => {
-    if (!organization) return;
-    const { data, error } = await supabase
-      .from('business_locations')
-      .select('id, name, address, phone, manager_id, is_active')
-      .eq('organization_id', organization.id)
-      .order('name');
-    if (error) {
-      console.error(error);
-      toast.error('Failed to load locations');
-      return;
-    }
-    setLocations(data || []);
-  };
-
-  useEffect(() => { loadLocations(); // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organization?.id]);
-
-  const openAddLocation = () => {
-    setEditingLocation({ name: "", address: "", phone: "", manager_id: null, is_active: true });
-    setLocDialogOpen(true);
-  };
-  const openEditLocation = (loc: any) => {
-    setEditingLocation({ id: loc.id, name: loc.name, address: loc.address, phone: loc.phone, manager_id: loc.manager_id, is_active: !!loc.is_active });
-    setLocDialogOpen(true);
-  };
-  const saveLocation = async () => {
-    if (!organization) return toast.error('No organization');
-    if (!editingLocation.name.trim()) return toast.error('Location name required');
-    try {
-      if (editingLocation.id) {
-        const { error } = await supabase
-          .from('business_locations')
-          .update({
-            name: editingLocation.name,
-            address: editingLocation.address,
-            phone: editingLocation.phone,
-            manager_id: editingLocation.manager_id || null,
-            is_active: editingLocation.is_active,
-          })
-          .eq('id', editingLocation.id);
-        if (error) throw error;
-        toast.success('Location updated');
-      } else {
-        const { error } = await supabase
-          .from('business_locations')
-          .insert({
-            organization_id: organization.id,
-            name: editingLocation.name,
-            address: editingLocation.address,
-            phone: editingLocation.phone,
-            manager_id: editingLocation.manager_id || null,
-            is_active: editingLocation.is_active,
-          });
-        if (error) throw error;
-        toast.success('Location added');
-      }
-      setLocDialogOpen(false);
-      await loadLocations();
-    } catch (e) {
-      console.error(e);
-      toast.error('Failed to save location');
-    }
-  };
-  const deleteLocation = async (id: string) => {
-    try {
-      // Soft delete -> set inactive to keep historical links
-      const { error } = await supabase
-        .from('business_locations')
-        .update({ is_active: false })
-        .eq('id', id);
-      if (error) throw error;
-      toast.success('Location deactivated');
-      await loadLocations();
-    } catch (e) {
-      console.error(e);
-      toast.error('Failed to deactivate location');
-    }
-  };
 
   useEffect(() => {
     (async () => {
@@ -824,55 +743,62 @@ phone: "+1 (555) 123-4567",
               <CardTitle className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <MapPin className="h-5 w-5 text-pink-600" />
-                  Business Locations
+                  Stock Locations
                 </span>
-                {hasMinimumRole('owner') && (
-                  <Button className="bg-gradient-to-r from-pink-500 to-purple-600" onClick={openAddLocation}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Location
-                  </Button>
-                )}
+
               </CardTitle>
               <CardDescription>
-                Manage your business locations and branches
+                Manage where inventory is stored
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Location Name</TableHead>
-                    <TableHead>Address</TableHead>
-                    <TableHead>Phone</TableHead>
+
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {locations.map((location) => (
+                  {stockLocations.map((location) => (
                     <TableRow key={location.id}>
                       <TableCell className="font-medium">{location.name}</TableCell>
-                      <TableCell>{location.address || ''}</TableCell>
-                      <TableCell>{location.phone || ''}</TableCell>
-                      <TableCell>{getStatusBadge(location.is_active ? 'Active' : 'Inactive')}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          {hasMinimumRole('owner') && (
-                            <>
-                              <Button variant="ghost" size="sm" onClick={() => openEditLocation(location)}>
-                                <Edit2 className="w-4 h-4" />
-                              </Button>
-                              <Button variant="ghost" size="sm" className="text-destructive" onClick={() => deleteLocation(location.id)}>
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </>
-                          )}
+
                         </div>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+              <Dialog open={isLocationDialogOpen} onOpenChange={setIsLocationDialogOpen}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{editingLocation ? 'Edit Location' : 'Add Location'}</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="loc_name">Name</Label>
+                      <Input id="loc_name" value={locationForm.name} onChange={(e) => setLocationForm({ ...locationForm, name: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="loc_desc">Description</Label>
+                      <Textarea id="loc_desc" value={locationForm.description} onChange={(e) => setLocationForm({ ...locationForm, description: e.target.value })} />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="loc_active">Active</Label>
+                        <p className="text-xs text-muted-foreground">Inactive locations will be hidden in selectors</p>
+                      </div>
+                      <Switch id="loc_active" checked={locationForm.is_active} onCheckedChange={(checked) => setLocationForm({ ...locationForm, is_active: checked })} />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsLocationDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSaveLocation}>{editingLocation ? 'Save Changes' : 'Create Location'}</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
           <Dialog open={locDialogOpen} onOpenChange={setLocDialogOpen}>
