@@ -175,6 +175,22 @@ BEGIN
     (v_ap_account_id, p_payment_date, CONCAT('Purchase ', COALESCE(v_purchase_number, p_purchase_id::text), ' payment'), p_amount, 0, 'purchase_payment', p_purchase_id::text),
     (p_account_id,  p_payment_date, CONCAT('Purchase ', COALESCE(v_purchase_number, p_purchase_id::text), ' payment'), 0, p_amount, 'purchase_payment', p_purchase_id::text);
 
+  -- If fully paid, mark purchase as closed
+  PERFORM 1 FROM public.purchases WHERE id = p_purchase_id; -- ensure row exists
+  WITH agg AS (
+    SELECT COALESCE(SUM(pp.amount), 0) AS paid
+    FROM public.purchase_payments pp
+    WHERE pp.purchase_id = p_purchase_id
+  ), tot AS (
+    SELECT total_amount FROM public.purchases WHERE id = p_purchase_id
+  )
+  UPDATE public.purchases p
+  SET status = 'closed'
+  FROM agg, tot
+  WHERE p.id = p_purchase_id
+    AND COALESCE(agg.paid, 0) >= COALESCE(tot.total_amount, 0)
+    AND p.status IS DISTINCT FROM 'closed';
+
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
