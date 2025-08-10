@@ -309,6 +309,11 @@ export default function InventoryAdjustments() {
 
       if (error) throw error;
       toast.success("Adjustment deleted" + (adj?.status === 'approved' ? " and stock reverted" : ""));
+      // If the deleted adjustment is open in the view modal, close it
+      if (viewingAdjustment?.id === adjustmentId) {
+        setIsViewModalOpen(false);
+        setViewingAdjustment(null);
+      }
       fetchAdjustments();
     } catch (error) {
       console.error("Error deleting adjustment:", error);
@@ -708,15 +713,15 @@ export default function InventoryAdjustments() {
                           >
                             <CheckCircle className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(adjustment.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
                         </>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(adjustment.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
