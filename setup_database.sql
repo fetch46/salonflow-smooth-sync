@@ -12,6 +12,9 @@
 -- Migrate prior storage_locations usage to business_locations
 \i supabase/migrations/20250820093000_migrate_storage_locations_to_business_locations.sql
 
+-- Ensure ledger table exists
+\i supabase/migrations/20250831090000_create_account_transactions.sql
+
 -- 2. Ensure all required functions exist
 -- Create organization creation function if it doesn't exist
 CREATE OR REPLACE FUNCTION create_organization_with_user(
