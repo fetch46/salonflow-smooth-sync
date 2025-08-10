@@ -66,7 +66,7 @@ const menuItems: MenuItem[] = [
     title: "Dashboard",
     url: "/dashboard",
     icon: TrendingUp,
-    feature: "reports", // Basic dashboard is part of reports
+    feature: "reports",
   },
   {
     title: "Appointments",
@@ -91,6 +91,12 @@ const menuItems: MenuItem[] = [
     url: "/services",
     icon: Scissors,
     feature: "services",
+  },
+  {
+    title: "Job Cards",
+    url: "/job-cards",
+    icon: FileText,
+    feature: "job_cards",
   },
   {
     title: "Inventory",
@@ -118,71 +124,59 @@ const menuItems: MenuItem[] = [
     ],
   },
   {
-    title: "Financial",
-    icon: DollarSign,
-    feature: "expenses", // At least one financial feature
-    subItems: [
-             {
-         title: "Expenses",
-         url: "/expenses",
-         icon: Receipt,
-         feature: "expenses",
-       },
-       {
-         title: "Receipts",
-         url: "/receipts",
-         icon: FileText,
-         feature: "accounting",
-               },
-       {
-         title: "Payments",
-         url: "/payments",
-         icon: DollarSign,
-         feature: "accounting",
-       },
-        {
-          title: "Chart of Accounts",
-          url: "/accounts",
-          icon: Calculator,
-          feature: "accounting",
-        }
-    ],
-  },
-  {
     title: "Purchases",
     icon: ShoppingCart,
     feature: "purchases",
     subItems: [
-      {
-        title: "Purchases",
-        url: "/purchases",
-        icon: ShoppingCart,
-        feature: "purchases",
-      },
       {
         title: "Suppliers",
         url: "/suppliers",
         icon: Building,
         feature: "suppliers",
       },
+      {
+        title: "Purchases",
+        url: "/purchases",
+        icon: ShoppingCart,
+        feature: "purchases",
+      },
     ],
   },
   {
-    title: "Operations",
-    icon: FileText,
-    feature: "job_cards",
+    title: "Sales",
+    icon: CreditCard,
+    feature: "accounting",
     subItems: [
       {
-        title: "Job Cards",
-        url: "/job-cards",
+        title: "Receipts",
+        url: "/receipts",
         icon: FileText,
-        feature: "job_cards",
+        feature: "accounting",
       },
       {
-        title: "POS",
-        url: "/pos",
-        icon: CreditCard,
-        feature: "pos",
+        title: "Payments",
+        url: "/payments",
+        icon: DollarSign,
+        feature: "accounting",
+      },
+    ],
+  },
+  {
+    title: "Accountant",
+    icon: DollarSign,
+    feature: "expenses",
+    subItems: [
+      {
+        title: "Expenses",
+        url: "/expenses",
+        icon: Receipt,
+        feature: "expenses",
+      },
+      {
+        title: "Chart of Accounts",
+        url: "/accounts",
+        icon: Calculator,
+        feature: "accounting",
       },
     ],
   },
@@ -204,7 +198,7 @@ const menuItems: MenuItem[] = [
   {
     title: "Settings",
     icon: Settings,
-    feature: "reports", // Settings always available
+    feature: "reports",
     subItems: [
       {
         title: "General Settings",
@@ -262,8 +256,8 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar variant="inset" collapsible="icon" className="bg-sidebar">
-      <SidebarContent>
+    <Sidebar variant="inset" collapsible="icon" className="border-r border-slate-200 max-w-[260px] md:max-w-[280px]">
+      <SidebarContent className="bg-gradient-to-b from-slate-50 to-slate-100">
         <SidebarHeader className="px-2 pt-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
