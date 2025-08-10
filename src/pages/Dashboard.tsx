@@ -42,8 +42,6 @@ import {
   MessageSquare,
   CreditCard
 } from "lucide-react";
-import { format, subDays, startOfDay, endOfDay } from "date-fns";
-import { useSaas } from "@/lib/saas";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -110,8 +108,8 @@ const Dashboard = () => {
         setLoading(true);
         const today = new Date();
         const yesterday = subDays(today, 1);
-        const todayStr = format(today, 'yyyy-MM-dd');
-        const yesterdayStr = format(yesterday, 'yyyy-MM-dd');
+        const todayStr = formatDate(today, 'yyyy-MM-dd');
+        const yesterdayStr = formatDate(yesterday, 'yyyy-MM-dd');
 
         const appointmentsQuery = supabase
           .from('appointments')
