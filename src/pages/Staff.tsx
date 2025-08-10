@@ -172,11 +172,20 @@ export default function Staff() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Only send columns that exist in current DB schema
+    const payload = {
+      full_name: formData.full_name,
+      email: formData.email || null,
+      phone: formData.phone || null,
+      specialties: formData.specialties || [],
+      is_active: formData.is_active,
+    };
+    
     try {
       if (editingStaff) {
         const { error } = await supabase
           .from("staff")
-          .update(formData)
+          .update(payload)
           .eq("id", editingStaff.id);
 
         if (error) throw error;
@@ -188,7 +197,7 @@ export default function Staff() {
       } else {
         const { error } = await supabase
           .from("staff")
-          .insert([formData]);
+          .insert([payload]);
 
         if (error) throw error;
 
