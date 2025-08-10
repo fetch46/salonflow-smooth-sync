@@ -38,7 +38,8 @@ import {
   Crown,
   CheckCircle,
   AlertTriangle,
-  Camera
+  Camera,
+  Shield
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -47,6 +48,7 @@ import { CreateButtonGate, FeatureGate, UsageBadge } from "@/components/features
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useNavigate } from "react-router-dom";
+import { useOrganization } from "@/lib/saas/hooks";
 
 interface Staff {
   id: string;
@@ -112,6 +114,14 @@ export default function Staff() {
   const { toast } = useToast();
   const { hasFeature, getFeatureAccess, enforceLimit } = useFeatureGating();
   const navigate = useNavigate();
+  const { organization } = useOrganization();
+
+  const ROLE_OPTIONS = ["owner","admin","manager","staff","viewer"] as const;
+
+  const [rolesByStaffId, setRolesByStaffId] = useState<Record<string, string>>({});
+  const [assignRoleOpen, setAssignRoleOpen] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
+  const [selectedRole, setSelectedRole] = useState<string>("staff");
 
   const [formData, setFormData] = useState({
     full_name: "",
@@ -149,6 +159,52 @@ export default function Staff() {
   useEffect(() => {
     fetchStaff();
   }, [fetchStaff]);
+
+  const fetchStaffRoles = useCallback(async () => {
+    if (!organization) return;
+    try {
+      const staffWithEmail = staff.filter(s => !!s.email);
+      if (staffWithEmail.length === 0) {
+        setRolesByStaffId({});
+        return;
+      }
+      const emails = Array.from(new Set(staffWithEmail.map(s => s.email as string)));
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("user_id, email")
+        .in("email", emails);
+      if (profilesError) throw profilesError;
+      const emailToUserId: Record<string, string> = {};
+      (profiles || []).forEach((p: any) => { if (p.email) emailToUserId[p.email] = p.user_id });
+      const userIds = Object.values(emailToUserId);
+      if (userIds.length === 0) {
+        setRolesByStaffId({});
+        return;
+      }
+      const { data: orgUsers, error: orgUsersError } = await supabase
+        .from("organization_users")
+        .select("user_id, role")
+        .eq("organization_id", organization.id)
+        .in("user_id", userIds);
+      if (orgUsersError) throw orgUsersError;
+      const userIdToRole: Record<string, string> = {};
+      (orgUsers || []).forEach((ou: any) => { userIdToRole[ou.user_id] = ou.role });
+      const map: Record<string, string> = {};
+      staffWithEmail.forEach(s => {
+        const uid = emailToUserId[s.email as string];
+        if (uid && userIdToRole[uid]) {
+          map[s.id] = userIdToRole[uid];
+        }
+      });
+      setRolesByStaffId(map);
+    } catch (error) {
+      console.error("Error fetching staff roles:", error);
+    }
+  }, [organization, staff]);
+
+  useEffect(() => {
+    fetchStaffRoles();
+  }, [fetchStaffRoles]);
 
   const refreshData = async () => {
     try {
@@ -367,6 +423,55 @@ export default function Staff() {
       rating: 0,
       completionRate: 0
     };
+  };
+
+  const openAssignRole = (member: Staff) => {
+    setSelectedStaff(member);
+    const current = rolesByStaffId[member.id] || "staff";
+    setSelectedRole(current);
+    setAssignRoleOpen(true);
+  };
+
+  const assignRoleToStaff = async () => {
+    if (!organization) {
+      toast({ title: "Error", description: "No organization selected", variant: "destructive" });
+      return;
+    }
+    if (!selectedStaff) return;
+    if (!selectedStaff.email) {
+      toast({ title: "Email required", description: "Staff must have an email to assign a role.", variant: "destructive" });
+      return;
+    }
+    try {
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("email", selectedStaff.email)
+        .maybeSingle();
+      if (profileError) throw profileError;
+      if (!profile) {
+        toast({ title: "User not found", description: "No user account matches this staff email.", variant: "destructive" });
+        return;
+      }
+      const { error: upsertError } = await supabase
+        .from("organization_users")
+        .upsert([
+          {
+            organization_id: organization.id,
+            user_id: profile.user_id,
+            role: selectedRole,
+            is_active: true,
+          }
+        ], { onConflict: "organization_id,user_id" });
+      if (upsertError) throw upsertError;
+      toast({ title: "Role assigned", description: `${selectedStaff.full_name} is now ${selectedRole}.` });
+      setAssignRoleOpen(false);
+      setSelectedStaff(null);
+      fetchStaffRoles();
+    } catch (error) {
+      console.error("Error assigning role:", error);
+      toast({ title: "Error", description: "Failed to assign role", variant: "destructive" });
+    }
   };
 
   if (loading) {
@@ -786,6 +891,7 @@ export default function Staff() {
                         <TableHead>Status</TableHead>
                         <TableHead>Commission %</TableHead>
                         <TableHead>Hire Date</TableHead>
+                        <TableHead>Role</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -798,30 +904,43 @@ export default function Staff() {
                           <TableCell>{member.is_active ? <Badge>Active</Badge> : <Badge variant="secondary">Inactive</Badge>}</TableCell>
                           <TableCell>{typeof member.commission_rate === 'number' ? `${member.commission_rate}%` : '—'}</TableCell>
                           <TableCell>{member.hire_date || '—'}</TableCell>
-                                                    <TableCell className="text-right">
-                             <DropdownMenu>
-                               <DropdownMenuTrigger asChild>
-                                 <Button variant="ghost" size="icon" className="h-8 w-8">
-                                   <MoreHorizontal className="w-4 h-4" />
-                                 </Button>
-                               </DropdownMenuTrigger>
-                               <DropdownMenuContent align="end" className="w-48">
-                                 <DropdownMenuItem onClick={() => navigate(`/staff/${member.id}`)}>
-                                   <Eye className="w-4 h-4 mr-2" />
-                                   View Profile
-                                 </DropdownMenuItem>
-                                 <DropdownMenuItem onClick={() => handleEdit(member)}>
-                                   <Edit2 className="w-4 h-4 mr-2" />
-                                   Edit Details
-                                 </DropdownMenuItem>
-                                 <DropdownMenuSeparator />
-                                 <DropdownMenuItem onClick={() => handleDelete(member.id)} className="text-red-600 focus:text-red-600">
-                                   <Trash2 className="w-4 h-4 mr-2" />
-                                   Delete
-                                 </DropdownMenuItem>
-                               </DropdownMenuContent>
-                             </DropdownMenu>
-                           </TableCell>
+                          <TableCell>
+                            {rolesByStaffId[member.id] ? (
+                              <Badge variant="outline" className="capitalize flex items-center gap-1">
+                                <Shield className="w-3 h-3" /> {rolesByStaffId[member.id]}
+                              </Badge>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-56">
+                                <DropdownMenuItem onClick={() => navigate(`/staff/${member.id}`)}>
+                                  <Eye className="w-4 h-4 mr-2" />
+                                  View Profile
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEdit(member)}>
+                                  <Edit2 className="w-4 h-4 mr-2" />
+                                  Edit Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openAssignRole(member)}>
+                                  <Shield className="w-4 h-4 mr-2" />
+                                  Assign Role
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleDelete(member.id)} className="text-red-600 focus:text-red-600">
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -903,6 +1022,10 @@ export default function Staff() {
                               <DropdownMenuItem onClick={() => navigate(`/staff/${member.id}`)}>
                                 <Eye className="w-4 h-4 mr-2" />
                                 View Profile
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openAssignRole(member)}>
+                                <Shield className="w-4 h-4 mr-2" />
+                                Assign Role
                               </DropdownMenuItem>
                               <DropdownMenuItem>
                                 <Calendar className="w-4 h-4 mr-2" />
@@ -1009,6 +1132,44 @@ export default function Staff() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={assignRoleOpen} onOpenChange={setAssignRoleOpen}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-blue-600" /> Assign Role
+            </DialogTitle>
+            <DialogDescription>
+              {selectedStaff ? `Assign an organization role to ${selectedStaff.full_name}` : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label>Staff</Label>
+              <div className="text-sm text-slate-700">
+                {selectedStaff ? `${selectedStaff.full_name} (${selectedStaff.email || 'no email'})` : '-'}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLE_OPTIONS.map((r) => (
+                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setAssignRoleOpen(false)}>Cancel</Button>
+            <Button onClick={assignRoleToStaff}>Save</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
