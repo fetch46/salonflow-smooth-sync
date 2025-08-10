@@ -5,16 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Plus, Search, Receipt, DollarSign, TrendingUp, AlertTriangle, RefreshCw, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useSaas } from "@/lib/saas";
 import { postExpensePaymentToLedger } from "@/utils/ledger";
+import { useNavigate } from "react-router-dom";
 
 
 interface Expense {
@@ -56,6 +54,7 @@ export default function Expenses() {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const { toast } = useToast();
   const { organization } = useSaas();
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     expense_number: "",
@@ -497,188 +496,10 @@ export default function Expenses() {
               <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
               Refresh
             </Button>
-            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={() => { setEditingExpense(null); resetForm(); }}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Expense
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>{editingExpense ? "Edit Expense" : "Add New Expense"}</DialogTitle>
-                  <DialogDescription>
-                    {editingExpense ? "Update the expense details." : "Fill in the expense information."}
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="expense_number">Expense Number</Label>
-                      <Input
-                        id="expense_number"
-                        placeholder="Auto-generated if empty"
-                        value={formData.expense_number}
-                        onChange={(e) => setFormData({ ...formData, expense_number: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="vendor_name">Vendor Name</Label>
-                      <Input
-                        id="vendor_name"
-                        placeholder="Enter vendor name"
-                        value={formData.vendor_name}
-                        onChange={(e) => setFormData({ ...formData, vendor_name: e.target.value })}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
-                    <Input
-                      id="description"
-                      placeholder="Expense description"
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="amount">Amount</Label>
-                      <Input
-                        id="amount"
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={formData.amount}
-                        onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="expense_date">Expense Date</Label>
-                      <Input
-                        id="expense_date"
-                        type="date"
-                        value={formData.expense_date}
-                        onChange={(e) => setFormData({ ...formData, expense_date: e.target.value })}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="category">Account</Label>
-                      <Select value={formData.category} onValueChange={(value) => { const acc = expenseAccounts.find(a => a.account_name === value || a.id === value); setFormData({ ...formData, category: acc?.account_name || '' }); }}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select expense account" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {expenseAccounts.map(acc => (
-                            <SelectItem key={acc.id} value={acc.account_name || acc.id}>{acc.account_code} - {acc.account_name || 'Unnamed Account'}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="payment_method">Payment Method</Label>
-                      <Select value={formData.payment_method} onValueChange={(value) => setFormData({ ...formData, payment_method: value })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select payment method" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Cash">Cash</SelectItem>
-                          <SelectItem value="Credit Card">Credit Card</SelectItem>
-                          <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-                          <SelectItem value="Check">Check</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="status">Status</Label>
-                      <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="approved">Approved</SelectItem>
-                          <SelectItem value="paid">Paid</SelectItem>
-                          <SelectItem value="rejected">Rejected</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="receipt_url">Receipt URL</Label>
-                      <Input
-                        id="receipt_url"
-                        placeholder="https://..."
-                        value={formData.receipt_url}
-                        onChange={(e) => setFormData({ ...formData, receipt_url: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="location">Location</Label>
-                      <Select value={formData.location_id} onValueChange={(value) => setFormData({ ...formData, location_id: value })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select location" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {locations.map(loc => (
-                            <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {formData.status === 'paid' && (
-                      <div className="space-y-2">
-                        <Label htmlFor="paid_from">Paid From Account</Label>
-                        <Select value={paidFromAccountId} onValueChange={setPaidFromAccountId}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Cash/Bank account" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {paymentAccounts.map(acc => (
-                              <SelectItem key={acc.id} value={acc.id}>{acc.account_code} - {acc.account_name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="notes">Notes</Label>
-                    <Textarea
-                      id="notes"
-                      placeholder="Additional notes..."
-                      value={formData.notes}
-                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="flex justify-end space-x-2">
-                    <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit">
-                      {editingExpense ? "Update Expense" : "Add Expense"}
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
+            <Button onClick={() => navigate('/expenses/new')}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Expense
+            </Button>
           </div>
         </div>
 
@@ -771,7 +592,7 @@ export default function Expenses() {
                     <TableCell>{getStatusBadge(expense.status)}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => handleEdit(expense)}>
+                        <Button variant="outline" size="sm" onClick={() => navigate(`/expenses/${expense.id}/edit`)}>
                           Edit
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => handleDelete(expense.id)}>

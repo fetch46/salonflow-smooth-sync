@@ -272,6 +272,32 @@ export async function postExpensePaymentToLedger(opts: {
   });
 }
 
+export async function postExpensePaymentWithAccount(opts: {
+  organizationId: string;
+  amount: number;
+  paidFromAccountId: string; // Cash/Bank account used
+  expenseId: string;
+  expenseNumber?: string | null;
+  paymentDate?: string; // yyyy-mm-dd
+  locationId?: string | null;
+}): Promise<boolean> {
+  const { organizationId, amount, paidFromAccountId, expenseId, expenseNumber, paymentDate, locationId } = opts;
+  const expenseAccountId = await findDefaultExpenseAccountId(organizationId);
+  if (!expenseAccountId) return false;
+  const desc = `Expense ${expenseNumber || expenseId} payment`;
+  return await postDoubleEntry({
+    organizationId,
+    amount,
+    transactionDate: paymentDate,
+    description: desc,
+    debitAccountId: expenseAccountId,
+    creditAccountId: paidFromAccountId,
+    referenceType: "expense_payment",
+    referenceId: expenseId,
+    locationId: locationId || null,
+  });
+}
+
 export async function postPurchasePaymentToLedger(opts: {
   organizationId: string;
   amount: number;
