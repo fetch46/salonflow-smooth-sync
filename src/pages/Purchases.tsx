@@ -777,14 +777,14 @@ export default function Purchases() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="vendor_name">Vendor</Label>
-                  <Select value={formData.vendor_name} onValueChange={(value) => setFormData({ ...formData, vendor_name: value })}>
+                  <Select value={formData.vendor_name} onValueChange={(value) => { const s = suppliers.find(x => x.name === value || x.id === value); setFormData({ ...formData, vendor_name: s?.name || '' }); }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select vendor" />
                     </SelectTrigger>
                     <SelectContent>
                       {/* Populated from suppliers table */}
                       {suppliers.map((s) => (
-                        <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                        <SelectItem key={s.id} value={s.name || s.id}>{s.name || 'Unnamed Supplier'}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -1054,14 +1054,14 @@ export default function Purchases() {
         </div>
         <div>
           <Label className="text-xs text-muted-foreground">Vendor</Label>
-          <Select value={vendorFilter} onValueChange={setVendorFilter}>
+          <Select value={vendorFilter} onValueChange={(value) => { const s = suppliers.find(x => x.name === value || x.id === value); setVendorFilter(s?.name || value); }} >
             <SelectTrigger>
               <SelectValue placeholder="All vendors" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
               {suppliers.map((s) => (
-                <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                <SelectItem key={s.id} value={s.name || s.id}>{s.name || 'Unnamed Supplier'}</SelectItem>
               ))}
             </SelectContent>
           </Select>
