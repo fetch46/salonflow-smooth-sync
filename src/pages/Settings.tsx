@@ -33,7 +33,7 @@ export default function Settings() {
   // Company Settings State
   const [companyData, setCompanyData] = useState({
     name: "SalonSync Demo",
-    address: "123 Beauty Street",
+    address: "",
     city: "New York",
         country: "US",
 phone: "+1 (555) 123-4567",
@@ -232,7 +232,7 @@ phone: "+1 (555) 123-4567",
       setCompanyData(prev => ({
         ...prev,
         name: organization.name || prev.name,
-        address: s.address || prev.address,
+        address: s.address || "",
         city: s.city || prev.city,
         country: s.country || prev.country,
         phone: s.phone || prev.phone,
