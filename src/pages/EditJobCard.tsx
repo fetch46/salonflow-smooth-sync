@@ -238,10 +238,11 @@ export default function EditJobCard() {
     if (!id || !jobCard) return;
     setSaving(true);
     try {
+      const normalizedStatus = ['paused', 'overdue', 'pending'].includes(status) ? 'in_progress' : status;
       const payload: any = {
         client_id: clientId || null,
         staff_id: staffId || null,
-        status,
+        status: normalizedStatus,
         total_amount: Number(totalAmount) || 0,
       };
 
