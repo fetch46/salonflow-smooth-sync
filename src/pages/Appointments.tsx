@@ -649,7 +649,7 @@ export default function Appointments() {
           price: appointment.price || undefined,
           notes: appointment.notes || undefined,
           sort_order: 0,
-          commission_percentage: appointment.commission_percentage || undefined,
+          commission_percentage: (appointment as any)?.commission_percentage || undefined,
         }] : [];
       }
     }

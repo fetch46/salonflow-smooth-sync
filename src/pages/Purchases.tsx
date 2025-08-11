@@ -93,12 +93,13 @@ export default function Purchases() {
   const [payReference, setPayReference] = useState<string>("");
   const [payLoading, setPayLoading] = useState<boolean>(false);
 
-
-  // removed inline create/edit form state
-
-  // Receiving workflow migrated to full pages (Goods Received)
-
- 
+  // Receiving dialog state
+  const [receiveOpen, setReceiveOpen] = useState(false);
+  const [receivePurchaseId, setReceivePurchaseId] = useState<string | null>(null);
+  const [receiveLocationId, setReceiveLocationId] = useState<string>("");
+  const [receiveQuantities, setReceiveQuantities] = useState<Record<string, number>>({});
+  const [selectedPurchaseItems, setSelectedPurchaseItems] = useState<PurchaseItem[]>([]);
+  const [locations, setLocations] = useState<StorageLocation[]>([]);
   // Fetch suppliers for the vendor filter (deduplicated)
   const fetchSuppliersAlt = useCallback(async () => {
     try {
@@ -584,7 +585,7 @@ export default function Purchases() {
         </div>
         <div>
           <Label className="text-xs text-muted-foreground">Status</Label>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
