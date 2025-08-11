@@ -102,6 +102,10 @@ const Dashboard = () => {
     completionRateYesterday: 0,
     avgServiceTimeToday: 0,
     avgServiceTimeYesterday: 0,
+    revenueThisMonth: 0,
+    revenueLastMonth: 0,
+    appointmentsThisMonth: 0,
+    appointmentsLastMonth: 0,
   });
 
   useEffect(() => {
@@ -112,6 +116,14 @@ const Dashboard = () => {
         const yesterday = subDays(today, 1);
         const todayStr = formatDate(today, 'yyyy-MM-dd');
         const yesterdayStr = formatDate(yesterday, 'yyyy-MM-dd');
+
+        // Month boundaries
+        const { startOfMonth, endOfMonth, subMonths } = await import('date-fns');
+        const monthStart = startOfMonth(today);
+        const monthEnd = endOfMonth(today);
+        const prevMonth = subMonths(today, 1);
+        const prevMonthStart = startOfMonth(prevMonth);
+        const prevMonthEnd = endOfMonth(prevMonth);
 
         const appointmentsQuery = supabase
           .from('appointments')
@@ -143,18 +155,34 @@ const Dashboard = () => {
           .gte('created_at', startOfDay(yesterday).toISOString())
           .lte('created_at', endOfDay(yesterday).toISOString());
 
+        // Monthly appointments counts
+        const apptsThisMonthQuery = supabase
+          .from('appointments')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', monthStart.toISOString())
+          .lte('created_at', monthEnd.toISOString());
+        const apptsLastMonthQuery = supabase
+          .from('appointments')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', prevMonthStart.toISOString())
+          .lte('created_at', prevMonthEnd.toISOString());
+
         const [
           { data: appts, error: apptErr },
           { data: apptsY, error: apptYesterdayErr },
           { data: staff, error: staffErr },
           clientsToday,
           clientsYesterday,
+          apptsThisMonth,
+          apptsLastMonth,
         ] = await Promise.all([
           appointmentsQuery,
           appointmentsYesterdayQuery,
           staffQuery,
           clientsTodayQuery,
           clientsYesterdayQuery,
+          apptsThisMonthQuery,
+          apptsLastMonthQuery,
         ]);
 
         if (apptErr) throw apptErr;
@@ -187,6 +215,8 @@ const Dashboard = () => {
         // Revenue from receipts (prefer receipt_date if exists, else created_at range)
         let revenueToday = 0;
         let revenueYesterday = 0;
+        let revenueThisMonth = 0;
+        let revenueLastMonth = 0;
         try {
           const { data: receiptsToday, error: receiptsTodayErr } = await supabase
             .from('receipts')
@@ -223,6 +253,30 @@ const Dashboard = () => {
           }
         }
 
+        // Monthly revenue
+        try {
+          const { data: recMonth, error: recMonthErr } = await supabase
+            .from('receipts')
+            .select('total_amount, receipt_date, created_at')
+            .gte('created_at', monthStart.toISOString())
+            .lte('created_at', monthEnd.toISOString());
+          if (recMonthErr) throw recMonthErr;
+          revenueThisMonth = (recMonth || []).reduce((sum: number, r: any) => sum + (Number(r.total_amount) || 0), 0);
+        } catch (e) {
+          // best-effort; keep zero on failure
+        }
+        try {
+          const { data: recPrev, error: recPrevErr } = await supabase
+            .from('receipts')
+            .select('total_amount, receipt_date, created_at')
+            .gte('created_at', prevMonthStart.toISOString())
+            .lte('created_at', prevMonthEnd.toISOString());
+          if (recPrevErr) throw recPrevErr;
+          revenueLastMonth = (recPrev || []).reduce((sum: number, r: any) => sum + (Number(r.total_amount) || 0), 0);
+        } catch (e) {
+          // best-effort; keep zero on failure
+        }
+
         setMetrics({
           revenueToday,
           revenueYesterday,
@@ -236,6 +290,10 @@ const Dashboard = () => {
           completionRateYesterday,
           avgServiceTimeToday,
           avgServiceTimeYesterday,
+          revenueThisMonth,
+          revenueLastMonth,
+          appointmentsThisMonth: apptsThisMonth.count || 0,
+          appointmentsLastMonth: apptsLastMonth.count || 0,
         });
       } catch (e: any) {
         console.error('Failed to load dashboard data', e);
@@ -715,34 +773,34 @@ const Dashboard = () => {
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-slate-700">Monthly Revenue Goal</span>
-                  <span className="text-sm text-slate-600">{symbol}45K / {symbol}50K</span>
+                  <span className="text-sm font-medium text-slate-700">Monthly Revenue</span>
+                  <span className="text-sm text-slate-600">{symbol}{metrics.revenueThisMonth.toLocaleString()} {metrics.revenueLastMonth > 0 ? `/ prev ${symbol}${metrics.revenueLastMonth.toLocaleString()}` : ''}</span>
                 </div>
-                <Progress value={90} className="h-2" />
+                <Progress value={Math.max(0, Math.min(100, metrics.revenueLastMonth > 0 ? (metrics.revenueThisMonth / metrics.revenueLastMonth) * 100 : (metrics.revenueThisMonth > 0 ? 100 : 0)))} className="h-2" />
               </div>
-              
+
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-slate-700">Client Satisfaction</span>
-                  <span className="text-sm text-slate-600">4.8 / 5.0</span>
+                  <span className="text-sm font-medium text-slate-700">Completion Rate</span>
+                  <span className="text-sm text-slate-600">{metrics.completionRateToday}%</span>
                 </div>
-                <Progress value={96} className="h-2" />
+                <Progress value={Math.max(0, Math.min(100, metrics.completionRateToday))} className="h-2" />
               </div>
-              
+
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-slate-700">Staff Efficiency</span>
-                  <span className="text-sm text-slate-600">87%</span>
+                  <span className="text-sm font-medium text-slate-700">Staff Utilization</span>
+                  <span className="text-sm text-slate-600">{metrics.staffUtilizationToday}%</span>
                 </div>
-                <Progress value={87} className="h-2" />
+                <Progress value={Math.max(0, Math.min(100, metrics.staffUtilizationToday))} className="h-2" />
               </div>
-              
+
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-slate-700">Booking Rate</span>
-                  <span className="text-sm text-slate-600">78%</span>
+                  <span className="text-sm font-medium text-slate-700">Booking Growth</span>
+                  <span className="text-sm text-slate-600">{safePercent(metrics.appointmentsToday, metrics.appointmentsYesterday) >= 0 ? '+' : ''}{safePercent(metrics.appointmentsToday, metrics.appointmentsYesterday).toFixed(1)}%</span>
                 </div>
-                <Progress value={78} className="h-2" />
+                <Progress value={Math.max(0, Math.min(100, Math.abs(safePercent(metrics.appointmentsToday, metrics.appointmentsYesterday))))} className="h-2" />
               </div>
             </div>
           </CardContent>
