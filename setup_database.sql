@@ -13,9 +13,14 @@
 \i supabase/migrations/20250820093000_migrate_storage_locations_to_business_locations.sql
 -- Ensure organization_users has invitation fields
 \i supabase/migrations/20250901093000_add_org_users_invitation_fields.sql
-
+-- Purchase receiving base (triggers, payments)
+\i supabase/migrations/20250827093000_purchase_receiving_and_payments.sql
+-- Goods received tables
+\i supabase/migrations/20250902091500_goods_received_tables.sql
 -- Ensure ledger table exists
 \i supabase/migrations/20250831090000_create_account_transactions.sql
+-- Goods received RPCs and RLS policies
+\i supabase/migrations/20250908093000_goods_received_rpcs_and_policies.sql
 
 -- 2. Ensure all required functions exist
 -- Create organization creation function if it doesn't exist
