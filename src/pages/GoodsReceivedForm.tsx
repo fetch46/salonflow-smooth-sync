@@ -122,77 +122,36 @@ export default function GoodsReceivedForm() {
       const orgId = organization?.id;
       if (!orgId) { toast({ title: "Organization missing", description: "Please reload and try again", variant: "destructive" }); return; }
       const entries = Object.entries(quantities).filter(([pid, qty]) => Number(qty) > 0);
-      if (entries.length === 0) { toast({ title: "No quantities", description: "Enter at least one quantity to receive", variant: "destructive" }); return; }
+      if (!isEdit && entries.length === 0) { toast({ title: "No quantities", description: "Enter at least one quantity to receive", variant: "destructive" }); return; }
 
       setLoading(true);
 
       if (!isEdit) {
-        const { data: header, error: hErr } = await supabase
-          .from("goods_received")
-          .insert([{ organization_id: orgId, purchase_id: purchaseId, location_id: locationId, received_date: receivedDate, notes }])
-          .select()
-          .single();
-        if (hErr) throw hErr;
-        const headerId = header.id as string;
-
-        // Ensure purchase carries the receiving location for inventory triggers
-        await supabase.from("purchases").update({ location_id: locationId }).eq("id", purchaseId);
-
-        const itemsToInsert = entries.map(([purchase_item_id, qty]) => {
-          const pi = purchaseItems.find(x => x.id === purchase_item_id)!;
-          return { goods_received_id: headerId, purchase_item_id, item_id: pi.item_id, quantity: Number(qty), unit_cost: Number(pi.unit_cost) };
+        const payload = entries.map(([purchase_item_id, qty]) => ({ purchase_item_id, quantity: Number(qty) }));
+        const { data, error } = await supabase.rpc('record_goods_received', {
+          p_org_id: orgId,
+          p_purchase_id: purchaseId,
+          p_location_id: locationId,
+          p_received_date: receivedDate,
+          p_notes: notes,
+          p_lines: payload as any,
         });
-        const { error: giErr } = await supabase.from("goods_received_items").insert(itemsToInsert);
-        if (giErr) throw giErr;
-
-        // Update purchase_items received_quantity and let trigger handle inventory and status
-        for (const [purchase_item_id, qty] of entries) {
-          const pi = purchaseItems.find(x => x.id === purchase_item_id)!;
-          const newReceived = Math.min(Number(pi.quantity), Number(pi.received_quantity || 0) + Number(qty));
-          const { error: upErr } = await supabase.from("purchase_items").update({ received_quantity: newReceived }).eq("id", purchase_item_id);
-          if (upErr) throw upErr;
-        }
+        if (error) throw error;
       } else {
-        // Edit mode: adjust existing rows and apply deltas to purchase_items
-        const { data: existing } = await supabase.from("goods_received_items").select("id, purchase_item_id, quantity").eq("goods_received_id", id!);
-        const existingMap = new Map<string, { id: string; qty: number }>();
-        for (const row of (existing || []) as any[]) existingMap.set(row.purchase_item_id, { id: row.id, qty: Number(row.quantity) });
-
-        // Upserts
-        for (const [purchase_item_id, newQty] of Object.entries(quantities)) {
-          const prev = existingMap.get(purchase_item_id);
-          const qtyNum = Number(newQty || 0);
-          if (prev) {
-            if (qtyNum === 0) {
-              await supabase.from("goods_received_items").delete().eq("id", prev.id);
-            } else if (qtyNum !== prev.qty) {
-              await supabase.from("goods_received_items").update({ quantity: qtyNum }).eq("id", prev.id);
-            }
-          } else if (qtyNum > 0) {
-            const pi = purchaseItems.find(x => x.id === purchase_item_id)!;
-            await supabase.from("goods_received_items").insert([{ goods_received_id: id!, purchase_item_id, item_id: pi.item_id, quantity: qtyNum, unit_cost: Number(pi.unit_cost) }]);
-          }
+        // Build quantities map for update
+        const qMap: Record<string, number> = {};
+        for (const it of purchaseItems) {
+          qMap[it.id] = Number(quantities[it.id] || 0);
         }
-
-        // Apply deltas to purchase_items.received_quantity
-        for (const pi of purchaseItems) {
-          const oldQty = Number(originalQuantities[pi.id] || 0);
-          const newQty = Number(quantities[pi.id] || 0);
-          const delta = newQty - oldQty;
-          if (delta !== 0) {
-            const fresh = await supabase.from("purchase_items").select("quantity, received_quantity").eq("id", pi.id).single();
-            const ordered = Number(fresh.data?.quantity || pi.quantity);
-            const currentReceived = Number(fresh.data?.received_quantity ?? pi.received_quantity ?? 0);
-            const nextReceived = Math.max(0, Math.min(ordered, currentReceived + delta));
-            const { error: upErr } = await supabase.from("purchase_items").update({ received_quantity: nextReceived }).eq("id", pi.id);
-            if (upErr) throw upErr;
-          }
-        }
-
-        // Update header and purchase location
-        await supabase.from("purchases").update({ location_id: locationId }).eq("id", purchaseId);
-        const { error: upHeaderErr } = await supabase.from("goods_received").update({ location_id: locationId, received_date: receivedDate, notes }).eq("id", id!);
-        if (upHeaderErr) throw upHeaderErr;
+        const { error } = await supabase.rpc('update_goods_received', {
+          p_org_id: orgId,
+          p_goods_received_id: id,
+          p_location_id: locationId,
+          p_received_date: receivedDate,
+          p_notes: notes,
+          p_quantities: qMap as any,
+        });
+        if (error) throw error;
       }
 
       toast({ title: "Saved", description: "Goods received recorded" });
