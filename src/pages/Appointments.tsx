@@ -30,6 +30,7 @@ interface Appointment {
   price: number;
   created_at: string;
   client_id?: string;
+  location_id?: string;
 }
 
 interface Staff {
@@ -75,6 +76,8 @@ export default function Appointments() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [accounts, setAccounts] = useState<Array<{ id: string; account_code: string; account_name: string }>>([]);
+  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
+  const [defaultLocationId, setDefaultLocationId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
@@ -103,6 +106,7 @@ export default function Appointments() {
     notes: "",
     price: 0,
     serviceItems: [] as AppointmentServiceItem[],
+    location_id: "",
   });
 
   // Booking fee UI state
@@ -115,19 +119,29 @@ export default function Appointments() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [appointmentsRes, staffRes, servicesRes] = await Promise.all([
+      const [appointmentsRes, staffRes, servicesRes, locationsRes] = await Promise.all([
         supabase.from("appointments").select("*").order("appointment_date", { ascending: true }),
         supabase.from("staff").select("*").eq("is_active", true),
         supabase.from("services").select("*").eq("is_active", true),
+        supabase.from("business_locations").select("id, name").order("name", { ascending: true }),
       ]);
 
       if (appointmentsRes.error) throw appointmentsRes.error;
       if (staffRes.error) throw staffRes.error;
       if (servicesRes.error) throw servicesRes.error;
+      if (locationsRes.error) throw locationsRes.error;
 
       setAppointments(appointmentsRes.data || []);
       setStaff(staffRes.data || []);
       setServices(servicesRes.data || []);
+      setLocations((locationsRes.data || []) as any);
+
+      // Determine default location id from organization settings if available
+      try {
+        const posDefault = ((organization?.settings || {}) as any)?.pos_default_location_id as string | undefined;
+        setDefaultLocationId(posDefault || "");
+        setForm((prev) => ({ ...prev, location_id: prev.location_id || posDefault || "" }));
+      } catch {}
 
       // Fetch accounts only if org is selected and table exists
       try {
@@ -342,6 +356,7 @@ export default function Appointments() {
       notes: "",
       price: 0,
       serviceItems: [{ service_id: "", staff_id: "" }],
+      location_id: defaultLocationId || "",
     });
     setEditingAppointment(null);
     setIsReadOnly(false);
@@ -487,6 +502,7 @@ export default function Appointments() {
         notes: form.notes || null,
         price: totalPrice || form.price,
         organization_id: organization.id,
+        location_id: form.location_id || null,
       };
 
       if (editingAppointment) {
@@ -591,13 +607,15 @@ export default function Appointments() {
               ? `Booking fee for appointment ${apptId}. Deposited to ${(accounts.find(a => a.id === bookingAccountId)?.account_name) || 'selected account'}.`
               : `Booking fee for appointment ${apptId}.`,
           };
-          const createdReceipt: any = await createReceiptWithFallback(supabase as any, receiptPayload, []);
+          const createdReceipt: any = await createReceiptWithFallback(supabase as any, { ...receiptPayload, location_id: form.location_id || defaultLocationId || null }, []);
           if (createdReceipt?.id) {
             await recordReceiptPaymentWithFallback(supabase as any, {
               receipt_id: createdReceipt.id,
               amount: paid,
               method: bookingPaymentMethod as any,
               reference_number: bookingTxnNumber || null,
+              // Attempt to tag the payment and ledger with the selected location
+              location_id: form.location_id || defaultLocationId || null,
             });
           }
         }
@@ -667,6 +685,7 @@ export default function Appointments() {
       notes: appointment.notes || "",
       price: appointment.price,
       serviceItems: (items && items.length) ? items : [{ service_id: "", staff_id: "", commission_percentage: undefined }],
+      location_id: (appointment as any)?.location_id || defaultLocationId || "",
     });
     setEditingAppointment(appointment);
     setIsModalOpen(true);
@@ -936,6 +955,22 @@ export default function Appointments() {
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="location_id">Location</Label>
+                    <Select 
+                      value={form.location_id}
+                      onValueChange={(value) => setForm(prev => ({ ...prev, location_id: value }))}
+                    >
+                      <SelectTrigger disabled={isReadOnly}>
+                        <SelectValue placeholder={locations.length ? "Select location" : "No locations"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {locations.map((loc) => (
+                          <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="md:col-span-2 border rounded-md p-3 space-y-2">
                     <Label>Select Existing Client (optional)</Label>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2">

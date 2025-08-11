@@ -148,6 +148,8 @@ export default function CreateJobCard() {
   const [services, setServices] = useState<Service[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [serviceKits, setServiceKits] = useState<ServiceKit[]>([]);
+  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedLocationId, setSelectedLocationId] = useState<string>("");
   
   // Form State
   const [jobCardData, setJobCardData] = useState<JobCardData>({
@@ -204,17 +206,25 @@ export default function CreateJobCard() {
   const fetchInitialData = async () => {
     setLoading(true);
     try {
-      const [staffRes, clientsRes, servicesRes, appointmentsRes] = await Promise.all([
+      const [staffRes, clientsRes, servicesRes, appointmentsRes, locationsRes] = await Promise.all([
         supabase.from("staff").select("*").eq("is_active", true),
         supabase.from("clients").select("*"),
         supabase.from("services").select("*").eq("is_active", true),
-        supabase.from("appointments").select("*").gte("appointment_date", format(new Date(), 'yyyy-MM-dd'))
+        supabase.from("appointments").select("*").gte("appointment_date", format(new Date(), 'yyyy-MM-dd')),
+        supabase.from('business_locations').select('id, name').order('name')
       ]);
 
       if (staffRes.data) setStaff(staffRes.data);
       if (clientsRes.data) setClients(clientsRes.data);
       if (servicesRes.data) setServices(servicesRes.data);
       if (appointmentsRes.data) setAppointments(appointmentsRes.data);
+      if (locationsRes.data) setLocations(locationsRes.data as any);
+
+      // Attempt to set default from organization settings
+      try {
+        const posDefault = ((useFeatureGating as any)?.organization?.settings || ({} as any))?.pos_default_location_id as string | undefined;
+        if (posDefault) setSelectedLocationId(posDefault);
+      } catch {}
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Failed to load initial data");
@@ -288,6 +298,9 @@ export default function CreateJobCard() {
           staff_id: firstStaffId || undefined,
           services: svcList.map(s => s.id)
         }));
+        // Carry forward appointment location into job card/receipt
+        const apptLoc = (appointment as any)?.location_id || '';
+        if (apptLoc) setSelectedLocationId(apptLoc);
         return;
       }
 
@@ -456,24 +469,48 @@ export default function CreateJobCard() {
       // Pick a primary staff for the job card (first assigned) for backward compatibility
       const primaryStaffId = serviceStaffMap[selectedServices[0].id];
       
-      const { data: jobCard, error: jobError } = await supabase
-        .from("job_cards")
-        .insert([{
-          job_number: jobNumber,
-          client_id: selectedClient.id,
-          staff_id: primaryStaffId || null,
-          start_time: jobCardData.start_time || now,
-          end_time: jobCardData.end_time,
-          total_amount: jobCardData.service_charge,
-          status: jobCardData.end_time ? "completed" : "in_progress"
-        }])
-        .select()
-        .single();
+      let jobCard: any = null;
+      try {
+        const res = await supabase
+          .from("job_cards")
+          .insert([{
+            job_number: jobNumber,
+            client_id: selectedClient.id,
+            staff_id: primaryStaffId || null,
+            start_time: jobCardData.start_time || now,
+            end_time: jobCardData.end_time,
+            total_amount: jobCardData.service_charge,
+            status: jobCardData.end_time ? "completed" : "in_progress",
+            location_id: selectedLocationId || null,
+          }])
+          .select()
+          .single();
+        jobCard = res.data;
+        if (res.error) throw res.error;
+      } catch (insErr: any) {
+        const message = String(insErr?.message || "");
+        const code = (insErr as any)?.code || '';
+        const isMissingLocationCol = code === '42703' || /column\s+\"?location_id\"?\s+does not exist/i.test(message);
+        if (!isMissingLocationCol) throw insErr;
+        const res2 = await supabase
+          .from("job_cards")
+          .insert([{
+            job_number: jobNumber,
+            client_id: selectedClient.id,
+            staff_id: primaryStaffId || null,
+            start_time: jobCardData.start_time || now,
+            end_time: jobCardData.end_time,
+            total_amount: jobCardData.service_charge,
+            status: jobCardData.end_time ? "completed" : "in_progress",
+          }])
+          .select()
+          .single();
+        if (res2.error) throw res2.error;
+        jobCard = res2.data;
+      }
 
-      if (jobError) throw jobError;
-
-      // Save service assignments to job_card_services
-      if (selectedServices.length > 0) {
+       // Save service assignments to job_card_services
+if (selectedServices.length > 0) {
         const overrideMap: Record<string, number | null> = (window as any).__appointmentServiceCommission || {};
         const rows = selectedServices.map(svc => ({
           job_card_id: jobCard.id,
@@ -537,6 +574,7 @@ export default function CreateJobCard() {
                 total_amount: finalTotal,
                 status: jobCardData.payment_method ? 'paid' : 'open',
                 notes: `Receipt for ${jobNumber}`,
+                location_id: selectedLocationId || null,
               },
             ])
             .select('id')
@@ -573,6 +611,7 @@ export default function CreateJobCard() {
                   amount: finalTotal,
                   method: jobCardData.payment_method,
                   reference_number: jobCardData.payment_transaction_number || null,
+                  location_id: selectedLocationId || null,
                 },
               ]);
             if (payError) throw payError;
@@ -652,11 +691,25 @@ export default function CreateJobCard() {
                   <p className="text-slate-600">Track service delivery from start to finish</p>
                 </div>
               </div>
-              
               <div className="flex items-center gap-3">
                 <Badge variant="outline" className="text-sm">
                   Step {currentStep} of {steps.length}
                 </Badge>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-56">
+                  <Label className="text-xs">Location</Label>
+                  <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={locations.length ? 'Select location' : 'No locations'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {locations.map((l) => (
+                        <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 

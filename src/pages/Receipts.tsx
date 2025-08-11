@@ -47,6 +47,8 @@ export default function Receipts() {
   const { organization } = useSaas();
   const [customers, setCustomers] = useState<{ id: string; full_name: string }[]>([]);
   const [customerId, setCustomerId] = useState<string>("all");
+  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
+  const [locationIdFilter, setLocationIdFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [isPayOpen, setIsPayOpen] = useState(false);
@@ -152,6 +154,12 @@ export default function Receipts() {
       } catch {
         setCustomers([]);
       }
+      try {
+        const { data: locs } = await supabase.from('business_locations').select('id, name').order('name');
+        setLocations((locs || []) as any);
+      } catch {
+        setLocations([]);
+      }
     })();
   }, []);
 
@@ -170,6 +178,7 @@ export default function Receipts() {
     return receipts
       .filter(r => (status === 'all' ? true : r.status === status))
       .filter(r => (customerId === 'all' ? true : r.customer_id === customerId))
+      .filter(r => (locationIdFilter === 'all' ? true : (r as any).location_id === locationIdFilter))
       .filter(r => {
         if (!dateFrom && !dateTo) return true;
         const d = new Date(r.created_at).toISOString().slice(0, 10);
@@ -178,7 +187,7 @@ export default function Receipts() {
         return true;
       })
       .filter(r => r.receipt_number.toLowerCase().includes(s) || (r.notes || '').toLowerCase().includes(s));
-  }, [receipts, search, status, customerId, dateFrom, dateTo]);
+  }, [receipts, search, status, customerId, dateFrom, dateTo, locationIdFilter]);
 
   const outstanding = (r: Receipt) => Math.max(0, (r.total_amount || 0) - (r.amount_paid || 0));
   const paidPct = (r: Receipt) => {
@@ -299,55 +308,61 @@ export default function Receipts() {
         method: payment.method,
         reference_number: payment.reference || null,
         payment_date: paymentDate,
+        location_id: (selected as any)?.location_id || null,
       });
       if (!ok) throw new Error('Failed to record payment');
 
       // Post to ledger (debit Cash/Bank, credit Income)
-      if (organization?.id) {
-        try {
-          if (selectedAccountId && selectedIncomeAccountId) {
-            await postReceiptPaymentWithAccounts({
-              organizationId: organization.id,
-              amount: amt,
-              depositAccountId: selectedAccountId,
-              incomeAccountId: selectedIncomeAccountId,
-              receiptId: selected.id,
-              receiptNumber: selected.receipt_number,
-              paymentDate,
-            });
-          } else if (selectedIncomeAccountId && !selectedAccountId) {
-            await postReceiptPaymentToLedgerWithIncomeAccount({
-              organizationId: organization.id,
-              amount: amt,
-              method: payment.method,
-              incomeAccountId: selectedIncomeAccountId,
-              receiptId: selected.id,
-              receiptNumber: selected.receipt_number,
-              paymentDate,
-            });
-          } else if (selectedAccountId && !selectedIncomeAccountId) {
-            await postReceiptPaymentWithAccount({
-              organizationId: organization.id,
-              amount: amt,
-              depositAccountId: selectedAccountId,
-              receiptId: selected.id,
-              receiptNumber: selected.receipt_number,
-              paymentDate,
-            });
-          } else {
-            await postReceiptPaymentToLedger({
-              organizationId: organization.id,
-              amount: amt,
-              method: payment.method,
-              receiptId: selected.id,
-              receiptNumber: selected.receipt_number,
-              paymentDate,
-            });
+                if (organization?.id) {
+            try {
+              const locationId = (selected as any)?.location_id || null;
+              if (selectedAccountId && selectedIncomeAccountId) {
+                await postReceiptPaymentWithAccounts({
+                  organizationId: organization.id,
+                  amount: amt,
+                  depositAccountId: selectedAccountId,
+                  incomeAccountId: selectedIncomeAccountId,
+                  receiptId: selected.id,
+                  receiptNumber: selected.receipt_number,
+                  paymentDate,
+                  locationId,
+                });
+              } else if (selectedIncomeAccountId && !selectedAccountId) {
+                await postReceiptPaymentToLedgerWithIncomeAccount({
+                  organizationId: organization.id,
+                  amount: amt,
+                  method: payment.method,
+                  incomeAccountId: selectedIncomeAccountId,
+                  receiptId: selected.id,
+                  receiptNumber: selected.receipt_number,
+                  paymentDate,
+                  locationId,
+                });
+              } else if (selectedAccountId && !selectedIncomeAccountId) {
+                await postReceiptPaymentWithAccount({
+                  organizationId: organization.id,
+                  amount: amt,
+                  depositAccountId: selectedAccountId,
+                  receiptId: selected.id,
+                  receiptNumber: selected.receipt_number,
+                  paymentDate,
+                  locationId,
+                });
+              } else {
+                await postReceiptPaymentToLedger({
+                  organizationId: organization.id,
+                  amount: amt,
+                  method: payment.method,
+                  receiptId: selected.id,
+                  receiptNumber: selected.receipt_number,
+                  paymentDate,
+                  locationId,
+                });
+              }
+            } catch (ledgerErr) {
+              console.warn('Ledger posting failed', ledgerErr);
+            }
           }
-        } catch (ledgerErr) {
-          console.warn('Ledger posting failed', ledgerErr);
-        }
-      }
 
       toast.success('Payment recorded');
       setIsPayOpen(false);
@@ -497,17 +512,20 @@ export default function Receipts() {
         });
       setJobcardItems(mappedItems);
 
-      if (rcpt && rcpt.length > 0) {
-        const open = rcpt.find((r: any) => r.status !== 'paid');
-        setExistingReceiptForJob(open || rcpt[0]);
-        if (open) {
-          const outstandingAmt = Math.max(0, Number(open.total_amount || 0) - Number(open.amount_paid || 0));
-          setCreatePayment({ enabled: true, amount: String(outstandingAmt), method: 'cash', reference: '' });
-        }
-      } else {
-        const total = Number(jc?.total_amount || 0);
-        setCreatePayment({ enabled: false, amount: String(total), method: 'cash', reference: '' });
-      }
+             if (rcpt && rcpt.length > 0) {
+         const open = rcpt.find((r: any) => r.status !== 'paid');
+         setExistingReceiptForJob(open || rcpt[0]);
+         if (open) {
+           const outstandingAmt = Math.max(0, Number(open.total_amount || 0) - Number(open.amount_paid || 0));
+           setCreatePayment({ enabled: true, amount: String(outstandingAmt), method: 'cash', reference: '' });
+         }
+       } else {
+         const total = Number(jc?.total_amount || 0);
+         setCreatePayment({ enabled: false, amount: String(total), method: 'cash', reference: '' });
+       }
+       // carry over job card location if present
+       try { setJobcardDetails((prev: any) => ({ ...(prev || jc), location_id: (jc as any)?.location_id || (prev as any)?.location_id || null })); } catch {}
+
 
       if (jc?.client_id && jc?.start_time) {
         const apptDate = new Date(jc.start_time).toISOString().slice(0,10);
@@ -529,22 +547,23 @@ export default function Receipts() {
     if (!selectedJobcardId || !jobcardDetails) return;
     try {
       let receiptId = existingReceiptForJob?.id as string | undefined;
-      if (!receiptId) {
-        const receiptNumber = `RCT-${Date.now().toString().slice(-6)}`;
-        const payload = {
-          receipt_number: receiptNumber,
-          customer_id: jobcardDetails.client_id || null,
-          job_card_id: jobcardDetails.id,
-          subtotal: jobcardItems.reduce((s, it) => s + (it.total_price || 0), 0),
-          tax_amount: 0,
-          discount_amount: 0,
-          total_amount: Number(jobcardDetails.total_amount || 0),
-          status: 'open',
-          notes: `Receipt for ${jobcardDetails.job_number}`,
-        };
-        const created = await (await import('@/utils/mockDatabase')).createReceiptWithFallback(supabase, payload, jobcardItems);
-        receiptId = (created as any)?.id;
-      }
+             if (!receiptId) {
+         const receiptNumber = `RCT-${Date.now().toString().slice(-6)}`;
+         const payload = {
+           receipt_number: receiptNumber,
+           customer_id: jobcardDetails.client_id || null,
+           job_card_id: jobcardDetails.id,
+           subtotal: jobcardItems.reduce((s, it) => s + (it.total_price || 0), 0),
+           tax_amount: 0,
+           discount_amount: 0,
+           total_amount: Number(jobcardDetails.total_amount || 0),
+           status: 'open',
+           notes: `Receipt for ${jobcardDetails.job_number}`,
+           location_id: (jobcardDetails as any)?.location_id || null,
+         };
+         const created = await (await import('@/utils/mockDatabase')).createReceiptWithFallback(supabase, payload, jobcardItems);
+         receiptId = (created as any)?.id;
+       }
 
       if (receiptId && createPayment.enabled) {
         const amt = parseFloat(createPayment.amount) || 0;
@@ -638,6 +657,19 @@ export default function Receipts() {
               </SelectContent>
             </Select>
           </div>
+          <div className="w-[220px]">
+            <Select value={locationIdFilter} onValueChange={setLocationIdFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Locations" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Locations</SelectItem>
+                {locations.map(l => (
+                  <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="w-[180px]">
             <Select value={quickDate} onValueChange={applyQuickDate}>
               <SelectTrigger>
@@ -715,6 +747,7 @@ export default function Receipts() {
                   <TableHead>#</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Customer</TableHead>
+                  <TableHead>Location</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>Paid</TableHead>
@@ -732,6 +765,7 @@ export default function Receipts() {
                     <TableCell className="font-medium">{r.receipt_number}</TableCell>
                     <TableCell>{format(new Date(r.created_at), 'MMM dd, yyyy')}</TableCell>
                     <TableCell>{r.customer_id ? (customersById[r.customer_id] || 'Customer') : 'Walk-in'}</TableCell>
+                    <TableCell>{(() => { const lid = (r as any).location_id; return lid ? (locations.find(l => l.id === lid)?.name || '—') : '—'; })()}</TableCell>
                     <TableCell>
                       <Badge variant={r.status === 'paid' ? 'default' : r.status === 'partial' ? 'outline' : 'secondary'}>
                         {r.status.toUpperCase()}
@@ -974,6 +1008,10 @@ export default function Receipts() {
                   <div>
                     <Label>Customer</Label>
                     <div className="text-sm">{jobcards.find(j => j.id === jobcardDetails.id)?.client_name || '—'}</div>
+                  </div>
+                  <div>
+                    <Label>Location</Label>
+                    <div className="text-sm">{(() => { const lid = (jobcardDetails as any)?.location_id || (jobcardDetails as any)?.locationId; return lid ? (locations.find(l => l.id === lid)?.name || '—') : '—'; })()}</div>
                   </div>
                   <div>
                     <Label>Job Card</Label>

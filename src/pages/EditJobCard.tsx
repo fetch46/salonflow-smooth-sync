@@ -34,6 +34,7 @@ interface JobCardRecord {
   total_amount: number;
   created_at: string;
   updated_at: string;
+  location_id?: string | null;
 }
 
 interface JobServiceRow {
@@ -114,6 +115,8 @@ export default function EditJobCard() {
   const [startTime, setStartTime] = useState<string>("");
   const [endTime, setEndTime] = useState<string>("");
   const [totalAmount, setTotalAmount] = useState<string>("0");
+  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
+  const [locationId, setLocationId] = useState<string>("");
 
   useEffect(() => {
     const load = async () => {
@@ -129,6 +132,8 @@ export default function EditJobCard() {
             .eq("id", id)
             .single(),
         ]);
+        const { data: locs } = await supabase.from('business_locations').select('id, name').order('name');
+        setLocations((locs || []) as any);
 
         if (staffRes.data) setStaff(staffRes.data);
         if (clientsRes.data) setClients(clientsRes.data);
@@ -141,6 +146,7 @@ export default function EditJobCard() {
           setStartTime(toInputDateTimeLocal(cardRes.data.start_time));
           setEndTime(toInputDateTimeLocal(cardRes.data.end_time));
           setTotalAmount(String(cardRes.data.total_amount ?? 0));
+          setLocationId((cardRes.data as any)?.location_id || "");
         }
 
         // Load services assigned to this job card
@@ -225,6 +231,7 @@ export default function EditJobCard() {
         total_amount: Number(totalAmount) || jobCard.total_amount || 0,
         status: 'open',
         notes: `Receipt for ${jobCard.job_number}`,
+        location_id: locationId || null,
       }, items);
       setHasReceipt(true);
       toast.success('Receipt created');
@@ -380,6 +387,19 @@ export default function EditJobCard() {
                 <SelectContent>
                   {staff.map((s) => (
                     <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Location</Label>
+              <Select value={locationId} onValueChange={(v) => setLocationId(v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder={locations.length ? 'Select location' : 'No locations'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map((l) => (
+                    <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

@@ -77,6 +77,8 @@ export default function Payments() {
   const [searchReceived, setSearchReceived] = useState("");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [methodFilter, setMethodFilter] = useState<string>("all");
+  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
+  const [locationFilter, setLocationFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(10);
   const [compact, setCompact] = useState<boolean>(false);
@@ -166,6 +168,14 @@ export default function Payments() {
       const savedCompact = localStorage.getItem('payments_density_compact');
       if (savedCompact) setCompact(savedCompact === '1');
     } catch {}
+    (async () => {
+      try {
+        const { data } = await supabase.from('business_locations').select('id, name').order('name');
+        setLocations((data || []) as any);
+      } catch {
+        setLocations([]);
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -282,10 +292,11 @@ export default function Payments() {
         : true;
 
       const matchesMethod = methodFilter === 'all' ? true : (p.method || '').toLowerCase() === methodFilter.toLowerCase();
+      const matchesLocation = locationFilter === 'all' ? true : ((r as any)?.location_id === locationFilter);
 
-      return matchesQuery && inDateRange && matchesMethod;
+      return matchesQuery && inDateRange && matchesMethod && matchesLocation;
     });
-  }, [payments, receiptsById, clientsById, searchReceived, dateRange, methodFilter]);
+  }, [payments, receiptsById, clientsById, searchReceived, dateRange, methodFilter, locationFilter]);
 
   useEffect(() => { setPage(1); }, [searchReceived, dateRange, methodFilter]);
 
@@ -531,7 +542,7 @@ export default function Payments() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     className="pl-9"
-                                         placeholder="Search by sales receipt, client, method, reference..."
+                    placeholder="Search by sales receipt, client, method, reference..."
                     value={searchReceived}
                     onChange={(e) => setSearchReceived(e.target.value)}
                   />
@@ -573,6 +584,19 @@ export default function Payments() {
                       <SelectItem value="card">Card</SelectItem>
                       <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                       <SelectItem value="mpesa">M-Pesa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-full md:w-[220px]">
+                  <Select value={locationFilter} onValueChange={setLocationFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Locations" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Locations</SelectItem>
+                      {locations.map(l => (
+                        <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -640,8 +664,9 @@ export default function Payments() {
                 <Table className={`w-full ${compact ? 'text-sm' : ''}`}>
                   <TableHeader className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <TableRow>
-                                             <TableHead className={compact ? 'py-2' : ''}>Sales Receipt #</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Sales Receipt #</TableHead>
                       <TableHead className={compact ? 'py-2' : ''}>Client</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Location</TableHead>
                       <TableHead className={compact ? 'py-2' : ''}>Date</TableHead>
                       <TableHead className={compact ? 'py-2' : ''}>Amount</TableHead>
                       <TableHead className={compact ? 'py-2' : ''}>Method</TableHead>
@@ -652,7 +677,7 @@ export default function Payments() {
                   <TableBody>
                     {paginatedReceived.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={7} className={`text-center text-muted-foreground ${compact ? 'py-6' : 'h-24'}`}>
+                        <TableCell colSpan={9} className={`text-center text-muted-foreground ${compact ? 'py-6' : 'h-24'}`}>
                           No payments found. Adjust filters or try a different search.
                         </TableCell>
                       </TableRow>
@@ -664,6 +689,7 @@ export default function Payments() {
                         <TableRow key={p.id} className="hover:bg-muted/50">
                           <TableCell className={`font-medium ${compact ? 'py-2' : ''}`}>{r?.receipt_number || '—'}</TableCell>
                           <TableCell className={compact ? 'py-2' : ''}>{clientName}</TableCell>
+                          <TableCell className={compact ? 'py-2' : ''}>{(() => { const lid = (r as any)?.location_id; return lid ? (locations.find(l => l.id === lid)?.name || '—') : '—'; })()}</TableCell>
                           <TableCell className={compact ? 'py-2' : ''}>{format(new Date(p.payment_date || r?.created_at || new Date()), 'MMM dd, yyyy')}</TableCell>
                           <TableCell className={compact ? 'py-2' : ''}>${Number(p.amount || 0).toFixed(2)}</TableCell>
                           <TableCell className={compact ? 'py-2' : ''}>{(p.method || '').toUpperCase()}</TableCell>
@@ -778,10 +804,10 @@ export default function Payments() {
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                                                          <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuItem onClick={() => { if (e.receipt_url) window.open(e.receipt_url, '_blank'); }} disabled={!e.receipt_url}>
-                                  <ReceiptText className="mr-2 h-4 w-4" /> View Sales Receipt
-                                </DropdownMenuItem>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => { if (e.receipt_url) window.open(e.receipt_url, '_blank'); }} disabled={!e.receipt_url}>
+                                <ReceiptText className="mr-2 h-4 w-4" /> View Sales Receipt
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => navigate('/expenses')}>
                                 <Edit className="mr-2 h-4 w-4" /> Edit Payment
                               </DropdownMenuItem>
@@ -843,10 +869,10 @@ export default function Payments() {
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                                                          <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuItem disabled>
-                                  <ReceiptText className="mr-2 h-4 w-4" /> View Sales Receipt
-                                </DropdownMenuItem>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem disabled>
+                                <ReceiptText className="mr-2 h-4 w-4" /> View Sales Receipt
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => navigate('/purchases')}>
                                 <Edit className="mr-2 h-4 w-4" /> Edit Payment
                               </DropdownMenuItem>
