@@ -21,14 +21,12 @@ function isValidUrl(url: string): boolean {
     return false
   }
 }
-const SUPABASE_URL = "https://eoxeoyyunhsdvjiwkttx.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVveGVveXl1bmhzZHZqaXdrdHR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5NzI3NDUsImV4cCI6MjA2OTU0ODc0NX0.d3uazVxwI1_kPoF-QAGChcbfKS9PxwB536HrrlCXUrE";
+// Read Supabase configuration from Vite environment
+const RAW_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const RAW_SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-//const RAW_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
-//const RAW_SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-//const SUPABASE_URL = sanitizeEnv(RAW_SUPABASE_URL)
-//const SUPABASE_PUBLISHABLE_KEY = sanitizeEnv(RAW_SUPABASE_PUBLISHABLE_KEY)
+const SUPABASE_URL = sanitizeEnv(RAW_SUPABASE_URL)
+const SUPABASE_PUBLISHABLE_KEY = sanitizeEnv(RAW_SUPABASE_PUBLISHABLE_KEY)
 
 function createSupabaseStub() {
   const stubError = new Error(
