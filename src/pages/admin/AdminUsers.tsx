@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Plus, Edit, Trash2, Search, Building, Shield, KeyRound, Check } from "lucide-react";
+import { Users, Plus, Edit, Trash2, Search, Building, Shield, KeyRound, Check, Mail } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
@@ -62,6 +62,10 @@ const AdminUsers = () => {
     role: "staff",
     is_active: true
   });
+  const [isSetPasswordDialogOpen, setIsSetPasswordDialogOpen] = useState(false);
+  const [passwordTarget, setPasswordTarget] = useState<{ user_id: string; email?: string | null } | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const fetchData = useCallback(async () => {
     try {
@@ -256,6 +260,42 @@ const AdminUsers = () => {
     }
   };
 
+  const openSetPasswordDialog = (userId: string, email?: string | null) => {
+    setPasswordTarget({ user_id: userId, email });
+    setNewPassword("");
+    setConfirmPassword("");
+    setIsSetPasswordDialogOpen(true);
+  };
+
+  const handleSetPassword = async () => {
+    if (!passwordTarget) return;
+    if (newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    try {
+      const { error } = await supabase.functions.invoke('set-user-password', {
+        body: {
+          user_id: passwordTarget.user_id,
+          new_password: newPassword,
+        },
+      });
+      if (error) throw error;
+      toast.success('Password has been set');
+      setIsSetPasswordDialogOpen(false);
+      setPasswordTarget(null);
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error) {
+      console.error('Error setting password:', error);
+      toast.error('Failed to set password');
+    }
+  };
+
   const openEditOrgUserDialog = (orgUser: OrganizationUser) => {
     setSelectedOrgUser(orgUser);
     setNewOrgUser({
@@ -423,7 +463,7 @@ const AdminUsers = () => {
                                 onClick={() => sendPasswordReset(user.email)}
                                 title="Send password reset"
                               >
-                                <KeyRound className="h-4 w-4" />
+                                <Mail className="h-4 w-4" />
                               </Button>
                             </div>
                           </TableCell>
@@ -498,7 +538,23 @@ const AdminUsers = () => {
                                 onClick={() => sendPasswordReset(orgUser.user_email)}
                                 title="Send password reset"
                               >
+                                <Mail className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openSetPasswordDialog(orgUser.user_id, orgUser.user_email)}
+                                title="Set new password"
+                              >
                                 <KeyRound className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => confirmUser(orgUser.user_id)}
+                                title="Confirm email"
+                              >
+                                <Check className="h-4 w-4" />
                               </Button>
                               <Button
                                 variant="outline"
@@ -657,6 +713,48 @@ const AdminUsers = () => {
               </Button>
               <Button onClick={updateOrganizationUser}>
                 Update User
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Set Password Dialog */}
+        <Dialog open={isSetPasswordDialogOpen} onOpenChange={setIsSetPasswordDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Set New Password</DialogTitle>
+              <DialogDescription>
+                {passwordTarget?.email ? `Set a new password for ${passwordTarget.email}.` : 'Set a new password for the selected user.'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-password">New Password</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Confirm Password</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter password"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsSetPasswordDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSetPassword}>
+                Set Password
               </Button>
             </div>
           </DialogContent>
