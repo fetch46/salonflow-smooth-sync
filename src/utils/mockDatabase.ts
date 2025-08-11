@@ -613,6 +613,8 @@ export async function updateReceiptWithFallback(supabase: any, id: string, updat
     if (typeof updates.tax_amount !== 'undefined') allowed.tax_amount = updates.tax_amount;
     if (typeof updates.discount_amount !== 'undefined') allowed.discount_amount = updates.discount_amount;
     if (typeof updates.total_amount !== 'undefined') allowed.total_amount = updates.total_amount;
+    if (typeof updates.customer_id !== 'undefined') allowed.customer_id = updates.customer_id;
+    if (typeof updates.job_card_id !== 'undefined') allowed.job_card_id = updates.job_card_id;
 
     const { error } = await supabase
       .from('receipts')
@@ -622,7 +624,7 @@ export async function updateReceiptWithFallback(supabase: any, id: string, updat
     if (error) throw error;
     return true;
   } catch (error) {
-    console.log('Using mock database for invoice update');
+    console.log('Using mock database for receipt update');
     return await mockDb.updateInvoice(id, updates);
   }
 }
