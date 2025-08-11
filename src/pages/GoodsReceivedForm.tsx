@@ -14,7 +14,7 @@ import { ArrowLeft, Truck } from "lucide-react";
 
 interface PurchaseOption { id: string; purchase_number: string; vendor_name: string; status: string }
 interface PurchaseItem { id: string; item_id: string; quantity: number; unit_cost: number; received_quantity: number; inventory_items: { name: string } | null }
-interface Location { id: string; name: string }
+interface Warehouse { id: string; name: string; location_id?: string }
 interface GoodsReceivedItem { id?: string; purchase_item_id: string; item_id: string; qty: number; unit_cost: number }
 
 export default function GoodsReceivedForm() {
@@ -28,8 +28,8 @@ export default function GoodsReceivedForm() {
   const [purchases, setPurchases] = useState<PurchaseOption[]>([]);
   const [purchaseId, setPurchaseId] = useState<string>(searchParams.get('purchaseId') || "");
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [locationId, setLocationId] = useState<string>("");
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [warehouseId, setWarehouseId] = useState<string>("");
   const [receivedDate, setReceivedDate] = useState<string>(new Date().toISOString().slice(0,10));
   const [notes, setNotes] = useState<string>("");
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -53,13 +53,14 @@ export default function GoodsReceivedForm() {
     setPurchases((data || []) as any);
   }, []);
 
-  const loadLocations = useCallback(async () => {
+  const loadWarehouses = useCallback(async () => {
     const orgId = organization?.id;
     const { data } = await supabase
-      .from("business_locations")
-      .select("id, name")
-      .eq(orgId ? "organization_id" : "is_active", orgId ? orgId : true);
-    setLocations((data || []) as any);
+      .from("warehouses")
+      .select("id, name, location_id")
+      .eq(orgId ? "organization_id" : "is_active", orgId ? orgId : true)
+      .order("name");
+    setWarehouses((data || []) as any);
   }, [organization?.id]);
 
   const loadPurchaseItems = useCallback(async (pid: string) => {
@@ -85,7 +86,7 @@ export default function GoodsReceivedForm() {
     if (hErr) throw hErr;
     setPurchaseId(header.purchases.id);
     setReceivedDate((header.received_date || '').slice(0,10));
-    setLocationId(header.location_id);
+    setWarehouseId((header as any).warehouse_id || "");
     setNotes(header.notes || "");
     await loadPurchaseItems(header.purchases.id);
     const q: Record<string, number> = {};
@@ -100,8 +101,8 @@ export default function GoodsReceivedForm() {
 
   useEffect(() => {
     loadOpenPurchases();
-    loadLocations();
-  }, [loadOpenPurchases, loadLocations]);
+    loadWarehouses();
+  }, [loadOpenPurchases, loadWarehouses]);
 
   useEffect(() => {
     if (purchaseId) loadPurchaseItems(purchaseId);
@@ -118,9 +119,12 @@ export default function GoodsReceivedForm() {
   const handleSave = async () => {
     try {
       if (!purchaseId) { toast({ title: "Purchase required", description: "Select an open purchase" , variant: "destructive"}); return; }
-      if (!locationId) { toast({ title: "Location required", description: "Select a location to receive into" , variant: "destructive"}); return; }
+      if (!warehouseId) { toast({ title: "Warehouse required", description: "Select a warehouse to receive into" , variant: "destructive"}); return; }
       const orgId = organization?.id;
       if (!orgId) { toast({ title: "Organization missing", description: "Please reload and try again", variant: "destructive" }); return; }
+      const selectedWarehouse = warehouses.find(w => w.id === warehouseId);
+      const derivedLocationId = selectedWarehouse?.location_id;
+      if (!derivedLocationId) { toast({ title: "Warehouse misconfigured", description: "Selected warehouse is missing an associated location", variant: "destructive" }); return; }
       const entries = Object.entries(quantities).filter(([pid, qty]) => Number(qty) > 0);
       if (!isEdit && entries.length === 0) { toast({ title: "No quantities", description: "Enter at least one quantity to receive", variant: "destructive" }); return; }
 
@@ -131,7 +135,8 @@ export default function GoodsReceivedForm() {
         const { data, error } = await supabase.rpc('record_goods_received', {
           p_org_id: orgId,
           p_purchase_id: purchaseId,
-          p_location_id: locationId,
+          p_location_id: derivedLocationId,
+          p_warehouse_id: warehouseId,
           p_received_date: receivedDate,
           p_notes: notes,
           p_lines: payload as any,
@@ -146,7 +151,8 @@ export default function GoodsReceivedForm() {
         const { error } = await supabase.rpc('update_goods_received', {
           p_org_id: orgId,
           p_goods_received_id: id,
-          p_location_id: locationId,
+          p_location_id: derivedLocationId,
+          p_warehouse_id: warehouseId,
           p_received_date: receivedDate,
           p_notes: notes,
           p_quantities: qMap as any,
@@ -173,7 +179,7 @@ export default function GoodsReceivedForm() {
           </div>
           <div>
             <h1 className="text-2xl font-bold">{isEdit ? 'Edit Goods Received' : 'New Goods Received'}</h1>
-            <p className="text-slate-600">Receive items for a purchase</p>
+            <p className="text-slate-600">Receive items for a purchase into a warehouse</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -187,7 +193,7 @@ export default function GoodsReceivedForm() {
           <Card className="shadow-lg border-0">
             <CardHeader>
               <CardTitle>Receipt Details</CardTitle>
-              <CardDescription>Select purchase and location</CardDescription>
+              <CardDescription>Select purchase and warehouse</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
@@ -210,15 +216,15 @@ export default function GoodsReceivedForm() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Location<span className="text-red-600">*</span></Label>
-                <Select value={locationId} onValueChange={setLocationId}>
+                <Label>Warehouse<span className="text-red-600">*</span></Label>
+                <Select value={warehouseId} onValueChange={setWarehouseId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select location" />
+                    <SelectValue placeholder="Select warehouse" />
                   </SelectTrigger>
                   <SelectContent>
-                    {locations.map(l => (
-                      <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
-                    ))}
+                    {warehouses.map(w => (
+                        <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>

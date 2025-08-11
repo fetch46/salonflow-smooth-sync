@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RefreshCw, Plus, Truck } from "lucide-react";
 
-interface GoodsReceivedRow { id: string; grn_number: string | null; received_date: string; location_id: string; purchase_id: string; purchase?: { purchase_number: string; vendor_name: string } | null; location?: { name: string } | null }
+interface GoodsReceivedRow { id: string; grn_number: string | null; received_date: string; warehouse_id?: string | null; location_id: string; purchase_id: string; purchase?: { purchase_number: string; vendor_name: string } | null; warehouse?: { name: string } | null }
 
 export default function GoodsReceived() {
   const navigate = useNavigate();
@@ -20,7 +20,7 @@ export default function GoodsReceived() {
       setLoading(true);
       const { data, error } = await supabase
         .from("goods_received")
-        .select("id, grn_number, received_date, location_id, purchase_id, purchase:purchases(purchase_number, vendor_name), location:business_locations(name)")
+        .select("id, grn_number, received_date, warehouse_id, location_id, purchase_id, purchase:purchases(purchase_number, vendor_name), warehouse:warehouses(name)")
         .order("received_date", { ascending: false });
       if (error) throw error;
       setRows((data || []) as any);
@@ -39,7 +39,7 @@ export default function GoodsReceived() {
       (r.grn_number || '').toLowerCase().includes(t) ||
       (r.purchase?.purchase_number || '').toLowerCase().includes(t) ||
       (r.purchase?.vendor_name || '').toLowerCase().includes(t) ||
-      (r.location?.name || '').toLowerCase().includes(t)
+      (r.warehouse?.name || '').toLowerCase().includes(t)
     );
   });
 
@@ -68,7 +68,7 @@ export default function GoodsReceived() {
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2 mb-4">
-            <Input placeholder="Search GRN, purchase #, vendor or location" value={search} onChange={e => setSearch(e.target.value)} />
+            <Input placeholder="Search GRN, purchase #, vendor or warehouse" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <div className="overflow-x-auto">
             <Table>
@@ -78,7 +78,7 @@ export default function GoodsReceived() {
                   <TableHead>Date</TableHead>
                   <TableHead>Purchase</TableHead>
                   <TableHead>Vendor</TableHead>
-                  <TableHead>Location</TableHead>
+                  <TableHead>Warehouse</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -89,7 +89,7 @@ export default function GoodsReceived() {
                     <TableCell>{(r.received_date || '').slice(0,10)}</TableCell>
                     <TableCell>{r.purchase?.purchase_number}</TableCell>
                     <TableCell>{r.purchase?.vendor_name}</TableCell>
-                    <TableCell>{r.location?.name}</TableCell>
+                    <TableCell>{r.warehouse?.name}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Button variant="outline" size="sm" onClick={() => navigate(`/goods-received/${r.id}/edit`)}>Open</Button>
