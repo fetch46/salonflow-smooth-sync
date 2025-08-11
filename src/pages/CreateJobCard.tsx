@@ -490,62 +490,93 @@ export default function CreateJobCard() {
       } catch (insErr: any) {
         const message = String(insErr?.message || "");
         const code = (insErr as any)?.code || '';
-        const isMissingLocationCol = code === '42703' || /column\s+\"?location_id\"?\s+does not exist/i.test(message);
-        if (!isMissingLocationCol) throw insErr;
-        const res2 = await supabase
-          .from("job_cards")
-          .insert([{
-            job_number: jobNumber,
-            client_id: selectedClient.id,
-            staff_id: primaryStaffId || null,
-            start_time: jobCardData.start_time || now,
-            end_time: jobCardData.end_time,
-            total_amount: jobCardData.service_charge,
-            status: jobCardData.end_time ? "completed" : "in_progress",
-          }])
-          .select()
-          .single();
-        if (res2.error) throw res2.error;
-        jobCard = res2.data;
+        const isMissingLocationCol = code === '42703' || /column\s+"?location_id"?\s+does not exist/i.test(message);
+        const isUnknownColumn = code === '42703' || /column\s+"?[a-zA-Z0-9_]+"?\s+does not exist/i.test(message);
+
+        if (isMissingLocationCol) {
+          // Retry without location_id
+          const res2 = await supabase
+            .from("job_cards")
+            .insert([{
+              job_number: jobNumber,
+              client_id: selectedClient.id,
+              staff_id: primaryStaffId || null,
+              start_time: jobCardData.start_time || now,
+              end_time: jobCardData.end_time,
+              total_amount: jobCardData.service_charge,
+              status: jobCardData.end_time ? "completed" : "in_progress",
+            }])
+            .select()
+            .single();
+          if (res2.error) throw res2.error;
+          jobCard = res2.data;
+        } else if (isUnknownColumn) {
+          // Fallback to a minimal payload compatible with older schemas
+          const resMin = await supabase
+            .from("job_cards")
+            .insert([{
+              job_number: jobNumber,
+              client_id: selectedClient.id,
+              staff_id: primaryStaffId || null,
+              start_time: jobCardData.start_time || now,
+              status: jobCardData.end_time ? "completed" : "in_progress",
+            }])
+            .select()
+            .single();
+          if (resMin.error) throw resMin.error;
+          jobCard = resMin.data;
+        } else {
+          throw insErr;
+        }
       }
 
-       // Save service assignments to job_card_services
-if (selectedServices.length > 0) {
-        const overrideMap: Record<string, number | null> = (window as any).__appointmentServiceCommission || {};
-        const rows = selectedServices.map(svc => ({
-          job_card_id: jobCard.id,
-          service_id: svc.id,
-          staff_id: serviceStaffMap[svc.id],
-          quantity: 1,
-          unit_price: svc.price,
-          duration_minutes: svc.duration_minutes,
-          commission_percentage: typeof overrideMap[svc.id] === 'number' ? overrideMap[svc.id] : (svc as any).commission_percentage ?? null,
-        }));
-        const { error: jcsError } = await supabase.from("job_card_services").insert(rows as any);
-        if (jcsError) throw jcsError;
+      // Save service assignments to job_card_services
+      if (selectedServices.length > 0) {
+        try {
+          const overrideMap: Record<string, number | null> = (window as any).__appointmentServiceCommission || {};
+          const rows = selectedServices.map(svc => ({
+            job_card_id: jobCard.id,
+            service_id: svc.id,
+            staff_id: serviceStaffMap[svc.id],
+            quantity: 1,
+            unit_price: svc.price,
+            duration_minutes: svc.duration_minutes,
+            commission_percentage: typeof overrideMap[svc.id] === 'number' ? overrideMap[svc.id] : (svc as any).commission_percentage ?? null,
+          }));
+          const { error: jcsError } = await supabase.from("job_card_services").insert(rows as any);
+          if (jcsError) throw jcsError;
+        } catch (svcErr) {
+          console.error('Failed to save job card services:', svcErr);
+          toast.error('Job saved, but services could not be saved');
+        }
       }
 
       // Save job card products
       if (Object.keys(jobCardData.products_used).length > 0) {
-        const productEntries = Object.entries(jobCardData.products_used)
-          .filter(([_, quantity]) => quantity > 0)
-          .map(([productId, quantity]) => {
-            const kit = serviceKits.find(k => k.good_id === productId);
-            return {
-              job_card_id: jobCard.id,
-              inventory_item_id: productId,
-              quantity_used: quantity,
-              unit_cost: kit?.inventory_items.cost_price || 0,
-              total_cost: quantity * (kit?.inventory_items.cost_price || 0)
-            };
-          });
+        try {
+          const productEntries = Object.entries(jobCardData.products_used)
+            .filter(([_, quantity]) => quantity > 0)
+            .map(([productId, quantity]) => {
+              const kit = serviceKits.find(k => k.good_id === productId);
+              return {
+                job_card_id: jobCard.id,
+                inventory_item_id: productId,
+                quantity_used: quantity,
+                unit_cost: kit?.inventory_items.cost_price || 0,
+                total_cost: quantity * (kit?.inventory_items.cost_price || 0)
+              };
+            });
 
-        if (productEntries.length > 0) {
-          const { error: productsError } = await supabase
-            .from("job_card_products")
-            .insert(productEntries);
+          if (productEntries.length > 0) {
+            const { error: productsError } = await supabase
+              .from("job_card_products")
+              .insert(productEntries);
 
-          if (productsError) throw productsError;
+            if (productsError) throw productsError;
+          }
+        } catch (prodErr) {
+          console.error('Failed to save job card products:', prodErr);
+          toast.error('Job saved, but products could not be saved');
         }
       }
 
@@ -626,7 +657,7 @@ if (selectedServices.length > 0) {
       navigate("/job-cards");
     } catch (error) {
       console.error("Error creating job card:", error);
-      toast.error("Failed to create job card");
+      toast.error((error as any)?.message || "Failed to create job card");
     } finally {
       setSaving(false);
     }
