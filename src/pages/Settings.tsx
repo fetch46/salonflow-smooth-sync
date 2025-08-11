@@ -237,12 +237,7 @@ phone: "",
         .eq('is_active', true)
         .order('name')
       setCountries(countryData || [])
-      // Load warehouses
-      const { data: whs } = await supabase
-        .from('warehouses')
-        .select('id, name, location_id, is_active')
-        .order('name')
-      setWarehouses(whs || [])
+      // Warehouses will be loaded after organization is available
     })()
   }, [])
 
@@ -513,32 +508,36 @@ phone: "",
 
   const saveWarehouse = async () => {
     try {
-      if (!warehouseForm.name || !warehouseForm.location_id) return toast.error('Name and location are required')
+      if (!organization?.id) return toast.error('No organization selected');
+      if (!warehouseForm.name || !warehouseForm.location_id) return toast.error('Name and location are required');
       if (editingWarehouse) {
         const { error } = await supabase
           .from('warehouses')
           .update({ name: warehouseForm.name, location_id: warehouseForm.location_id, is_active: warehouseForm.is_active })
-          .eq('id', editingWarehouse.id)
-        if (error) throw error
-        toast.success('Warehouse updated')
+          .eq('id', editingWarehouse.id);
+        if (error) throw error;
+        toast.success('Warehouse updated');
       } else {
         const { error } = await supabase
           .from('warehouses')
-          .insert([{ name: warehouseForm.name, location_id: warehouseForm.location_id, is_active: warehouseForm.is_active, organization_id: organization?.id }])
-        if (error) throw error
-        toast.success('Warehouse created')
+          .insert([{ name: warehouseForm.name, location_id: warehouseForm.location_id, is_active: warehouseForm.is_active, organization_id: organization.id }]);
+        if (error) throw error;
+        toast.success('Warehouse created');
       }
-      const { data: whs } = await supabase
+      const { data: whs, error: fetchError } = await supabase
         .from('warehouses')
         .select('id, name, location_id, is_active')
-        .order('name')
-      setWarehouses(whs || [])
-      setWarehouseDialogOpen(false)
-      setEditingWarehouse(null)
-      setWarehouseForm({ name: '', location_id: '', is_active: true })
-    } catch (e) {
-      console.error(e)
-      toast.error('Failed to save warehouse')
+        .eq('organization_id', organization.id)
+        .order('name');
+      if (fetchError) throw fetchError;
+      setWarehouses(whs || []);
+      setWarehouseDialogOpen(false);
+      setEditingWarehouse(null);
+      setWarehouseForm({ name: '', location_id: '', is_active: true });
+    } catch (e: any) {
+      console.error(e);
+      const message = e?.message || e?.error_description || 'Unknown error';
+      toast.error(`Failed to save warehouse${message ? `: ${message}` : ''}`);
     }
   }
 
@@ -554,6 +553,28 @@ phone: "",
       toast.error('Failed to delete warehouse')
     }
   }
+
+  useEffect(() => {
+    if (!organization?.id) {
+      setWarehouses([])
+      return
+    }
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('warehouses')
+          .select('id, name, location_id, is_active')
+          .eq('organization_id', organization.id)
+          .order('name')
+        if (error) throw error
+        setWarehouses(data || [])
+      } catch (e: any) {
+        console.error(e)
+        toast.error(`Failed to load warehouses${e?.message ? `: ${e.message}` : ''}`)
+        setWarehouses([])
+      }
+    })()
+  }, [organization?.id])
 
   return (
     <div className="flex-1 space-y-6 p-8 pt-6">
@@ -1246,7 +1267,7 @@ phone: "",
               </CardHeader>
               <CardContent>
                 <div className="flex justify-end mb-3">
-                  <Button onClick={() => { setEditingWarehouse(null); setWarehouseForm({ name: '', location_id: stockLocations[0]?.id || '', is_active: true }); setWarehouseDialogOpen(true) }}>
+                  <Button onClick={() => { setEditingWarehouse(null); setWarehouseForm({ name: '', location_id: stockLocations[0]?.id || '', is_active: true }); setWarehouseDialogOpen(true) }} disabled={stockLocations.length === 0}>
                     <Plus className="h-4 w-4 mr-2" /> New Warehouse
                   </Button>
                 </div>
