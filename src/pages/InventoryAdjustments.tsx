@@ -230,13 +230,10 @@ export default function InventoryAdjustments() {
            // No existing level row => assume current was 0 and set to adjusted quantity
            try {
              const insertQuantity = item.adjusted_quantity ?? (item.difference ?? 0);
-             const { error: upsertErr } = await supabase
+             const { error: insertErr } = await supabase
                .from("inventory_levels")
-               .upsert(
-                 [{ item_id: item.item_id, warehouse_id: effectiveWarehouseId, quantity: insertQuantity }],
-                 { onConflict: "item_id,warehouse_id" }
-               );
-             if (upsertErr) throw upsertErr;
+               .insert([{ item_id: item.item_id, warehouse_id: effectiveWarehouseId, quantity: insertQuantity }]);
+             if (insertErr) throw insertErr;
            } catch (e: any) {
              // Convert FK violation into a clearer message
              const pgCode = e?.code || e?.details || "";
@@ -255,7 +252,7 @@ export default function InventoryAdjustments() {
           status: "approved",
           approved_at: new Date().toISOString(),
           approved_by: (await supabase.auth.getUser()).data.user?.id,
-          location_id: effectiveLocationId
+          warehouse_id: effectiveWarehouseId
         })
         .eq("id", adjustment.id);
 
