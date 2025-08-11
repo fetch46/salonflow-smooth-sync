@@ -73,7 +73,7 @@ export default function ProductView() {
   const [usageHistory, setUsageHistory] = useState<UsageHistoryRow[]>([]);
   const [salesHistory, setSalesHistory] = useState<SalesHistoryRow[]>([]);
   const [onHand, setOnHand] = useState<number>(0);
-  const [levelsByLocation, setLevelsByLocation] = useState<Array<{ location_id: string; quantity: number; business_locations?: { name: string } | null }>>([]);
+  const [levelsByWarehouse, setLevelsByWarehouse] = useState<Array<{ warehouse_id: string; quantity: number; warehouses?: { name: string } | null }>>([]);
   const { format: formatMoney } = useOrganizationCurrency();
 
   // Accounts mapping state
@@ -129,14 +129,14 @@ export default function ProductView() {
           .order("created_at", { ascending: false });
         setUsageHistory((usages || []) as any);
 
-        // On-hand and stock by location from inventory_levels
+        // On-hand and stock by warehouse from inventory_levels
         const { data: levels } = await supabase
           .from("inventory_levels")
-          .select(`quantity, location_id, business_locations(name)`)
+          .select(`quantity, warehouse_id, warehouses(name)`)
           .eq("item_id", id);
         const hand = (levels || []).reduce((s: number, r: any) => s + Number(r.quantity || 0), 0);
         setOnHand(hand);
-        setLevelsByLocation((levels || []) as any);
+        setLevelsByWarehouse((levels || []) as any);
       } finally {
         setLoading(false);
       }
@@ -592,8 +592,8 @@ export default function ProductView() {
                         const qty = Number(lvl.quantity || 0);
                         const share = onHand > 0 ? Math.round((qty / onHand) * 100) : 0;
                         return (
-                          <TableRow key={`${lvl.location_id}-${idx}`}>
-                            <TableCell className="font-medium">{lvl.business_locations?.name || '—'}</TableCell>
+                          <TableRow key={`${lvl.warehouse_id}-${idx}`}>
+                            <TableCell className="font-medium">{(lvl as any).warehouses?.name || '—'}</TableCell>
                             <TableCell className="text-right">{qty}</TableCell>
                             <TableCell className="hidden md:table-cell text-right">{share}%</TableCell>
                           </TableRow>

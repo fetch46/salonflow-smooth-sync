@@ -182,6 +182,11 @@ phone: "",
     description: string | null;
     is_active: boolean;
   }[]>([])
+  // Warehouses State
+  const [warehouses, setWarehouses] = useState<Array<{ id: string; name: string; location_id: string; is_active: boolean }>>([])
+  const [warehouseForm, setWarehouseForm] = useState<{ id?: string; name: string; location_id: string; is_active: boolean }>({ name: '', location_id: '', is_active: true })
+  const [warehouseDialogOpen, setWarehouseDialogOpen] = useState(false)
+  const [editingWarehouse, setEditingWarehouse] = useState<{ id: string; name: string; location_id: string; is_active: boolean } | null>(null)
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false)
   const [editingLocation, setEditingLocation] = useState<{
     id: string;
@@ -232,6 +237,12 @@ phone: "",
         .eq('is_active', true)
         .order('name')
       setCountries(countryData || [])
+      // Load warehouses
+      const { data: whs } = await supabase
+        .from('warehouses')
+        .select('id, name, location_id, is_active')
+        .order('name')
+      setWarehouses(whs || [])
     })()
   }, [])
 
@@ -500,6 +511,50 @@ phone: "",
     fetchStockLocations();
   }, [organization]);
 
+  const saveWarehouse = async () => {
+    try {
+      if (!warehouseForm.name || !warehouseForm.location_id) return toast.error('Name and location are required')
+      if (editingWarehouse) {
+        const { error } = await supabase
+          .from('warehouses')
+          .update({ name: warehouseForm.name, location_id: warehouseForm.location_id, is_active: warehouseForm.is_active })
+          .eq('id', editingWarehouse.id)
+        if (error) throw error
+        toast.success('Warehouse updated')
+      } else {
+        const { error } = await supabase
+          .from('warehouses')
+          .insert([{ name: warehouseForm.name, location_id: warehouseForm.location_id, is_active: warehouseForm.is_active, organization_id: organization?.id }])
+        if (error) throw error
+        toast.success('Warehouse created')
+      }
+      const { data: whs } = await supabase
+        .from('warehouses')
+        .select('id, name, location_id, is_active')
+        .order('name')
+      setWarehouses(whs || [])
+      setWarehouseDialogOpen(false)
+      setEditingWarehouse(null)
+      setWarehouseForm({ name: '', location_id: '', is_active: true })
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to save warehouse')
+    }
+  }
+
+  const deleteWarehouse = async (id: string) => {
+    if (!confirm('Delete this warehouse?')) return
+    try {
+      const { error } = await supabase.from('warehouses').delete().eq('id', id)
+      if (error) throw error
+      setWarehouses(prev => prev.filter(w => w.id !== id))
+      toast.success('Warehouse deleted')
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to delete warehouse')
+    }
+  }
+
   return (
     <div className="flex-1 space-y-6 p-8 pt-6">
       {/* Header */}
@@ -544,6 +599,10 @@ phone: "",
           <TabsTrigger value="locations" className="justify-start gap-2 data-[state=active]:bg-muted">
             <MapPin className="w-4 h-4" />
             Locations
+          </TabsTrigger>
+          <TabsTrigger value="warehouses" className="justify-start gap-2 data-[state=active]:bg-muted">
+            <Building className="w-4 h-4" />
+            Warehouses
           </TabsTrigger>
           <TabsTrigger value="accounting" className="justify-start gap-2 data-[state=active]:bg-muted">
             <CreditCard className="w-4 h-4" />
@@ -1176,6 +1235,83 @@ phone: "",
                 </UIDialog>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Warehouses */}
+          <TabsContent value="warehouses">
+            <Card>
+              <CardHeader>
+                <CardTitle>Warehouses</CardTitle>
+                <CardDescription>Manage warehouses per location</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-end mb-3">
+                  <Button onClick={() => { setEditingWarehouse(null); setWarehouseForm({ name: '', location_id: stockLocations[0]?.id || '', is_active: true }); setWarehouseDialogOpen(true) }}>
+                    <Plus className="h-4 w-4 mr-2" /> New Warehouse
+                  </Button>
+                </div>
+                <div className="overflow-auto rounded border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {warehouses.map(w => (
+                        <TableRow key={w.id}>
+                          <TableCell>{w.name}</TableCell>
+                          <TableCell>{stockLocations.find(l => l.id === w.location_id)?.name || w.location_id}</TableCell>
+                          <TableCell>{w.is_active ? <Badge>Active</Badge> : <Badge variant="outline">Inactive</Badge>}</TableCell>
+                          <TableCell className="text-right space-x-2">
+                            <Button size="sm" variant="outline" onClick={() => { setEditingWarehouse(w); setWarehouseForm({ id: w.id, name: w.name, location_id: w.location_id, is_active: w.is_active }); setWarehouseDialogOpen(true); }}><Edit2 className="h-4 w-4" /></Button>
+                            <Button size="sm" variant="destructive" onClick={() => deleteWarehouse(w.id)}><Trash2 className="h-4 w-4" /></Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            <UIDialog open={warehouseDialogOpen} onOpenChange={setWarehouseDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{editingWarehouse ? 'Edit Warehouse' : 'Add Warehouse'}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div>
+                    <Label>Name</Label>
+                    <Input value={warehouseForm.name} onChange={(e) => setWarehouseForm(prev => ({ ...prev, name: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label>Location</Label>
+                    <Select value={warehouseForm.location_id} onValueChange={(v) => setWarehouseForm(prev => ({ ...prev, location_id: v }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select location" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stockLocations.map(l => (
+                          <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={warehouseForm.is_active} onCheckedChange={(v) => setWarehouseForm(prev => ({ ...prev, is_active: v }))} />
+                    <span className="text-sm text-muted-foreground">Active</span>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setWarehouseDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={saveWarehouse}>{editingWarehouse ? 'Update' : 'Create'}</Button>
+                </DialogFooter>
+              </DialogContent>
+            </UIDialog>
           </TabsContent>
 
           {/* Accounting - Default Deposit Accounts */}

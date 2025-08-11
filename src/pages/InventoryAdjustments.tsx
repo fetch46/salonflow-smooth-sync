@@ -28,7 +28,7 @@ interface InventoryItem {
   is_active: boolean;
 }
 
-interface BusinessLocation {
+interface Warehouse {
   id: string;
   name: string;
 }
@@ -47,7 +47,7 @@ interface Adjustment {
   approved_at: string | null;
   created_at: string;
   updated_at: string;
-  location_id?: string | null;
+  warehouse_id?: string | null;
 }
 
 interface AdjustmentItem {
@@ -90,7 +90,7 @@ const ADJUSTMENT_REASONS = [
 export default function InventoryAdjustments() {
   const [adjustments, setAdjustments] = useState<Adjustment[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
-  const [locations, setLocations] = useState<BusinessLocation[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [adjustmentItems, setAdjustmentItems] = useState<AdjustmentItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -101,7 +101,7 @@ export default function InventoryAdjustments() {
   useEffect(() => {
     fetchAdjustments();
     fetchInventoryItems();
-    fetchLocations();
+         fetchWarehouses();
   }, []);
 
   const fetchAdjustments = async () => {
@@ -137,15 +137,15 @@ export default function InventoryAdjustments() {
     }
   };
 
-  const fetchLocations = async () => {
+  const fetchWarehouses = async () => {
     try {
       const { data, error } = await supabase
-        .from("business_locations")
+        .from("warehouses")
         .select("id, name")
         .eq("is_active", true)
         .order("name");
       if (error) throw error;
-      setLocations(data || []);
+      setWarehouses(data || []);
     } catch (error) {
       console.error("Error fetching locations:", error);
     }
@@ -179,74 +179,74 @@ export default function InventoryAdjustments() {
 
       // Always re-fetch the latest adjustment to avoid acting on stale data
       const { data: latestAdj, error: latestAdjErr } = await supabase
-        .from("inventory_adjustments")
-        .select("id, location_id")
-        .eq("id", adjustment.id)
-        .single();
+                 .from("inventory_adjustments")
+        .select("id, warehouse_id, location_id")
+         .eq("id", adjustment.id)
+         .single();
       if (latestAdjErr) throw latestAdjErr;
 
-      const effectiveLocationId = latestAdj?.location_id;
-      if (!effectiveLocationId) {
-        toast.error("This adjustment has no location set. Please edit and select a location before approval.");
+      const effectiveWarehouseId = latestAdj?.warehouse_id || latestAdj?.location_id;
+      if (!effectiveWarehouseId) {
+        toast.error("This adjustment has no warehouse set. Please edit and select a warehouse before approval.");
         return;
       }
 
-      // Validate that the referenced location still exists to avoid FK violations on inventory_levels
-      const { data: locationRow, error: locationErr } = await supabase
-        .from("business_locations")
+      // Validate that the referenced warehouse still exists
+      const { data: whRow, error: whErr } = await supabase
+        .from("warehouses")
         .select("id")
-        .eq("id", effectiveLocationId)
+        .eq("id", effectiveWarehouseId)
         .maybeSingle();
-      if (locationErr || !locationRow) {
-        throw new Error("Selected location no longer exists. Please edit this adjustment and choose a valid location.");
+      if (whErr || !whRow) {
+        throw new Error("Selected warehouse no longer exists. Please edit this adjustment and choose a valid warehouse.");
       }
 
-      // Load items for this adjustment to apply quantity changes at the selected location
-      const { data: items, error: itemsErr } = await supabase
-        .from("inventory_adjustment_items")
-        .select("item_id, difference, adjusted_quantity")
-        .eq("adjustment_id", adjustment.id);
-      if (itemsErr) throw itemsErr;
+             // Load items for this adjustment to apply quantity changes at the selected warehouse
+       const { data: items, error: itemsErr } = await supabase
+         .from("inventory_adjustment_items")
+         .select("item_id, difference, adjusted_quantity")
+         .eq("adjustment_id", adjustment.id);
+       if (itemsErr) throw itemsErr;
 
-      // Apply item quantity changes per location
-      for (const item of items || []) {
-        // Fetch existing level for item/location
-        const { data: levelRows, error: levelErr } = await supabase
-          .from("inventory_levels")
-          .select("id, quantity")
-          .eq("item_id", item.item_id)
-          .eq("location_id", effectiveLocationId)
-          .limit(1);
-        if (levelErr) throw levelErr;
+       // Apply item quantity changes per warehouse
+       for (const item of items || []) {
+         // Fetch existing level for item/warehouse
+         const { data: levelRows, error: levelErr } = await supabase
+           .from("inventory_levels")
+           .select("id, quantity")
+           .eq("item_id", item.item_id)
+           .eq("warehouse_id", effectiveWarehouseId)
+           .limit(1);
+         if (levelErr) throw levelErr;
 
         const existing = (levelRows || [])[0];
         if (existing) {
-          const newQty = (existing.quantity ?? 0) + (item.difference ?? 0);
-          const { error: updErr } = await supabase
-            .from("inventory_levels")
-            .update({ quantity: newQty })
-            .eq("id", existing.id);
-          if (updErr) throw updErr;
-        } else {
-          // No existing level row => assume current was 0 and set to adjusted quantity
-          try {
-            const insertQuantity = item.adjusted_quantity ?? (item.difference ?? 0);
-            const { error: upsertErr } = await supabase
-              .from("inventory_levels")
-              .upsert(
-                [{ item_id: item.item_id, location_id: effectiveLocationId, quantity: insertQuantity }],
-                { onConflict: "item_id,location_id" }
-              );
-            if (upsertErr) throw upsertErr;
-          } catch (e: any) {
-            // Convert FK violation into a clearer message
-            const pgCode = e?.code || e?.details || "";
-            if (typeof pgCode === "string" && pgCode.includes("foreign key") || e?.code === "23503") {
-              throw new Error("The selected location was removed. Please set a valid location on this adjustment and try again.");
-            }
-            throw e;
-          }
-        }
+                     const newQty = (existing.quantity ?? 0) + (item.difference ?? 0);
+           const { error: updErr } = await supabase
+             .from("inventory_levels")
+             .update({ quantity: newQty })
+             .eq("id", existing.id);
+           if (updErr) throw updErr;
+         } else {
+           // No existing level row => assume current was 0 and set to adjusted quantity
+           try {
+             const insertQuantity = item.adjusted_quantity ?? (item.difference ?? 0);
+             const { error: upsertErr } = await supabase
+               .from("inventory_levels")
+               .upsert(
+                 [{ item_id: item.item_id, warehouse_id: effectiveWarehouseId, quantity: insertQuantity }],
+                 { onConflict: "item_id,warehouse_id" }
+               );
+             if (upsertErr) throw upsertErr;
+           } catch (e: any) {
+             // Convert FK violation into a clearer message
+             const pgCode = e?.code || e?.details || "";
+             if (typeof pgCode === "string" && pgCode.includes("foreign key") || e?.code === "23503") {
+               throw new Error("The selected warehouse was removed. Please set a valid warehouse on this adjustment and try again.");
+             }
+             throw e;
+           }
+         }
       }
 
       // Finally, mark the adjustment as approved
@@ -281,64 +281,65 @@ export default function InventoryAdjustments() {
     
     try {
       setLoading(true);
-      // Load the adjustment to check status and location
-      const { data: adj, error: adjErr } = await supabase
-        .from("inventory_adjustments")
-        .select("id, status, location_id")
-        .eq("id", adjustmentId)
-        .single();
+             // Load the adjustment to check status and warehouse
+       const { data: adj, error: adjErr } = await supabase
+         .from("inventory_adjustments")
+         .select("id, status, warehouse_id, location_id")
+         .eq("id", adjustmentId)
+         .single();
       if (adjErr) throw adjErr;
 
       // If approved, revert stock before deleting
-      if (adj?.status === 'approved') {
-        if (!adj.location_id) {
-          throw new Error("Approved adjustment is missing location; cannot safely revert stock.");
-        }
+             if (adj?.status === 'approved') {
+         const effectiveWarehouseId = (adj as any).warehouse_id || (adj as any).location_id;
+         if (!effectiveWarehouseId) {
+           throw new Error("Approved adjustment is missing warehouse; cannot safely revert stock.");
+         }
 
-        // Validate that the referenced location still exists
-        const { data: loc, error: locErr } = await supabase
-          .from("business_locations")
-          .select("id")
-          .eq("id", adj.location_id)
-          .single();
-        if (locErr || !loc) {
-          throw new Error("The adjustment's location no longer exists. Please restore the location or manually correct stock.");
-        }
+         // Validate that the referenced warehouse still exists
+         const { data: wh, error: whErr } = await supabase
+           .from("warehouses")
+           .select("id")
+           .eq("id", effectiveWarehouseId)
+           .single();
+         if (whErr || !wh) {
+           throw new Error("The adjustment's warehouse no longer exists. Please restore the warehouse or manually correct stock.");
+         }
 
-        const { data: items, error: itemsErr } = await supabase
-          .from("inventory_adjustment_items")
-          .select("item_id, difference, adjusted_quantity")
-          .eq("adjustment_id", adjustmentId);
-        if (itemsErr) throw itemsErr;
+         const { data: items, error: itemsErr } = await supabase
+           .from("inventory_adjustment_items")
+           .select("item_id, difference, adjusted_quantity")
+           .eq("adjustment_id", adjustmentId);
+         if (itemsErr) throw itemsErr;
 
-        for (const item of items || []) {
-          const { data: levelRows, error: levelErr } = await supabase
-            .from("inventory_levels")
-            .select("id, quantity")
-            .eq("item_id", item.item_id)
-            .eq("location_id", adj.location_id)
-            .limit(1);
-          if (levelErr) throw levelErr;
+         for (const item of items || []) {
+           const { data: levelRows, error: levelErr } = await supabase
+             .from("inventory_levels")
+             .select("id, quantity")
+             .eq("item_id", item.item_id)
+             .eq("warehouse_id", effectiveWarehouseId)
+             .limit(1);
+           if (levelErr) throw levelErr;
 
-          const existing = (levelRows || [])[0];
-          // Revert by subtracting the difference
-          if (existing) {
-            const newQty = (existing.quantity ?? 0) - (item.difference ?? 0);
-            const { error: updErr } = await supabase
-              .from("inventory_levels")
-              .update({ quantity: newQty })
-              .eq("id", existing.id);
-            if (updErr) throw updErr;
-          } else {
-            // No existing level row; create it back to the presumed pre-approval quantity (adjusted - difference = current)
-            const presumedCurrent = (item.adjusted_quantity ?? 0) - (item.difference ?? 0);
-            const { error: insErr } = await supabase
-              .from("inventory_levels")
-              .insert([{ item_id: item.item_id, location_id: adj.location_id, quantity: presumedCurrent }]);
-            if (insErr) throw insErr;
-          }
-        }
-      }
+           const existing = (levelRows || [])[0];
+           // Revert by subtracting the difference
+           if (existing) {
+             const newQty = (existing.quantity ?? 0) - (item.difference ?? 0);
+             const { error: updErr } = await supabase
+               .from("inventory_levels")
+               .update({ quantity: newQty })
+               .eq("id", existing.id);
+             if (updErr) throw updErr;
+           } else {
+             // No existing level row; create it back to the presumed pre-approval quantity (adjusted - difference = current)
+             const presumedCurrent = (item.adjusted_quantity ?? 0) - (item.difference ?? 0);
+             const { error: insErr } = await supabase
+               .from("inventory_levels")
+               .insert([{ item_id: item.item_id, warehouse_id: effectiveWarehouseId, quantity: presumedCurrent }]);
+             if (insErr) throw insErr;
+           }
+         }
+       }
 
       // Proceed with delete
       const { error } = await supabase
@@ -525,7 +526,7 @@ export default function InventoryAdjustments() {
                     </span>
                   </TableCell>
                   <TableCell>{adjustment.reason}</TableCell>
-                  <TableCell>{locations.find(l => l.id === adjustment.location_id)?.name || '-'}</TableCell>
+                  <TableCell>{warehouses.find(w => w.id === (adjustment as any).warehouse_id)?.name || '-'}</TableCell>
                   <TableCell>{adjustment.total_items}</TableCell>
                   <TableCell>{getStatusBadge(adjustment.status)}</TableCell>
                   <TableCell>
@@ -631,7 +632,7 @@ export default function InventoryAdjustments() {
                     <CardTitle className="text-xs font-medium flex items-center gap-1"><MapPin className="h-3 w-3"/> Location</CardTitle>
                   </CardHeader>
                   <CardContent className="pt-0 text-base">
-                    {locations.find(l => l.id === viewingAdjustment.location_id)?.name || '-'}
+                    {warehouses.find(w => w.id === (viewingAdjustment as any).warehouse_id)?.name || '-'}
                   </CardContent>
                 </Card>
               </div>

@@ -22,6 +22,7 @@ import {
   Activity,
   Target,
   Package,
+  MapPin,
 } from 'lucide-react';
 import { useSaas } from '@/lib/saas';
 import { supabase } from '@/integrations/supabase/client';
@@ -638,6 +639,9 @@ const Reports = () => {
               <TabsTrigger value="product_usage" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
                 <Package className="w-4 h-4" /> Product Usage
               </TabsTrigger>
+              <TabsTrigger value="warehouses" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
+                <MapPin className="w-4 h-4" /> Warehouses
+              </TabsTrigger>
               {activeTab === 'product_usage' && (
                 <div className="ml-6 mt-2 space-y-1 text-sm">
                   <button className={`text-left ${activeSubTab.product_usage === 'history' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, product_usage: 'history' })); setSearchParams({ tab: 'product_usage', sub: 'history' }, { replace: true }); }}>Usage History</button>
@@ -1077,6 +1081,18 @@ const Reports = () => {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* Warehouses Tab */}
+            <TabsContent value="warehouses" className="lg:col-span-9 xl:col-span-10">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Warehouse Stock Report</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <WarehouseReport />
+                </CardContent>
+              </Card>
+            </TabsContent>
           </main>
         </div>
       </Tabs>
@@ -1243,3 +1259,87 @@ const ProductUsageHistory: React.FC<{ startDate: string; endDate: string; densit
     </div>
   );
 };
+
+function WarehouseReport() {
+  const [rows, setRows] = React.useState<Array<{ warehouse_id: string; warehouse_name: string; item_id: string; item_name: string; sku: string | null; quantity: number }>>([]);
+  const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('inventory_levels')
+          .select(`
+            item_id,
+            quantity,
+            warehouses:warehouse_id ( id, name ),
+            inventory_items:item_id ( id, name, sku )
+          `)
+          .order('warehouse_id', { ascending: true })
+          .order('item_id', { ascending: true });
+        if (error) throw error;
+        const mapped = (data || []).map((r: any) => ({
+          warehouse_id: r.warehouses?.id || r.warehouse_id,
+          warehouse_name: r.warehouses?.name || r.warehouse_id,
+          item_id: r.inventory_items?.id || r.item_id,
+          item_name: r.inventory_items?.name || r.item_id,
+          sku: r.inventory_items?.sku || null,
+          quantity: Number(r.quantity || 0),
+        }));
+        setRows(mapped);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const totalsByWarehouse = React.useMemo(() => {
+    const map = new Map<string, { name: string; totalQty: number; lines: Array<{ item: string; sku: string | null; qty: number }> }>();
+    for (const r of rows) {
+      const cur = map.get(r.warehouse_id) || { name: r.warehouse_name, totalQty: 0, lines: [] };
+      cur.totalQty += r.quantity;
+      cur.lines.push({ item: r.item_name, sku: r.sku, qty: r.quantity });
+      map.set(r.warehouse_id, cur);
+    }
+    return Array.from(map.entries()).map(([id, v]) => ({ id, ...v }));
+  }, [rows]);
+
+  if (loading) return <div className="text-sm text-muted-foreground">Loading…</div>;
+  if (rows.length === 0) return <div className="text-sm text-muted-foreground">No inventory recorded.</div>;
+
+  return (
+    <div className="space-y-6">
+      {totalsByWarehouse.map(w => (
+        <Card key={w.id}>
+          <CardHeader>
+            <CardTitle className="text-base">{w.name} — Total Qty: {w.totalQty}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-auto rounded border">
+              <Table className="min-w-[640px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="hidden sm:table-cell">SKU</TableHead>
+                    <TableHead className="text-right">Quantity</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {w.lines.map((l, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>{l.item}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{l.sku || ''}</TableCell>
+                      <TableCell className="text-right">{l.qty}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
