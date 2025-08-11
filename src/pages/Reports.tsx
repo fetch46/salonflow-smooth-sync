@@ -184,6 +184,34 @@ const Reports = () => {
     recalcFinancials();
   }, [recalcFinancials]);
 
+  // Automatically update P&L when related transactions are deleted
+  useEffect(() => {
+    // Guard when Supabase stub is active or realtime is unavailable
+    const supabaseAny = supabase as any;
+    if (!supabaseAny || typeof supabaseAny.channel !== 'function') return;
+
+    const channel = supabaseAny
+      .channel('reports-pnl-realtime')
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'account_transactions' }, () => {
+        recalcFinancials();
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'expenses' }, () => {
+        recalcFinancials();
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'receipt_payments' }, () => {
+        recalcFinancials();
+      })
+      .subscribe();
+
+    return () => {
+      try {
+        supabaseAny.removeChannel(channel);
+      } catch {
+        // ignore
+      }
+    };
+  }, [recalcFinancials]);
+
   useEffect(() => {
     const loadStaff = async () => {
       const { data } = await supabase.from('staff').select('id, full_name, commission_rate');
