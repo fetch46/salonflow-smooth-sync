@@ -34,6 +34,12 @@ export default function Accounts() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
+  // Prefill search from query param for report drill-downs
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get('q');
+    if (q) setSearch(q);
+  }, []);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState<Account | null>(null);
   const [txHasRows, setTxHasRows] = useState<Record<string, boolean>>({});
