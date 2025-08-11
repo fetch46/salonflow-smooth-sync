@@ -120,18 +120,39 @@ export default function Purchases() {
   const fetchPurchases = useCallback(async () => {
     try {
       setLoading(true);
-      let query = supabase
-        .from("purchases")
-        .select("id, purchase_number, vendor_name, purchase_date, subtotal, tax_amount, total_amount, status, notes, created_at, updated_at")
-        .order("created_at", { ascending: false });
+      const buildBaseQuery = () =>
+        supabase
+          .from("purchases")
+          .select(
+            "id, purchase_number, vendor_name, purchase_date, subtotal, tax_amount, total_amount, status, notes, created_at, updated_at"
+          )
+          .order("created_at", { ascending: false });
+
+      let data: any[] | null = null;
+      let error: any = null;
+
       if (organization?.id) {
-        try {
-          // Scope by organization if column exists
-          query = query.eq("organization_id", organization.id);
-        } catch {}
+        const res = await buildBaseQuery().eq("organization_id", organization.id);
+        data = res.data as any[] | null;
+        error = res.error;
+        if (error) {
+          const message = String(error?.message || "").toLowerCase();
+          if (message.includes("column") && message.includes("does not exist")) {
+            const retry = await buildBaseQuery();
+            if (retry.error) throw retry.error;
+            data = retry.data as any[] | null;
+            error = null;
+          } else {
+            throw error;
+          }
+        }
+      } else {
+        const res = await buildBaseQuery();
+        data = res.data as any[] | null;
+        error = res.error;
+        if (error) throw error;
       }
-      const { data, error } = await query;
-      if (error) throw error;
+
       setPurchases((data || []) as Purchase[]);
     } catch (err) {
       console.error("Error fetching purchases:", err);
