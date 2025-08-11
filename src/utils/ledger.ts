@@ -438,19 +438,61 @@ export async function deleteTransactionsByReference(referenceType: string, refer
       { p_reference_type: referenceType, p_reference_id: String(referenceId) }
     );
     if (error) throw error;
-    // RPC returns integer count; normalize to number
-    return Number(data || 0);
+    let deletedCount = Number(data || 0);
+
+    // Also clean legacy/alternate reference types for expenses
+    if (referenceType === "expense_payment") {
+      try {
+        const { data: data2, error: err2 } = await (supabase as any).rpc(
+          "delete_account_transactions_by_reference",
+          { p_reference_type: "expense", p_reference_id: String(referenceId) }
+        );
+        if (!err2) deletedCount += Number(data2 || 0);
+      } catch {}
+    } else if (referenceType === "expense") {
+      try {
+        const { data: data2, error: err2 } = await (supabase as any).rpc(
+          "delete_account_transactions_by_reference",
+          { p_reference_type: "expense_payment", p_reference_id: String(referenceId) }
+        );
+        if (!err2) deletedCount += Number(data2 || 0);
+      } catch {}
+    }
+
+    return deletedCount;
   } catch (rpcErr) {
     // Fallback: attempt direct delete (may fail due to RLS; ignore errors)
+    let total = 0;
     try {
       const { count } = await (supabase as any)
         .from("account_transactions")
         .delete({ count: "exact" })
         .eq("reference_type", referenceType)
         .eq("reference_id", String(referenceId));
-      return Number(count || 0);
-    } catch {
-      return 0;
+      total += Number(count || 0);
+    } catch {}
+
+    // Also attempt legacy expense type cleanup in fallback
+    if (referenceType === "expense_payment") {
+      try {
+        const { count } = await (supabase as any)
+          .from("account_transactions")
+          .delete({ count: "exact" })
+          .eq("reference_type", "expense")
+          .eq("reference_id", String(referenceId));
+        total += Number(count || 0);
+      } catch {}
+    } else if (referenceType === "expense") {
+      try {
+        const { count } = await (supabase as any)
+          .from("account_transactions")
+          .delete({ count: "exact" })
+          .eq("reference_type", "expense_payment")
+          .eq("reference_id", String(referenceId));
+        total += Number(count || 0);
+      } catch {}
     }
+
+    return total;
   }
 }
