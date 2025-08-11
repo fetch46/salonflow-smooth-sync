@@ -34,8 +34,7 @@ export default function ReceiptView() {
   const [customerInfo, setCustomerInfo] = useState<any | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
 
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState<{ status: string; notes: string; receipt_number: string; subtotal: number; tax_amount: number; discount_amount: number }>({ status: 'open', notes: '', receipt_number: '', subtotal: 0, tax_amount: 0, discount_amount: 0 });
+
 
   // Internal: job services and staff for commissions
   const [jobServices, setJobServices] = useState<any[]>([]);
@@ -156,48 +155,9 @@ export default function ReceiptView() {
     }
   };
 
-  const openEdit = () => {
-    if (!receipt) return;
-    setEditForm({
-      status: receipt.status || 'open',
-      notes: receipt.notes || '',
-      receipt_number: receipt.receipt_number || '',
-      subtotal: Number(receipt.subtotal || 0),
-      tax_amount: Number(receipt.tax_amount || 0),
-      discount_amount: Number(receipt.discount_amount || 0),
-    });
-    setIsEditOpen(true);
-  };
 
-  const submitEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const { updateReceiptWithFallback } = await import('@/utils/mockDatabase');
-      const computedTotal = Number(editForm.subtotal || 0) + Number(editForm.tax_amount || 0) - Number(editForm.discount_amount || 0);
-      await updateReceiptWithFallback(supabase, String(id), {
-        status: editForm.status,
-        notes: editForm.notes,
-        receipt_number: editForm.receipt_number,
-        subtotal: Number(editForm.subtotal || 0),
-        tax_amount: Number(editForm.tax_amount || 0),
-        discount_amount: Number(editForm.discount_amount || 0),
-        total_amount: Number(computedTotal < 0 ? 0 : computedTotal),
-      });
-      toast.success('Receipt updated');
-      setIsEditOpen(false);
-      // Reload
-      const { getReceiptByIdWithFallback, getReceiptItemsWithFallback, getReceiptPaymentsWithFallback } = await import('@/utils/mockDatabase');
-      const rec = await getReceiptByIdWithFallback(supabase, String(id));
-      const it = await getReceiptItemsWithFallback(supabase, String(id));
-      const pays = await getReceiptPaymentsWithFallback(supabase, String(id));
-      setReceipt(rec);
-      setItems((it || []).filter((x: any) => x.service_id || !x.product_id));
-      setPayments(pays || []);
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e?.message || 'Failed to update receipt');
-    }
-  };
+
+
 
   // Build commission mappings (moved above early returns to keep hook order stable)
   const commissionIndex = useMemo(() => {
@@ -476,7 +436,7 @@ export default function ReceiptView() {
               <MessageSquare className="w-4 h-4 mr-2" />
               Send WhatsApp
             </Button>
-            <Button className="bg-violet-600 hover:bg-violet-700" onClick={openEdit}>
+            <Button className="bg-violet-600 hover:bg-violet-700" onClick={() => navigate(`/receipts/${id}/edit`)}>
               <Edit2 className="w-4 h-4 mr-2" />
               Edit Sales Receipt
             </Button>
@@ -549,55 +509,6 @@ export default function ReceiptView() {
           </CardContent>
         </Card>
       )}
-
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Edit Sales Receipt</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={submitEdit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Sales Receipt Number</Label>
-                <Input value={editForm.receipt_number} onChange={(e) => setEditForm(prev => ({ ...prev, receipt_number: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <select className="border rounded px-3 py-2 w-full" value={editForm.status} onChange={(e) => setEditForm(prev => ({ ...prev, status: e.target.value }))}>
-                  <option value="open">Open</option>
-                  <option value="partial">Partial</option>
-                  <option value="paid">Paid</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label>Subtotal</Label>
-                <Input type="number" step="0.01" value={editForm.subtotal} onChange={(e) => setEditForm(prev => ({ ...prev, subtotal: Number(e.target.value || 0) }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>Tax</Label>
-                <Input type="number" step="0.01" value={editForm.tax_amount} onChange={(e) => setEditForm(prev => ({ ...prev, tax_amount: Number(e.target.value || 0) }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>Discount</Label>
-                <Input type="number" step="0.01" value={editForm.discount_amount} onChange={(e) => setEditForm(prev => ({ ...prev, discount_amount: Number(e.target.value || 0) }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>Total (auto)</Label>
-                <Input disabled value={(Number(editForm.subtotal || 0) + Number(editForm.tax_amount || 0) - Number(editForm.discount_amount || 0)).toFixed(2)} />
-              </div>
-              <div className="md:col-span-2 space-y-2">
-                <Label>Notes</Label>
-                <Textarea value={editForm.notes} onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))} />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
-              <Button type="submit">Save</Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
