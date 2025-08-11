@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
@@ -47,7 +46,6 @@ import {
   MapPin,
   Phone,
   Mail,
-  CalendarClock,
   PlayCircle,
   PauseCircle,
   StopCircle,
@@ -56,7 +54,7 @@ import {
   List,
   LayoutGrid
 } from "lucide-react";
-import { format, subDays, isToday, isYesterday, differenceInMinutes, addDays } from "date-fns";
+import { format, differenceInMinutes, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, isSameDay } from "date-fns";
 import { toast } from "sonner";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { getReceiptsWithFallback } from "@/utils/mockDatabase";
@@ -134,22 +132,11 @@ export default function JobCards() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all_time");
-  const [activeTab, setActiveTab] = useState("all");
   const [viewMode, setViewMode] = useState<'list' | 'grid'>("list");
   const navigate = useNavigate();
   const [jobCardsWithReceipts, setJobCardsWithReceipts] = useState<Set<string>>(new Set());
 
-  // Mock data for additional fields - in a real app, this would come from the database
-  const enrichJobCards = (cards: JobCard[]): JobCard[] => {
-    return cards.map(card => ({
-      ...card,
-      estimated_duration: 90 + Math.floor(Math.random() * 120), // Random 90-210 minutes
-      actual_duration: card.status === 'completed' ? 85 + Math.floor(Math.random() * 140) : null,
-      priority: ['low', 'medium', 'high', 'urgent'][Math.floor(Math.random() * 4)],
-      service_type: ['Hair Cut', 'Color Treatment', 'Facial', 'Massage', 'Manicure'][Math.floor(Math.random() * 5)],
-      notes: card.status === 'completed' ? 'Service completed successfully' : null
-    }));
-  };
+  // Removed mock enrichment function and demo defaults
 
   const fetchJobCards = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = !!opts?.silent;
@@ -181,18 +168,18 @@ export default function JobCards() {
         }));
       }
       
-      const enrichedData = (data || []).map((card: any) => ({
+      const normalizedData = (data || []).map((card: any) => ({
         ...card,
-        estimated_duration: card.estimated_duration || 0,
-        actual_duration: card.actual_duration || 0,
-        priority: card.priority || 'medium',
-        service_type: card.service_type || 'general',
-        notes: card.notes || '',
-        staff: card.staff || null,
-        client: card.client || null,
+        estimated_duration: card.estimated_duration ?? null,
+        actual_duration: card.actual_duration ?? null,
+        priority: card.priority ?? null,
+        service_type: card.service_type ?? null,
+        notes: card.notes ?? null,
+        staff: card.staff ?? null,
+        client: card.client ?? null,
       }));
       
-      setJobCards(enrichedData as any);
+      setJobCards(normalizedData as any);
 
       // Build a lookup of job cards that have at least one receipt, with fallback to local storage
       const jobIds = (data || []).map((c: any) => c.id);
@@ -412,7 +399,18 @@ export default function JobCards() {
   };
 
   const filteredJobCards = useMemo(() => {
+    const now = new Date();
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+    const monthStart = startOfMonth(now);
+    const monthEnd = endOfMonth(now);
+    const lastMonth = subMonths(now, 1);
+    const lastMonthStart = startOfMonth(lastMonth);
+    const lastMonthEnd = endOfMonth(lastMonth);
+
     return jobCards.filter(card => {
+      const createdAt = new Date(card.created_at);
+
       const matchesSearch = 
         card.job_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
         card.client?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -421,27 +419,33 @@ export default function JobCards() {
       
       const matchesStatus = statusFilter === "all" || card.status === statusFilter;
       const matchesPriority = priorityFilter === "all" || card.priority === priorityFilter;
+
+      let matchesDate = true;
+      switch (dateFilter) {
+        case 'today':
+          matchesDate = isSameDay(createdAt, now);
+          break;
+        case 'this_week':
+          matchesDate = createdAt >= weekStart && createdAt <= weekEnd;
+          break;
+        case 'this_month':
+          matchesDate = createdAt >= monthStart && createdAt <= monthEnd;
+          break;
+        case 'last_month':
+          matchesDate = createdAt >= lastMonthStart && createdAt <= lastMonthEnd;
+          break;
+        case 'all_time':
+        default:
+          matchesDate = true;
+      }
       
-      return matchesSearch && matchesStatus && matchesPriority;
+      return matchesSearch && matchesStatus && matchesPriority && matchesDate;
     });
-  }, [jobCards, searchTerm, statusFilter, priorityFilter]);
+  }, [jobCards, searchTerm, statusFilter, priorityFilter, dateFilter]);
 
-  const getTabJobCards = (tab: string) => {
-    switch (tab) {
-      case "pending":
-        return filteredJobCards.filter(jc => jc.status === "pending");
-      case "active":
-        return filteredJobCards.filter(jc => ["in_progress", "paused"].includes(jc.status));
-      case "completed":
-        return filteredJobCards.filter(jc => jc.status === "completed");
-      case "today":
-        return filteredJobCards.filter(jc => isToday(new Date(jc.created_at)));
-      default:
-        return filteredJobCards;
-    }
-  };
-
-  const currentJobCards = getTabJobCards(activeTab);
+  // Removed status tabs and use dropdowns instead
+  // const getTabJobCards = ... removed
+  // const currentJobCards = ... removed
 
   const stats: JobCardStats = useMemo(() => {
     const total = jobCards.length;
@@ -449,19 +453,22 @@ export default function JobCards() {
     const inProgress = jobCards.filter(card => card.status === 'in_progress').length;
     const pending = jobCards.filter(card => card.status === 'pending').length;
     const cancelled = jobCards.filter(card => card.status === 'cancelled').length;
-    const totalRevenue = jobCards.reduce((sum, card) => sum + card.total_amount, 0);
+    const totalRevenue = jobCards
+      .filter(card => card.status === 'completed')
+      .reduce((sum, card) => sum + (Number(card.total_amount) || 0), 0);
     
-    const completedCards = jobCards.filter(card => card.actual_duration);
-    const averageDuration = completedCards.length > 0 
-      ? completedCards.reduce((sum, card) => sum + (card.actual_duration || 0), 0) / completedCards.length
+    const completedCardsWithDuration = jobCards.filter(card => typeof card.actual_duration === 'number' && (card.actual_duration || 0) > 0);
+    const averageDuration = completedCardsWithDuration.length > 0 
+      ? completedCardsWithDuration.reduce((sum, card) => sum + (card.actual_duration || 0), 0) / completedCardsWithDuration.length
       : 0;
     
     const completionRate = total > 0 ? (completed / total) * 100 : 0;
-    const todayCards = jobCards.filter(card => isToday(new Date(card.created_at))).length;
+    const todayCards = jobCards.filter(card => isSameDay(new Date(card.created_at), new Date())).length;
     const overdueCards = jobCards.filter(card => {
       if (card.status === 'completed' || card.status === 'cancelled') return false;
+      if (!card.estimated_duration || card.estimated_duration <= 0) return false;
       const estimatedEndTime = new Date(card.created_at);
-      estimatedEndTime.setMinutes(estimatedEndTime.getMinutes() + (card.estimated_duration || 120));
+      estimatedEndTime.setMinutes(estimatedEndTime.getMinutes() + (card.estimated_duration || 0));
       return new Date() > estimatedEndTime;
     }).length;
 
@@ -496,7 +503,7 @@ export default function JobCards() {
   }, [jobCards]);
 
   const renderJobCardsSection = () => {
-    if (currentJobCards.length === 0) {
+    if (filteredJobCards.length === 0) {
       return (
         <div className="text-center py-16 space-y-4">
           <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
@@ -530,7 +537,7 @@ export default function JobCards() {
     if (viewMode === 'list') {
       return (
         <div className="max-h-96 overflow-y-auto divide-y divide-slate-100">
-          {currentJobCards.map((jobCard) => (
+          {filteredJobCards.map((jobCard) => (
             <div
               key={jobCard.id}
               className="flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors"
@@ -554,7 +561,7 @@ export default function JobCards() {
                     </h4>
                     <div className="flex items-center gap-2">
                       {getStatusBadge(jobCard.status)}
-                      {getPriorityBadge(jobCard.priority)}
+                      {jobCard.priority && getPriorityBadge(jobCard.priority)}
                     </div>
                   </div>
                   
@@ -659,7 +666,7 @@ export default function JobCards() {
 
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
-        {currentJobCards.map((jobCard) => (
+        {filteredJobCards.map((jobCard) => (
           <Card key={jobCard.id} className="border-slate-200 hover:shadow-md transition-shadow">
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between">
@@ -672,7 +679,7 @@ export default function JobCards() {
                   </div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {getStatusBadge(jobCard.status)}
-                    {getPriorityBadge(jobCard.priority)}
+                    {jobCard.priority && getPriorityBadge(jobCard.priority)}
                   </div>
                 </div>
                 <DropdownMenu>
@@ -945,31 +952,6 @@ export default function JobCards() {
           <Card className="shadow-sm border-slate-200">
             <CardHeader className="border-b border-slate-200">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-fit">
-                  <TabsList className="grid grid-cols-5 w-fit">
-                    <TabsTrigger value="all" className="flex items-center gap-2">
-                      <FileText className="w-4 h-4" />
-                      All ({stats.total})
-                    </TabsTrigger>
-                    <TabsTrigger value="pending" className="flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      Pending ({stats.pending})
-                    </TabsTrigger>
-                    <TabsTrigger value="active" className="flex items-center gap-2">
-                      <PlayCircle className="w-4 h-4" />
-                      Active ({stats.inProgress})
-                    </TabsTrigger>
-                    <TabsTrigger value="completed" className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4" />
-                      Done ({stats.completed})
-                    </TabsTrigger>
-                    <TabsTrigger value="today" className="flex items-center gap-2">
-                      <CalendarClock className="w-4 h-4" />
-                      Today ({stats.todayCards})
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-
                 <div className="flex items-center gap-3">
                   <div className="relative w-full md:w-64">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -982,7 +964,7 @@ export default function JobCards() {
                   </div>
                   
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-32">
+                    <SelectTrigger className="w-40">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -997,9 +979,20 @@ export default function JobCards() {
                       ))}
                     </SelectContent>
                   </Select>
+
+                  <Select value={dateFilter} onValueChange={setDateFilter}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Date" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DATE_FILTERS.map((d) => (
+                        <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   
                   <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                    <SelectTrigger className="w-32">
+                    <SelectTrigger className="w-40">
                       <SelectValue placeholder="Priority" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1039,22 +1032,6 @@ export default function JobCards() {
                     <span className="text-sm text-slate-600">{stats.completionRate.toFixed(1)}%</span>
                   </div>
                   <Progress value={stats.completionRate} className="h-2" />
-                </div>
-                
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-slate-700">Today's Progress</span>
-                    <span className="text-sm text-slate-600">{stats.todayCards}/10</span>
-                  </div>
-                  <Progress value={(stats.todayCards / 10) * 100} className="h-2" />
-                </div>
-                
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-slate-700">Efficiency</span>
-                    <span className="text-sm text-slate-600">87%</span>
-                  </div>
-                  <Progress value={87} className="h-2" />
                 </div>
               </div>
             </CardContent>
