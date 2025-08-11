@@ -76,6 +76,8 @@ export default function ProductView() {
   const [onHand, setOnHand] = useState<number>(0);
   const [levelsByWarehouse, setLevelsByWarehouse] = useState<Array<{ warehouse_id: string; quantity: number; warehouses?: { name: string } | null }>>([]);
   const { format: formatMoney } = useOrganizationCurrency();
+  const formatRegionalNumber = useRegionalNumberFormatter();
+  const formatDate = useRegionalDateFormatter();
 
   // Accounts mapping state
   const { organization } = useOrganization();
@@ -406,7 +408,7 @@ export default function ProductView() {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="p-4 rounded-lg border bg-gradient-to-b from-white to-slate-50">
               <div className="text-xs text-muted-foreground">On Hand</div>
-              <div className="text-2xl font-semibold mt-1">{useRegionalNumberFormatter()(onHand)}</div>
+              <div className="text-2xl font-semibold mt-1">{formatRegionalNumber(onHand)}</div>
             </div>
             <div className="p-4 rounded-lg border bg-gradient-to-b from-white to-slate-50">
               <div className="text-xs text-muted-foreground">Purchased</div>
@@ -469,7 +471,7 @@ export default function ProductView() {
                     ) : (
                       usageHistory.map((row) => (
                         <TableRow key={row.id}>
-                          <TableCell>{useRegionalDateFormatter()(row.created_at)}</TableCell>
+                          <TableCell>{formatDate(row.created_at)}</TableCell>
                           <TableCell className="font-medium">{row.job_cards?.job_number || '—'}</TableCell>
                           <TableCell className="text-right">{row.quantity_used}</TableCell>
                           <TableCell className="hidden sm:table-cell text-right">{row.unit_cost ?? '—'}</TableCell>
@@ -510,7 +512,7 @@ export default function ProductView() {
                     ) : (
                       purchaseHistory.map((row) => (
                         <TableRow key={row.id}>
-                          <TableCell>{useRegionalDateFormatter()(row.created_at)}</TableCell>
+                          <TableCell>{formatDate(row.created_at)}</TableCell>
                           <TableCell className="font-medium">{row.purchases?.purchase_number || '—'}</TableCell>
                           <TableCell className="text-right">{row.quantity}</TableCell>
                           <TableCell className="hidden sm:table-cell text-right">{row.unit_cost ?? '—'}</TableCell>
@@ -552,7 +554,7 @@ export default function ProductView() {
                     ) : (
                       salesHistory.map((row) => (
                         <TableRow key={row.id}>
-                          <TableCell>{useRegionalDateFormatter()(row.created_at)}</TableCell>
+                          <TableCell>{formatDate(row.created_at)}</TableCell>
                           <TableCell className="font-medium">{row.sales?.sale_number || '—'}</TableCell>
                           <TableCell className="hidden md:table-cell">{row.sales?.customer_name || 'Walk-in Customer'}</TableCell>
                           <TableCell className="text-right">{row.quantity}</TableCell>
