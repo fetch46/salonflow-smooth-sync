@@ -39,7 +39,7 @@ type InventoryItem = {
 // --- Form Components ---
 
 // A separate component for the Item Dialog Form
-const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, locations }: { isOpen: boolean; onClose: (open: boolean) => void; onSubmit: (data: any) => Promise<void> | void; editingItem: any; locations: { id: string; name: string }[]; }) => {
+const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, warehouses }: { isOpen: boolean; onClose: (open: boolean) => void; onSubmit: (data: any) => Promise<void> | void; editingItem: any; warehouses: { id: string; name: string }[]; }) => {
   const { organization } = useOrganization();
   const [formData, setFormData] = useState({
     name: "",
@@ -54,7 +54,7 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, locations }: {
     purchase_account_id: "",
     inventory_account_id: "",
     opening_stock_quantity: 0,
-    opening_stock_location_id: "",
+    opening_stock_warehouse_id: "",
   });
 
   const [accountsLoading, setAccountsLoading] = useState<boolean>(false);
@@ -77,7 +77,7 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, locations }: {
         purchase_account_id: "",
         inventory_account_id: "",
         opening_stock_quantity: 0,
-        opening_stock_location_id: "",
+        opening_stock_warehouse_id: "",
       });
     } else {
       setFormData({
@@ -93,7 +93,7 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, locations }: {
         purchase_account_id: "",
         inventory_account_id: "",
         opening_stock_quantity: 0,
-        opening_stock_location_id: "",
+        opening_stock_warehouse_id: "",
       });
     }
   }, [editingItem]);
@@ -348,17 +348,17 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, locations }: {
               </div>
               {Number(formData.opening_stock_quantity || 0) > 0 && (
                 <div className="space-y-2">
-                  <Label>Opening Stock Location</Label>
+                  <Label>Opening Stock Warehouse</Label>
                   <Select
-                    value={formData.opening_stock_location_id}
-                    onValueChange={(v) => setFormData({ ...formData, opening_stock_location_id: v })}
+                    value={formData.opening_stock_warehouse_id}
+                    onValueChange={(v) => setFormData({ ...formData, opening_stock_warehouse_id: v })}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select location" />
+                      <SelectValue placeholder="Select warehouse" />
                     </SelectTrigger>
                     <SelectContent>
-                      {locations.map((loc) => (
-                        <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                      {warehouses.map((wh) => (
+                        <SelectItem key={wh.id} value={wh.id}>{wh.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -392,9 +392,9 @@ export default function Inventory() {
   const [levels, setLevels] = useState<any[]>([]);
   const [levelsLoading, setLevelsLoading] = useState<boolean>(false);
   // New: locations and filter
-  const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
-  const [locationsLoading, setLocationsLoading] = useState<boolean>(false);
-  const [selectedLocationId, setSelectedLocationId] = useState<string>("all");
+  const [warehouses, setWarehouses] = useState<{ id: string; name: string }[]>([]);
+  const [warehousesLoading, setWarehousesLoading] = useState<boolean>(false);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("all");
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [page, setPage] = useState<number>(1);
   const pageSize = 10;
@@ -441,12 +441,12 @@ export default function Inventory() {
         .select(`
           id,
           item_id,
-          location_id,
+          warehouse_id,
           quantity,
           inventory_items ( name, sku, cost_price, selling_price ),
-          business_locations ( name )
+          warehouses ( name )
         `)
-        .order("location_id")
+        .order("warehouse_id")
         .order("item_id");
       if (error) throw error;
       setLevels(data || []);
@@ -457,37 +457,37 @@ export default function Inventory() {
     }
   }, []);
 
-  // New: fetch business locations
-  const fetchLocations = useCallback(async () => {
-    setLocationsLoading(true);
+  // New: fetch warehouses
+  const fetchWarehouses = useCallback(async () => {
+    setWarehousesLoading(true);
     try {
       const { data, error } = await supabase
-        .from("business_locations")
+        .from("warehouses")
         .select("id, name")
         .order("name");
       if (error) throw error;
-      setLocations((data || []) as { id: string; name: string }[]);
+      setWarehouses((data || []) as { id: string; name: string }[]);
     } catch (err) {
       console.error(err);
     } finally {
-      setLocationsLoading(false);
+      setWarehousesLoading(false);
     }
   }, []);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await Promise.all([fetchData(), fetchLevels(), fetchLocations()]);
+      await Promise.all([fetchData(), fetchLevels(), fetchWarehouses()]);
     } finally {
       setIsRefreshing(false);
     }
-  }, [fetchData, fetchLevels, fetchLocations]);
+  }, [fetchData, fetchLevels, fetchWarehouses]);
 
   useEffect(() => {
     fetchData();
     fetchLevels();
-    fetchLocations();
-  }, [fetchData, fetchLevels, fetchLocations]);
+    fetchWarehouses();
+  }, [fetchData, fetchLevels, fetchWarehouses]);
 
   // Persist visible columns
   useEffect(() => {
@@ -547,12 +547,12 @@ export default function Inventory() {
           }, { onConflict: 'item_id' });
           // Opening stock if provided
           const openingQty = Number(formData.opening_stock_quantity || 0);
-          if (openingQty > 0 && formData.opening_stock_location_id) {
+          if (openingQty > 0 && formData.opening_stock_warehouse_id) {
             await supabase.from('inventory_levels').upsert({
               item_id: newItemId,
-              location_id: formData.opening_stock_location_id,
+              warehouse_id: formData.opening_stock_warehouse_id,
               quantity: openingQty,
-            });
+            }, { onConflict: 'item_id,warehouse_id' });
           }
         }
         toast({ title: "Success", description: "Product created successfully" });
@@ -621,7 +621,7 @@ export default function Inventory() {
   useEffect(() => { setPage(1); }, [searchQuery, statusFilter]);
 
   // New: filter levels by selected location and compute metrics
-  const filteredLevels = selectedLocationId === 'all' ? levels : levels.filter(l => l.location_id === selectedLocationId);
+  const filteredLevels = selectedWarehouseId === 'all' ? levels : levels.filter(l => l.warehouse_id === selectedWarehouseId);
   // Map item -> quantity across filtered levels (all locations or selected location)
   const itemIdToQty: Map<string, number> = useMemo(() => {
     const map = new Map<string, number>();
@@ -693,17 +693,17 @@ export default function Inventory() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold">Inventory Management</h1>
         <div className="flex flex-wrap items-center gap-3">
-          {/* Location Filter */}
+          {/* Warehouse Filter */}
           <div className="flex items-center gap-2">
-            <Label className="text-sm">Location</Label>
-            <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
+            <Label className="text-sm">Warehouse</Label>
+            <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId}>
               <SelectTrigger className="w-48">
-                <SelectValue placeholder={locationsLoading ? 'Loading...' : 'All locations'} />
+                <SelectValue placeholder={warehousesLoading ? 'Loading...' : 'All warehouses'} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All locations</SelectItem>
-                {locations.map((loc) => (
-                  <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                <SelectItem value="all">All warehouses</SelectItem>
+                {warehouses.map((w) => (
+                  <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -759,13 +759,13 @@ export default function Inventory() {
         onClose={() => setIsItemDialogOpen(false)}
         onSubmit={handleItemSubmit}
         editingItem={editingItem}
-        locations={locations}
+        warehouses={warehouses}
       />
 
       <Tabs defaultValue="goods" className="space-y-6">
         <TabsList className="grid w-full grid-cols-1 md:w-fit">
           <TabsTrigger value="goods">Products</TabsTrigger>
-          <TabsTrigger value="stock">Stock by Location</TabsTrigger>
+          <TabsTrigger value="stock">Stock by Warehouse</TabsTrigger>
         </TabsList>
 
         <TabsContent value="goods">
@@ -975,7 +975,7 @@ export default function Inventory() {
             <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <CardTitle className="flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-primary" />
-                Stock by Location
+                Stock by Warehouse
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -984,7 +984,7 @@ export default function Inventory() {
                   <Table className="min-w-[720px]">
                     <TableHeader className="sticky top-0 bg-background z-10">
                       <TableRow>
-                        <TableHead>Location</TableHead>
+                        <TableHead>Warehouse</TableHead>
                         <TableHead>Item</TableHead>
                         <TableHead className="hidden sm:table-cell">SKU</TableHead>
                         <TableHead className="text-right">Quantity</TableHead>
@@ -1007,7 +1007,7 @@ export default function Inventory() {
                   <Table className="min-w-[720px]">
                     <TableHeader className="sticky top-0 bg-background z-10">
                       <TableRow>
-                        <TableHead>Location</TableHead>
+                        <TableHead>Warehouse</TableHead>
                         <TableHead>Item</TableHead>
                         <TableHead className="hidden sm:table-cell">SKU</TableHead>
                         <TableHead className="text-right">Quantity</TableHead>
@@ -1016,7 +1016,7 @@ export default function Inventory() {
                     <TableBody>
                       {filteredLevels.map((lvl) => (
                         <TableRow key={lvl.id} className="hover:bg-muted/50">
-                          <TableCell className="font-medium">{(lvl as any).business_locations?.name || lvl.location_id}</TableCell>
+                          <TableCell className="font-medium">{(lvl as any).warehouses?.name || lvl.warehouse_id}</TableCell>
                           <TableCell>{itemIdToItem.get(String(lvl.item_id))?.name || lvl.inventory_items?.name || lvl.item_id}</TableCell>
                           <TableCell className="hidden sm:table-cell">{itemIdToItem.get(String(lvl.item_id))?.sku || lvl.inventory_items?.sku || ''}</TableCell>
                           <TableCell className="text-right">{Number(lvl.quantity || 0)}</TableCell>

@@ -23,7 +23,7 @@ interface InventoryItem {
   is_active: boolean;
 }
 
-interface BusinessLocation {
+interface Warehouse {
   id: string;
   name: string;
 }
@@ -69,21 +69,21 @@ export default function InventoryAdjustmentForm() {
 
   const [loading, setLoading] = useState(false);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
-  const [locations, setLocations] = useState<BusinessLocation[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [formData, setFormData] = useState({
     adjustment_date: new Date().toISOString().split("T")[0],
     adjustment_type: "",
     reason: "",
     notes: "",
     adjustment_number: "",
-    location_id: ""
+    warehouse_id: ""
   });
   const [selectedItems, setSelectedItems] = useState<AdjustmentItemForm[]>([]);
   // Location selection is always supported in current schema
 
   useEffect(() => {
     fetchInventoryItems();
-    fetchLocations();
+    fetchWarehouses();
   }, []);
 
   // Removed backend capability probe to prevent RLS-related false negatives
@@ -106,9 +106,9 @@ export default function InventoryAdjustmentForm() {
             adjustment_type: adj.adjustment_type,
             reason: adj.reason,
             notes: adj.notes || "",
-            adjustment_number: adj.adjustment_number,
-            location_id: (adj as any).location_id || ""
-          });
+                         adjustment_number: adj.adjustment_number,
+             warehouse_id: (adj as any).warehouse_id || (adj as any).location_id || ""
+           });
 
           const { data: items, error: itemsErr } = await supabase
             .from("inventory_adjustment_items")
@@ -151,20 +151,20 @@ export default function InventoryAdjustmentForm() {
     }
   };
 
-  const fetchLocations = async () => {
+  const fetchWarehouses = async () => {
     try {
       const { data, error } = await supabase
-        .from("business_locations")
+        .from("warehouses")
         .select("id, name, is_default")
         .eq("is_active", true)
         .order("name");
       if (error) throw error;
-      const locs = (data as (BusinessLocation & { is_default?: boolean })[] | null) || [];
-      setLocations(locs);
-      // If creating a new adjustment and no location selected yet, default to org default or first active
-      if (!isEdit && !formData.location_id && locs.length > 0) {
-        const preferred = locs.find(l => (l as any).is_default) || locs[0];
-        setFormData((prev) => ({ ...prev, location_id: preferred.id }));
+      const rows = (data as (Warehouse & { is_default?: boolean })[] | null) || [];
+      setWarehouses(rows);
+      // If creating a new adjustment and no warehouse selected yet, default to default or first active
+      if (!isEdit && !formData.warehouse_id && rows.length > 0) {
+        const preferred = rows.find(l => (l as any).is_default) || rows[0];
+        setFormData((prev) => ({ ...prev, warehouse_id: preferred.id }));
       }
     } catch (error) {
       console.error("Error fetching locations:", error);
@@ -229,8 +229,8 @@ export default function InventoryAdjustmentForm() {
       return;
     }
 
-    if (locations.length > 0 && !formData.location_id) {
-      toast.error("Please select a location");
+    if (warehouses.length > 0 && !formData.warehouse_id) {
+      toast.error("Please select a warehouse");
       return;
     }
 
@@ -260,8 +260,8 @@ export default function InventoryAdjustmentForm() {
         status: "pending",
       };
 
-      if (formData.location_id) {
-        adjustmentData.location_id = formData.location_id;
+      if (formData.warehouse_id) {
+        adjustmentData.warehouse_id = formData.warehouse_id;
       }
 
       let adjustmentId: string;
@@ -394,15 +394,15 @@ export default function InventoryAdjustmentForm() {
             </div>
 
             <div>
-              <Label htmlFor="location">Location</Label>
-              <Select value={formData.location_id} onValueChange={(value) => setFormData({ ...formData, location_id: value })}>
+              <Label htmlFor="warehouse">Warehouse</Label>
+              <Select value={formData.warehouse_id} onValueChange={(value) => setFormData({ ...formData, warehouse_id: value })}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select location" />
+                  <SelectValue placeholder="Select warehouse" />
                 </SelectTrigger>
                 <SelectContent>
-                  {locations.map((loc) => (
-                    <SelectItem key={loc.id} value={loc.id}>
-                      {loc.name}
+                  {warehouses.map((w) => (
+                    <SelectItem key={w.id} value={w.id}>
+                      {w.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
