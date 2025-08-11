@@ -164,7 +164,7 @@ export function SuperAdminSidebar() {
             </Badge>
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-2">
               {superAdminMenuItems.map((item) => {
                 const hasSubItems = item.subItems && item.subItems.length > 0;
                 const isOpen = openSubmenus.includes(item.title);
@@ -174,26 +174,27 @@ export function SuperAdminSidebar() {
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         onClick={() => toggleSubmenu(item.title)}
-                        className="hover:bg-purple-100 text-slate-700 hover:text-purple-800"
+                        className="hover:bg-purple-100 text-slate-700 hover:text-purple-800 text-base"
                         tooltip={state === 'collapsed' ? item.title : undefined}
+                        size="lg"
                       >
-                        <item.icon className="w-4 h-4" />
+                        <item.icon className="w-5 h-5" />
                         <span className="flex-1">{item.title}</span>
                         <div className="group-data-[collapsible=icon]:hidden">
                           {isOpen ? (
-                            <ChevronDown className="w-4 h-4" />
+                            <ChevronDown className="w-5 h-5" />
                           ) : (
-                            <ChevronRight className="w-4 h-4" />
+                            <ChevronRight className="w-5 h-5" />
                           )}
                         </div>
                       </SidebarMenuButton>
                       {isOpen && (
-                        <SidebarMenuSub>
+                        <SidebarMenuSub className="gap-2">
                           {item.subItems?.map((subItem) => (
                             <SidebarMenuSubItem key={subItem.title}>
                               <SidebarMenuSubButton 
                                 asChild
-                                className="hover:bg-purple-100"
+                                className="hover:bg-purple-100 h-9 text-[15px]"
                                 isActive={location.pathname === subItem.url}
                               >
                                 <NavLink
@@ -206,7 +207,7 @@ export function SuperAdminSidebar() {
                                     }`
                                   }
                                 >
-                                  <subItem.icon className="w-4 h-4" />
+                                  <subItem.icon className="w-5 h-5" />
                                   <span>{subItem.title}</span>
                                 </NavLink>
                               </SidebarMenuSubButton>
@@ -222,9 +223,10 @@ export function SuperAdminSidebar() {
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton 
                       asChild
-                      className="hover:bg-purple-100"
+                      className="hover:bg-purple-100 text-base"
                       isActive={location.pathname === item.url}
                       tooltip={state === 'collapsed' ? item.title : undefined}
+                      size="lg"
                     >
                       <NavLink
                         to={item.url!}
@@ -236,7 +238,7 @@ export function SuperAdminSidebar() {
                           }`
                         }
                       >
-                        <item.icon className="w-4 h-4" />
+                        <item.icon className="w-5 h-5" />
                         <span>{item.title}</span>
                       </NavLink>
                     </SidebarMenuButton>

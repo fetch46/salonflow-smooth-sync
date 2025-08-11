@@ -297,7 +297,7 @@ export function AppSidebar() {
             )}
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-2">
               {menuItems.map((item) => {
                 const isAvailable = isMenuItemAvailable(item);
                 const hasSubItems = item.subItems && item.subItems.length > 0;
@@ -309,22 +309,23 @@ export function AppSidebar() {
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         onClick={() => toggleSubmenu(item.title)}
-                        className={`${!isAvailable ? 'opacity-50' : ''}`}
+                        className={`text-base ${!isAvailable ? 'opacity-50' : ''}`}
                         tooltip={state === 'collapsed' ? item.title : undefined}
+                        size="lg"
                       >
-                        <item.icon className="w-4 h-4" />
+                        <item.icon className="w-5 h-5" />
                         <span className="flex-1">{item.title}</span>
                         <div className="flex items-center gap-1 group-data-[collapsible=icon]:hidden">
                           {!isAvailable && <Lock className="w-3 h-3 text-slate-400" />}
                           {isOpen ? (
-                            <ChevronDown className="w-4 h-4" />
+                            <ChevronDown className="w-5 h-5" />
                           ) : (
-                            <ChevronRight className="w-4 h-4" />
+                            <ChevronRight className="w-5 h-5" />
                           )}
                         </div>
                       </SidebarMenuButton>
                       {isOpen && (
-                        <SidebarMenuSub>
+                        <SidebarMenuSub className="gap-2">
                           {item.subItems?.map((subItem) => {
                             const subItemAvailable = hasFeature(subItem.feature);
                             const subItemUsageBadge = getUsageBadge(subItem.feature);
@@ -333,7 +334,7 @@ export function AppSidebar() {
                               <SidebarMenuSubItem key={subItem.title}>
                                 <SidebarMenuSubButton 
                                   asChild
-                                  className={`${!subItemAvailable ? 'opacity-50 pointer-events-none' : ''}`}
+                                  className={`h-9 text-[15px] ${!subItemAvailable ? 'opacity-50 pointer-events-none' : ''}`}
                                   isActive={(item.title === 'Reports') ? (location.pathname === '/reports' && subItem.url.includes(`tab=${new URLSearchParams(location.search).get('tab') || 'overview'}`)) : (location.pathname === subItem.url)}
                                 >
                                   <NavLink
@@ -344,7 +345,7 @@ export function AppSidebar() {
                                       }`
                                     }
                                   >
-                                    <subItem.icon className="w-4 h-4" />
+                                    <subItem.icon className="w-5 h-5" />
                                     <span className="flex-1">{subItem.title}</span>
                                     <div className="flex items-center gap-1">
                                       {!subItemAvailable && <Lock className="w-3 h-3 text-slate-400" />}
@@ -364,9 +365,10 @@ export function AppSidebar() {
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton 
                       asChild
-                      className={`${!isAvailable ? 'opacity-50 pointer-events-none' : ''}`}
+                      className={`text-base ${!isAvailable ? 'opacity-50 pointer-events-none' : ''}`}
                       tooltip={state === 'collapsed' ? item.title : undefined}
                       isActive={location.pathname === item.url}
+                      size="lg"
                     >
                       <NavLink
                         to={item.url!}
@@ -376,7 +378,7 @@ export function AppSidebar() {
                           }`
                         }
                       >
-                        <item.icon className="w-4 h-4" />
+                        <item.icon className="w-5 h-5" />
                         <span className="flex-1">{item.title}</span>
                         <div className="flex items-center gap-1"></div>
                       </NavLink>
@@ -392,16 +394,17 @@ export function AppSidebar() {
           <SidebarGroup>
             <SidebarGroupLabel className="text-violet-700">System Admin</SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
+              <SidebarMenu className="gap-2">
                 <SidebarMenuItem>
                   <SidebarMenuButton 
                     asChild 
                     isActive={location.pathname === superAdminMenuItem.url}
-                    className="hover:bg-violet-50 data-[active=true]:bg-violet-100 data-[active=true]:text-violet-900"
+                    className="hover:bg-violet-50 data-[active=true]:bg-violet-100 data-[active=true]:text-violet-900 text-base"
                     tooltip={state === 'collapsed' ? superAdminMenuItem.title : undefined}
+                    size="lg"
                   >
                     <a href={superAdminMenuItem.url} className="flex items-center gap-2">
-                      <superAdminMenuItem.icon className="h-4 w-4" />
+                      <superAdminMenuItem.icon className="h-5 w-5" />
                       <span>{superAdminMenuItem.title}</span>
                       <Badge 
                         variant="outline" 
@@ -417,11 +420,12 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     asChild
                     isActive={location.pathname === '/super-admin/cms'}
-                    className="hover:bg-violet-50 data-[active=true]:bg-violet-100 data-[active=true]:text-violet-900"
+                    className="hover:bg-violet-50 data-[active=true]:bg-violet-100 data-[active=true]:text-violet-900 text-base"
                     tooltip={state === 'collapsed' ? 'Landing CMS' : undefined}
+                    size="lg"
                   >
                     <NavLink to="/super-admin/cms" className={({ isActive }) => `flex items-center gap-2 ${isActive ? 'bg-accent text-accent-foreground' : ''}`}>
-                      <Sparkles className="h-4 w-4" />
+                      <Sparkles className="h-5 w-5" />
                       <span>Landing CMS</span>
                     </NavLink>
                   </SidebarMenuButton>
