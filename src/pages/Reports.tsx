@@ -184,6 +184,34 @@ const Reports = () => {
     recalcFinancials();
   }, [recalcFinancials]);
 
+  // Automatically update P&L when related transactions are deleted
+  useEffect(() => {
+    // Guard when Supabase stub is active or realtime is unavailable
+    const supabaseAny = supabase as any;
+    if (!supabaseAny || typeof supabaseAny.channel !== 'function') return;
+
+    const channel = supabaseAny
+      .channel('reports-pnl-realtime')
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'account_transactions' }, () => {
+        recalcFinancials();
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'expenses' }, () => {
+        recalcFinancials();
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'receipt_payments' }, () => {
+        recalcFinancials();
+      })
+      .subscribe();
+
+    return () => {
+      try {
+        supabaseAny.removeChannel(channel);
+      } catch {
+        // ignore
+      }
+    };
+  }, [recalcFinancials]);
+
   useEffect(() => {
     const loadStaff = async () => {
       const { data } = await supabase.from('staff').select('id, full_name, commission_rate');
@@ -587,9 +615,9 @@ const Reports = () => {
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <aside className="lg:col-span-3 xl:col-span-2 lg:sticky lg:top-24 self-start max-h-[calc(100vh-7rem)] overflow-y-auto">
-            <TabsList className="flex flex-col w-full items-stretch rounded-xl border bg-card shadow-sm p-1 gap-1 h-auto">
+            <TabsList className="flex flex-col w-full items-stretch rounded-xl border bg-card shadow-sm p-2 gap-2 h-auto [&_[role=tab]]:h-12 [&_[role=tab]]:px-4 [&_[role=tab]]:text-base [&_[role=tab]]:gap-3">
               <TabsTrigger value="overview" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
-                <Activity className="w-4 h-4" /> Overview
+                <Activity className="w-5 h-5" /> Overview
               </TabsTrigger>
               {activeTab === 'overview' && (
                 <div className="ml-6 mt-2 space-y-1 text-sm">
@@ -597,7 +625,7 @@ const Reports = () => {
                 </div>
               )}
               <TabsTrigger value="revenue" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
-                <DollarSign className="w-4 h-4" /> Revenue
+                <DollarSign className="w-5 h-5" /> Revenue
               </TabsTrigger>
               {activeTab === 'revenue' && (
                 <div className="ml-6 mt-2 space-y-1 text-sm">
@@ -605,7 +633,7 @@ const Reports = () => {
                 </div>
               )}
               <TabsTrigger value="services" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
-                <Target className="w-4 h-4" /> Services
+                <Target className="w-5 h-5" /> Services
               </TabsTrigger>
               {activeTab === 'services' && (
                 <div className="ml-6 mt-2 space-y-1 text-sm">
@@ -613,7 +641,7 @@ const Reports = () => {
                 </div>
               )}
               <TabsTrigger value="clients" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
-                <Users className="w-4 h-4" /> Clients
+                <Users className="w-5 h-5" /> Clients
               </TabsTrigger>
               {activeTab === 'clients' && (
                 <div className="ml-6 mt-2 space-y-1 text-sm">
@@ -621,13 +649,13 @@ const Reports = () => {
                 </div>
               )}
               <TabsTrigger value="pnl" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
-                <DollarSign className="w-4 h-4" /> P&L
+                <DollarSign className="w-5 h-5" /> P&L
               </TabsTrigger>
               <TabsTrigger value="balancesheet" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
-                <PieChart className="w-4 h-4" /> Balance Sheet
+                <PieChart className="w-5 h-5" /> Balance Sheet
               </TabsTrigger>
               <TabsTrigger value="commissions" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
-                <DollarSign className="w-4 h-4" /> Commissions
+                <DollarSign className="w-5 h-5" /> Commissions
               </TabsTrigger>
               {activeTab === 'commissions' && (
                 <div className="ml-6 mt-2 space-y-1 text-sm">
@@ -636,7 +664,7 @@ const Reports = () => {
                 </div>
               )}
               <TabsTrigger value="product_usage" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
-                <Package className="w-4 h-4" /> Product Usage
+                <Package className="w-5 h-5" /> Product Usage
               </TabsTrigger>
               {activeTab === 'product_usage' && (
                 <div className="ml-6 mt-2 space-y-1 text-sm">

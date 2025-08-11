@@ -309,7 +309,7 @@ const Dashboard = () => {
   const todayStats = [
     {
       title: "Today's Revenue",
-      value: `${symbol}${metrics.revenueToday.toLocaleString()}` as string,
+      value: format(metrics.revenueToday) as string,
       previousValue: metrics.revenueYesterday,
       change: safePercent(metrics.revenueToday, metrics.revenueYesterday),
       icon: DollarSign,
@@ -635,7 +635,7 @@ const Dashboard = () => {
                             </div>
                             {typeof appointment.price === 'number' && (
                               <div className="text-sm font-semibold text-slate-900">
-                                {symbol}{Number(appointment.price).toLocaleString()}
+                                {format(Number(appointment.price))}
                               </div>
                             )}
                           </div>
@@ -690,7 +690,7 @@ const Dashboard = () => {
                           )}
                         </div>
                         <div className="flex items-center justify-between text-xs text-slate-500">
-                          <span>{symbol}{staff.revenue.toLocaleString()}</span>
+                          <span>{format(staff.revenue)}</span>
                           <span>{staff.appointments} apts</span>
                           <span>{staff.completionRate}%</span>
                         </div>
@@ -773,8 +773,7 @@ const Dashboard = () => {
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-slate-700">Monthly Revenue</span>
-                  <span className="text-sm text-slate-600">{symbol}{metrics.revenueThisMonth.toLocaleString()} {metrics.revenueLastMonth > 0 ? `/ prev ${symbol}${metrics.revenueLastMonth.toLocaleString()}` : ''}</span>
+
                 </div>
                 <Progress value={Math.max(0, Math.min(100, metrics.revenueLastMonth > 0 ? (metrics.revenueThisMonth / metrics.revenueLastMonth) * 100 : (metrics.revenueThisMonth > 0 ? 100 : 0)))} className="h-2" />
               </div>
