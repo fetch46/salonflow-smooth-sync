@@ -267,6 +267,62 @@ export async function postReceiptPaymentWithAccount(opts: {
   });
 }
 
+export async function postReceiptPaymentWithAccounts(opts: {
+  organizationId: string;
+  amount: number;
+  depositAccountId: string; // Cash/Bank account to debit
+  incomeAccountId: string;  // Revenue account to credit
+  receiptId: string;
+  receiptNumber?: string | null;
+  paymentDate?: string; // yyyy-mm-dd
+  locationId?: string | null;
+}): Promise<boolean> {
+  const { organizationId, amount, depositAccountId, incomeAccountId, receiptId, receiptNumber, paymentDate, locationId } = opts;
+  const desc = `Receipt ${receiptNumber || receiptId} payment`;
+  return await postDoubleEntry({
+    organizationId,
+    amount,
+    transactionDate: paymentDate,
+    description: desc,
+    debitAccountId: depositAccountId,
+    creditAccountId: incomeAccountId,
+    referenceType: "receipt_payment",
+    referenceId: receiptId,
+    locationId: locationId || null,
+  });
+}
+
+export async function postReceiptPaymentToLedgerWithIncomeAccount(opts: {
+  organizationId: string;
+  amount: number;
+  method: string; // cash | mpesa | bank_transfer | card | other
+  incomeAccountId: string; // Revenue account to credit
+  receiptId: string;
+  receiptNumber?: string | null;
+  paymentDate?: string; // yyyy-mm-dd
+  locationId?: string | null;
+}): Promise<boolean> {
+  const { organizationId, amount, method, incomeAccountId, receiptId, receiptNumber, paymentDate, locationId } = opts;
+  // Determine asset account using explicit mapping if configured; fallback to subtype
+  const mappedAssetAccountId = await findDepositAccountIdForMethod(organizationId, method);
+  const isBankLike = ["mpesa", "bank_transfer", "card", "bank", "mpesa_paybill", "mpesa_till"].includes(String(method || "").toLowerCase());
+  const assetSubtype = isBankLike ? "Bank" : "Cash";
+  const assetAccountId = mappedAssetAccountId || (await findAccountIdBySubtype(organizationId, assetSubtype));
+  if (!assetAccountId) return false;
+  const desc = `Receipt ${receiptNumber || receiptId} payment via ${method}`;
+  return await postDoubleEntry({
+    organizationId,
+    amount,
+    transactionDate: paymentDate,
+    description: desc,
+    debitAccountId: assetAccountId,
+    creditAccountId: incomeAccountId,
+    referenceType: "receipt_payment",
+    referenceId: receiptId,
+    locationId: locationId || null,
+  });
+}
+
 export async function postExpensePaymentToLedger(opts: {
   organizationId: string;
   amount: number;

@@ -181,6 +181,8 @@ export default function ClientProfile() {
     );
   };
 
+  const revenuePaid = receipts.reduce((sum, r) => sum + (Number(r.amount_paid || 0)), 0);
+
   const handleEdit = () => {
     setIsEditing(true);
   };
@@ -322,15 +324,15 @@ export default function ClientProfile() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-green-700">Total Spent</CardTitle>
+              <CardTitle className="text-sm font-medium text-green-700">Revenue</CardTitle>
               <Receipt className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-700">
-                ${(client.total_spent || 0).toFixed(2)}
+                ${revenuePaid.toFixed(2)}
               </div>
               <p className="text-xs text-green-600">
-                From {receipts.length} receipts
+                From {receipts.length} sales receipts
               </p>
             </CardContent>
           </Card>
@@ -363,19 +365,12 @@ export default function ClientProfile() {
 
           <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-orange-700">Avg. Per Visit</CardTitle>
+              <CardTitle className="text-sm font-medium text-orange-700">Sales Receipts</CardTitle>
               <Receipt className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-700">
-                ${client.total_visits && client.total_spent 
-                  ? (client.total_spent / client.total_visits).toFixed(2) 
-                  : '0.00'
-                }
-              </div>
-              <p className="text-xs text-orange-600">
-                Average spending
-              </p>
+              <div className="text-2xl font-bold text-orange-700">{receipts.length}</div>
+              <p className="text-xs text-orange-600">Associated to this client</p>
             </CardContent>
           </Card>
 

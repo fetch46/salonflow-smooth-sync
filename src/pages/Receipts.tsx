@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -21,7 +21,7 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useSaas } from "@/lib/saas";
-import { postReceiptPaymentToLedger } from "@/utils/ledger";
+import { postReceiptPaymentToLedger, postReceiptPaymentWithAccount, postReceiptPaymentWithAccounts, postReceiptPaymentToLedgerWithIncomeAccount } from "@/utils/ledger";
 
 interface Receipt {
   id: string;
@@ -52,9 +52,63 @@ export default function Receipts() {
   const [isPayOpen, setIsPayOpen] = useState(false);
   const [selected, setSelected] = useState<Receipt | null>(null);
   const [payment, setPayment] = useState({ amount: "", method: "cash", reference: "" });
+  const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().slice(0,10));
+  const [selectedAccountId, setSelectedAccountId] = useState<string>("")
+  const [assetAccounts, setAssetAccounts] = useState<Array<{ id: string; account_code: string; account_name: string; account_subtype?: string | null }>>([]);
+  const [incomeAccounts, setIncomeAccounts] = useState<Array<{ id: string; account_code: string; account_name: string }>>([]);
+  const [selectedIncomeAccountId, setSelectedIncomeAccountId] = useState<string>("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [reportApplyTax, setReportApplyTax] = useState<boolean>(false);
   const navigate = useNavigate();
+
+  // Load Cash/Bank asset accounts for deposit selection
+  const loadAssetAccounts = useCallback(async () => {
+    try {
+      if (!organization?.id) { setAssetAccounts([]); return; }
+      let data: any[] | null = null;
+      let error: any = null;
+      try {
+        const res = await supabase
+          .from("accounts")
+          .select("id, account_code, account_name, account_type, account_subtype")
+          .eq("organization_id", organization.id)
+          .eq("account_type", "Asset")
+          .order("account_code", { ascending: true });
+        data = res.data as any[] | null;
+        error = res.error;
+      } catch (err: any) {
+        error = err;
+      }
+      if (error) {
+        const res = await supabase
+          .from("accounts")
+          .select("id, account_code, account_name, account_type")
+          .eq("organization_id", organization.id)
+          .order("account_code", { ascending: true });
+        data = res.data as any[] | null;
+      }
+      const filtered = (data || []).filter((a: any) => (a.account_type === "Asset") && (!a.account_subtype || ["Cash","Bank"].includes(a.account_subtype)));
+      setAssetAccounts(filtered.map((a: any) => ({ id: a.id, account_code: a.account_code, account_name: a.account_name, account_subtype: (a as any).account_subtype || null })));
+    } catch {
+      setAssetAccounts([]);
+    }
+  }, [organization?.id]);
+
+  const loadIncomeAccounts = useCallback(async () => {
+    try {
+      if (!organization?.id) { setIncomeAccounts([]); return; }
+      const res = await supabase
+        .from("accounts")
+        .select("id, account_code, account_name, account_type")
+        .eq("organization_id", organization.id)
+        .eq("account_type", "Income")
+        .order("account_code", { ascending: true });
+      const data = (res.data || []) as any[];
+      setIncomeAccounts(data.map(a => ({ id: a.id, account_code: a.account_code, account_name: a.account_name })));
+    } catch {
+      setIncomeAccounts([]);
+    }
+  }, [organization?.id]);
 
   // Create Receipt modal state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -221,7 +275,12 @@ export default function Receipts() {
   const openPayment = (r: Receipt) => {
     setSelected(r);
     setPayment({ amount: String(outstanding(r)), method: 'cash', reference: '' });
+    setPaymentDate(new Date().toISOString().slice(0,10));
+    setSelectedAccountId("");
+    setSelectedIncomeAccountId("");
     setIsPayOpen(true);
+    loadAssetAccounts();
+    loadIncomeAccounts();
   };
 
   const recordPayment = async (e: React.FormEvent) => {
@@ -239,19 +298,52 @@ export default function Receipts() {
         amount: amt,
         method: payment.method,
         reference_number: payment.reference || null,
+        payment_date: paymentDate,
       });
       if (!ok) throw new Error('Failed to record payment');
 
       // Post to ledger (debit Cash/Bank, credit Income)
       if (organization?.id) {
         try {
-          await postReceiptPaymentToLedger({
-            organizationId: organization.id,
-            amount: amt,
-            method: payment.method,
-            receiptId: selected.id,
-            receiptNumber: selected.receipt_number,
-          });
+          if (selectedAccountId && selectedIncomeAccountId) {
+            await postReceiptPaymentWithAccounts({
+              organizationId: organization.id,
+              amount: amt,
+              depositAccountId: selectedAccountId,
+              incomeAccountId: selectedIncomeAccountId,
+              receiptId: selected.id,
+              receiptNumber: selected.receipt_number,
+              paymentDate,
+            });
+          } else if (selectedIncomeAccountId && !selectedAccountId) {
+            await postReceiptPaymentToLedgerWithIncomeAccount({
+              organizationId: organization.id,
+              amount: amt,
+              method: payment.method,
+              incomeAccountId: selectedIncomeAccountId,
+              receiptId: selected.id,
+              receiptNumber: selected.receipt_number,
+              paymentDate,
+            });
+          } else if (selectedAccountId && !selectedIncomeAccountId) {
+            await postReceiptPaymentWithAccount({
+              organizationId: organization.id,
+              amount: amt,
+              depositAccountId: selectedAccountId,
+              receiptId: selected.id,
+              receiptNumber: selected.receipt_number,
+              paymentDate,
+            });
+          } else {
+            await postReceiptPaymentToLedger({
+              organizationId: organization.id,
+              amount: amt,
+              method: payment.method,
+              receiptId: selected.id,
+              receiptNumber: selected.receipt_number,
+              paymentDate,
+            });
+          }
         } catch (ledgerErr) {
           console.warn('Ledger posting failed', ledgerErr);
         }
@@ -816,6 +908,32 @@ export default function Receipts() {
             <div className="space-y-2">
               <Label>Reference (optional)</Label>
               <Input value={payment.reference} onChange={(e) => setPayment({ ...payment, reference: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Payment Date</Label>
+              <Input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Deposit to (Cash/Bank)</Label>
+              <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
+                <SelectTrigger><SelectValue placeholder={assetAccounts.length ? 'Select account' : 'No accounts available'} /></SelectTrigger>
+                <SelectContent>
+                  {assetAccounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{a.account_code} - {a.account_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Revenue Account (Credit)</Label>
+              <Select value={selectedIncomeAccountId} onValueChange={setSelectedIncomeAccountId}>
+                <SelectTrigger><SelectValue placeholder={incomeAccounts.length ? 'Select revenue account' : 'No income accounts'} /></SelectTrigger>
+                <SelectContent>
+                  {incomeAccounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{a.account_code} - {a.account_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setIsPayOpen(false)}>Cancel</Button>
