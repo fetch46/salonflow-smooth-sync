@@ -10,6 +10,7 @@ import { useSaas } from "@/lib/saas";
 import { postAccountTransfer } from "@/utils/ledger";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useNavigate } from "react-router-dom";
 
 
 interface AccountRow {
@@ -33,6 +34,7 @@ interface TransactionRow {
 
 export default function Banking() {
   const { organization } = useSaas();
+  const navigate = useNavigate();
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [transactions, setTransactions] = useState<TransactionRow[]>([]);
@@ -191,6 +193,17 @@ export default function Banking() {
   }, [transactions, search]);
 
   const selectedAccount = useMemo(() => accounts.find(a => a.id === selectedAccountId), [accounts, selectedAccountId]);
+
+  const navigateToReference = (row: TransactionRow) => {
+    const refType = String(row.reference_type || "").toLowerCase();
+    const refId = row.reference_id;
+    if (!refId) return;
+    if (refType === "receipt_payment") { navigate(`/receipts/${refId}`); return; }
+    if (refType === "purchase_payment") { navigate(`/purchases/${refId}`); return; }
+    if (refType === "expense_payment") { navigate(`/expenses/${refId}/edit`); return; }
+    if (refType === "account_transfer") { navigate(`/banking`); return; }
+    navigate(`/banking`);
+  };
 
   const openTransfer = () => {
     setTransferFromId(selectedAccountId || "");
@@ -357,7 +370,12 @@ export default function Banking() {
                       </TableRow>
                     ) : (
                       filteredTransactions.map(txn => (
-                        <TableRow key={txn.id}>
+                        <TableRow
+                          key={txn.id}
+                          onClick={() => txn.reference_id && navigateToReference(txn)}
+                          className={txn.reference_id ? "cursor-pointer hover:bg-slate-50" : ""}
+                          title={txn.reference_id ? `Open ${(txn.reference_type || '').toString()} ${txn.reference_id || ''}` : undefined}
+                        >
                           <TableCell className="whitespace-nowrap">{String(txn.transaction_date || "").slice(0,10)}</TableCell>
                           <TableCell className="max-w-[500px]">{txn.description}</TableCell>
                           <TableCell className="text-right">{Number(txn.displayDebit || 0).toLocaleString()}</TableCell>
