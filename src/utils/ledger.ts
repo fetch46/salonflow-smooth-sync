@@ -430,3 +430,27 @@ export async function postAccountTransfer(opts: {
     locationId: locationId || null,
   });
 }
+
+export async function deleteTransactionsByReference(referenceType: string, referenceId: string): Promise<number> {
+  try {
+    const { data, error } = await (supabase as any).rpc(
+      "delete_account_transactions_by_reference",
+      { p_reference_type: referenceType, p_reference_id: String(referenceId) }
+    );
+    if (error) throw error;
+    // RPC returns integer count; normalize to number
+    return Number(data || 0);
+  } catch (rpcErr) {
+    // Fallback: attempt direct delete (may fail due to RLS; ignore errors)
+    try {
+      const { count } = await (supabase as any)
+        .from("account_transactions")
+        .delete({ count: "exact" })
+        .eq("reference_type", referenceType)
+        .eq("reference_id", String(referenceId));
+      return Number(count || 0);
+    } catch {
+      return 0;
+    }
+  }
+}

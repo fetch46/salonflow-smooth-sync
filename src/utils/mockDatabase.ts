@@ -593,23 +593,25 @@ export async function deleteReceiptWithFallback(supabase: any, id: string) {
       // Ignore if table missing or policies disallow
     }
 
+    // Best-effort: remove any ledger entries that referenced this receipt's payments via RPC
+    try {
+      await (supabase as any).rpc('delete_account_transactions_by_reference', { p_reference_type: 'receipt_payment', p_reference_id: String(id) });
+    } catch {
+      try {
+        await supabase
+          .from('account_transactions')
+          .delete()
+          .eq('reference_type', 'receipt_payment')
+          .eq('reference_id', String(id));
+      } catch {}
+    }
+
     const { error } = await supabase
       .from('receipts')
       .delete()
       .eq('id', id);
 
     if (error) throw error;
-
-    // Best-effort: remove any ledger entries that referenced this receipt's payments
-    try {
-      await supabase
-        .from('account_transactions')
-        .delete()
-        .eq('reference_type', 'receipt_payment')
-        .eq('reference_id', String(id));
-    } catch (ledgerErr) {
-      // Often ledger is immutable; ignore failures
-    }
 
     return true;
   } catch (error) {

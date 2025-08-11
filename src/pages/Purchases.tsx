@@ -315,6 +315,12 @@ export default function Purchases() {
           return;
         }
 
+        // Best-effort: remove any ledger entries related to this purchase payment
+        try {
+          const { deleteTransactionsByReference } = await import("@/utils/ledger");
+          await deleteTransactionsByReference("purchase_payment", id);
+        } catch {}
+
         const { error } = await supabase
           .from("purchases")
           .delete()
