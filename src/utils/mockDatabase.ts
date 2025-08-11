@@ -633,14 +633,69 @@ export async function updateReceiptPaymentWithFallback(
 }
 
 export async function deleteReceiptPaymentWithFallback(supabase: any, id: string): Promise<boolean> {
+  // Prefer RPC that also removes ledger entries, if available
   try {
+    const { error: rpcError } = await supabase.rpc('delete_receipt_payment_and_ledger', { p_payment_id: id });
+    if (!rpcError) return true;
+    // If RPC is missing or fails, fall through to legacy path
+  } catch {}
+
+  // Legacy: delete just the payment row
+  try {
+    // Fetch the payment first (to allow potential client-side cleanups if needed)
+    let payment: any = null;
+    try {
+      const { data } = await supabase.from('receipt_payments').select('id, receipt_id, amount, payment_date').eq('id', id).maybeSingle();
+      payment = data || null;
+    } catch {}
+
     const { error } = await supabase.from('receipt_payments').delete().eq('id', id);
     if (error) throw error;
+
+    // Best-effort: attempt to remove matching ledger rows if policy allows (not guaranteed)
+    // Many setups keep ledger immutable; ignore failures silently
+    if (payment && payment.receipt_id && payment.amount && payment.payment_date) {
+      try {
+        await supabase
+          .from('account_transactions')
+          .delete()
+          .eq('reference_type', 'receipt_payment')
+          .eq('reference_id', String(payment.receipt_id))
+          .eq('transaction_date', payment.payment_date)
+          .or(`debit_amount.eq.${Number(payment.amount)},credit_amount.eq.${Number(payment.amount)}` as any);
+      } catch {}
+    }
+
     return true;
   } catch (err) {
     console.log('Using mock database for deleting receipt payment');
     const storage = getStorage();
+
+    // Capture the payment to recalc receipt status
+    const existing = (storage.receipt_payments || []).find((p: any) => p.id === id) || null;
+
     storage.receipt_payments = (storage.receipt_payments || []).filter((p: any) => p.id !== id);
+
+    // Recalculate related receipt status after deletion
+    if (existing && existing.receipt_id) {
+      try {
+        const recId = existing.receipt_id;
+        const receiptsArr: any[] = storage.receipts || [];
+        const idx = receiptsArr.findIndex((x: any) => x.id === recId);
+        if (idx !== -1) {
+          const nowIso = new Date().toISOString();
+          const receipt = receiptsArr[idx];
+          const paidSum = (storage.receipt_payments || [])
+            .filter((p: any) => p.receipt_id === recId)
+            .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+          const total = Number(receipt.total_amount || 0);
+          const newStatus = paidSum >= total ? 'paid' : paidSum > 0 ? 'partial' : (receipt.status || 'open');
+          receiptsArr[idx] = { ...receipt, status: newStatus, updated_at: nowIso };
+          storage.receipts = receiptsArr;
+        }
+      } catch {}
+    }
+
     setStorage(storage);
     return true;
   }
