@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { getReceiptsWithFallback } from "@/utils/mockDatabase";
+
 interface Client {
   id: string;
   full_name: string;
@@ -76,6 +76,7 @@ export default function ClientProfile() {
     address: '',
     notes: '',
   });
+  const [paymentsTotal, setPaymentsTotal] = useState<number>(0);
 
   const fetchClientData = useCallback(async () => {
     try {
@@ -118,6 +119,19 @@ export default function ClientProfile() {
         receiptsData = (all || []).filter((r: any) => r.customer_id === id);
       }
       setReceipts(receiptsData);
+
+      // Compute total payments received for this client's receipts
+      try {
+        const allPayments = await getAllReceiptPaymentsWithFallback(supabase);
+        const receiptIds = new Set((receiptsData || []).map((r: any) => r.id));
+        const totalPayments = (allPayments || [])
+          .filter((p: any) => receiptIds.has(p.receipt_id))
+          .reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+        setPaymentsTotal(totalPayments);
+      } catch (payErr) {
+        console.warn('Failed to compute payments total', payErr);
+        setPaymentsTotal(0);
+      }
 
       // Fetch job cards
       const { data: jobCardsData, error: jobCardsError } = await supabase
@@ -187,7 +201,9 @@ export default function ClientProfile() {
     );
   };
 
-  const revenuePaid = receipts.reduce((sum, r) => sum + (Number(r.amount_paid || 0)), 0);
+  const visitsCompleted = appointments.filter(a => a.status === 'completed').length;
+  const upcomingAppointments = appointments.filter(a => a.status === 'scheduled').length;
+  const revenuePaid = Number(paymentsTotal || 0);
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -349,9 +365,9 @@ export default function ClientProfile() {
               <Calendar className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-700">{client.total_visits || 0}</div>
+              <div className="text-2xl font-bold text-blue-700">{visitsCompleted}</div>
               <p className="text-xs text-blue-600">
-                {appointments.filter(app => app.status === 'scheduled').length} upcoming
+                {upcomingAppointments} upcoming
               </p>
             </CardContent>
           </Card>
