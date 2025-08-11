@@ -515,3 +515,78 @@ export const useRegionalSettings = () => {
   const settings = (organization?.settings as any) || {}
   return settings.regional_settings || null
 }
+
+export const useRegionalNumberFormatter = () => {
+  const { locale } = useSaas()
+  const regional = useRegionalSettings()
+
+  return useCallback(
+    (value: number | null | undefined, opts?: { decimals?: number }) => {
+      const num = typeof value === 'number' ? value : 0
+      const decimals = typeof opts?.decimals === 'number' ? opts.decimals : (regional?.currency_decimals ?? 2)
+
+      const parts = new Intl.NumberFormat(locale || 'en-US', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      }).formatToParts(num)
+
+      const thousandSep = regional?.thousand_separator ?? undefined
+      const decimalSep = regional?.decimal_separator ?? undefined
+
+      return parts
+        .map((p) => {
+          if (p.type === 'group' && thousandSep) return thousandSep
+          if (p.type === 'decimal' && decimalSep) return decimalSep
+          return p.value
+        })
+        .join('')
+    },
+    [locale, regional]
+  )
+}
+
+export const useRegionalDateFormatter = () => {
+  const regional = useRegionalSettings()
+
+  const formatDateByPattern = useCallback((date: Date, pattern: string) => {
+    const d = date.getDate()
+    const m = date.getMonth() + 1
+    const y = date.getFullYear()
+
+    const pad2 = (n: number) => String(n).padStart(2, '0')
+    const monthNamesShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+    let result = pattern
+    result = result.replace(/yyyy/g, String(y))
+    result = result.replace(/MMM/g, monthNamesShort[m - 1])
+    result = result.replace(/MM/g, pad2(m))
+    result = result.replace(/dd/g, pad2(d))
+
+    return result
+  }, [])
+
+  return useCallback(
+    (input: string | Date, opts?: { includeTime?: boolean }) => {
+      if (!input) return ''
+      const date = new Date(input)
+      const pattern = regional?.date_format || 'yyyy-MM-dd'
+      let formatted = formatDateByPattern(date, pattern)
+
+      if (opts?.includeTime) {
+        const hours = date.getHours()
+        const minutes = String(date.getMinutes()).padStart(2, '0')
+        const tf = regional?.time_format || '24h'
+        if (tf === '12h') {
+          const ampm = hours >= 12 ? 'PM' : 'AM'
+          const h12 = hours % 12 === 0 ? 12 : hours % 12
+          formatted += ` ${h12}:${minutes} ${ampm}`
+        } else {
+          formatted += ` ${String(hours).padStart(2, '0')}:${minutes}`
+        }
+      }
+
+      return formatted
+    },
+    [regional, formatDateByPattern]
+  )
+}

@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Calculator, Edit2, Eye, Trash2 } from "lucide-react";
+import { ArrowLeft, Calculator, Edit2, Eye, Trash2, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useOrganizationCurrency, useRegionalDateFormatter } from "@/lib/saas";
 
 interface AccountRow {
   id: string;
@@ -34,44 +35,56 @@ export default function AccountView() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [account, setAccount] = useState<AccountRow | null>(null);
   const [txns, setTxns] = useState<TransactionRow[]>([]);
   const [hasTransactions, setHasTransactions] = useState<boolean>(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [fromDate, setFromDate] = useState<string>("");
   const [toDate, setToDate] = useState<string>("");
+  const { format: formatCurrency } = useOrganizationCurrency();
+  const formatDate = useRegionalDateFormatter();
+
+  const fetchData = async () => {
+    if (!id) return;
+    try {
+      const { data: acc, error: accErr } = await supabase
+        .from("accounts")
+        .select("id, account_code, account_name, account_type, account_subtype, normal_balance, description")
+        .eq("id", id)
+        .maybeSingle();
+      if (accErr) throw accErr;
+      setAccount(acc as AccountRow);
+
+      const { data: rows, error: txErr } = await supabase
+        .from("account_transactions")
+        .select("id, transaction_date, description, debit_amount, credit_amount, reference_type, reference_id")
+        .eq("account_id", id)
+        .order("transaction_date", { ascending: true })
+        .order("id", { ascending: true });
+      if (txErr) throw txErr;
+      setTxns((rows || []) as TransactionRow[]);
+      setHasTransactions((rows || []).length > 0);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Failed to load account");
+    }
+  };
 
   useEffect(() => {
     (async () => {
       if (!id) return;
       setLoading(true);
-      try {
-        const { data: acc, error: accErr } = await supabase
-          .from("accounts")
-          .select("id, account_code, account_name, account_type, account_subtype, normal_balance, description")
-          .eq("id", id)
-          .maybeSingle();
-        if (accErr) throw accErr;
-        setAccount(acc as AccountRow);
-
-        // Load transactions
-        const { data: rows, error: txErr } = await supabase
-          .from("account_transactions")
-          .select("id, transaction_date, description, debit_amount, credit_amount, reference_type, reference_id")
-          .eq("account_id", id)
-          .order("transaction_date", { ascending: true })
-          .order("id", { ascending: true });
-        if (txErr) throw txErr;
-        setTxns((rows || []) as TransactionRow[]);
-        setHasTransactions((rows || []).length > 0);
-      } catch (e: any) {
-        console.error(e);
-        toast.error(e?.message || "Failed to load account");
-      } finally {
-        setLoading(false);
-      }
+      await fetchData();
+      setLoading(false);
     })();
   }, [id]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  };
 
   const filteredTxns = useMemo(() => {
     const fd = fromDate?.trim() || "";
@@ -168,6 +181,10 @@ export default function AccountView() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={onRefresh} disabled={refreshing}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
           <Button variant="outline" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
@@ -197,9 +214,9 @@ export default function AccountView() {
             <CardTitle className="text-sm">Totals</CardTitle>
           </CardHeader>
           <CardContent className="text-sm space-y-1">
-            <div className="flex justify-between"><span className="text-slate-600">Total Debits</span><span className="font-semibold">{totals.debit.toFixed(2)}</span></div>
-            <div className="flex justify-between"><span className="text-slate-600">Total Credits</span><span className="font-semibold">{totals.credit.toFixed(2)}</span></div>
-            <div className="flex justify-between pt-1 border-t"><span className="text-slate-600">Ending Balance</span><span className="font-bold text-indigo-700">{(rowsWithRunning.at(-1)?.running_balance || 0).toFixed(2)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-600">Total Debits</span><span className="font-semibold">{formatCurrency(totals.debit)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-600">Total Credits</span><span className="font-semibold">{formatCurrency(totals.credit)}</span></div>
+            <div className="flex justify-between pt-1 border-t"><span className="text-slate-600">Ending Balance</span><span className="font-bold text-indigo-700">{formatCurrency(rowsWithRunning.at(-1)?.running_balance || 0)}</span></div>
           </CardContent>
         </Card>
         <Card>
@@ -256,11 +273,11 @@ export default function AccountView() {
                     className={r.reference_id ? "cursor-pointer hover:bg-slate-50" : ""}
                     title={r.reference_id ? `Open ${(r.reference_type || '').toString()} ${r.reference_id || ''}` : undefined}
                   >
-                    <TableCell>{new Date(r.transaction_date).toLocaleDateString()}</TableCell>
+                    <TableCell>{formatDate(r.transaction_date)}</TableCell>
                     <TableCell className="max-w-[380px] truncate" title={r.description || ''}>{r.description || "—"}</TableCell>
-                    <TableCell className="text-right">{Number(r.debit_amount || 0).toFixed(2)}</TableCell>
-                    <TableCell className="text-right">{Number(r.credit_amount || 0).toFixed(2)}</TableCell>
-                    <TableCell className="text-right font-medium">{(rowsWithRunning.find(x => x.id === r.id) as any).running_balance.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(Number(r.debit_amount || 0))}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(Number(r.credit_amount || 0))}</TableCell>
+                    <TableCell className="text-right font-medium">{formatCurrency((rowsWithRunning.find(x => x.id === r.id) as any).running_balance)}</TableCell>
                     <TableCell className="text-xs text-slate-500">{r.reference_type || "—"}{r.reference_id ? ` #${r.reference_id}` : ""}</TableCell>
                   </TableRow>
                 ))}

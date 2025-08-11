@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useOrganization } from "@/lib/saas/hooks";
+import { useRegionalNumberFormatter, useRegionalDateFormatter } from "@/lib/saas";
 
 interface InventoryItem {
   id: string;
@@ -405,7 +406,7 @@ export default function ProductView() {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="p-4 rounded-lg border bg-gradient-to-b from-white to-slate-50">
               <div className="text-xs text-muted-foreground">On Hand</div>
-              <div className="text-2xl font-semibold mt-1">{new Intl.NumberFormat((typeof navigator !== 'undefined' ? navigator.language : 'en-US')).format(onHand)}</div>
+              <div className="text-2xl font-semibold mt-1">{useRegionalNumberFormatter()(onHand)}</div>
             </div>
             <div className="p-4 rounded-lg border bg-gradient-to-b from-white to-slate-50">
               <div className="text-xs text-muted-foreground">Purchased</div>
@@ -468,7 +469,7 @@ export default function ProductView() {
                     ) : (
                       usageHistory.map((row) => (
                         <TableRow key={row.id}>
-                          <TableCell>{new Date(row.created_at).toLocaleDateString()}</TableCell>
+                          <TableCell>{useRegionalDateFormatter()(row.created_at)}</TableCell>
                           <TableCell className="font-medium">{row.job_cards?.job_number || '—'}</TableCell>
                           <TableCell className="text-right">{row.quantity_used}</TableCell>
                           <TableCell className="hidden sm:table-cell text-right">{row.unit_cost ?? '—'}</TableCell>
@@ -509,7 +510,7 @@ export default function ProductView() {
                     ) : (
                       purchaseHistory.map((row) => (
                         <TableRow key={row.id}>
-                          <TableCell>{new Date(row.created_at).toLocaleDateString()}</TableCell>
+                          <TableCell>{useRegionalDateFormatter()(row.created_at)}</TableCell>
                           <TableCell className="font-medium">{row.purchases?.purchase_number || '—'}</TableCell>
                           <TableCell className="text-right">{row.quantity}</TableCell>
                           <TableCell className="hidden sm:table-cell text-right">{row.unit_cost ?? '—'}</TableCell>
@@ -551,7 +552,7 @@ export default function ProductView() {
                     ) : (
                       salesHistory.map((row) => (
                         <TableRow key={row.id}>
-                          <TableCell>{new Date(row.created_at).toLocaleDateString()}</TableCell>
+                          <TableCell>{useRegionalDateFormatter()(row.created_at)}</TableCell>
                           <TableCell className="font-medium">{row.sales?.sale_number || '—'}</TableCell>
                           <TableCell className="hidden md:table-cell">{row.sales?.customer_name || 'Walk-in Customer'}</TableCell>
                           <TableCell className="text-right">{row.quantity}</TableCell>
@@ -583,12 +584,12 @@ export default function ProductView() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {levelsByLocation.length === 0 ? (
+                    {levelsByWarehouse.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={3} className="text-center text-muted-foreground">No stock levels found.</TableCell>
                       </TableRow>
                     ) : (
-                      levelsByLocation.map((lvl, idx) => {
+                      levelsByWarehouse.map((lvl, idx) => {
                         const qty = Number(lvl.quantity || 0);
                         const share = onHand > 0 ? Math.round((qty / onHand) * 100) : 0;
                         return (

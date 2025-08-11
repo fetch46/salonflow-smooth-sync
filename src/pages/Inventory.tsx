@@ -21,6 +21,7 @@ import { Columns3 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useOrganization } from "@/lib/saas/hooks";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { useRegionalNumberFormatter } from "@/lib/saas";
 
 // --- Type Definitions ---
 type InventoryItem = {
@@ -748,7 +749,7 @@ export default function Inventory() {
             <CardTitle className="text-sm font-medium text-white/90">Quantities in Stock</CardTitle>
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{new Intl.NumberFormat((typeof navigator !== 'undefined' ? navigator.language : 'en-US')).format(totals.totalQty)}</div>
+            <div className="text-2xl font-bold text-white">{useRegionalNumberFormatter()(totals.totalQty)}</div>
             <p className="text-xs text-white/80">All products</p>
           </CardContent>
         </Card>
@@ -902,7 +903,7 @@ export default function Inventory() {
                                 <TableCell className="hidden lg:table-cell">{formatMoney(Number(item.cost_price || 0))}</TableCell>
                               )}
                               {visibleColumns.quantity && (
-                                <TableCell className="text-right">{new Intl.NumberFormat('en-US').format(itemIdToQty.get(item.id) || 0)}</TableCell>
+                                <TableCell className="text-right">{useRegionalNumberFormatter()(itemIdToQty.get(item.id) || 0)}</TableCell>
                               )}
                               {visibleColumns.reorder_point && (
                                 <TableCell className="hidden lg:table-cell">{item.reorder_point}</TableCell>
