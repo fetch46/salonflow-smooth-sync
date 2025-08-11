@@ -251,7 +251,7 @@ const Dashboard = () => {
   const todayStats = [
     {
       title: "Today's Revenue",
-      value: `${symbol}${metrics.revenueToday.toLocaleString()}` as string,
+      value: format(metrics.revenueToday) as string,
       previousValue: metrics.revenueYesterday,
       change: safePercent(metrics.revenueToday, metrics.revenueYesterday),
       icon: DollarSign,
@@ -577,7 +577,7 @@ const Dashboard = () => {
                             </div>
                             {typeof appointment.price === 'number' && (
                               <div className="text-sm font-semibold text-slate-900">
-                                {symbol}{Number(appointment.price).toLocaleString()}
+                                {format(Number(appointment.price))}
                               </div>
                             )}
                           </div>
@@ -632,7 +632,7 @@ const Dashboard = () => {
                           )}
                         </div>
                         <div className="flex items-center justify-between text-xs text-slate-500">
-                          <span>{symbol}{staff.revenue.toLocaleString()}</span>
+                          <span>{format(staff.revenue)}</span>
                           <span>{staff.appointments} apts</span>
                           <span>{staff.completionRate}%</span>
                         </div>
@@ -716,7 +716,7 @@ const Dashboard = () => {
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm font-medium text-slate-700">Monthly Revenue Goal</span>
-                  <span className="text-sm text-slate-600">{symbol}45K / {symbol}50K</span>
+                  <span className="text-sm text-slate-600">{format(45000, { decimals: 0 })} / {format(50000, { decimals: 0 })}</span>
                 </div>
                 <Progress value={90} className="h-2" />
               </div>

@@ -20,6 +20,7 @@ import { getReceiptsWithFallback, getAllReceiptPaymentsWithFallback, updateRecei
 import { useNavigate } from "react-router-dom";
 import type { DateRange } from "react-day-picker";
 import { useSaas } from "@/lib/saas";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { DollarSign, Plus } from "lucide-react";
 import { postReceiptPaymentWithAccount, postReceiptPaymentToLedger } from "@/utils/ledger";
 
@@ -99,6 +100,7 @@ export default function Payments() {
 
   // Create payment received dialog
   const { organization } = useSaas();
+  const { symbol, format: formatCurrency } = useOrganizationCurrency();
   const [createOpen, setCreateOpen] = useState(false);
   const [createStatus, setCreateStatus] = useState<"unpaid" | "pending">("unpaid");
   const [receiptOptions, setReceiptOptions] = useState<Array<{ id: string; receipt_number: string; customer_id: string | null; total_amount: number; amount_paid: number; status: string; created_at: string }>>([]);
@@ -522,7 +524,7 @@ export default function Payments() {
           <div className="grid gap-4 md:grid-cols-3">
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Total Received</CardTitle></CardHeader>
-              <CardContent className="text-2xl font-semibold">${totalsReceived.total.toFixed(2)}</CardContent>
+              <CardContent className="text-2xl font-semibold">{formatCurrency(totalsReceived.total)}</CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Payments Count</CardTitle></CardHeader>
@@ -530,7 +532,7 @@ export default function Payments() {
             </Card>
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Average Amount</CardTitle></CardHeader>
-              <CardContent className="text-2xl font-semibold">${totalsReceived.avg.toFixed(2)}</CardContent>
+              <CardContent className="text-2xl font-semibold">{formatCurrency(totalsReceived.avg)}</CardContent>
             </Card>
           </div>
 
@@ -691,7 +693,7 @@ export default function Payments() {
                           <TableCell className={compact ? 'py-2' : ''}>{clientName}</TableCell>
                           <TableCell className={compact ? 'py-2' : ''}>{(() => { const lid = (r as any)?.location_id; return lid ? (locations.find(l => l.id === lid)?.name || '—') : '—'; })()}</TableCell>
                           <TableCell className={compact ? 'py-2' : ''}>{format(new Date(p.payment_date || r?.created_at || new Date()), 'MMM dd, yyyy')}</TableCell>
-                          <TableCell className={compact ? 'py-2' : ''}>${Number(p.amount || 0).toFixed(2)}</TableCell>
+                          <TableCell className={compact ? 'py-2' : ''}>{formatCurrency(Number(p.amount || 0))}</TableCell>
                           <TableCell className={compact ? 'py-2' : ''}>{(p.method || '').toUpperCase()}</TableCell>
                           <TableCell className={compact ? 'py-2' : ''}>{p.reference_number || '—'}</TableCell>
                           <TableCell className={`text-right ${compact ? 'py-2' : ''}`}>
@@ -790,7 +792,7 @@ export default function Payments() {
                         <TableCell className={`font-medium ${compact ? 'py-2' : ''}`}>{e.expense_number}</TableCell>
                         <TableCell className={compact ? 'py-2' : ''}>{e.vendor_name}</TableCell>
                         <TableCell className={compact ? 'py-2' : ''}>{format(new Date(e.expense_date), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell className={compact ? 'py-2' : ''}>${Number(e.amount || 0).toFixed(2)}</TableCell>
+                                                 <TableCell className={compact ? 'py-2' : ''}>{formatCurrency(Number(e.amount || 0))}</TableCell>
                         <TableCell className={compact ? 'py-2' : ''}>{e.payment_method || '—'}</TableCell>
                         <TableCell className={compact ? 'py-2' : ''}>
                           <Badge className={e.status === 'paid' ? 'bg-green-100 text-green-800' : e.status === 'approved' ? 'bg-blue-100 text-blue-800' : e.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}>
@@ -856,7 +858,7 @@ export default function Payments() {
                         <TableCell className={`font-medium ${compact ? 'py-2' : ''}`}>{p.purchase_number}</TableCell>
                         <TableCell className={compact ? 'py-2' : ''}>{p.vendor_name}</TableCell>
                         <TableCell className={compact ? 'py-2' : ''}>{format(new Date(p.purchase_date || p.created_at || new Date()), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell className={compact ? 'py-2' : ''}>${Number(p.total_amount || 0).toFixed(2)}</TableCell>
+                                                 <TableCell className={compact ? 'py-2' : ''}>{formatCurrency(Number(p.total_amount || 0))}</TableCell>
                         <TableCell className={compact ? 'py-2' : ''}>
                           <Badge className={p.status === 'received' ? 'bg-green-100 text-green-800' : p.status === 'partial' ? 'bg-blue-100 text-blue-800' : p.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}>
                             {p.status.toUpperCase()}
@@ -993,7 +995,7 @@ export default function Payments() {
                             <input type="radio" name="selectedReceipt" checked={selectedReceiptId === r.id} onChange={() => onSelectReceipt(r.id)} />
                           </TableCell>
                           <TableCell className="font-medium">{r.receipt_number}</TableCell>
-                          <TableCell>${outstanding.toFixed(2)}</TableCell>
+                          <TableCell>{formatCurrency(outstanding)}</TableCell>
                           <TableCell>{format(new Date(r.created_at), 'MMM dd, yyyy')}</TableCell>
                         </TableRow>
                       );
