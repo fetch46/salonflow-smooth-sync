@@ -115,6 +115,26 @@ export async function createReceiptWithFallback(supabase: any, receiptData: any,
           product_id: it.product_id || null,
           staff_id: it.staff_id || null,
         })));
+
+      // Best-effort: also create staff commission rows if table exists and data is available
+      try {
+        const commissionRows = (items || [])
+          .filter((it: any) => it.staff_id && (typeof it.commission_percentage === 'number'))
+          .map((it: any) => ({
+            receipt_id: receipt.id,
+            staff_id: it.staff_id,
+            service_id: it.service_id || null,
+            commission_rate: Number(it.commission_percentage || 0),
+            gross_amount: Number(it.total_price || ((Number(it.quantity || 1)) * Number(it.unit_price || 0))) || 0,
+            commission_amount: Number(((Number(it.commission_percentage || 0) / 100) * (Number(it.total_price || ((Number(it.quantity || 1)) * Number(it.unit_price || 0))) || 0)).toFixed(2)),
+          }));
+        if (commissionRows.length > 0) {
+          await supabase.from('staff_commissions').insert(commissionRows as any);
+        }
+      } catch (e) {
+        // Ignore if table missing or policies prevent insert; UI will still show items/staff
+        console.warn('Skipping staff_commissions insert:', e);
+      }
     }
     return receipt;
   } catch (err) {
@@ -545,12 +565,31 @@ export async function deleteReceiptWithFallback(supabase: any, id: string) {
     await supabase.from('receipt_payments').delete().eq('receipt_id', id);
     await supabase.from('receipt_items').delete().eq('receipt_id', id);
 
+    // Best-effort: delete any staff commission rows linked to this receipt
+    try {
+      await supabase.from('staff_commissions').delete().eq('receipt_id', id);
+    } catch (e) {
+      // Ignore if table missing or policies disallow
+    }
+
     const { error } = await supabase
       .from('receipts')
       .delete()
       .eq('id', id);
 
     if (error) throw error;
+
+    // Best-effort: remove any ledger entries that referenced this receipt's payments
+    try {
+      await supabase
+        .from('account_transactions')
+        .delete()
+        .eq('reference_type', 'receipt_payment')
+        .eq('reference_id', String(id));
+    } catch (ledgerErr) {
+      // Often ledger is immutable; ignore failures
+    }
+
     return true;
   } catch (error) {
     console.log('Using mock database for receipt deletion');
