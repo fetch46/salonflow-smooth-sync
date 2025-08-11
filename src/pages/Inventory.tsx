@@ -421,6 +421,7 @@ export default function Inventory() {
 
   // Currency formatter
   const { format: formatMoney } = useOrganizationCurrency();
+  const formatRegionalNumber = useRegionalNumberFormatter();
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -749,7 +750,7 @@ export default function Inventory() {
             <CardTitle className="text-sm font-medium text-white/90">Quantities in Stock</CardTitle>
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{useRegionalNumberFormatter()(totals.totalQty)}</div>
+            <div className="text-2xl font-bold text-white">{formatRegionalNumber(totals.totalQty)}</div>
             <p className="text-xs text-white/80">All products</p>
           </CardContent>
         </Card>
@@ -903,7 +904,7 @@ export default function Inventory() {
                                 <TableCell className="hidden lg:table-cell">{formatMoney(Number(item.cost_price || 0))}</TableCell>
                               )}
                               {visibleColumns.quantity && (
-                                <TableCell className="text-right">{useRegionalNumberFormatter()(itemIdToQty.get(item.id) || 0)}</TableCell>
+                                <TableCell className="text-right">{formatRegionalNumber(itemIdToQty.get(item.id) || 0)}</TableCell>
                               )}
                               {visibleColumns.reorder_point && (
                                 <TableCell className="hidden lg:table-cell">{item.reorder_point}</TableCell>
