@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { useOrganizationTaxRate } from "@/lib/saas/hooks";
 
 interface ServiceOption {
   id: string;
@@ -36,6 +37,7 @@ export default function ReceiptForm() {
   const navigate = useNavigate();
   const params = useParams();
   const { format: formatMoney } = useOrganizationCurrency();
+  const orgTaxRate = useOrganizationTaxRate();
   const isEdit = Boolean(params.id);
 
   const [loading, setLoading] = useState<boolean>(true);
@@ -50,11 +52,21 @@ export default function ReceiptForm() {
   const [customerId, setCustomerId] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [taxAmount, setTaxAmount] = useState<number>(0);
+  const [applyTax, setApplyTax] = useState<boolean>(false);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [items, setItems] = useState<LineItem[]>([]);
 
   const subtotal = useMemo(() => items.reduce((sum, it) => sum + Number(it.total_price || 0), 0), [items]);
   const total = useMemo(() => Math.max(0, subtotal + Number(taxAmount || 0) - Number(discountAmount || 0)), [subtotal, taxAmount, discountAmount]);
+
+  // Auto-calc tax from subtotal when applyTax is enabled or org tax rate changes
+  useEffect(() => {
+    if (applyTax) {
+      const pct = typeof orgTaxRate === 'number' ? orgTaxRate : 0;
+      const calc = Number(((subtotal * (pct / 100))).toFixed(2));
+      setTaxAmount(calc);
+    }
+  }, [applyTax, orgTaxRate, subtotal]);
 
   const loadOptions = useCallback(async () => {
     try {
@@ -335,7 +347,13 @@ export default function ReceiptForm() {
           </div>
           <div className="space-y-2">
             <Label>Tax</Label>
-            <Input type="number" step="0.01" value={taxAmount} onChange={(e) => setTaxAmount(Number(e.target.value || 0))} />
+            <div className="flex items-center gap-2">
+              <Input type="number" step="0.01" value={taxAmount} onChange={(e) => { setTaxAmount(Number(e.target.value || 0)); setApplyTax(false); }} />
+              <label className="flex items-center gap-1 text-sm text-muted-foreground">
+                <input type="checkbox" className="h-4 w-4" checked={applyTax} onChange={(e) => setApplyTax(e.target.checked)} />
+                Apply org tax ({typeof orgTaxRate === 'number' ? `${orgTaxRate}%` : '—'})
+              </label>
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Discount</Label>
