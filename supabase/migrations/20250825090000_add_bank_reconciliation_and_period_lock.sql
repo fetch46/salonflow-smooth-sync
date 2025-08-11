@@ -264,3 +264,53 @@ DO $$ BEGIN
       WITH CHECK (organization_id IN (SELECT organization_id FROM organization_users WHERE user_id = auth.uid()));
   END IF;
 END $$;
+
+-- RPC: delete a receipt payment and its ledger entries
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc WHERE proname = 'delete_receipt_payment_and_ledger'
+  ) THEN
+    CREATE OR REPLACE FUNCTION public.delete_receipt_payment_and_ledger(
+      p_payment_id UUID
+    ) RETURNS BOOLEAN AS $$
+    DECLARE
+      v_receipt_id UUID;
+      v_payment_date DATE;
+      v_org UUID;
+    BEGIN
+      -- Find receipt and date for period lock check
+      SELECT rp.receipt_id, rp.payment_date INTO v_receipt_id, v_payment_date
+      FROM public.receipt_payments rp
+      WHERE rp.id = p_payment_id;
+
+      IF v_receipt_id IS NULL THEN
+        RETURN FALSE;
+      END IF;
+
+      -- Determine organization via receipt or receipt->location
+      SELECT r.organization_id INTO v_org FROM public.receipts r WHERE r.id = v_receipt_id;
+
+      IF v_org IS NOT NULL AND is_date_locked(v_org, COALESCE(v_payment_date, CURRENT_DATE)) THEN
+        RAISE EXCEPTION 'Accounting period is locked for date %', v_payment_date USING ERRCODE = 'P0001';
+      END IF;
+
+      -- Delete ledger entries that match this specific payment (by reference + date + amount)
+      DELETE FROM public.account_transactions atx
+      WHERE atx.reference_type = 'receipt_payment'
+        AND atx.reference_id = v_receipt_id::text
+        AND atx.transaction_date = COALESCE(v_payment_date, CURRENT_DATE)
+        AND (
+          atx.debit_amount = (SELECT COALESCE(amount, 0) FROM public.receipt_payments WHERE id = p_payment_id)
+          OR atx.credit_amount = (SELECT COALESCE(amount, 0) FROM public.receipt_payments WHERE id = p_payment_id)
+        );
+
+      -- Delete the payment itself
+      DELETE FROM public.receipt_payments WHERE id = p_payment_id;
+
+      RETURN TRUE;
+    END;
+    $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+    GRANT EXECUTE ON FUNCTION public.delete_receipt_payment_and_ledger(UUID) TO authenticated;
+  END IF;
+END $$;
