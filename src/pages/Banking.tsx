@@ -10,6 +10,7 @@ import { useSaas } from "@/lib/saas";
 import { postAccountTransfer } from "@/utils/ledger";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useNavigate } from "react-router-dom";
 
 
 interface AccountRow {
@@ -33,6 +34,7 @@ interface TransactionRow {
 
 export default function Banking() {
   const { organization } = useSaas();
+  const navigate = useNavigate();
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [transactions, setTransactions] = useState<TransactionRow[]>([]);
@@ -124,9 +126,13 @@ export default function Banking() {
       setReconLoading(true);
       const base = (import.meta.env.VITE_SERVER_URL || "/api").replace(/\/$/, "");
       const resp = await fetch(`${base}/bank/unreconciled?bankAccountId=${encodeURIComponent(selectedAccountId)}`);
-      if (!resp.ok) throw new Error(`Failed to load unreconciled: ${resp.status}`);
-      const json = await resp.json();
-      setUnreconciled(json.items || []);
+      const ct = resp.headers.get('content-type') || '';
+      if (!resp.ok || !ct.includes('application/json')) {
+        const text = await resp.text().catch(() => '');
+        throw new Error(`Failed to load unreconciled: ${resp.status} ${ct} ${text.slice(0, 120)}`);
+      }
+      const json = await resp.json().catch(() => ({ items: [] }));
+      setUnreconciled(Array.isArray(json?.items) ? json.items : []);
     } catch (e) {
       console.warn("Unreconciled fetch failed", e);
       setUnreconciled([]);
@@ -191,6 +197,17 @@ export default function Banking() {
   }, [transactions, search]);
 
   const selectedAccount = useMemo(() => accounts.find(a => a.id === selectedAccountId), [accounts, selectedAccountId]);
+
+  const navigateToReference = (row: TransactionRow) => {
+    const refType = String(row.reference_type || "").toLowerCase();
+    const refId = row.reference_id;
+    if (!refId) return;
+    if (refType === "receipt_payment") { navigate(`/receipts/${refId}`); return; }
+    if (refType === "purchase_payment") { navigate(`/purchases/${refId}`); return; }
+    if (refType === "expense_payment") { navigate(`/expenses/${refId}/edit`); return; }
+    if (refType === "account_transfer") { navigate(`/banking`); return; }
+    navigate(`/banking`);
+  };
 
   const openTransfer = () => {
     setTransferFromId(selectedAccountId || "");
@@ -357,7 +374,12 @@ export default function Banking() {
                       </TableRow>
                     ) : (
                       filteredTransactions.map(txn => (
-                        <TableRow key={txn.id}>
+                        <TableRow
+                          key={txn.id}
+                          onClick={() => txn.reference_id && navigateToReference(txn)}
+                          className={txn.reference_id ? "cursor-pointer hover:bg-slate-50" : ""}
+                          title={txn.reference_id ? `Open ${(txn.reference_type || '').toString()} ${txn.reference_id || ''}` : undefined}
+                        >
                           <TableCell className="whitespace-nowrap">{String(txn.transaction_date || "").slice(0,10)}</TableCell>
                           <TableCell className="max-w-[500px]">{txn.description}</TableCell>
                           <TableCell className="text-right">{Number(txn.displayDebit || 0).toLocaleString()}</TableCell>

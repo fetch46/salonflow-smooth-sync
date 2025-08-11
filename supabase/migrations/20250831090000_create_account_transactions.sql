@@ -124,3 +124,26 @@ END $$;
 DO $$ BEGIN
   PERFORM pg_notify('pgrst', 'reload schema');
 END $$;
+
+-- 6) Helper RPC to delete account transactions by reference (scoped)
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc WHERE proname = 'delete_account_transactions_by_reference'
+  ) THEN
+    CREATE OR REPLACE FUNCTION public.delete_account_transactions_by_reference(
+      p_reference_type TEXT,
+      p_reference_id TEXT
+    ) RETURNS INTEGER AS $$
+    DECLARE
+      v_count INTEGER;
+    BEGIN
+      DELETE FROM public.account_transactions
+      WHERE reference_type = p_reference_type
+        AND reference_id = p_reference_id;
+      GET DIAGNOSTICS v_count = ROW_COUNT;
+      RETURN COALESCE(v_count, 0);
+    END;
+    $$ LANGUAGE plpgsql SECURITY DEFINER;
+    GRANT EXECUTE ON FUNCTION public.delete_account_transactions_by_reference(TEXT, TEXT) TO authenticated;
+  END IF;
+END $$;

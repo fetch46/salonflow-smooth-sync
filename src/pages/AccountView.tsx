@@ -102,6 +102,30 @@ export default function AccountView() {
     });
   }, [filteredTxns, account?.normal_balance]);
 
+  const navigateToReference = (row: TransactionRow) => {
+    const refType = String(row.reference_type || "").toLowerCase();
+    const refId = row.reference_id;
+    if (!refId) return;
+    if (refType === "receipt_payment") {
+      navigate(`/receipts/${refId}`);
+      return;
+    }
+    if (refType === "purchase_payment") {
+      navigate(`/purchases/${refId}`);
+      return;
+    }
+    if (refType === "expense_payment") {
+      navigate(`/expenses/${refId}/edit`);
+      return;
+    }
+    if (refType === "account_transfer") {
+      navigate(`/banking`);
+      return;
+    }
+    // Fallback
+    navigate(`/banking`);
+  };
+
   const onDelete = async () => {
     if (!id) return;
     try {
@@ -226,7 +250,12 @@ export default function AccountView() {
               </TableHeader>
               <TableBody>
                 {rowsWithRunning.map((r) => (
-                  <TableRow key={r.id}>
+                  <TableRow
+                    key={r.id}
+                    onClick={() => r.reference_id && navigateToReference(r)}
+                    className={r.reference_id ? "cursor-pointer hover:bg-slate-50" : ""}
+                    title={r.reference_id ? `Open ${(r.reference_type || '').toString()} ${r.reference_id || ''}` : undefined}
+                  >
                     <TableCell>{new Date(r.transaction_date).toLocaleDateString()}</TableCell>
                     <TableCell className="max-w-[380px] truncate" title={r.description || ''}>{r.description || "—"}</TableCell>
                     <TableCell className="text-right">{Number(r.debit_amount || 0).toFixed(2)}</TableCell>

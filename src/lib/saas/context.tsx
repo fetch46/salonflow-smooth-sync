@@ -138,6 +138,7 @@ const SaasContext = createContext<SaasContextType | undefined>(undefined)
 // Provider component
 export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(saasReducer, initialState)
+  const lastOrgSwitchRef = React.useRef<{ orgId: string; ts: number } | null>(null)
 
   // Error handling
   const handleError = useCallback((error: unknown, context?: string) => {
@@ -191,11 +192,16 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // Track organization switch
-      AnalyticsService.trackEvent(organization.id, 'organization_switched', {
-        organization_name: organization.name,
-        user_role: role,
-      })
+      // Track organization switch (deduplicated)
+      const now = Date.now();
+      const last = lastOrgSwitchRef.current;
+      if (!last || last.orgId !== organization.id || now - last.ts > 2000) {
+        AnalyticsService.trackEvent(organization.id, 'organization_switched', {
+          organization_name: organization.name,
+          user_role: role,
+        })
+        lastOrgSwitchRef.current = { orgId: organization.id, ts: now };
+      }
     } catch (error) {
       handleError(error, 'Failed to switch organization')
     }

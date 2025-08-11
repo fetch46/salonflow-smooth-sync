@@ -368,7 +368,7 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, locations }: {
           )}
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={() => onClose(false)}>
               Cancel
             </Button>
             <Button type="submit">

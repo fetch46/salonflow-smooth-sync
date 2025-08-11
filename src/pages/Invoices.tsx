@@ -176,7 +176,7 @@ const DATE_FILTERS = [
 ];
 
 export default function Invoices() {
-  const { symbol, format } = useOrganizationCurrency();
+  const { symbol, format: formatMoney } = useOrganizationCurrency();
   const orgTaxRate = useOrganizationTaxRate();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -1003,7 +1003,7 @@ export default function Invoices() {
             <DollarSign className="h-4 w-4 opacity-80" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{format(totalRevenue, { decimals: 0 })}</div>
+            <div className="text-2xl font-bold">{formatMoney(totalRevenue, { decimals: 0 })}</div>
             <p className="text-xs opacity-80">
               From {paidInvoices} paid invoices
             </p>
@@ -1016,7 +1016,7 @@ export default function Invoices() {
             <Clock className="h-4 w-4 opacity-80" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{format(pendingRevenue, { decimals: 0 })}</div>
+            <div className="text-2xl font-bold">{formatMoney(pendingRevenue, { decimals: 0 })}</div>
             <p className="text-xs opacity-80">
               {pendingInvoices + overdueInvoices} pending
             </p>
@@ -1031,7 +1031,7 @@ export default function Invoices() {
           <CardContent>
             <div className="text-2xl font-bold">{collectionRate.toFixed(1)}%</div>
             <p className="text-xs opacity-80">
-              Avg: {format(Number(averageInvoiceValue.toFixed(0)), { decimals: 0 })}
+              Avg: {formatMoney(Number(averageInvoiceValue.toFixed(0)), { decimals: 0 })}
             </p>
           </CardContent>
         </Card>
