@@ -291,11 +291,12 @@ export default function JobCards() {
 
   const handleStatusUpdate = async (id: string, newStatus: string) => {
     try {
-      const updateData: { status: string; start_time?: string; end_time?: string } = { status: newStatus };
+      const normalizedStatus = ['paused', 'overdue', 'pending'].includes(newStatus) ? 'in_progress' : newStatus;
+      const updateData: { status: string; start_time?: string; end_time?: string } = { status: normalizedStatus };
 
-      if (newStatus === 'in_progress' && !jobCards.find(jc => jc.id === id)?.start_time) {
+      if (normalizedStatus === 'in_progress' && !jobCards.find(jc => jc.id === id)?.start_time) {
         updateData.start_time = new Date().toISOString();
-      } else if (newStatus === 'completed' && !jobCards.find(jc => jc.id === id)?.end_time) {
+      } else if (normalizedStatus === 'completed' && !jobCards.find(jc => jc.id === id)?.end_time) {
         updateData.end_time = new Date().toISOString();
       }
 
