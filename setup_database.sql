@@ -22,6 +22,9 @@
 -- Goods received RPCs and RLS policies
 \i supabase/migrations/20250908093000_goods_received_rpcs_and_policies.sql
 
+-- Ensure staff has commission_rate column
+\i supabase/migrations/20250910094500_add_commission_rate_to_staff.sql
+
 -- 2. Ensure all required functions exist
 -- Create organization creation function if it doesn't exist
 CREATE OR REPLACE FUNCTION create_organization_with_user(
