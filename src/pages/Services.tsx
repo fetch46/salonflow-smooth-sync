@@ -103,15 +103,7 @@ interface BookingService {
   growth_rate: number;
 }
 
-// Enhanced mock data with more realistic metrics
-const ENHANCED_MOCK_BOOKINGS: BookingService[] = [
-  { service_id: "1", service_name: "Signature Hair Cut & Style", total_bookings: 156, total_revenue: 9360, avg_rating: 4.9, growth_rate: 15.2 },
-  { service_id: "2", service_name: "Premium Color Treatment", total_bookings: 98, total_revenue: 14700, avg_rating: 4.8, growth_rate: 23.1 },
-  { service_id: "3", service_name: "Luxury Facial Package", total_bookings: 78, total_revenue: 11700, avg_rating: 4.9, growth_rate: 18.5 },
-  { service_id: "4", service_name: "Deep Tissue Massage", total_bookings: 89, total_revenue: 10680, avg_rating: 4.7, growth_rate: 12.8 },
-  { service_id: "5", service_name: "Gel Manicure Deluxe", total_bookings: 134, total_revenue: 8040, avg_rating: 4.6, growth_rate: 8.9 },
-  { service_id: "6", service_name: "Balayage Highlight", total_bookings: 65, total_revenue: 13000, avg_rating: 4.8, growth_rate: 28.7 }
-];
+// Removed mock bookings; best sellers now computed from receipt_items
 
 const SERVICE_CATEGORIES = [
   { name: "Hair Services", icon: Scissors, color: "from-pink-500 to-rose-500" },
@@ -160,11 +152,17 @@ export default function Services() {
     totalBookings: number;
     bestSelling: BookingService[];
     categoriesStats: { name: string; count: number; revenue: number; icon: any; color: string }[];
+    utilizationPct?: number;
+    revenueGrowthPct?: number;
+    bookingGrowthPct?: number;
   }>({
     totalRevenue: 0,
     totalBookings: 0,
     bestSelling: [],
     categoriesStats: [],
+    utilizationPct: 0,
+    revenueGrowthPct: 0,
+    bookingGrowthPct: 0,
   });
 
   const [formData, setFormData] = useState({
@@ -178,16 +176,7 @@ export default function Services() {
     location_id: "",
   });
 
-  // Mock function to enrich services with more metrics but without touching persisted fields
-  const enrichServices = (services: Service[]): Service[] => {
-    return services.map(service => ({
-      ...service,
-
-      popularity_score: Math.floor(Math.random() * 100),
-      avg_rating: 4.0 + Math.random() * 1.0,
-      total_bookings: Math.floor(Math.random() * 200) + 10
-    }));
-  };
+  // Removed enrichServices; use data as-is from DB
 
   const fetchServices = useCallback(async () => {
     try {
@@ -215,40 +204,25 @@ export default function Services() {
               .order("created_at", { ascending: false })
 
             if (fallbackError) throw fallbackError
-            setServices(enrichServices(fallbackData || []))
+            setServices(fallbackData || [])
             return
           }
-
           throw error
         }
-
-        // If org-scoped query returned zero rows, try a compatibility fallback
-        if (!data || data.length === 0) {
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from("services")
-            .select("*")
-            .order("created_at", { ascending: false })
-
-          if (!fallbackError && fallbackData && fallbackData.length > 0) {
-            setServices(enrichServices(fallbackData))
-            return
-          }
-        }
-
-        setServices(enrichServices(data || []));
-        return;
+        setServices(data || [])
+        return
       }
 
-      // No active organization selected: try a generic fetch (for public/demo environments)
+      // No organization selected; fetch all
       const { data, error } = await supabase
         .from("services")
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      setServices(enrichServices(data || []));
-    } catch (error: any) {
+      setServices(data || []);
+    } catch (error) {
       console.error("Error fetching services:", error);
-      toast.error(`Failed to fetch services${error?.message ? `: ${error.message}` : ''}`);
+      setServices([]);
     } finally {
       setLoading(false);
     }
@@ -375,12 +349,24 @@ export default function Services() {
 
   const fetchServiceMetrics = useCallback(async () => {
     try {
+      // Pull last 60 days to compute recent and previous period metrics client-side
+      const sinceIso = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase
         .from("receipt_items")
-        .select("service_id, quantity, total_price, services:service_id(name, category)")
-        .not("service_id", "is", null);
+        .select("service_id, quantity, total_price, created_at, services:service_id(name, category)")
+        .not("service_id", "is", null)
+        .gte("created_at", sinceIso);
       if (error) throw error;
       const items = (data || []) as any[];
+
+      const now = Date.now();
+      const last30Start = now - 30 * 24 * 60 * 60 * 1000;
+
+      const itemsLast30 = items.filter(it => new Date(it.created_at).getTime() >= last30Start);
+      const itemsPrev30 = items.filter(it => {
+        const ts = new Date(it.created_at).getTime();
+        return ts >= (last30Start - 30 * 24 * 60 * 60 * 1000) && ts < last30Start;
+      });
 
       const byService: Record<string, { name: string; category?: string; bookings: number; revenue: number }> = {};
       for (const it of items) {
@@ -420,10 +406,37 @@ export default function Services() {
         return { name: cat.name, count, revenue, icon: cat.icon, color: cat.color };
       }).filter((c) => c.count > 0);
 
-      setServiceMetrics({ totalRevenue, totalBookings, bestSelling, categoriesStats });
+      // Utilization: distinct services with activity in last 30 days / active services
+      const distinctActiveLast30 = new Set(itemsLast30.map(it => String(it.service_id))).size;
+      const activeServicesCount = services.filter(s => s.is_active).length || 0;
+      const utilizationPct = activeServicesCount > 0
+        ? Math.round((distinctActiveLast30 / activeServicesCount) * 100)
+        : 0;
+
+      const revenueLast30 = itemsLast30.reduce((sum, it) => sum + (Number(it.total_price) || 0), 0);
+      const revenuePrev30 = itemsPrev30.reduce((sum, it) => sum + (Number(it.total_price) || 0), 0);
+      const revenueGrowthPct = revenuePrev30 > 0
+        ? ((revenueLast30 - revenuePrev30) / revenuePrev30) * 100
+        : (revenueLast30 > 0 ? 100 : 0);
+
+      const bookingsLast30 = itemsLast30.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0);
+      const bookingsPrev30 = itemsPrev30.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0);
+      const bookingGrowthPct = bookingsPrev30 > 0
+        ? ((bookingsLast30 - bookingsPrev30) / bookingsPrev30) * 100
+        : (bookingsLast30 > 0 ? 100 : 0);
+
+      setServiceMetrics({
+        totalRevenue,
+        totalBookings,
+        bestSelling,
+        categoriesStats,
+        utilizationPct,
+        revenueGrowthPct,
+        bookingGrowthPct,
+      });
     } catch (err) {
       console.error("Error fetching service metrics:", err);
-      setServiceMetrics({ totalRevenue: 0, totalBookings: 0, bestSelling: [], categoriesStats: [] });
+      setServiceMetrics({ totalRevenue: 0, totalBookings: 0, bestSelling: [], categoriesStats: [], utilizationPct: 0, revenueGrowthPct: 0, bookingGrowthPct: 0 });
     }
   }, [services]);
 
@@ -1020,9 +1033,9 @@ export default function Services() {
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm font-medium text-slate-700">Service Utilization</span>
-                  <span className="text-sm text-slate-600">85%</span>
+                  <span className="text-sm text-slate-600">{Math.round(serviceMetrics.utilizationPct || 0)}%</span>
                 </div>
-                <Progress value={85} className="h-2" />
+                <Progress value={Math.max(0, Math.min(100, Math.round(serviceMetrics.utilizationPct || 0)))} className="h-2" />
               </div>
               
               <div>
@@ -1030,23 +1043,23 @@ export default function Services() {
                   <span className="text-sm font-medium text-slate-700">Customer Satisfaction</span>
                   <span className="text-sm text-slate-600">{dashboard.avgRating.toFixed(1)}/5.0</span>
                 </div>
-                <Progress value={(dashboard.avgRating / 5) * 100} className="h-2" />
+                <Progress value={Math.max(0, Math.min(100, (dashboard.avgRating / 5) * 100))} className="h-2" />
               </div>
               
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm font-medium text-slate-700">Revenue Growth</span>
-                  <span className="text-sm text-slate-600">+12.5%</span>
+                  <span className="text-sm text-slate-600">{(serviceMetrics.revenueGrowthPct || 0) >= 0 ? '+' : ''}{(serviceMetrics.revenueGrowthPct || 0).toFixed(1)}%</span>
                 </div>
-                <Progress value={72} className="h-2" />
+                <Progress value={Math.max(0, Math.min(100, Math.abs(serviceMetrics.revenueGrowthPct || 0)))} className="h-2" />
               </div>
               
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-slate-700">Booking Rate</span>
-                  <span className="text-sm text-slate-600">78%</span>
+                  <span className="text-sm font-medium text-slate-700">Booking Growth</span>
+                  <span className="text-sm text-slate-600">{(serviceMetrics.bookingGrowthPct || 0) >= 0 ? '+' : ''}{(serviceMetrics.bookingGrowthPct || 0).toFixed(1)}%</span>
                 </div>
-                <Progress value={78} className="h-2" />
+                <Progress value={Math.max(0, Math.min(100, Math.abs(serviceMetrics.bookingGrowthPct || 0)))} className="h-2" />
               </div>
             </div>
           </CardContent>

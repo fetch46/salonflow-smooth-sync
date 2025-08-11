@@ -45,7 +45,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useFeatureGating } from "@/hooks/useFeatureGating";
 import { CreateButtonGate, FeatureGate, UsageBadge } from "@/components/features/FeatureGate";
-import { format } from "date-fns";
+import { format, startOfDay, endOfDay } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useNavigate } from "react-router-dom";
 import { useOrganizationCurrency, useOrganization } from "@/lib/saas/hooks";
@@ -92,13 +92,7 @@ const STAFF_FILTERS = [
   { label: "New Hires", value: "new" }
 ];
 
-// Mock performance data (in a real app, this would come from analytics/bookings)
-const MOCK_PERFORMANCE = {
-  "staff1": { appointments: 45, revenue: 2350, rating: 4.8, completionRate: 96 },
-  "staff2": { appointments: 38, revenue: 1890, rating: 4.6, completionRate: 94 },
-  "staff3": { appointments: 52, revenue: 2780, rating: 4.9, completionRate: 98 },
-  "staff4": { appointments: 31, revenue: 1650, rating: 4.5, completionRate: 92 },
-};
+// Removed mock performance. Real performance derived from appointments and receipts.
 
 export default function Staff() {
   const { format: formatMoney } = useOrganizationCurrency();
@@ -116,6 +110,8 @@ export default function Staff() {
   const { hasFeature, getFeatureAccess, enforceLimit } = useFeatureGating();
   const navigate = useNavigate();
   const { organization } = useOrganization();
+  const [todayAppts, setTodayAppts] = useState<{ staff_id: string | null; status: string }[]>([]);
+  const [staffRevenueMap, setStaffRevenueMap] = useState<Record<string, number>>({});
 
   const ROLE_OPTIONS = ["owner","admin","manager","staff","viewer"] as const;
 
@@ -160,6 +156,38 @@ export default function Staff() {
   useEffect(() => {
     fetchStaff();
   }, [fetchStaff]);
+
+  // Load today's appointments and revenue per staff for dashboard cards
+  useEffect(() => {
+    const loadStaffMetrics = async () => {
+      try {
+        const today = new Date();
+        const todayStr = format(today, 'yyyy-MM-dd');
+        const [{ data: appts }, { data: items }] = await Promise.all([
+          supabase
+            .from('appointments')
+            .select('staff_id, status, appointment_date')
+            .eq('appointment_date', todayStr),
+          supabase
+            .from('receipt_items')
+            .select('staff_id, total_price, created_at')
+            .not('staff_id', 'is', null)
+            .gte('created_at', startOfDay(today).toISOString())
+            .lte('created_at', endOfDay(today).toISOString()),
+        ]);
+        setTodayAppts((appts || []).map((a: any) => ({ staff_id: a.staff_id, status: a.status || '' })));
+        const map: Record<string, number> = {};
+        (items || []).forEach((it: any) => {
+          const id = String(it.staff_id);
+          map[id] = (map[id] || 0) + (Number(it.total_price) || 0);
+        });
+        setStaffRevenueMap(map);
+      } catch (e) {
+        // silent fail; cards will show zeros
+      }
+    };
+    loadStaffMetrics();
+  }, []);
 
   const fetchStaffRoles = useCallback(async () => {
     if (!organization) return;
@@ -418,12 +446,14 @@ export default function Staff() {
   const currentStaff = getTabStaff(activeTab);
 
   const getPerformanceData = (staffId: string) => {
-    return MOCK_PERFORMANCE[staffId as keyof typeof MOCK_PERFORMANCE] || {
-      appointments: 0,
-      revenue: 0,
-      rating: 0,
-      completionRate: 0
-    };
+    // Compute performance from today's appointments and receipts
+    const appts = todayAppts.filter(a => a.staff_id === staffId);
+    const appointments = appts.length;
+    const completed = appts.filter(a => (a.status || '').toLowerCase() === 'completed').length;
+    const completionRate = appointments > 0 ? Math.round((completed / appointments) * 100) : 0;
+    const revenue = staffRevenueMap[staffId] || 0;
+    const rating = 0;
+    return { appointments, revenue, rating, completionRate };
   };
 
   const openAssignRole = (member: Staff) => {
