@@ -26,12 +26,13 @@ import {
 } from 'lucide-react';
 import { useSaas } from '@/lib/saas';
 import { supabase } from '@/integrations/supabase/client';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { mockDb } from '@/utils/mockDatabase';
 import { useOrganization } from '@/lib/saas/hooks';
 import { useOrganizationCurrency } from '@/lib/saas/hooks';
 
 const Reports = () => {
+  const navigate = useNavigate();
   const { organization, subscriptionPlan } = useSaas();
   const { organization: org } = useOrganization();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -357,7 +358,7 @@ const Reports = () => {
   });
 
   const [topServices, setTopServices] = useState<Array<{ name: string; revenue: number; appointments: number; growth: number }>>([]);
-  const [topClients, setTopClients] = useState<Array<{ name: string; visits: number; totalSpent: number; lastVisit: string }>>([]);
+  const [topClients, setTopClients] = useState<Array<{ id: string; name: string; visits: number; totalSpent: number; lastVisit: string }>>([]);
 
   const loadOverview = useCallback(async () => {
     setLoading(true);
@@ -487,6 +488,7 @@ const Reports = () => {
         (clients || []).forEach((c: any) => { clientNames[c.id] = c.full_name; });
       }
       setTopClients(clientIds.map(id => ({
+        id,
         name: clientNames[id] || 'Client',
         visits: byClient[id].visits,
         totalSpent: Math.round(byClient[id].spent),
@@ -814,7 +816,7 @@ const Reports = () => {
                 <CardContent>
                   <div className="space-y-4">
                     {topServices.map((service, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/services?query=${encodeURIComponent(service.name)}`)} title={`View service: ${service.name}`}>
                         <div className="flex items-center gap-3">
                           <Badge variant="outline" className="w-8 h-8 flex items-center justify-center">
                             {index + 1}
@@ -844,7 +846,7 @@ const Reports = () => {
                 <CardContent>
                   <div className="space-y-4">
                     {topClients.map((client, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/clients/${client.id}`)} title={`View client: ${client.name}`}>
                         <div className="flex items-center gap-3">
                           <Badge variant="outline" className="w-8 h-8 flex items-center justify-center">
                             {index + 1}
@@ -901,7 +903,7 @@ const Reports = () => {
                           <TableHeader><TableRow><TableHead>Subtype</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
                           <TableBody>
                             {Object.entries(pl.breakdown.income).map(([k,v]) => (
-                              <TableRow key={k}><TableCell>{k}</TableCell><TableCell className="text-right">${Number(v).toFixed(2)}</TableCell></TableRow>
+                              <TableRow key={k} className="cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/accounts?q=${encodeURIComponent(k)}`)} title={`Open accounts for ${k}`}><TableCell>{k}</TableCell><TableCell className="text-right">${Number(v).toFixed(2)}</TableCell></TableRow>
                             ))}
                           </TableBody>
                         </Table>
@@ -912,7 +914,7 @@ const Reports = () => {
                           <TableHeader><TableRow><TableHead>Subtype</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
                           <TableBody>
                             {Object.entries(pl.breakdown.expense).map(([k,v]) => (
-                              <TableRow key={k}><TableCell>{k}</TableCell><TableCell className="text-right">${Number(v).toFixed(2)}</TableCell></TableRow>
+                              <TableRow key={k} className="cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/accounts?q=${encodeURIComponent(k)}`)} title={`Open accounts for ${k}`}><TableCell>{k}</TableCell><TableCell className="text-right">${Number(v).toFixed(2)}</TableCell></TableRow>
                             ))}
                           </TableBody>
                         </Table>
@@ -930,15 +932,15 @@ const Reports = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-4 md:grid-cols-3">
-                    <div className="text-center p-4 bg-slate-50 rounded-lg">
+                    <div className="text-center p-4 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100" onClick={() => navigate(`/accounts?q=${encodeURIComponent('Asset')}`)} title="Open Asset accounts">
                       <div className="text-2xl font-bold text-slate-700">${bs.assets.toFixed(2)}</div>
                       <div className="text-sm text-slate-700">Assets</div>
                     </div>
-                    <div className="text-center p-4 bg-slate-50 rounded-lg">
+                    <div className="text-center p-4 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100" onClick={() => navigate(`/accounts?q=${encodeURIComponent('Liability')}`)} title="Open Liability accounts">
                       <div className="text-2xl font-bold text-slate-700">${bs.liabilities.toFixed(2)}</div>
                       <div className="text-sm text-slate-700">Liabilities</div>
                     </div>
-                    <div className="text-center p-4 bg-slate-50 rounded-lg">
+                    <div className="text-center p-4 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100" onClick={() => navigate(`/accounts?q=${encodeURIComponent('Equity')}`)} title="Open Equity accounts">
                       <div className="text-2xl font-bold text-slate-700">${bs.equity.toFixed(2)}</div>
                       <div className="text-sm text-slate-700">Equity</div>
                     </div>
@@ -1048,7 +1050,7 @@ const Reports = () => {
                               const rate = Number(r.commission_rate ?? r.service?.commission_percentage ?? 0);
                               const comm = gross * (Number(rate) || 0) / 100;
                               return (
-                                <TableRow key={r.id}>
+                                <TableRow key={r.id} className="cursor-pointer hover:bg-slate-50" onClick={() => r.receipt?.id && navigate(`/receipts/${r.receipt.id}`)} title={r.receipt?.id ? `Open receipt ${r.receipt.id}` : undefined}>
                                   <TableCell className={`${density === 'compact' ? 'px-2 py-1' : ''}`}>{(r.created_at || r.receipt?.created_at || '').split('T')[0]}</TableCell>
                                   <TableCell className={`${density === 'compact' ? 'px-2 py-1' : ''}`}>{r.service?.name || r.description}</TableCell>
                                   <TableCell className={`${density === 'compact' ? 'px-2 py-1' : ''}`}>{r.staff?.full_name || 'Unassigned'}</TableCell>
@@ -1170,7 +1172,7 @@ const ProductUsageHistory: React.FC<{ startDate: string; endDate: string; densit
         .lte('created_at', endDate);
       let receiptItemsQuery = supabase
         .from('receipt_items')
-        .select('id, created_at, quantity, unit_price, product_id, location_id, receipt:receipt_id (receipt_number, created_at)')
+        .select('id, created_at, quantity, unit_price, product_id, location_id, receipt:receipt_id (id, receipt_number, created_at)')
         .gte('created_at', startDate)
         .lte('created_at', endDate);
       if (locationId !== 'all') {
@@ -1263,7 +1265,7 @@ const ProductUsageHistory: React.FC<{ startDate: string; endDate: string; densit
                 </TableHeader>
                 <TableBody>
                   {(entries as any[]).map((r) => (
-                    <TableRow key={`${r.type}-${r.reference}-${r.date}-${r.product_id}`}>
+                    <TableRow key={`${r.type}-${r.reference}-${r.date}-${r.product_id}`} className={r.type === 'Sold/Used' ? 'cursor-pointer hover:bg-slate-50' : ''} onClick={() => { if (r.type === 'Sold/Used' && r.receipt?.id) navigate(`/receipts/${r.receipt.id}`); }}>
                       <TableCell>{new Date(r.date).toLocaleString()}</TableCell>
                       <TableCell>{r.product_name}</TableCell>
                       <TableCell className="text-right">{Number(r.qty || 0).toLocaleString()}</TableCell>
