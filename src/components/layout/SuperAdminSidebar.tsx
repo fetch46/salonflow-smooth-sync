@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Building,
@@ -138,10 +138,21 @@ export function SuperAdminSidebar() {
   const toggleSubmenu = (title: string) => {
     setOpenSubmenus((prev) =>
       prev.includes(title)
-        ? prev.filter((item) => item !== title)
-        : [...prev, title]
+        ? []
+        : [title]
     );
   };
+
+  useEffect(() => {
+    // Keep the parent of the active route expanded
+    const activeParent = superAdminMenuItems.find((item) =>
+      item.subItems?.some((subItem) => location.pathname === subItem.url)
+    );
+
+    if (activeParent) {
+      setOpenSubmenus([activeParent.title]);
+    }
+  }, [location.pathname]);
 
   return (
     <Sidebar variant="inset" collapsible="icon" className="border-r border-purple-200 max-w-[260px] md:max-w-[280px]">
