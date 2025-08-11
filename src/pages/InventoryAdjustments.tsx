@@ -142,7 +142,6 @@ export default function InventoryAdjustments() {
       const { data, error } = await supabase
         .from("business_locations")
         .select("id, name")
-        .eq("is_active", true)
         .order("name");
       if (error) throw error;
       setLocations(data || []);
@@ -255,7 +254,8 @@ export default function InventoryAdjustments() {
         .update({ 
           status: "approved",
           approved_at: new Date().toISOString(),
-          approved_by: (await supabase.auth.getUser()).data.user?.id
+          approved_by: (await supabase.auth.getUser()).data.user?.id,
+          location_id: effectiveLocationId
         })
         .eq("id", adjustment.id);
 
