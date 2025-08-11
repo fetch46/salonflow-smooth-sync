@@ -107,7 +107,31 @@ export default function Banking() {
         .eq("account_id", selectedAccountId)
         .order("transaction_date", { ascending: true });
       if (error) throw error;
-      setTransactions((data || []) as any as TransactionRow[]);
+
+      let rows = (data || []) as any as TransactionRow[];
+
+      // Best-effort: remove ledger rows that reference missing/deleted receipts
+      try {
+        const receiptRefIds = Array.from(new Set(rows
+          .filter((r: any) => String(r.reference_type || '').toLowerCase() === 'receipt_payment' && r.reference_id)
+          .map((r: any) => String(r.reference_id))));
+        if (receiptRefIds.length > 0) {
+          const { data: existingReceipts } = await supabase
+            .from('receipts')
+            .select('id')
+            .in('id', receiptRefIds);
+          const existingIds = new Set((existingReceipts || []).map((r: any) => String(r.id)));
+          rows = rows.filter((r: any) => {
+            if (String(r.reference_type || '').toLowerCase() !== 'receipt_payment') return true;
+            if (!r.reference_id) return true;
+            return existingIds.has(String(r.reference_id));
+          });
+        }
+      } catch (e) {
+        // ignore filtering errors
+      }
+
+      setTransactions(rows);
     } catch (e) {
       console.error("Error loading transactions", e);
       setTransactions([]);
