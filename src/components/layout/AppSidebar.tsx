@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Calendar,
@@ -259,8 +259,8 @@ export function AppSidebar() {
   const toggleSubmenu = (title: string) => {
     setOpenSubmenus((prev) =>
       prev.includes(title)
-        ? prev.filter((item) => item !== title)
-        : [...prev, title]
+        ? []
+        : [title]
     );
   };
 
@@ -273,6 +273,27 @@ export function AppSidebar() {
     }
     return hasFeature(item.feature);
   };
+
+  useEffect(() => {
+    // Keep the parent of the active route expanded
+    const searchParams = new URLSearchParams(location.search);
+    const currentReportsTab = searchParams.get('tab') || 'overview';
+    const activeParent = menuItems.find((item) =>
+      item.subItems?.some((subItem) => {
+        if (item.title === 'Reports') {
+          return (
+            location.pathname === '/reports' &&
+            subItem.url.includes(`tab=${currentReportsTab}`)
+          );
+        }
+        return location.pathname === subItem.url;
+      })
+    );
+
+    if (activeParent) {
+      setOpenSubmenus([activeParent.title]);
+    }
+  }, [location.pathname, location.search]);
 
   return (
     <Sidebar variant="inset" collapsible="icon" className="border-r border-slate-200 max-w-[260px] md:max-w-[280px]">
