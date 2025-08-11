@@ -124,9 +124,13 @@ export default function Banking() {
       setReconLoading(true);
       const base = (import.meta.env.VITE_SERVER_URL || "/api").replace(/\/$/, "");
       const resp = await fetch(`${base}/bank/unreconciled?bankAccountId=${encodeURIComponent(selectedAccountId)}`);
-      if (!resp.ok) throw new Error(`Failed to load unreconciled: ${resp.status}`);
-      const json = await resp.json();
-      setUnreconciled(json.items || []);
+      const ct = resp.headers.get('content-type') || '';
+      if (!resp.ok || !ct.includes('application/json')) {
+        const text = await resp.text().catch(() => '');
+        throw new Error(`Failed to load unreconciled: ${resp.status} ${ct} ${text.slice(0, 120)}`);
+      }
+      const json = await resp.json().catch(() => ({ items: [] }));
+      setUnreconciled(Array.isArray(json?.items) ? json.items : []);
     } catch (e) {
       console.warn("Unreconciled fetch failed", e);
       setUnreconciled([]);

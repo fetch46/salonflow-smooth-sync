@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-
+import { getReceiptsWithFallback } from "@/utils/mockDatabase";
 interface Client {
   id: string;
   full_name: string;
@@ -103,15 +103,21 @@ export default function ClientProfile() {
         notes: clientData.notes || '',
       });
 
-      // Fetch receipts for this client
-      const { data: receiptsData, error: receiptsError } = await supabase
-        .from("receipts")
-        .select("id, receipt_number, total_amount, amount_paid, status, created_at")
-        .eq("customer_id", id)
-        .order("created_at", { ascending: false });
-
-      if (receiptsError) throw receiptsError;
-      setReceipts(receiptsData || []);
+      // Fetch receipts for this client (with Supabase -> mock fallback)
+      let receiptsData: any[] = [];
+      try {
+        const rcptRes = await supabase
+          .from("receipts")
+          .select("id, receipt_number, total_amount, amount_paid, status, created_at, customer_id")
+          .eq("customer_id", id)
+          .order("created_at", { ascending: false });
+        if (rcptRes.error) throw rcptRes.error;
+        receiptsData = rcptRes.data || [];
+      } catch (err) {
+        const all = await getReceiptsWithFallback(supabase as any);
+        receiptsData = (all || []).filter((r: any) => r.customer_id === id);
+      }
+      setReceipts(receiptsData);
 
       // Fetch job cards
       const { data: jobCardsData, error: jobCardsError } = await supabase

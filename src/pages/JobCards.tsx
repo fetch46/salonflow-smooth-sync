@@ -248,13 +248,20 @@ export default function JobCards() {
   const handleDeleteJobCard = async (id: string) => {
     try {
       // Guard: block deletion if a receipt exists for this job card
-      const { data: existingRcpt, error: rcptErr } = await supabase
-        .from('receipts')
-        .select('id')
-        .eq('job_card_id', id)
-        .limit(1);
-      if (rcptErr) throw rcptErr;
-      if (existingRcpt && existingRcpt.length > 0) {
+      let hasReceipt = false;
+      try {
+        const { data: existingRcpt, error: rcptErr } = await supabase
+          .from('receipts')
+          .select('id')
+          .eq('job_card_id', id)
+          .limit(1);
+        if (rcptErr) throw rcptErr;
+        hasReceipt = !!(existingRcpt && existingRcpt.length > 0);
+      } catch {
+        const allReceipts = await getReceiptsWithFallback(supabase as any);
+        hasReceipt = allReceipts.some((r: any) => r.job_card_id === id);
+      }
+      if (hasReceipt) {
         toast.error('Cannot delete job card: a receipt has been created for this job');
         return;
       }
