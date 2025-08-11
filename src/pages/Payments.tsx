@@ -815,7 +815,14 @@ export default function Payments() {
                               </DropdownMenuItem>
                               <DropdownMenuItem className="text-red-600" onClick={async () => {
                                 if (!confirm('Delete this expense?')) return;
-                                try { await supabase.from('expenses').delete().eq('id', e.id); toast.success('Expense deleted'); loadData(); } catch { toast.error('Failed to delete expense'); }
+                                try {
+                                  try { const { deleteTransactionsByReference } = await import('@/utils/ledger'); await deleteTransactionsByReference('expense_payment', e.id); } catch {}
+                                  await supabase.from('expenses').delete().eq('id', e.id);
+                                  toast.success('Expense deleted');
+                                  loadData();
+                                } catch {
+                                  toast.error('Failed to delete expense');
+                                }
                               }}>
                                 <Trash2 className="mr-2 h-4 w-4" /> Delete Payment
                               </DropdownMenuItem>
@@ -880,7 +887,14 @@ export default function Payments() {
                               </DropdownMenuItem>
                               <DropdownMenuItem className="text-red-600" onClick={async () => {
                                 if (!confirm('Delete this purchase?')) return;
-                                try { await supabase.from('purchases').delete().eq('id', p.id); toast.success('Purchase deleted'); loadData(); } catch { toast.error('Failed to delete purchase'); }
+                                try {
+                                  try { const { deleteTransactionsByReference } = await import('@/utils/ledger'); await deleteTransactionsByReference('purchase_payment', p.id); } catch {}
+                                  await supabase.from('purchases').delete().eq('id', p.id);
+                                  toast.success('Purchase deleted');
+                                  loadData();
+                                } catch {
+                                  toast.error('Failed to delete purchase');
+                                }
                               }}>
                                 <Trash2 className="mr-2 h-4 w-4" /> Delete Payment
                               </DropdownMenuItem>

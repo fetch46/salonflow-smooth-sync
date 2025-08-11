@@ -376,6 +376,12 @@ export default function Expenses() {
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this expense?")) {
       try {
+        // Best-effort: remove any ledger entries related to this expense payment
+        try {
+          const { deleteTransactionsByReference } = await import("@/utils/ledger");
+          await deleteTransactionsByReference("expense_payment", id);
+        } catch {}
+
         const { error } = await supabase
           .from("expenses")
           .delete()
