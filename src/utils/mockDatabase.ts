@@ -13,6 +13,7 @@ interface MockReceipt {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  location_id?: string | null;
 }
 
 function getStorage() {
@@ -93,13 +94,30 @@ export async function createReceiptWithFallback(supabase: any, receiptData: any,
       total_amount: receiptData.total_amount ?? 0,
       status: receiptData.status || 'open',
       notes: receiptData.notes || null,
+      location_id: receiptData.location_id || null,
     };
-    const { data: receipt, error: receiptError } = await supabase
-      .from('receipts')
-      .insert([dbReceipt])
-      .select('id')
-      .maybeSingle();
-    if (receiptError) throw receiptError;
+    let receiptIns = null as any;
+    try {
+      const { data: receipt, error: receiptError } = await supabase
+        .from('receipts')
+        .insert([dbReceipt])
+        .select('id')
+        .maybeSingle();
+      if (receiptError) throw receiptError;
+      receiptIns = receipt;
+    } catch (e: any) {
+      const msg = String(e?.message || '').toLowerCase();
+      const code = (e as any)?.code || '';
+      const missingLoc = code === '42703' || (msg.includes('column') && msg.includes('location_id') && msg.includes('does not exist'));
+      if (!missingLoc) throw e;
+      const { data: receipt, error: receiptError } = await supabase
+        .from('receipts')
+        .insert([{ ...dbReceipt, location_id: undefined } as any])
+        .select('id')
+        .maybeSingle();
+      if (receiptError) throw receiptError;
+      receiptIns = receipt;
+    }
     if (!receipt?.id) throw new Error('Receipt created but no ID returned');
 
     if (items?.length) {
@@ -151,6 +169,7 @@ export async function createReceiptWithFallback(supabase: any, receiptData: any,
       notes: receiptData.notes || null,
       updated_at: nowIso,
       created_at: nowIso,
+      location_id: receiptData.location_id || null,
     } as any);
 
     // Persist items to local storage for reporting/commissions fallbacks
@@ -183,7 +202,7 @@ export async function getReceiptsWithFallback(supabase: any) {
   try {
     const { data, error } = await supabase
       .from('receipts')
-      .select('id, receipt_number, customer_id, subtotal, tax_amount, discount_amount, total_amount, amount_paid, status, notes, created_at, updated_at')
+      .select('id, receipt_number, customer_id, subtotal, tax_amount, discount_amount, total_amount, amount_paid, status, notes, created_at, updated_at, location_id')
       .order('created_at', { ascending: false });
     if (error) throw error;
     return data || [];
@@ -257,7 +276,7 @@ export async function getReceiptItemsWithFallback(supabase: any, receiptId: stri
 // Helper to record a receipt payment with fallback to local storage
 export async function recordReceiptPaymentWithFallback(
   supabase: any,
-  payment: { receipt_id: string; amount: number; method: string; reference_number?: string | null; payment_date?: string }
+  payment: { receipt_id: string; amount: number; method: string; reference_number?: string | null; payment_date?: string; location_id?: string | null }
 ): Promise<boolean> {
   try {
     const payload = {
@@ -266,6 +285,7 @@ export async function recordReceiptPaymentWithFallback(
       method: payment.method,
       reference_number: payment.reference_number || null,
       payment_date: payment.payment_date || new Date().toISOString().slice(0, 10),
+      location_id: payment.location_id || null,
     } as any;
     const { error } = await supabase.from('receipt_payments').insert([payload]);
     if (error) throw error;
@@ -296,6 +316,7 @@ export async function recordReceiptPaymentWithFallback(
       reference_number: payment.reference_number || null,
       created_at: nowIso,
       updated_at: nowIso,
+      location_id: payment.location_id || null,
     };
     storage.receipt_payments = storage.receipt_payments || [];
     storage.receipt_payments.push(localPay);

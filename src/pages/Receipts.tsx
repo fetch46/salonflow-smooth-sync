@@ -47,6 +47,8 @@ export default function Receipts() {
   const { organization } = useSaas();
   const [customers, setCustomers] = useState<{ id: string; full_name: string }[]>([]);
   const [customerId, setCustomerId] = useState<string>("all");
+  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
+  const [locationIdFilter, setLocationIdFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [isPayOpen, setIsPayOpen] = useState(false);
@@ -142,6 +144,12 @@ export default function Receipts() {
       } catch {
         setCustomers([]);
       }
+      try {
+        const { data: locs } = await supabase.from('business_locations').select('id, name').order('name');
+        setLocations((locs || []) as any);
+      } catch {
+        setLocations([]);
+      }
     })();
   }, []);
 
@@ -160,6 +168,7 @@ export default function Receipts() {
     return receipts
       .filter(r => (status === 'all' ? true : r.status === status))
       .filter(r => (customerId === 'all' ? true : r.customer_id === customerId))
+      .filter(r => (locationIdFilter === 'all' ? true : (r as any).location_id === locationIdFilter))
       .filter(r => {
         if (!dateFrom && !dateTo) return true;
         const d = new Date(r.created_at).toISOString().slice(0, 10);
@@ -168,7 +177,7 @@ export default function Receipts() {
         return true;
       })
       .filter(r => r.receipt_number.toLowerCase().includes(s) || (r.notes || '').toLowerCase().includes(s));
-  }, [receipts, search, status, customerId, dateFrom, dateTo]);
+  }, [receipts, search, status, customerId, dateFrom, dateTo, locationIdFilter]);
 
   const outstanding = (r: Receipt) => Math.max(0, (r.total_amount || 0) - (r.amount_paid || 0));
   const paidPct = (r: Receipt) => {
@@ -289,55 +298,61 @@ export default function Receipts() {
         method: payment.method,
         reference_number: payment.reference || null,
         payment_date: paymentDate,
+        location_id: (selected as any)?.location_id || null,
       });
       if (!ok) throw new Error('Failed to record payment');
 
       // Post to ledger (debit Cash/Bank, credit Income)
-      if (organization?.id) {
-        try {
-          if (selectedAccountId && selectedIncomeAccountId) {
-            await postReceiptPaymentWithAccounts({
-              organizationId: organization.id,
-              amount: amt,
-              depositAccountId: selectedAccountId,
-              incomeAccountId: selectedIncomeAccountId,
-              receiptId: selected.id,
-              receiptNumber: selected.receipt_number,
-              paymentDate,
-            });
-          } else if (selectedIncomeAccountId && !selectedAccountId) {
-            await postReceiptPaymentToLedgerWithIncomeAccount({
-              organizationId: organization.id,
-              amount: amt,
-              method: payment.method,
-              incomeAccountId: selectedIncomeAccountId,
-              receiptId: selected.id,
-              receiptNumber: selected.receipt_number,
-              paymentDate,
-            });
-          } else if (selectedAccountId && !selectedIncomeAccountId) {
-            await postReceiptPaymentWithAccount({
-              organizationId: organization.id,
-              amount: amt,
-              depositAccountId: selectedAccountId,
-              receiptId: selected.id,
-              receiptNumber: selected.receipt_number,
-              paymentDate,
-            });
-          } else {
-            await postReceiptPaymentToLedger({
-              organizationId: organization.id,
-              amount: amt,
-              method: payment.method,
-              receiptId: selected.id,
-              receiptNumber: selected.receipt_number,
-              paymentDate,
-            });
+                if (organization?.id) {
+            try {
+              const locationId = (selected as any)?.location_id || null;
+              if (selectedAccountId && selectedIncomeAccountId) {
+                await postReceiptPaymentWithAccounts({
+                  organizationId: organization.id,
+                  amount: amt,
+                  depositAccountId: selectedAccountId,
+                  incomeAccountId: selectedIncomeAccountId,
+                  receiptId: selected.id,
+                  receiptNumber: selected.receipt_number,
+                  paymentDate,
+                  locationId,
+                });
+              } else if (selectedIncomeAccountId && !selectedAccountId) {
+                await postReceiptPaymentToLedgerWithIncomeAccount({
+                  organizationId: organization.id,
+                  amount: amt,
+                  method: payment.method,
+                  incomeAccountId: selectedIncomeAccountId,
+                  receiptId: selected.id,
+                  receiptNumber: selected.receipt_number,
+                  paymentDate,
+                  locationId,
+                });
+              } else if (selectedAccountId && !selectedIncomeAccountId) {
+                await postReceiptPaymentWithAccount({
+                  organizationId: organization.id,
+                  amount: amt,
+                  depositAccountId: selectedAccountId,
+                  receiptId: selected.id,
+                  receiptNumber: selected.receipt_number,
+                  paymentDate,
+                  locationId,
+                });
+              } else {
+                await postReceiptPaymentToLedger({
+                  organizationId: organization.id,
+                  amount: amt,
+                  method: payment.method,
+                  receiptId: selected.id,
+                  receiptNumber: selected.receipt_number,
+                  paymentDate,
+                  locationId,
+                });
+              }
+            } catch (ledgerErr) {
+              console.warn('Ledger posting failed', ledgerErr);
+            }
           }
-        } catch (ledgerErr) {
-          console.warn('Ledger posting failed', ledgerErr);
-        }
-      }
 
       toast.success('Payment recorded');
       setIsPayOpen(false);
@@ -402,6 +417,7 @@ export default function Receipts() {
     }
   };
 
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[300px]">
@@ -452,6 +468,19 @@ export default function Receipts() {
                 <SelectItem value="all">All Customers</SelectItem>
                 {customers.map(c => (
                   <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-[220px]">
+            <Select value={locationIdFilter} onValueChange={setLocationIdFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Locations" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Locations</SelectItem>
+                {locations.map(l => (
+                  <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -533,6 +562,7 @@ export default function Receipts() {
                   <TableHead>#</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Customer</TableHead>
+                  <TableHead>Location</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>Paid</TableHead>
@@ -550,6 +580,7 @@ export default function Receipts() {
                     <TableCell className="font-medium">{r.receipt_number}</TableCell>
                     <TableCell>{format(new Date(r.created_at), 'MMM dd, yyyy')}</TableCell>
                     <TableCell>{r.customer_id ? (customersById[r.customer_id] || 'Customer') : 'Walk-in'}</TableCell>
+                    <TableCell>{(() => { const lid = (r as any).location_id; return lid ? (locations.find(l => l.id === lid)?.name || '—') : '—'; })()}</TableCell>
                     <TableCell>
                       <Badge variant={r.status === 'paid' ? 'default' : r.status === 'partial' ? 'outline' : 'secondary'}>
                         {r.status.toUpperCase()}
