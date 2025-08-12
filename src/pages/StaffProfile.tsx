@@ -99,38 +99,42 @@ export default function StaffProfile() {
     if (!id) return;
     setLoading(true);
     try {
-      // Filter invoices in date range
-      const { data: invoices } = await supabase
-        .from('invoices')
-        .select('id, created_at')
+      // Load commission entries from job_card_services for this staff within date range
+      const { data: jcs, error: jcsErr } = await supabase
+        .from('job_card_services')
+        .select(`
+          id, created_at, quantity, unit_price, commission_percentage,
+          services:service_id ( id, name, commission_percentage ),
+          job_cards:job_card_id ( id, created_at )
+        `)
+        .eq('staff_id', id)
         .gte('created_at', startDate)
         .lte('created_at', endDate);
-      const invoiceIds: string[] = (invoices || []).map((r: any) => r.id);
+      if (jcsErr) throw jcsErr;
 
-      let comms: any[] = [];
-      if (invoiceIds.length > 0) {
-        const { data } = await supabase
-          .from('staff_commissions')
-          .select(`
-            id, commission_rate, gross_amount, commission_amount,
-            invoice:invoice_id ( id, created_at ),
-            service:service_id ( id, name )
-          `)
-          .eq('staff_id', id)
-          .in('invoice_id', invoiceIds);
-        comms = data || [];
-      }
-
-      const normalized = (comms || []).map((r: any) => ({
-        id: r.id,
-        date: (Array.isArray(r.invoice) ? r.invoice[0] : r.invoice)?.created_at,
-        service: (Array.isArray(r.service) ? r.service[0] : r.service)?.name || 'Service',
-        gross: Number(r.gross_amount || 0),
-        rate: Number(r.commission_rate || 0),
-        commission: Number(r.commission_amount || 0),
-      }));
+      const normalized = (jcs || []).map((row: any) => {
+        const qty = Number(row.quantity || 1);
+        const unit = Number(row.unit_price || 0);
+        const gross = qty * unit;
+        // Commission rate preference: explicit row.commission_percentage -> service default -> 0
+        const rate = typeof row.commission_percentage === 'number' && !isNaN(row.commission_percentage)
+          ? Number(row.commission_percentage)
+          : (typeof row.services?.commission_percentage === 'number' && !isNaN(row.services?.commission_percentage)
+            ? Number(row.services?.commission_percentage)
+            : 0);
+        const commission = Number(((gross * rate) / 100).toFixed(2));
+        return {
+          id: row.id,
+          date: (row.created_at || (Array.isArray(row.job_cards) ? row.job_cards[0]?.created_at : row.job_cards?.created_at)) || null,
+          service: (Array.isArray(row.services) ? row.services[0] : row.services)?.name || 'Service',
+          gross,
+          rate,
+          commission,
+        };
+      });
       setCommissionRows(normalized);
 
+      // Load appointments summary in range
       const { data: appts } = await supabase
         .from('appointments')
         .select('id, appointment_date, status, total_amount')
