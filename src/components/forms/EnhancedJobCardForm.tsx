@@ -253,29 +253,45 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
 
         // Update inventory levels (reduce stock) at appointment location or default POS location
         const appointmentLocationId = (appointment as any)?.location_id || ((await supabase.from('appointments').select('location_id').eq('id', appointmentId).maybeSingle()).data?.location_id);
-        const defaultPosLocationId = ((organization?.settings as any) || {})?.pos_default_location_id;
-        const effectiveLocationId = appointmentLocationId || defaultPosLocationId || null;
+        const defaultPosWarehouseId = ((organization?.settings as any) || {})?.pos_default_warehouse_id as string | undefined;
+        // Prefer appointment location inventory if schema is location-based, else fallback to POS default warehouse when levels are warehouse-based
+        const effectiveLocationId = appointmentLocationId || null;
         for (const kit of serviceKits) {
           const quantityUsed = productQuantities[kit.good_id] || kit.default_quantity || 1;
-          if (!effectiveLocationId) {
-            // no location context; skip stock mutation
+          if (effectiveLocationId) {
+            // Location-based decrement path
+            const { data: currentLevelRows, error: levelsError } = await supabase
+              .from("inventory_levels")
+              .select("id, quantity")
+              .eq("item_id", kit.good_id)
+              .eq("location_id", effectiveLocationId)
+              .limit(1);
+            if (levelsError) throw levelsError;
+            const existing = (currentLevelRows || [])[0] as { id: string; quantity: number } | undefined;
+            if (existing) {
+              const newQuantity = Math.max(0, Number(existing.quantity || 0) - Number(quantityUsed || 0));
+              await supabase.from("inventory_levels").update({ quantity: newQuantity }).eq("id", existing.id);
+            } else {
+              await supabase.from("inventory_levels").insert([{ item_id: kit.good_id, location_id: effectiveLocationId, quantity: 0 }]);
+            }
             continue;
           }
-          // Get current inventory level at effective location
-          const { data: currentLevelRows, error: levelsError } = await supabase
-            .from("inventory_levels")
-            .select("id, quantity")
-            .eq("item_id", kit.good_id)
-            .eq("location_id", effectiveLocationId)
-            .limit(1);
-          if (levelsError) throw levelsError;
-          const existing = (currentLevelRows || [])[0] as { id: string; quantity: number } | undefined;
-          if (existing) {
-            const newQuantity = Math.max(0, Number(existing.quantity || 0) - Number(quantityUsed || 0));
-            await supabase.from("inventory_levels").update({ quantity: newQuantity }).eq("id", existing.id);
-          } else {
-            // If no row, create with zero (cannot go negative)
-            await supabase.from("inventory_levels").insert([{ item_id: kit.good_id, location_id: effectiveLocationId, quantity: 0 }]);
+          if (defaultPosWarehouseId) {
+            // Warehouse-based fallback path
+            const { data: currentLevelRows, error: levelsError } = await supabase
+              .from("inventory_levels")
+              .select("id, quantity")
+              .eq("item_id", kit.good_id)
+              .eq("warehouse_id", defaultPosWarehouseId)
+              .limit(1);
+            if (levelsError) throw levelsError;
+            const existing = (currentLevelRows || [])[0] as { id: string; quantity: number } | undefined;
+            if (existing) {
+              const newQuantity = Math.max(0, Number(existing.quantity || 0) - Number(quantityUsed || 0));
+              await supabase.from("inventory_levels").update({ quantity: newQuantity }).eq("id", existing.id);
+            } else {
+              await supabase.from("inventory_levels").insert([{ item_id: kit.good_id, warehouse_id: defaultPosWarehouseId, quantity: 0 }]);
+            }
           }
         }
       }

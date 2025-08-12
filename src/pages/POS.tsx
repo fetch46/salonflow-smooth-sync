@@ -111,17 +111,23 @@ export default function POS() {
         const active = (whs || []).filter((w: any) => w.is_active);
         setWarehouses(active.map((w: any) => ({ id: w.id, name: w.name, location_id: w.location_id || null })));
       } catch {}
-      // Try to default from org settings: default POS location -> its default warehouse
+      // Try to default from org settings: prefer default POS warehouse, then fallback via default location
       try {
-        const defaultLocationId = ((organization?.settings as any) || {})?.pos_default_location_id as string | undefined;
-        if (defaultLocationId) {
-          const { data: loc } = await supabase
-            .from("business_locations")
-            .select("id, default_warehouse_id")
-            .eq("id", defaultLocationId)
-            .maybeSingle();
-          const defWh = (loc as any)?.default_warehouse_id as string | undefined;
-          if (defWh) setSelectedWarehouseId(defWh);
+        const settings = (organization?.settings as any) || {};
+        const defaultWarehouseId = settings?.pos_default_warehouse_id as string | undefined;
+        if (defaultWarehouseId) {
+          setSelectedWarehouseId(defaultWarehouseId);
+        } else {
+          const defaultLocationId = settings?.pos_default_location_id as string | undefined;
+          if (defaultLocationId) {
+            const { data: loc } = await supabase
+              .from("business_locations")
+              .select("id, default_warehouse_id")
+              .eq("id", defaultLocationId)
+              .maybeSingle();
+            const defWh = (loc as any)?.default_warehouse_id as string | undefined;
+            if (defWh) setSelectedWarehouseId(defWh);
+          }
         }
       } catch {}
       await fetchProducts();
