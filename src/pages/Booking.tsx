@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSaas } from "@/lib/saas";
-import { postReceiptPaymentToLedger } from "@/utils/ledger";
+import { postBookingPrepaymentToUnearnedRevenue } from "@/utils/ledger";
 
 const Booking = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -78,63 +78,43 @@ const Booking = () => {
     };
 
     try {
-      // Create a receipt for the booking services (assuming single service price sum = 0 for placeholder)
-      const subtotal = 0; // Replace with sum of selected service prices when available
-      const receiptNumber = `RCT-${Date.now().toString().slice(-6)}`;
-      const { data: receipt, error } = await supabase
-        .from('receipts')
-        .insert([
-          {
-            receipt_number: receiptNumber,
-            customer_id: null,
-            subtotal,
-            tax_amount: 0,
-            discount_amount: 0,
-            total_amount: subtotal,
-            status: collectReservationFee ? 'partial' : 'open',
-            notes: `Booking for ${form.name}`,
-          },
-        ])
-        .select()
-        .single();
-      if (error) throw error;
+      // For now, do not create a receipt; just store booking and optional prepayment
+      if (collectReservationFee) {
+        // Persist prepayment
+        try {
+          const { recordPrepaymentWithFallback } = await import("@/utils/mockDatabase");
+          await recordPrepaymentWithFallback(supabase, {
+            client_id: null,
+            amount: Number(reservationAmount),
+            method: reservationPaymentMethod,
+            reference_number: reservationPaymentMethod === 'mpesa' ? reservationTransactionNumber.trim() : undefined,
+          });
+        } catch (e) {
+          // ignore, booking still proceeds
+        }
 
-      if (collectReservationFee && receipt) {
-        const { error: payErr } = await supabase
-          .from('receipt_payments')
-          .insert([
-            {
-              receipt_id: receipt.id,
-              amount: Number(reservationAmount),
-              method: reservationPaymentMethod,
-              reference_number: reservationPaymentMethod === 'mpesa' ? reservationTransactionNumber.trim() : null,
-            },
-          ]);
-        if (payErr) throw payErr;
-
-        // Post to ledger
+        // Post to ledger: DR Cash/Bank, CR Unearned Revenue
         if (organization?.id) {
           try {
-            await postReceiptPaymentToLedger({
+            await postBookingPrepaymentToUnearnedRevenue({
               organizationId: organization.id,
               amount: Number(reservationAmount),
               method: reservationPaymentMethod,
-              receiptId: receipt.id,
-              receiptNumber,
+              clientId: null,
             });
           } catch (ledgerErr) {
-            console.warn('Ledger posting failed (booking reservation)', ledgerErr);
+            console.warn('Ledger posting failed (booking prepayment)', ledgerErr);
           }
         }
       }
 
       console.log("Booking submitted:", bookingData);
-      toast.success('Booking created and receipt generated');
+      toast.success('Booking created' + (collectReservationFee ? ' with prepayment' : ''));
       alert("Booking submitted successfully!");
     } catch (e: any) {
-      console.error('Error creating booking receipt:', e);
-      toast.error(e?.message || 'Failed to create receipt for booking');
-      alert("Booking submitted, but failed to create receipt.");
+      console.error('Error creating booking:', e);
+      toast.error(e?.message || 'Failed to create booking');
+      alert("Booking submission failed.");
     }
   };
 
