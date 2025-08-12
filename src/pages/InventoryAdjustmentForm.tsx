@@ -68,6 +68,7 @@ export default function InventoryAdjustmentForm() {
   const isEdit = Boolean(id);
 
   const [loading, setLoading] = useState(false);
+  const [adjusting, setAdjusting] = useState(false);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [formData, setFormData] = useState({
@@ -215,96 +216,202 @@ export default function InventoryAdjustmentForm() {
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const validateForm = (): string | null => {
     if (selectedItems.length === 0) {
-      toast.error("Please add at least one item to the adjustment");
-      return;
+      return "Please add at least one item to the adjustment";
     }
-
-    // Basic validations
     if (!formData.adjustment_type || !formData.reason) {
-      toast.error("Please select an adjustment type and reason");
-      return;
+      return "Please select an adjustment type and reason";
     }
-
     if (warehouses.length > 0 && !formData.warehouse_id) {
-      toast.error("Please select a warehouse");
-      return;
+      return "Please select a warehouse";
     }
-
     const hasInvalidItemId = selectedItems.some((item) => !item.item_id || item.item_id.trim() === "");
     if (hasInvalidItemId) {
-      toast.error("Please select an item for all adjustment rows");
-      return;
+      return "Please select an item for all adjustment rows";
     }
-
     const hasInvalidNumbers = selectedItems.some(
       (item) => !Number.isFinite(item.current_quantity) || !Number.isFinite(item.adjusted_quantity) || !Number.isFinite(item.unit_cost)
     );
     if (hasInvalidNumbers) {
-      toast.error("Please enter valid numeric values for quantities and unit cost");
-      return;
+      return "Please enter valid numeric values for quantities and unit cost";
     }
+    return null;
+  };
+
+  const createOrUpdateAdjustment = async (): Promise<string> => {
+    const validationError = validateForm();
+    if (validationError) {
+      throw new Error(validationError);
+    }
+
+    const adjustmentData: Record<string, any> = {
+      adjustment_date: formData.adjustment_date,
+      adjustment_type: formData.adjustment_type,
+      reason: formData.reason,
+      notes: formData.notes,
+      adjustment_number: formData.adjustment_number || generateAdjustmentNumber(),
+      total_items: selectedItems.length,
+      status: "pending",
+    };
+
+    if (formData.warehouse_id) {
+      adjustmentData.warehouse_id = formData.warehouse_id;
+    }
+
+    let adjustmentId: string;
+
+    if (isEdit && id) {
+      const { error } = await supabase
+        .from("inventory_adjustments")
+        .update(adjustmentData)
+        .eq("id", id);
+      if (error) throw error;
+      adjustmentId = id;
+      // Replace items
+      const { error: deleteErr } = await supabase
+        .from("inventory_adjustment_items")
+        .delete()
+        .eq("adjustment_id", id);
+      if (deleteErr) throw deleteErr;
+    } else {
+      const { data, error } = await supabase
+        .from("inventory_adjustments")
+        .insert([adjustmentData])
+        .select()
+        .single();
+      if (error) throw error;
+      adjustmentId = data.id;
+    }
+
+    const itemsData = selectedItems.map((item) => ({
+      adjustment_id: adjustmentId,
+      item_id: item.item_id,
+      current_quantity: item.current_quantity,
+      adjusted_quantity: item.adjusted_quantity,
+      difference: item.difference,
+      unit_cost: item.unit_cost,
+      total_cost: item.total_cost,
+      notes: item.notes
+    }));
+
+    const { error: itemsError } = await supabase
+      .from("inventory_adjustment_items")
+      .insert(itemsData);
+    if (itemsError) throw itemsError;
+
+    return adjustmentId;
+  };
+
+  const approveAdjustment = async (adjustmentId: string) => {
+    // Always re-fetch the latest adjustment to avoid acting on stale data
+    const { data: latestAdj, error: latestAdjErr } = await supabase
+      .from("inventory_adjustments")
+      .select("id, warehouse_id, location_id")
+      .eq("id", adjustmentId)
+      .single();
+    if (latestAdjErr) throw latestAdjErr;
+
+    // Derive effective location_id to use for inventory_levels
+    let effectiveLocationId: string | null = null;
+    let usedWarehouseId: string | null = null;
+    if (latestAdj?.warehouse_id) {
+      // Validate that the referenced warehouse still exists and fetch its location
+      const { data: whRow, error: whErr } = await supabase
+        .from("warehouses")
+        .select("id, location_id")
+        .eq("id", latestAdj.warehouse_id)
+        .maybeSingle();
+      if (whErr || !whRow) {
+        throw new Error(
+          "Selected warehouse no longer exists. Please choose a valid warehouse."
+        );
+      }
+      usedWarehouseId = whRow.id as string;
+      effectiveLocationId = whRow.location_id as string | null;
+    } else {
+      effectiveLocationId = (latestAdj as any)?.location_id ?? null;
+    }
+
+    if (!effectiveLocationId) {
+      throw new Error(
+        "This adjustment has no warehouse/location set. Please select a warehouse or location before approval."
+      );
+    }
+
+    // Load items for this adjustment to apply quantity changes at the selected location
+    const { data: items, error: itemsErr } = await supabase
+      .from("inventory_adjustment_items")
+      .select("item_id, difference, adjusted_quantity")
+      .eq("adjustment_id", adjustmentId);
+    if (itemsErr) throw itemsErr;
+
+    // Apply item quantity changes per location
+    for (const item of items || []) {
+      // Fetch existing level for item/location
+      const { data: levelRows, error: levelErr } = await supabase
+        .from("inventory_levels")
+        .select("id, quantity")
+        .eq("item_id", item.item_id)
+        .eq("location_id", effectiveLocationId)
+        .limit(1);
+      if (levelErr) throw levelErr;
+
+      const existing = (levelRows || [])[0];
+      if (existing) {
+        const newQty = (existing.quantity ?? 0) + (item.difference ?? 0);
+        const { error: updErr } = await supabase
+          .from("inventory_levels")
+          .update({ quantity: newQty })
+          .eq("id", existing.id);
+        if (updErr) throw updErr;
+      } else {
+        // No existing level row => assume current was 0 and set to adjusted quantity
+        try {
+          const insertQuantity = item.adjusted_quantity ?? (item.difference ?? 0);
+          const { error: insertErr } = await supabase
+            .from("inventory_levels")
+            .insert([
+              { item_id: item.item_id, location_id: effectiveLocationId, quantity: insertQuantity },
+            ]);
+          if (insertErr) throw insertErr;
+        } catch (e: any) {
+          const pgCode = e?.code || e?.details || "";
+          if ((typeof pgCode === "string" && pgCode.includes("foreign key")) || e?.code === "23503") {
+            throw new Error(
+              "The selected warehouse/location was removed. Please set a valid warehouse or location and try again."
+            );
+          }
+          throw e;
+        }
+      }
+    }
+
+    // Finally, mark the adjustment as approved
+    const user = await supabase.auth.getUser();
+    const updatePayload: any = {
+      status: "approved",
+      approved_at: new Date().toISOString(),
+      approved_by: user.data.user?.id,
+    };
+    if (usedWarehouseId) {
+      updatePayload.warehouse_id = usedWarehouseId;
+    }
+
+    const { error } = await supabase
+      .from("inventory_adjustments")
+      .update(updatePayload)
+      .eq("id", adjustmentId);
+
+    if (error) throw error;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
     try {
       setLoading(true);
-      const adjustmentData: Record<string, any> = {
-        adjustment_date: formData.adjustment_date,
-        adjustment_type: formData.adjustment_type,
-        reason: formData.reason,
-        notes: formData.notes,
-        adjustment_number: formData.adjustment_number || generateAdjustmentNumber(),
-        total_items: selectedItems.length,
-        status: "pending",
-      };
-
-      if (formData.warehouse_id) {
-        adjustmentData.warehouse_id = formData.warehouse_id;
-      }
-
-      let adjustmentId: string;
-
-      if (isEdit && id) {
-        const { error } = await supabase
-          .from("inventory_adjustments")
-          .update(adjustmentData)
-          .eq("id", id);
-        if (error) throw error;
-        adjustmentId = id;
-        // Replace items
-        const { error: deleteErr } = await supabase
-          .from("inventory_adjustment_items")
-          .delete()
-          .eq("adjustment_id", id);
-        if (deleteErr) throw deleteErr;
-      } else {
-        const { data, error } = await supabase
-          .from("inventory_adjustments")
-          .insert([adjustmentData])
-          .select()
-          .single();
-        if (error) throw error;
-        adjustmentId = data.id;
-      }
-
-      const itemsData = selectedItems.map((item) => ({
-        adjustment_id: adjustmentId,
-        item_id: item.item_id,
-        current_quantity: item.current_quantity,
-        adjusted_quantity: item.adjusted_quantity,
-        difference: item.difference,
-        unit_cost: item.unit_cost,
-        total_cost: item.total_cost,
-        notes: item.notes
-      }));
-
-      const { error: itemsError } = await supabase
-        .from("inventory_adjustment_items")
-        .insert(itemsData);
-      if (itemsError) throw itemsError;
-
+      const adjustmentId = await createOrUpdateAdjustment();
       toast.success(isEdit ? "Adjustment updated successfully" : "Adjustment created successfully");
       navigate("/inventory-adjustments");
     } catch (error) {
@@ -313,6 +420,23 @@ export default function InventoryAdjustmentForm() {
       toast.error(message ? `Failed to save adjustment: ${message}` : "Failed to save adjustment");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveAndAdjust = async () => {
+    if (loading || adjusting) return;
+    try {
+      setAdjusting(true);
+      const adjustmentId = await createOrUpdateAdjustment();
+      await approveAdjustment(adjustmentId);
+      toast.success(isEdit ? "Adjustment updated and stock adjusted" : "Adjustment created and stock adjusted");
+      navigate("/inventory-adjustments");
+    } catch (error) {
+      console.error("Error saving and adjusting:", error);
+      const message = (error as any)?.message || (typeof error === "string" ? error : "");
+      toast.error(message ? `Failed to adjust: ${message}` : "Failed to adjust");
+    } finally {
+      setAdjusting(false);
     }
   };
 
@@ -486,7 +610,10 @@ export default function InventoryAdjustmentForm() {
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => navigate("/inventory-adjustments")}>Cancel</Button>
-              <Button type="submit" disabled={loading}>{loading ? (isEdit ? "Updating..." : "Saving...") : isEdit ? "Update Adjustment" : "Create Adjustment"}</Button>
+              <Button type="button" variant="secondary" disabled={loading || adjusting} onClick={handleSaveAndAdjust}>
+                {adjusting ? (isEdit ? "Saving & Adjusting..." : "Saving & Adjusting...") : (isEdit ? "Save & Adjust" : "Save & Adjust")}
+              </Button>
+              <Button type="submit" disabled={loading || adjusting}>{loading ? (isEdit ? "Updating..." : "Saving...") : isEdit ? "Update Adjustment" : "Create Adjustment"}</Button>
             </div>
           </form>
         </CardContent>
