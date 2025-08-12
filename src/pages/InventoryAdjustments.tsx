@@ -299,7 +299,18 @@ export default function InventoryAdjustments() {
     } catch (error) {
       console.error("Error approving adjustment:", error);
       const message = (error as any)?.message || (typeof error === "string" ? error : "");
-      toast.error(message ? `Failed to approve adjustment: ${message}` : "Failed to approve adjustment");
+      const fullMessage = message ? `Failed to approve adjustment: ${message}` : "Failed to approve adjustment";
+      toast.error(fullMessage);
+      if (
+        message && (
+          message.includes("warehouse/location was removed") ||
+          message.includes("Selected warehouse") ||
+          message.includes("no warehouse/location")
+        )
+      ) {
+        // Open the edit screen so the user can select a valid warehouse/location
+        navigate(`/inventory-adjustments/${adjustment.id}/edit`);
+      }
     } finally {
       setLoading(false);
     }
