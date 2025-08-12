@@ -95,6 +95,7 @@ export default function ProductView() {
     inventory_account_id: "",
     is_taxable: false,
   });
+  const [accountErrors, setAccountErrors] = useState<{ sales?: string; purchase?: string; inventory?: string }>({});
 
   useEffect(() => {
     const load = async () => {
@@ -247,6 +248,15 @@ export default function ProductView() {
   const saveAccounts = async () => {
     if (!id) return;
     try {
+      const nextErrors: { sales?: string; purchase?: string; inventory?: string } = {};
+      if (!editForm.sales_account_id) nextErrors.sales = "Required";
+      if (!editForm.purchase_account_id) nextErrors.purchase = "Required";
+      if (!editForm.inventory_account_id) nextErrors.inventory = "Required";
+      setAccountErrors(nextErrors);
+      if (nextErrors.sales || nextErrors.purchase || nextErrors.inventory) {
+        toast({ title: "Missing accounts", description: "Please select Sales, Purchase, and Inventory accounts.", variant: "destructive" });
+        return;
+      }
       const payload = {
         item_id: id,
         sales_account_id: editForm.sales_account_id || null,
@@ -285,6 +295,7 @@ export default function ProductView() {
       }
 
       setIsEditAccountsOpen(false);
+      setAccountErrors({});
       // reload mapping
       const { data: mapData, error: reloadError } = await supabase
         .from("inventory_item_accounts")
@@ -666,6 +677,7 @@ export default function ProductView() {
                   ))}
                 </SelectContent>
               </Select>
+              {accountErrors.sales && (<p className="text-xs text-destructive">{accountErrors.sales}</p>)}
             </div>
             <div className="space-y-2">
               <Label>Purchase Account</Label>
@@ -682,6 +694,7 @@ export default function ProductView() {
                   ))}
                 </SelectContent>
               </Select>
+              {accountErrors.purchase && (<p className="text-xs text-destructive">{accountErrors.purchase}</p>)}
             </div>
             <div className="space-y-2">
               <Label>Inventory Account</Label>
@@ -698,6 +711,7 @@ export default function ProductView() {
                   ))}
                 </SelectContent>
               </Select>
+              {accountErrors.inventory && (<p className="text-xs text-destructive">{accountErrors.inventory}</p>)}
             </div>
             <div className="space-y-2">
               <Label>Taxable</Label>
