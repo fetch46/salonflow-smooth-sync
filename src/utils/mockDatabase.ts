@@ -446,6 +446,13 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
       quantity: item.quantity,
       unit_price: item.unit_price,
       total_price: item.total_price,
+      service_id: item.service_id || null,
+      product_id: item.product_id || null,
+      staff_id: item.staff_id || null,
+      commission_percentage: typeof item.commission_percentage === 'number' ? item.commission_percentage : null,
+      commission_amount: typeof item.commission_percentage === 'number'
+        ? Number(((item.commission_percentage / 100) * (item.total_price ?? (item.quantity * item.unit_price))).toFixed(2))
+        : null,
     }));
 
     const { error: itemsError } = await supabase
@@ -470,6 +477,32 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
       updated_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
     } as any);
+    // Persist items with staff/commission meta in local storage for analytics
+    try {
+      const storage = (await mockDb.getStore()) as any;
+      storage.receipt_items = storage.receipt_items || [];
+      for (const it of items || []) {
+        storage.receipt_items.push({
+          id: `ritem_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+          invoice_id: invoice.id,
+          receipt_id: invoice.id,
+          service_id: it.service_id || null,
+          product_id: it.product_id || null,
+          description: it.description || 'Item',
+          quantity: it.quantity || 1,
+          unit_price: it.unit_price || 0,
+          total_price: it.total_price || ((it.quantity || 1) * (it.unit_price || 0)),
+          staff_id: it.staff_id || null,
+          commission_percentage: typeof it.commission_percentage === 'number' ? it.commission_percentage : null,
+          commission_amount: typeof it.commission_percentage === 'number'
+            ? Number(((it.commission_percentage / 100) * ((it.total_price ?? ((it.quantity || 1) * (it.unit_price || 0)) ))).toFixed(2))
+            : null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+      }
+      await mockDb.saveStore(storage);
+    } catch {}
     return invoice;
   }
 }

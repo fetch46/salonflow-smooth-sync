@@ -224,6 +224,78 @@ export default function Invoices() {
     fetchStaff();
   }, []);
 
+  // Prefill from job card if query param present
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const fromJobCard = params.get('fromJobCard');
+    if (!fromJobCard) return;
+    (async () => {
+      try {
+        // Load job card, client, and line items
+        const { data: jc, error: jcErr } = await supabase
+          .from('job_cards')
+          .select('id, client_id')
+          .eq('id', fromJobCard)
+          .maybeSingle();
+        if (jcErr) throw jcErr;
+        if (!jc) return;
+        const client = customers.find(c => c.id === jc.client_id);
+        if (client) {
+          setFormData(prev => ({
+            ...prev,
+            customer_id: client.id,
+            customer_name: client.full_name,
+            customer_email: client.email || '',
+            customer_phone: client.phone || '',
+            jobcard_id: jc.id,
+          }));
+        } else if (jc.client_id) {
+          // Fetch client if not in list yet
+          const { data: cli } = await supabase
+            .from('clients')
+            .select('id, full_name, email, phone')
+            .eq('id', jc.client_id)
+            .maybeSingle();
+          if (cli) {
+            setCustomers(prev => (prev.some(c => c.id === cli.id) ? prev : [...prev, cli as any]));
+            setFormData(prev => ({
+              ...prev,
+              customer_id: cli.id,
+              customer_name: cli.full_name || '',
+              customer_email: cli.email || '',
+              customer_phone: cli.phone || '',
+              jobcard_id: jc.id,
+            }));
+          }
+        }
+        // Load job card services to prefill invoice items with staff/commission
+        const { data: jcs } = await supabase
+          .from('job_card_services')
+          .select('service_id, staff_id, quantity, unit_price, commission_percentage, services:service_id(name)')
+          .eq('job_card_id', fromJobCard);
+        const preItems = (jcs || []).map((row: any, idx: number) => ({
+          id: `prefill-${Date.now()}-${idx}`,
+          invoice_id: '',
+          product_id: row.service_id,
+          service_id: row.service_id,
+          description: row.services?.name || 'Service',
+          quantity: Number(row.quantity || 1),
+          unit_price: Number(row.unit_price || 0),
+          discount_percentage: 0,
+          staff_id: row.staff_id || '',
+          commission_percentage: typeof row.commission_percentage === 'number' ? Number(row.commission_percentage) : 0,
+          total_price: Number(row.quantity || 1) * Number(row.unit_price || 0),
+          staff_name: staff.find(s => s.id === row.staff_id)?.full_name || '',
+          service_name: row.services?.name || '',
+        }));
+        if (preItems.length > 0) setSelectedItems(preItems as any);
+        setIsCreateModalOpen(true);
+      } catch (err) {
+        console.error('Failed to prefill from job card:', err);
+      }
+    })();
+  }, [customers, staff]);
+
   const fetchInvoices = async () => {
     try {
       setLoading(true);
@@ -317,6 +389,10 @@ export default function Invoices() {
     const service = services.find(s => s.id === newItem.service_id);
     const staffMember = staff.find(s => s.id === newItem.staff_id);
 
+    const unit = parseFloat(newItem.unit_price) || 0;
+    const gross = newItem.quantity * unit * (1 - newItem.discount_percentage / 100);
+    const commissionPct = Number(newItem.commission_percentage || 0);
+
     const item = {
       id: `temp-${Date.now()}`,
       invoice_id: "",
@@ -326,10 +402,10 @@ export default function Invoices() {
       quantity: newItem.quantity,
       discount_percentage: newItem.discount_percentage,
       staff_id: newItem.staff_id,
-      commission_percentage: newItem.commission_percentage,
-      unit_price: parseFloat(newItem.unit_price) || 0,
-      total_price: newItem.quantity * (parseFloat(newItem.unit_price) || 0) * (1 - newItem.discount_percentage / 100),
-      commission_amount: (newItem.quantity * (parseFloat(newItem.unit_price) || 0) * (1 - newItem.discount_percentage / 100)) * (newItem.commission_percentage / 100),
+      commission_percentage: commissionPct,
+      unit_price: unit,
+      total_price: gross,
+      commission_amount: Number(((commissionPct / 100) * gross).toFixed(2)),
       service_name: service?.name || "",
       staff_name: staffMember?.full_name || "",
     };
@@ -345,6 +421,7 @@ export default function Invoices() {
       commission_percentage: 0,
     });
   };
+
 
   const removeItemFromInvoice = (index: number) => {
     setSelectedItems(selectedItems.filter((_, i) => i !== index));

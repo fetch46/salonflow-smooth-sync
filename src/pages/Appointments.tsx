@@ -703,9 +703,16 @@ export default function Appointments() {
   };
 
   const handleCreateJobcard = async (appointment: Appointment) => {
+    // Enforce: Only confirmed bookings can raise a job card
+    const status = String(appointment.status || '').toLowerCase();
+    if (status !== 'confirmed') {
+      toast.error('Only confirmed bookings can create a job card');
+      return;
+    }
     // Prefer navigating to the job card creation page with prefill via query param
     navigate(`/job-cards/new?appointment=${appointment.id}`);
   };
+
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -965,7 +972,12 @@ export default function Appointments() {
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Appointment
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleCreateJobcard(appointment)}>
+                              <DropdownMenuItem 
+                                onClick={() => handleCreateJobcard(appointment)}
+                                disabled={String(appointment.status || '').toLowerCase() !== 'confirmed'}
+                                className={String(appointment.status || '').toLowerCase() !== 'confirmed' ? 'text-slate-400' : ''}
+                                title={String(appointment.status || '').toLowerCase() !== 'confirmed' ? 'Only confirmed bookings can create a job card' : undefined}
+                              >
                                 <FilePlus className="mr-2 h-4 w-4" />
                                 Create Jobcard
                               </DropdownMenuItem>

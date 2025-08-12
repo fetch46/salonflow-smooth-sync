@@ -16,8 +16,9 @@ import {
   ArrowLeft,
   Download,
   ClipboardList,
-  Package,
-} from "lucide-react";
+    Package,
+  FileText,
+ } from "lucide-react";
 
 interface JobCardRecord {
   id: string;
@@ -225,6 +226,9 @@ export default function JobCardView() {
           </Button>
           <Button variant="outline" onClick={handleExportPDF}>
             <Download className="w-4 h-4 mr-2" /> Export PDF
+          </Button>
+          <Button variant="outline" onClick={() => navigate(`/invoices?fromJobCard=${card.id}`)}>
+            <FileText className="w-4 h-4 mr-2" /> Create Invoice
           </Button>
           <Button onClick={() => navigate(`/job-cards/${card.id}/edit`)}>
             <Pencil className="w-4 h-4 mr-2" /> Edit
