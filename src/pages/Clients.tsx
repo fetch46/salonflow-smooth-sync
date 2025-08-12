@@ -196,7 +196,16 @@ export default function Clients() {
         }
         const { data, error } = await query.order("created_at", { ascending: false });
         if (error) throw error;
-        setClients(data || []);
+
+        // If Supabase returns no rows, try fallback to local storage for demo/offline data
+        if (!data || data.length === 0) {
+          const storage = JSON.parse(localStorage.getItem('mockDb') || '{}');
+          const localClients = (storage.clients || []) as any[];
+          const filtered = organization?.id ? localClients.filter(c => c.organization_id === organization.id) : localClients;
+          setClients(filtered);
+        } else {
+          setClients(data || []);
+        }
       } catch (e: any) {
         // Fallback to local storage mock for demo/offline
         const storage = JSON.parse(localStorage.getItem('mockDb') || '{}');
