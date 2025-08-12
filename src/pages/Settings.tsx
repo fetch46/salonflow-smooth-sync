@@ -835,7 +835,7 @@ phone: "",
                         onChange={(e) => setTaxRatePercent(e.target.value)}
                         placeholder="e.g. 8.5"
                       />
-                      <p className="text-xs text-muted-foreground">This rate will be used across POS, Invoices, Sales Receipts and Purchases.</p>
+                      <p className="text-xs text-muted-foreground">This rate will be used across POS, Invoices and Purchases.</p>
                     </div>
                   </div>
 

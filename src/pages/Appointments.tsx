@@ -12,7 +12,7 @@ import { CalendarDays, Clock, Phone, Mail, User, Edit2, Trash2, Plus, MoreHorizo
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
 import { useSaas } from "@/lib/saas";
-import { tableExists, createReceiptWithFallback, recordReceiptPaymentWithFallback } from "@/utils/mockDatabase";
+import { tableExists } from "@/utils/mockDatabase";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 
 interface Appointment {
@@ -593,37 +593,7 @@ export default function Appointments() {
           }
         }
 
-        // If booking fee collected, create a receipt and payment (with DB/mock fallback)
-        const paid = bookingFeeReceived ? Number(bookingFeeAmount || 0) : 0;
-        if (bookingFeeReceived && paid > 0) {
-          const total = totalPrice || form.price || 0;
-          const receiptNumber = `RCT-${Date.now().toString().slice(-6)}`;
-          const receiptPayload = {
-            receipt_number: receiptNumber,
-            customer_id: null,
-            job_card_id: null,
-            subtotal: total,
-            tax_amount: 0,
-            discount_amount: 0,
-            total_amount: total,
-            amount_paid: 0,
-            status: paid >= total ? 'paid' : 'partial',
-            notes: bookingAccountId
-              ? `Booking fee for appointment ${apptId}. Deposited to ${(accounts.find(a => a.id === bookingAccountId)?.account_name) || 'selected account'}.`
-              : `Booking fee for appointment ${apptId}.`,
-          };
-          const createdReceipt: any = await createReceiptWithFallback(supabase as any, { ...receiptPayload, location_id: form.location_id || defaultLocationId || null }, []);
-          if (createdReceipt?.id) {
-            await recordReceiptPaymentWithFallback(supabase as any, {
-              receipt_id: createdReceipt.id,
-              amount: paid,
-              method: bookingPaymentMethod as any,
-              reference_number: bookingTxnNumber || null,
-              // Attempt to tag the payment and ledger with the selected location
-              location_id: form.location_id || defaultLocationId || null,
-            });
-          }
-        }
+        // Booking fee no longer creates a sales receipt
 
         toast.success("Appointment created successfully!");
       }

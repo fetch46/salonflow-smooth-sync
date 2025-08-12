@@ -485,7 +485,7 @@ export default function ServiceView() {
         <CardHeader>
           <CardTitle>Sales History</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            Posted from sales receipts containing this service
+            Posted from receipts containing this service
           </p>
         </CardHeader>
         <CardContent>
@@ -512,7 +512,7 @@ export default function ServiceView() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
-                    <TableHead>Sales Receipt #</TableHead>
+                    <TableHead>Receipt #</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead className="hidden md:table-cell">Staff</TableHead>
                     <TableHead className="text-right">Qty</TableHead>
@@ -531,9 +531,7 @@ export default function ServiceView() {
                         <TableCell>{row.receipt_created_at ? new Date(row.receipt_created_at).toLocaleDateString() : (row.created_at ? new Date(row.created_at).toLocaleDateString() : '—')}</TableCell>
                         <TableCell className="font-medium">
                           {row.receipt_number ? (
-                            <button className="text-primary hover:underline" onClick={() => navigate(`/receipts/${row.receipt_id}`)}>
-                              {row.receipt_number}
-                            </button>
+                            <span className="text-primary">{row.receipt_number}</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}

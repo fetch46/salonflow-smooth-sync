@@ -120,7 +120,7 @@ export default function AccountView() {
     const refId = row.reference_id;
     if (!refId) return;
     if (refType === "receipt_payment") {
-      navigate(`/receipts/${refId}`);
+      navigate(`/banking`);
       return;
     }
     if (refType === "purchase_payment") {
