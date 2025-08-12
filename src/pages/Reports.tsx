@@ -462,7 +462,7 @@ const Reports = () => {
         byService[id].qty += Number(it.quantity) || 0;
       }
       const serviceIds = Object.keys(byService);
-      let serviceNames: Record<string, string> = {};
+      const serviceNames: Record<string, string> = {};
       if (serviceIds.length > 0) {
         const { data: services } = await supabase.from('services').select('id, name').in('id', serviceIds);
         (services || []).forEach((s: any) => { serviceNames[s.id] = s.name; });
@@ -516,7 +516,7 @@ const Reports = () => {
         byClient[id].last = (byClient[id].last || '') < r.created_at ? r.created_at : byClient[id].last;
       }
       const clientIds = Object.keys(byClient);
-      let clientNames: Record<string, string> = {};
+      const clientNames: Record<string, string> = {};
       if (clientIds.length > 0) {
         const { data: clients } = await supabase.from('clients').select('id, full_name').in('id', clientIds);
         (clients || []).forEach((c: any) => { clientNames[c.id] = c.full_name; });
@@ -1244,7 +1244,7 @@ const ProductUsageHistory: React.FC<{ startDate: string; endDate: string; densit
       ]);
 
       // Sales
-      let receiptItems: any[] = rItems || [];
+      const receiptItems: any[] = rItems || [];
 
       const normalize: any[] = [];
       // Purchases as positive in

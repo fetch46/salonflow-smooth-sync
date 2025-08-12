@@ -252,7 +252,7 @@ const Landing = () => {
 
       {/* Hero Section */}
       <section className="relative overflow-hidden py-20 px-4">
-        <div className="pointer-events-none absolute inset-0 -z-10 [background:radial-gradient(1200px_600px_at_50%_-400px,theme(colors.primary/0.12),transparent)]" />
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(1200px_600px_at_50%_-400px,hsl(var(--primary)/0.12),transparent)]" />
         <div className="container mx-auto max-w-6xl grid lg:grid-cols-2 gap-10 items-center">
           <div className="text-center lg:text-left">
             <Badge variant="secondary" className="mb-4">

@@ -123,7 +123,7 @@ const SelectItem = React.forwardRef<
   const safeValue = isInvalid ? "__invalid__" : trimmed
 
   if (isInvalid && process.env.NODE_ENV !== "production") {
-    // eslint-disable-next-line no-console
+     
     console.warn(
       "SelectItem received an empty value. Disabling item and substituting a sentinel to avoid Radix error.",
       { value }
