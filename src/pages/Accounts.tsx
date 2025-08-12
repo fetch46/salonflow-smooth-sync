@@ -184,6 +184,19 @@ export default function Accounts() {
     setRefreshing(false);
   };
 
+  const rebuildCoa = async (force: boolean = false) => {
+    try {
+      if (!organization?.id) return toast.error("No active organization");
+      const { data, error } = await supabase.rpc('rebuild_organization_chart_of_accounts', { p_organization_id: organization.id, p_force: force });
+      if (error) throw error;
+      toast.success(`Chart rebuilt${data ? ` (inserted ${data.inserted}, updated ${data.updated}${force ? `, deleted ${data.deleted}` : ''})` : ''}`);
+      await refresh();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || 'Failed to rebuild chart');
+    }
+  };
+
   const openCreate = () => {
     setEditing(null);
     setForm({ account_code: "", account_name: "", account_type: "Asset", normal_balance: "debit", description: "", parent_account_id: "", account_subtype: "Cash" });
@@ -334,6 +347,15 @@ export default function Accounts() {
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
             Refresh
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">Rebuild</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => rebuildCoa(false)}>Rebuild Defaults</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => rebuildCoa(true)} className="text-red-600 focus:text-red-600">Rebuild + Clean Unused</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
             <DialogTrigger asChild>
               <Button onClick={openCreate} className="bg-indigo-600 hover:bg-indigo-700">
