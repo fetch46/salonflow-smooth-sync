@@ -200,7 +200,7 @@ export default function ServiceView() {
 
   return (
     <DashboardLayout>
-      <div className="flex-1 space-y-6 p-8 pt-6">
+      <div className="w-full max-w-7xl mx-auto p-6 space-y-6">
         {/* Service Header */}
         <Card className="mb-6">
           <CardContent className="pt-6">
