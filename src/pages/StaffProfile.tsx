@@ -349,13 +349,13 @@ export default function StaffProfile() {
   if (!staff) return <div className="p-6">Staff not found</div>;
 
   return (
-    <div className="flex-1 space-y-6 p-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+    <div className="flex-1 space-y-6 px-4 sm:px-6 py-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen max-w-7xl mx-auto">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           <Button variant="outline" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-4 h-4 mr-2" /> Back
           </Button>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 min-w-0">
             <div className="relative">
               <Avatar className="w-16 h-16 shadow-md ring-2 ring-white">
                 {staff.profile_image ? (
@@ -393,13 +393,13 @@ export default function StaffProfile() {
               </h1>
               <div className="text-slate-600 text-sm flex items-center gap-3">
                 {typeof staff.commission_rate === 'number' && <span>{staff.commission_rate}% commission</span>}
-                {staff.email && <span className="truncate max-w-[200px]">{staff.email}</span>}
+                {staff.email && <span className="truncate max-w-[140px] sm:max-w-[200px]">{staff.email}</span>}
                 {staff.phone && <span>{staff.phone}</span>}
               </div>
             </div>
           </div>
         </div>
-        <div className="flex items-end gap-3">
+        <div className="flex flex-wrap items-end gap-3 sm:justify-end w-full sm:w-auto">
           <div className="hidden md:flex items-center gap-2 mr-2 p-2 bg-white rounded-lg border">
             <span className="text-xs text-slate-600">Quick ranges:</span>
             <Button variant="ghost" size="sm" onClick={() => setPresetRange('today')}>Today</Button>
@@ -408,13 +408,13 @@ export default function StaffProfile() {
             <Button variant="ghost" size="sm" onClick={() => setPresetRange('month')}>This month</Button>
             <Button variant="ghost" size="sm" onClick={() => setPresetRange('ytd')}>YTD</Button>
           </div>
-          <div>
+          <div className="w-full sm:w-auto">
             <div className="text-xs text-slate-600">Start</div>
-            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full sm:w-40" />
           </div>
-          <div>
+          <div className="w-full sm:w-auto">
             <div className="text-xs text-slate-600">End</div>
-            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full sm:w-40" />
           </div>
           <Button onClick={loadData}>Apply</Button>
         </div>
@@ -462,13 +462,15 @@ export default function StaffProfile() {
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="commissions">Commissions</TabsTrigger>
-              <TabsTrigger value="activity">Activity</TabsTrigger>
-              <TabsTrigger value="schedule">Schedule</TabsTrigger>
-              <TabsTrigger value="gallery">Gallery</TabsTrigger>
-            </TabsList>
+            <div className="overflow-x-auto -mx-1 px-1">
+              <TabsList className="min-w-max">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="commissions">Commissions</TabsTrigger>
+                <TabsTrigger value="activity">Activity</TabsTrigger>
+                <TabsTrigger value="schedule">Schedule</TabsTrigger>
+                <TabsTrigger value="gallery">Gallery</TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value="overview" className="space-y-4">
               <Card className="shadow-lg overflow-hidden">
@@ -550,8 +552,8 @@ export default function StaffProfile() {
                   {commissionRows.length === 0 ? (
                     <div className="text-sm text-muted-foreground p-6">No commissions in this period</div>
                   ) : (
-                    <div className="rounded-md border">
-                      <Table>
+                    <div className="rounded-md border overflow-x-auto">
+                      <Table className="min-w-[640px]">
                         <TableHeader>
                           <TableRow>
                             <TableHead>Date</TableHead>
@@ -588,30 +590,32 @@ export default function StaffProfile() {
                   {appointments.length === 0 ? (
                     <div className="text-sm text-muted-foreground p-6">No appointments in this period</div>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {appointments.map((a) => (
-                          <TableRow key={a.id}>
-                            <TableCell>{a.appointment_date}</TableCell>
-                            <TableCell>
-                              {a.status ? (
-                                <Badge variant={a.status === 'completed' ? 'default' : a.status === 'cancelled' ? 'secondary' : 'outline'} className="capitalize">
-                                  {a.status}
-                                </Badge>
-                              ) : '—'}
-                            </TableCell>
-                            <TableCell className="text-right">${Number(a.total_amount || 0).toFixed(2)}</TableCell>
+                    <div className="overflow-x-auto">
+                      <Table className="min-w-[480px]">
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {appointments.map((a) => (
+                            <TableRow key={a.id}>
+                              <TableCell>{a.appointment_date}</TableCell>
+                              <TableCell>
+                                {a.status ? (
+                                  <Badge variant={a.status === 'completed' ? 'default' : a.status === 'cancelled' ? 'secondary' : 'outline'} className="capitalize">
+                                    {a.status}
+                                  </Badge>
+                                ) : '—'}
+                              </TableCell>
+                              <TableCell className="text-right">${Number(a.total_amount || 0).toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -636,8 +640,8 @@ export default function StaffProfile() {
                       <div className="text-sm text-slate-600">Selected date</div>
                       <div className="text-sm font-medium text-slate-900">{scheduleDate.toISOString().slice(0,10)}</div>
                     </div>
-                    <div className="rounded-md border">
-                      <Table>
+                    <div className="rounded-md border overflow-x-auto">
+                      <Table className="min-w-[480px]">
                         <TableHeader>
                           <TableRow>
                             <TableHead>Time</TableHead>
