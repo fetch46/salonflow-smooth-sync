@@ -268,6 +268,42 @@ export default function Purchases() {
         console.warn("Inventory capitalization posting failed", ledgerErr);
       }
 
+      // Ensure a Goods Received record is created so the receipt appears in the list
+      try {
+        const itemsPayload = selectedPurchaseItems
+          .map((it) => {
+            const qty = Number(receiveQuantities[it.item_id] || 0);
+            if (!qty || qty <= 0) return null;
+            return { purchase_item_id: it.id, quantity: qty };
+          })
+          .filter(Boolean) as Array<{ purchase_item_id: string; quantity: number }>;
+
+        if (itemsPayload.length > 0 && receivePurchaseId) {
+          const headerRow: any = {
+            purchase_id: receivePurchaseId,
+            received_date: new Date().toISOString().slice(0, 10),
+            location_id: receiveLocationId || null,
+          };
+          if (organization?.id) headerRow.organization_id = organization.id;
+
+          const { data: header, error: headerErr } = await supabase
+            .from("goods_received")
+            .insert([headerRow])
+            .select("id")
+            .single();
+          if (!headerErr && header?.id) {
+            const lines = itemsPayload.map((it) => ({
+              goods_received_id: header.id,
+              purchase_item_id: it.purchase_item_id,
+              quantity: it.quantity,
+            }));
+            await supabase.from("goods_received_items").insert(lines);
+          }
+        }
+      } catch (ignore) {
+        // Non-blocking: environments may not have these tables
+      }
+
       // After updating items, recompute and update purchase status
       try {
         const { data: allItems, error: allErr } = await supabase

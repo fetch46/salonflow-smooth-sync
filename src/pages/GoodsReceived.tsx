@@ -20,18 +20,33 @@ export default function GoodsReceived() {
   const load = async () => {
     try {
       setLoading(true);
-      // Base fetch without FK joins to avoid relationship issues in environments where FKs may be missing
-      let query = supabase
-        .from("goods_received")
-        .select("id, grn_number, received_date, warehouse_id, location_id, purchase_id")
-        .order("received_date", { ascending: false });
+      // Base fetch without FK joins to avoid relationship issues. Fallback if grn_number column is missing.
+      const buildQuery = (includeGrn: boolean) => {
+        let q = supabase
+          .from("goods_received")
+          .select(includeGrn ? "id, grn_number, received_date, warehouse_id, location_id, purchase_id" : "id, received_date, warehouse_id, location_id, purchase_id")
+          .order("received_date", { ascending: false });
+        if (organization?.id) {
+          q = q.eq("organization_id", organization.id);
+        }
+        return q;
+      };
 
-      if (organization?.id) {
-        query = query.eq("organization_id", organization.id);
+      let data: any[] | null = null;
+      try {
+        const res = await buildQuery(true);
+        if (res.error) throw res.error;
+        data = res.data as any[] | null;
+      } catch (err: any) {
+        const msg = String(err?.message || "").toLowerCase();
+        if (msg.includes("column") && msg.includes("grn_number") && msg.includes("does not exist")) {
+          const res2 = await buildQuery(false);
+          if (res2.error) throw res2.error;
+          data = res2.data as any[] | null;
+        } else {
+          throw err;
+        }
       }
-
-      const { data, error } = await query;
-      if (error) throw error;
 
       const list = (data || []) as Array<GoodsReceivedRow>;
 
