@@ -419,6 +419,30 @@ router.post('/payments', async (req, res) => {
       }
 
       await tx.payment.update({ where: { id: createdPayment.id }, data: { journalEntryId: entry.id } });
+
+      // If this payment references a sales invoice, recalc invoice status based on total paid
+      if (data.referenceType === 'SALES_INVOICE' && data.referenceId && data.type === 'IN') {
+        try {
+          const invoice = await tx.salesInvoice.findUnique({ where: { id: data.referenceId } });
+          if (invoice) {
+            const paysAgg = await tx.payment.aggregate({
+              _sum: { amount: true },
+              where: { referenceType: 'SALES_INVOICE', referenceId: invoice.id, type: 'IN' },
+            });
+            const paidSum = Number(paysAgg._sum.amount || 0);
+            const totalAmount = Number(invoice.total || 0);
+            const nextStatus: 'PAID' | 'PARTIALLY_PAID' | 'POSTED' = paidSum + 1e-9 >= totalAmount
+              ? 'PAID'
+              : paidSum > 0
+              ? 'PARTIALLY_PAID'
+              : 'POSTED';
+            if (invoice.status !== nextStatus) {
+              await tx.salesInvoice.update({ where: { id: invoice.id }, data: { status: nextStatus } });
+            }
+          }
+        } catch {}
+      }
+
       return createdPayment;
     });
     res.status(201).json(payment);
