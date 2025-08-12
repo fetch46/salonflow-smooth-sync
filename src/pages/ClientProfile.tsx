@@ -429,7 +429,7 @@ export default function ClientProfile() {
 
         {/* Tabs for different data views */}
         <Tabs defaultValue="appointments" className="space-y-4">
-          <TabsList>
+          <TabsList className="justify-start sm:justify-start rounded-xl border bg-card shadow-sm p-2 gap-2 h-auto [&_[role=tab]]:h-12 [&_[role=tab]]:px-4 [&_[role=tab]]:text-base [&_[role=tab]]:gap-2">
             <TabsTrigger value="appointments">Appointments</TabsTrigger>
             <TabsTrigger value="receipts">Sales Receipts</TabsTrigger>
             <TabsTrigger value="jobcards">Job Cards</TabsTrigger>
