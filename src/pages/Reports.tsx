@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -717,98 +717,14 @@ const Reports = () => {
         </div>
       </div>
 
-      {/* Main Content with vertical tabs */}
+      {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         {/* Mobile tab selector */}
-        <div className="lg:hidden">
-          <Select value={activeTab} onValueChange={setActiveTab}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select report section" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="overview">Overview</SelectItem>
-              <SelectItem value="revenue">Revenue</SelectItem>
-              <SelectItem value="services">Services</SelectItem>
-              <SelectItem value="clients">Clients</SelectItem>
-              <SelectItem value="pnl">P&L</SelectItem>
-              <SelectItem value="balancesheet">Balance Sheet</SelectItem>
-              <SelectItem value="trialbalance">Trial Balance</SelectItem>
-              <SelectItem value="commissions">Commissions</SelectItem>
-              <SelectItem value="product_usage">Product Usage</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <aside className="lg:col-span-3 xl:col-span-2 lg:sticky lg:top-24 self-start max-h-[calc(100vh-7rem)] overflow-y-auto">
-            <TabsList className="flex flex-col w-full items-stretch rounded-xl border bg-card shadow-sm p-2 gap-2 h-auto [&_[role=tab]]:h-12 [&_[role=tab]]:px-4 [&_[role=tab]]:text-base [&_[role=tab]]:gap-3">
-              <TabsTrigger value="overview" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
-                <Activity className="w-5 h-5" /> Overview
-              </TabsTrigger>
-              {activeTab === 'overview' && (
-                <div className="ml-6 mt-2 space-y-1 text-sm">
-                  <button className={`text-left ${activeSubTab.overview === 'summary' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, overview: 'summary' })); setSearchParams({ tab: 'overview', sub: 'summary' }, { replace: true }); }}>Summary</button>
-                </div>
-              )}
-              <TabsTrigger value="revenue" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
-                <DollarSign className="w-5 h-5" /> Revenue
-              </TabsTrigger>
-              <TabsTrigger value="suggested" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
-                <Target className="w-5 h-5" /> Suggested
-              </TabsTrigger>
-              {activeTab === 'revenue' && (
-                <div className="ml-6 mt-2 space-y-1 text-sm">
-                  <button className={`text-left ${activeSubTab.revenue === 'summary' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, revenue: 'summary' })); setSearchParams({ tab: 'revenue', sub: 'summary' }, { replace: true }); }}>Summary</button>
-                </div>
-              )}
-              <TabsTrigger value="services" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
-                <Target className="w-5 h-5" /> Services
-              </TabsTrigger>
-              {activeTab === 'services' && (
-                <div className="ml-6 mt-2 space-y-1 text-sm">
-                  <button className={`text-left ${activeSubTab.services === 'top' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, services: 'top' })); setSearchParams({ tab: 'services', sub: 'top' }, { replace: true }); }}>Top Services</button>
-                </div>
-              )}
-              <TabsTrigger value="clients" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
-                <Users className="w-5 h-5" /> Clients
-              </TabsTrigger>
-              {activeTab === 'clients' && (
-                <div className="ml-6 mt-2 space-y-1 text-sm">
-                  <button className={`text-left ${activeSubTab.clients === 'top' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, clients: 'top' })); setSearchParams({ tab: 'clients', sub: 'top' }, { replace: true }); }}>Top Clients</button>
-                </div>
-              )}
-              <TabsTrigger value="pnl" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
-                <DollarSign className="w-5 h-5" /> P&L
-              </TabsTrigger>
-              <TabsTrigger value="balancesheet" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
-                <PieChart className="w-5 h-5" /> Balance Sheet
-              </TabsTrigger>
-              <TabsTrigger value="trialbalance" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
-                <Calculator className="w-5 h-5" /> Trial Balance
-              </TabsTrigger>
-              <TabsTrigger value="commissions" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
-                <DollarSign className="w-5 h-5" /> Commissions
-              </TabsTrigger>
-              {activeTab === 'commissions' && (
-                <div className="ml-6 mt-2 space-y-1 text-sm">
-                  <button className={`text-left ${activeSubTab.commissions === 'summary' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, commissions: 'summary' })); setSearchParams({ tab: 'commissions', sub: 'summary' }, { replace: true }); }}>Summary</button>
-                  <button className={`text-left ${activeSubTab.commissions === 'detailed' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, commissions: 'detailed' })); setSearchParams({ tab: 'commissions', sub: 'detailed' }, { replace: true }); }}>Detailed</button>
-                </div>
-              )}
-              <TabsTrigger value="product_usage" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
-                <Package className="w-5 h-5" /> Product Usage
-              </TabsTrigger>
-              <TabsTrigger value="warehouses" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
-                <MapPin className="w-4 h-4" /> Warehouses
-              </TabsTrigger>
-              {activeTab === 'product_usage' && (
-                <div className="ml-6 mt-2 space-y-1 text-sm">
-                  <button className={`text-left ${activeSubTab.product_usage === 'history' ? 'font-semibold' : ''}`} onClick={() => { setActiveSubTab(prev => ({ ...prev, product_usage: 'history' })); setSearchParams({ tab: 'product_usage', sub: 'history' }, { replace: true }); }}>Usage History</button>
-                </div>
-              )}
-            </TabsList>
-          </aside>
 
-          <main className="lg:col-span-9 xl:col-span-10 space-y-6">
+        <div className="grid grid-cols-1 gap-6">
+
+
+          <main className="space-y-6">
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
               {/* Key Metrics */}
