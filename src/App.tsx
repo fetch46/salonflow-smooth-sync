@@ -38,6 +38,7 @@ const AccountEdit = lazy(() => import("@/pages/AccountEdit"));
 const POS = lazy(() => import("@/pages/POS"));
 const InventoryAdjustments = lazy(() => import("@/pages/InventoryAdjustments"));
 const StockTransfers = lazy(() => import("@/pages/StockTransfers"));
+const Warehouses = lazy(() => import("@/pages/Warehouses"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const JobCards = lazy(() => import("@/pages/JobCards"));
 const CreateJobCard = lazy(() => import("@/pages/CreateJobCard"));
@@ -171,6 +172,7 @@ const AppRoutes = () => {
           <Route path="inventory-adjustments/new" element={<InventoryAdjustmentForm />} />
           <Route path="inventory-adjustments/:id/edit" element={<InventoryAdjustmentForm />} />
           <Route path="inventory-transfers" element={<StockTransfers />} />
+          <Route path="warehouses" element={<Warehouses />} />
           
           {/* Financial Management */}
           <Route path="expenses" element={<Expenses />} />
