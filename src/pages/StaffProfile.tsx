@@ -59,7 +59,7 @@ export default function StaffProfile() {
   const [staff, setStaff] = useState<StaffRecord | null>(null);
   const [startDate, setStartDate] = useState<string>(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0,10));
   const [endDate, setEndDate] = useState<string>(() => new Date().toISOString().slice(0,10));
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('activity');
   const [commissionRows, setCommissionRows] = useState<any[]>([]);
   const [appointments, setAppointments] = useState<any[]>([]);
 
@@ -349,7 +349,7 @@ export default function StaffProfile() {
   if (!staff) return <div className="p-6">Staff not found</div>;
 
   return (
-    <div className="flex-1 space-y-6 px-4 sm:px-6 py-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen max-w-7xl mx-auto">
+    <div className="flex-1 space-y-6 px-4 sm:px-6 lg:px-8 py-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen max-w-screen-2xl mx-auto w-full">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <Button variant="outline" onClick={() => navigate(-1)}>
@@ -459,59 +459,17 @@ export default function StaffProfile() {
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
+      <div className="grid gap-4 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="space-y-4 lg:col-span-2 xl:col-span-3">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <div className="overflow-x-auto -mx-1 px-1">
               <TabsList className="min-w-max">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="commissions">Commissions</TabsTrigger>
                 <TabsTrigger value="activity">Activity</TabsTrigger>
                 <TabsTrigger value="schedule">Schedule</TabsTrigger>
                 <TabsTrigger value="gallery">Gallery</TabsTrigger>
               </TabsList>
             </div>
-
-            <TabsContent value="overview" className="space-y-4">
-              <Card className="shadow-lg overflow-hidden">
-                <div className="relative h-28 w-full bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-400" />
-                <CardContent className="pt-0">
-                  <div className="mt-2">
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-xl font-semibold">{staff.full_name}</h2>
-                      <Badge variant={staff.is_active ? 'default' : 'secondary'}>
-                        {staff.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </div>
-                    <div className="text-slate-600 text-sm flex flex-wrap items-center gap-3 mt-1">
-                      {staff.email && <span className="truncate">{staff.email}</span>}
-                      {staff.phone && <span>{staff.phone}</span>}
-                      {typeof staff.commission_rate === 'number' && <span>{staff.commission_rate}% commission</span>}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2"><Calendar className="w-4 h-4"/> Period Summary</CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-4 md:grid-cols-3">
-                  <div>
-                    <div className="text-sm text-slate-600">Appointments</div>
-                    <div className="text-xl font-semibold">{totals.apptCount}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-slate-600">Services</div>
-                    <div className="text-xl font-semibold">{totals.services}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-slate-600">Avg. $/Service</div>
-                    <div className="text-xl font-semibold">${totals.avgPerService.toFixed(2)}</div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
 
             <TabsContent value="commissions">
               <Card>
@@ -559,7 +517,27 @@ export default function StaffProfile() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="activity">
+            <TabsContent value="activity" className="space-y-4">
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2"><Calendar className="w-4 h-4"/> Period Summary</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-4 md:grid-cols-3">
+                  <div>
+                    <div className="text-sm text-slate-600">Appointments</div>
+                    <div className="text-xl font-semibold">{totals.apptCount}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-slate-600">Services</div>
+                    <div className="text-xl font-semibold">{totals.services}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-slate-600">Avg. $/Service</div>
+                    <div className="text-xl font-semibold">${totals.avgPerService.toFixed(2)}</div>
+                  </div>
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Appointments</CardTitle>
