@@ -113,9 +113,9 @@ const Reports = () => {
   const recalcFinancials = useCallback(async () => {
     setRecalcLoading(true);
     try {
-      // Cash-basis: derive income from receipt_payments and expenses from expenses with status paid within date range
+      // Cash-basis: derive income from invoice_payments and expenses from expenses with status paid within date range
       const paymentsQuery = supabase
-        .from('receipt_payments')
+        .from('invoice_payments')
         .select('amount, payment_date, location_id')
         .gte('payment_date', startDate)
         .lte('payment_date', endDate);
@@ -204,7 +204,7 @@ const Reports = () => {
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'expenses' }, () => {
         recalcFinancials();
       })
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'receipt_payments' }, () => {
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'invoice_payments' }, () => {
         recalcFinancials();
       })
       .subscribe();
@@ -229,46 +229,46 @@ const Reports = () => {
   const loadCommissions = async () => {
     setLoading(true);
     try {
-      // Step 1: find receipts in range
+      // Step 1: find invoices in range
       const rcptQuery = supabase
-        .from('receipts')
+        .from('invoices')
         .select('id, created_at, location_id')
         .gte('created_at', startDate)
         .lte('created_at', endDate);
       if (locationFilter !== 'all') rcptQuery.eq('location_id', locationFilter);
-      const { data: receiptsInRange, error: rcptErr } = await rcptQuery;
+      const { data: invoicesInRange, error: rcptErr } = await rcptQuery;
       if (rcptErr) throw rcptErr;
-      const receiptIds: string[] = (receiptsInRange || []).map((r: any) => r.id);
+      const invoiceIds: string[] = (invoicesInRange || []).map((r: any) => r.id);
 
-      if (receiptIds.length === 0) {
+      if (invoiceIds.length === 0) {
         setCommissionRows([]);
         setCommissionSummary({});
         return;
       }
 
-      // Step 2: load staff commissions for those receipts
+      // Step 2: load staff commissions for those invoices
       const { data: comms, error: commErr } = await supabase
         .from('staff_commissions')
         .select(`
           id, commission_rate, gross_amount, commission_amount, created_at,
-          receipt:receipt_id ( id, created_at ),
+          invoice:invoice_id ( id, created_at ),
           staff:staff_id ( id, full_name ),
           service:service_id ( id, name )
         `)
-        .in('receipt_id', receiptIds);
+        .in('invoice_id', invoiceIds);
       if (commErr) throw commErr;
 
       const normalized = (comms || []).map((r: any) => {
         const staff = Array.isArray(r.staff) ? r.staff[0] : r.staff;
         const service = Array.isArray(r.service) ? r.service[0] : r.service;
-        const receipt = Array.isArray(r.receipt) ? r.receipt[0] : r.receipt;
-        return { ...r, staff, service, receipt };
+        const invoice = Array.isArray(r.invoice) ? r.invoice[0] : r.invoice;
+        return { ...r, staff, service, invoice };
       });
 
       const filtered = normalized.filter((r: any) => commissionStaffFilter === 'all' ? true : r.staff?.id === commissionStaffFilter);
       setCommissionRows(filtered.map((r: any) => ({
         id: r.id,
-        created_at: r.receipt?.created_at || r.created_at,
+        created_at: r.invoice?.created_at || r.created_at,
         service: r.service,
         staff: r.staff,
         quantity: 1,
@@ -304,7 +304,7 @@ const Reports = () => {
           })
           .map((r: any) => r.id);
         const items = (storage.receipt_items || [])
-          .filter((it: any) => inRangeReceiptIds.includes(it.receipt_id));
+          .filter((it: any) => inRangeReceiptIds.includes(it.invoice_id || it.receipt_id));
         const rows = items.filter((it: any) => commissionStaffFilter === 'all' ? true : it.staff_id === commissionStaffFilter)
           .map((it: any) => ({
             id: it.id,
@@ -376,12 +376,12 @@ const Reports = () => {
       const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
 
       // Fetch core datasets
-      const receiptsNowQ = supabase.from('receipts')
-        .select('id, total_amount, created_at, customer_id, location_id')
+      const invoicesNowQ = supabase.from('invoices')
+        .select('id, total_amount, created_at, customer_id:client_id, location_id')
         .gte('created_at', startDate)
         .lte('created_at', endDate);
-      const receiptsPrevQ = supabase.from('receipts')
-        .select('id, total_amount, created_at, customer_id, location_id')
+      const invoicesPrevQ = supabase.from('invoices')
+        .select('id, total_amount, created_at, customer_id:client_id, location_id')
         .gte('created_at', toDateStr(prevStart))
         .lte('created_at', toDateStr(prevEnd));
       const apptsNowQ = supabase.from('appointments')
@@ -396,19 +396,19 @@ const Reports = () => {
         .select('id, created_at');
       const clientsPrevQ = supabase.from('clients')
         .select('id, created_at');
-      const svcItemsNowQ = supabase.from('receipt_items')
+      const svcItemsNowQ = supabase.from('invoice_items')
         .select('id, created_at, quantity, unit_price, total_price, service_id, location_id')
         .not('service_id', 'is', null)
         .gte('created_at', startDate)
         .lte('created_at', endDate);
-      const svcItemsPrevQ = supabase.from('receipt_items')
+      const svcItemsPrevQ = supabase.from('invoice_items')
         .select('id, created_at, quantity, unit_price, total_price, service_id, location_id')
         .not('service_id', 'is', null)
         .gte('created_at', toDateStr(prevStart))
         .lte('created_at', toDateStr(prevEnd));
       if (locationFilter !== 'all') {
-        receiptsNowQ.eq('location_id', locationFilter);
-        receiptsPrevQ.eq('location_id', locationFilter);
+        invoicesNowQ.eq('location_id', locationFilter);
+        invoicesPrevQ.eq('location_id', locationFilter);
         apptsNowQ.eq('location_id', locationFilter);
         apptsPrevQ.eq('location_id', locationFilter);
         svcItemsNowQ.eq('location_id', locationFilter);
@@ -424,11 +424,11 @@ const Reports = () => {
         svcItemsNowRes,
         svcItemsPrevRes,
       ] = await Promise.all([
-        receiptsNowQ, receiptsPrevQ, apptsNowQ, apptsPrevQ, clientsNowQ, clientsPrevQ, svcItemsNowQ, svcItemsPrevQ,
+        invoicesNowQ, invoicesPrevQ, apptsNowQ, apptsPrevQ, clientsNowQ, clientsPrevQ, svcItemsNowQ, svcItemsPrevQ,
       ]);
 
-      const receiptsNow = receiptsNowRes.data || [];
-      const receiptsPrev = receiptsPrevRes.data || [];
+      const receiptsNow = (receiptsNowRes as any)?.data || [];
+      const receiptsPrev = (receiptsPrevRes as any)?.data || [];
       const apptsNow = apptsNowRes.data || [];
       const apptsPrev = apptsPrevRes.data || [];
       const clientsNow = clientsNowRes.data || [];
@@ -1111,8 +1111,8 @@ const Reports = () => {
                               const rate = Number(r.commission_rate ?? r.service?.commission_percentage ?? 0);
                               const comm = gross * (Number(rate) || 0) / 100;
                               return (
-                                <TableRow key={r.id} className="cursor-pointer hover:bg-slate-50"  title={r.receipt?.id ? `Open receipt ${r.receipt.id}` : undefined}>
-                                  <TableCell className={`${density === 'compact' ? 'px-2 py-1' : ''}`}>{(r.created_at || r.receipt?.created_at || '').split('T')[0]}</TableCell>
+                                                                 <TableRow key={r.id} className="cursor-pointer hover:bg-slate-50"  title={r.invoice?.id ? `Open invoice ${r.invoice.id}` : undefined}>
+                                  <TableCell className={`${density === 'compact' ? 'px-2 py-1' : ''}`}>{(r.created_at || r.invoice?.created_at || '').split('T')[0]}</TableCell>
                                   <TableCell className={`${density === 'compact' ? 'px-2 py-1' : ''}`}>{r.service?.name || r.description}</TableCell>
                                   <TableCell className={`${density === 'compact' ? 'px-2 py-1' : ''}`}>{r.staff?.full_name || 'Unassigned'}</TableCell>
                                   <TableCell className="text-right">{qty}</TableCell>
@@ -1232,8 +1232,8 @@ const ProductUsageHistory: React.FC<{ startDate: string; endDate: string; densit
         .gte('created_at', startDate)
         .lte('created_at', endDate);
       let receiptItemsQuery = supabase
-        .from('receipt_items')
-        .select('id, created_at, quantity, unit_price, product_id, location_id, receipt:receipt_id (id, receipt_number, created_at)')
+        .from('invoice_items')
+        .select('id, created_at, quantity, unit_price, product_id, location_id, invoice:invoice_id (id, invoice_number, created_at)')
         .gte('created_at', startDate)
         .lte('created_at', endDate);
       if (locationId !== 'all') {
@@ -1258,7 +1258,7 @@ const ProductUsageHistory: React.FC<{ startDate: string; endDate: string; densit
           type: 'Purchased',
         });
       }
-      // Sales or receipt_items as out
+      // Sales or invoice_items as out
       const outItems = (receiptItems && receiptItems.length > 0) ? receiptItems : (sales || []);
       for (const s of (outItems || []) as any[]) {
         normalize.push({

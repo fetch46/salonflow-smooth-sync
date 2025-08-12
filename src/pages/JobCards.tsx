@@ -181,18 +181,18 @@ export default function JobCards() {
       
       setJobCards(normalizedData as any);
 
-      // Build a lookup of job cards that have at least one receipt, with fallback to local storage
+      // Build a lookup of job cards that have at least one invoice, with fallback to local storage
       const jobIds = (data || []).map((c: any) => c.id);
       if (jobIds.length > 0) {
         try {
           // Prefer live DB when available
-          const { data: receiptsData, error: receiptsError } = await supabase
-            .from('receipts')
+          const { data: invoicesData, error: invoicesError } = await supabase
+            .from('invoices')
             .select('job_card_id')
             .in('job_card_id', jobIds as string[]);
 
-          if (receiptsError) throw receiptsError;
-          const idsWithReceipts = new Set<string>((receiptsData || [])
+          if (invoicesError) throw invoicesError;
+          const idsWithReceipts = new Set<string>((invoicesData || [])
             .map((r: any) => r.job_card_id)
             .filter(Boolean));
           setJobCardsWithReceipts(idsWithReceipts);
@@ -234,11 +234,11 @@ export default function JobCards() {
 
   const handleDeleteJobCard = async (id: string) => {
     try {
-      // Guard: block deletion if a receipt exists for this job card
+              // Guard: block deletion if an invoice exists for this job card
       let hasReceipt = false;
       try {
         const { data: existingRcpt, error: rcptErr } = await supabase
-          .from('receipts')
+          .from('invoices')
           .select('id')
           .eq('job_card_id', id)
           .limit(1);
@@ -249,7 +249,7 @@ export default function JobCards() {
         hasReceipt = allReceipts.some((r: any) => r.job_card_id === id);
       }
       if (hasReceipt) {
-        toast.error('Cannot delete job card: a receipt has been created for this job');
+        toast.error('Cannot delete job card: an invoice has been created for this job');
         return;
       }
 
@@ -313,27 +313,26 @@ export default function JobCards() {
   // Create receipt from job card
   const createReceiptFromJobCard = async (card: JobCard) => {
         try {
-      const receiptNumber = `RCT-${Date.now().toString().slice(-6)}`;
-      const { data: receipt, error } = await supabase
-        .from('receipts')
+      const invoiceNumber = generateInvoiceNumber();
+      const { data: invoice, error } = await supabase
+        .from('invoices')
         .insert([
           {
-            receipt_number: receiptNumber,
-            customer_id: card.client?.id || null,
+            invoice_number: invoiceNumber,
+            client_id: card.client?.id || null,
             job_card_id: card.id,
             subtotal: card.total_amount,
             tax_amount: 0,
-            discount_amount: 0,
             total_amount: card.total_amount,
-            status: 'open',
-            notes: `Receipt for ${card.job_number}`,
+            status: 'sent',
+            notes: `Invoice for ${card.job_number}`,
           },
         ])
         .select()
         .single();
       if (error) throw error;
 
-      // Also create receipt items from job_card_services for commission allocation
+      // Also create invoice items from job_card_services for commission allocation
       const { data: jobServices } = await supabase
         .from('job_card_services')
         .select('id, service_id, staff_id, quantity, unit_price, commission_percentage, services:service_id(name)')
@@ -341,7 +340,7 @@ export default function JobCards() {
 
       if (jobServices && jobServices.length > 0) {
         const items = jobServices.map((js: any) => ({
-          receipt_id: receipt.id,
+          invoice_id: invoice.id,
           service_id: js.service_id,
           product_id: null,
           description: js.services?.name || 'Service',
@@ -351,7 +350,7 @@ export default function JobCards() {
           staff_id: js.staff_id || null,
         }));
         const { error: itemsError } = await supabase
-          .from('receipt_items')
+          .from('invoice_items')
           .insert(items);
         if (itemsError) throw itemsError;
 
@@ -363,7 +362,7 @@ export default function JobCards() {
           const rate = Number(js.commission_percentage ?? 0);
           const commission = Number(((gross * rate) / 100).toFixed(2));
           return {
-            receipt_id: receipt.id,
+            invoice_id: invoice.id,
             job_card_id: card.id,
             job_card_service_id: js.id,
             staff_id: js.staff_id || null,
@@ -379,17 +378,17 @@ export default function JobCards() {
         if (commErr) throw commErr;
       }
 
-      // Mark this job card as having a receipt without a full refetch
+      // Mark this job card as having an invoice without a full refetch
       setJobCardsWithReceipts(prev => {
         const next = new Set(prev);
         next.add(card.id);
         return next;
       });
 
-      toast.success('Receipt created');
+      toast.success('Invoice created');
     } catch (e: any) {
-      console.error('Error creating receipt from job card:', e);
-      toast.error(e?.message || 'Failed to create receipt');
+      console.error('Error creating invoice from job card:', e);
+      toast.error(e?.message || 'Failed to create invoice');
     }
   };
 
@@ -646,7 +645,7 @@ export default function JobCards() {
                     {jobCard.status === 'completed' && !jobCardsWithReceipts.has(jobCard.id) && (
                       <DropdownMenuItem onClick={() => createReceiptFromJobCard(jobCard)}>
                         <Receipt className="w-4 h-4 mr-2" />
-                        Create Receipt
+                        Create Invoice
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
@@ -723,7 +722,7 @@ export default function JobCards() {
                     {jobCard.status === 'completed' && !jobCardsWithReceipts.has(jobCard.id) && (
                       <DropdownMenuItem onClick={() => createReceiptFromJobCard(jobCard)}>
                         <Receipt className="w-4 h-4 mr-2" />
-                        Create Receipt
+                        Create Invoice
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />

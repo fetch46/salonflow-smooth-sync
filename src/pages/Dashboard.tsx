@@ -220,14 +220,14 @@ const Dashboard = () => {
         let revenueLastMonth = 0;
         try {
           const { data: receiptsToday, error: receiptsTodayErr } = await supabase
-            .from('receipts')
+            .from('invoices')
             .select('total_amount')
-            .eq('receipt_date', todayStr);
+            .eq('created_at', todayStr);
           if (receiptsTodayErr) throw receiptsTodayErr;
           revenueToday = (receiptsToday || []).reduce((sum: number, r: any) => sum + (Number(r.total_amount) || 0), 0);
         } catch (_) {
           const { data: receiptsToday, error: receiptsTodayErr } = await supabase
-            .from('receipts')
+            .from('invoices')
             .select('total_amount, created_at')
             .gte('created_at', startOfDay(today).toISOString())
             .lte('created_at', endOfDay(today).toISOString());
@@ -238,14 +238,15 @@ const Dashboard = () => {
 
         try {
           const { data: receiptsYesterday, error: receiptsYesterdayErr } = await supabase
-            .from('receipts')
+            .from('invoices')
             .select('total_amount')
-            .eq('receipt_date', yesterdayStr);
+            .gte('created_at', startOfDay(yesterday).toISOString())
+            .lte('created_at', endOfDay(yesterday).toISOString());
           if (receiptsYesterdayErr) throw receiptsYesterdayErr;
           revenueYesterday = (receiptsYesterday || []).reduce((sum: number, r: any) => sum + (Number(r.total_amount) || 0), 0);
         } catch (_) {
           const { data: receiptsYesterday, error: receiptsYesterdayErr } = await supabase
-            .from('receipts')
+            .from('invoices')
             .select('total_amount, created_at')
             .gte('created_at', startOfDay(yesterday).toISOString())
             .lte('created_at', endOfDay(yesterday).toISOString());
@@ -257,8 +258,8 @@ const Dashboard = () => {
         // Monthly revenue
         try {
           const { data: recMonth, error: recMonthErr } = await supabase
-            .from('receipts')
-            .select('total_amount, receipt_date, created_at')
+            .from('invoices')
+            .select('total_amount, created_at')
             .gte('created_at', monthStart.toISOString())
             .lte('created_at', monthEnd.toISOString());
           if (recMonthErr) throw recMonthErr;
@@ -268,8 +269,8 @@ const Dashboard = () => {
         }
         try {
           const { data: recPrev, error: recPrevErr } = await supabase
-            .from('receipts')
-            .select('total_amount, receipt_date, created_at')
+            .from('invoices')
+            .select('total_amount, created_at')
             .gte('created_at', prevMonthStart.toISOString())
             .lte('created_at', prevMonthEnd.toISOString());
           if (recPrevErr) throw recPrevErr;

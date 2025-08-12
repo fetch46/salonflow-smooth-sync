@@ -1119,10 +1119,10 @@ export async function getReceiptItemsByServiceWithFallback(
 }>> {
   try {
     const { data, error } = await supabase
-      .from('receipt_items')
+      .from('invoice_items')
       .select(`
-        id, receipt_id, description, quantity, unit_price, total_price, staff_id, created_at,
-        receipts:receipt_id ( id, receipt_number, created_at, customer_id ),
+        id, invoice_id, description, quantity, unit_price, total_price, staff_id, created_at,
+        invoices:invoice_id ( id, invoice_number, created_at, client_id ),
         staff:staff_id ( id, full_name )
       `)
       .eq('service_id', serviceId)
@@ -1131,16 +1131,16 @@ export async function getReceiptItemsByServiceWithFallback(
 
     const rows = (data || []).map((it: any) => ({
       id: it.id,
-      receipt_id: it.receipt_id,
+      receipt_id: it.invoice_id,
       description: it.description,
       quantity: Number(it.quantity) || 0,
       unit_price: Number(it.unit_price) || 0,
       total_price: Number(it.total_price) || 0,
       staff_id: it.staff_id || null,
       created_at: it.created_at,
-      receipt_number: it.receipts?.receipt_number || null,
-      receipt_created_at: it.receipts?.created_at || null,
-      customer_id: it.receipts?.customer_id || null,
+      receipt_number: it.invoices?.invoice_number || null,
+      receipt_created_at: it.invoices?.created_at || null,
+      customer_id: it.invoices?.client_id || null,
       staff_name: it.staff?.full_name || null,
     }));
 

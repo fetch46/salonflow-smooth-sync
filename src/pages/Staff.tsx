@@ -165,18 +165,18 @@ export default function Staff() {
       try {
         const today = new Date();
         const todayStr = format(today, 'yyyy-MM-dd');
-        const [{ data: appts }, { data: items }] = await Promise.all([
-          supabase
-            .from('appointments')
-            .select('staff_id, status, appointment_date')
-            .eq('appointment_date', todayStr),
-          supabase
-            .from('receipt_items')
-            .select('staff_id, total_price, created_at')
-            .not('staff_id', 'is', null)
-            .gte('created_at', startOfDay(today).toISOString())
-            .lte('created_at', endOfDay(today).toISOString()),
-        ]);
+                  const [{ data: appts }, { data: items }] = await Promise.all([
+            supabase
+              .from('appointments')
+              .select('staff_id, status, appointment_date')
+              .eq('appointment_date', todayStr),
+            supabase
+              .from('invoice_items')
+              .select('staff_id, total_price, created_at')
+              .not('staff_id', 'is', null)
+              .gte('created_at', startOfDay(today).toISOString())
+              .lte('created_at', endOfDay(today).toISOString()),
+          ]);
         setTodayAppts((appts || []).map((a: any) => ({ staff_id: a.staff_id, status: a.status || '' })));
         const map: Record<string, number> = {};
         (items || []).forEach((it: any) => {

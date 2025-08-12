@@ -110,19 +110,19 @@ export default function Banking() {
 
       let rows = (data || []) as any as TransactionRow[];
 
-      // Best-effort: remove ledger rows that reference missing/deleted receipts
+      // Best-effort: remove ledger rows that reference missing/deleted invoices
       try {
-        const receiptRefIds = Array.from(new Set(rows
-          .filter((r: any) => String(r.reference_type || '').toLowerCase() === 'receipt_payment' && r.reference_id)
+        const invoiceRefIds = Array.from(new Set(rows
+          .filter((r: any) => String(r.reference_type || '').toLowerCase() === 'invoice_payment' && r.reference_id)
           .map((r: any) => String(r.reference_id))));
-        if (receiptRefIds.length > 0) {
-          const { data: existingReceipts } = await supabase
-            .from('receipts')
+        if (invoiceRefIds.length > 0) {
+          const { data: existingInvoices } = await supabase
+            .from('invoices')
             .select('id')
-            .in('id', receiptRefIds);
-          const existingIds = new Set((existingReceipts || []).map((r: any) => String(r.id)));
+            .in('id', invoiceRefIds);
+          const existingIds = new Set((existingInvoices || []).map((r: any) => String(r.id)));
           rows = rows.filter((r: any) => {
-            if (String(r.reference_type || '').toLowerCase() !== 'receipt_payment') return true;
+            if (String(r.reference_type || '').toLowerCase() !== 'invoice_payment') return true;
             if (!r.reference_id) return true;
             return existingIds.has(String(r.reference_id));
           });

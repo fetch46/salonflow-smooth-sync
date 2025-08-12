@@ -3,7 +3,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE IF NOT EXISTS public.staff_commissions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  receipt_id uuid NULL REFERENCES public.receipts(id) ON DELETE SET NULL,
+  invoice_id uuid NULL REFERENCES public.invoices(id) ON DELETE SET NULL,
   job_card_id uuid NULL REFERENCES public.job_cards(id) ON DELETE CASCADE,
   job_card_service_id uuid NULL UNIQUE REFERENCES public.job_card_services(id) ON DELETE CASCADE,
   staff_id uuid NULL REFERENCES public.staff(id) ON DELETE SET NULL,
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS public.staff_commissions (
 );
 
 -- Helpful indexes
-CREATE INDEX IF NOT EXISTS idx_staff_commissions_receipt_id ON public.staff_commissions(receipt_id);
+CREATE INDEX IF NOT EXISTS idx_staff_commissions_invoice_id ON public.staff_commissions(invoice_id);
 CREATE INDEX IF NOT EXISTS idx_staff_commissions_staff_id ON public.staff_commissions(staff_id);
 CREATE INDEX IF NOT EXISTS idx_staff_commissions_service_id ON public.staff_commissions(service_id);
 CREATE INDEX IF NOT EXISTS idx_staff_commissions_job_card_id ON public.staff_commissions(job_card_id);
