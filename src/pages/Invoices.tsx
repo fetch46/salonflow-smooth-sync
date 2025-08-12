@@ -99,6 +99,7 @@ interface Invoice {
   created_at: string;
   updated_at: string;
   commission_total?: number;
+  location_id?: string | null;
 }
 
 interface InvoiceItem {
@@ -194,6 +195,9 @@ export default function Invoices() {
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
   const [activeTab, setActiveTab] = useState("all");
   const [applyTax, setApplyTax] = useState<boolean>(true);
+  const [locations, setLocations] = useState<Array<{ id: string; name: string; is_default?: boolean; is_active?: boolean }>>([]);
+  const [isEditingLocation, setIsEditingLocation] = useState<boolean>(false);
+  const [editLocationId, setEditLocationId] = useState<string>("");
 
   const [formData, setFormData] = useState({
     customer_id: "",
@@ -204,6 +208,7 @@ export default function Invoices() {
     payment_method: "",
     notes: "",
     jobcard_id: "",
+    location_id: "",
   });
 
   const [newItem, setNewItem] = useState({
@@ -223,6 +228,7 @@ export default function Invoices() {
     fetchCustomers();
     fetchServices();
     fetchStaff();
+    fetchLocations();
   }, []);
 
   // Prefill from job card if query param present
@@ -367,6 +373,28 @@ export default function Invoices() {
     }
   };
 
+  const fetchLocations = async () => {
+    try {
+      const { data } = await supabase
+        .from("business_locations")
+        .select("id, name, is_default, is_active")
+        .order("name");
+      const active = (data || []).filter((l: any) => l.is_active !== false);
+      setLocations(active as any);
+    } catch (error) {
+      console.warn("Failed to fetch business_locations", error);
+      setLocations([]);
+    }
+  };
+
+  useEffect(() => {
+    if (formData.location_id) return;
+    const preferred = locations.find((l) => (l as any).is_default) || locations[0];
+    if (preferred?.id) {
+      setFormData((prev) => ({ ...prev, location_id: preferred.id }));
+    }
+  }, [locations, formData.location_id]);
+
   const fetchInvoiceItems = async (invoiceId: string) => {
     try {
       const data = await getInvoiceItemsWithFallback(supabase, invoiceId);
@@ -442,6 +470,10 @@ export default function Invoices() {
       toast.error("Please add at least one item to the invoice");
       return;
     }
+    if (!formData.location_id) {
+      toast.error("Please select a location");
+      return;
+    }
 
     try {
       const totals = calculateTotals();
@@ -460,6 +492,7 @@ export default function Invoices() {
         payment_method: formData.payment_method || null,
         notes: formData.notes || null,
         jobcard_id: formData.jobcard_id || null,
+        location_id: formData.location_id || null,
       };
 
       await createInvoiceWithFallback(supabase, invoiceData, selectedItems);
@@ -483,6 +516,7 @@ export default function Invoices() {
       payment_method: "",
       notes: "",
       jobcard_id: "",
+      location_id: "",
     });
     setSelectedItems([]);
     setEditingInvoice(null);
@@ -525,6 +559,7 @@ export default function Invoices() {
         payment_method: invoice.payment_method || "",
         notes: invoice.notes || "",
         jobcard_id: invoice.jobcard_id || "",
+        location_id: invoice.location_id || "",
       });
       
       setSelectedItems(items?.map(item => ({
@@ -820,6 +855,21 @@ export default function Invoices() {
                               </SelectItem>
                             );
                           })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="location_id">Location *</Label>
+                      <Select value={formData.location_id} onValueChange={(value) => setFormData({ ...formData, location_id: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={locations.length ? "Select a location" : "No locations found"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {locations.map((loc) => (
+                            <SelectItem key={loc.id} value={loc.id}>
+                              {loc.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1441,6 +1491,25 @@ export default function Invoices() {
                         <span className="font-medium">{selectedInvoice.payment_method}</span>
                       </div>
                     )}
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-slate-600">Location:</span>
+                      {isEditingLocation ? (
+                        <div className="flex items-center gap-2 w-2/3">
+                          <Select value={editLocationId} onValueChange={setEditLocationId}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select location" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {locations.map((loc) => (
+                                <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ) : (
+                        <span className="font-medium">{(() => { const lid = (selectedInvoice as any)?.location_id; return lid ? (locations.find(l => l.id === lid)?.name || '—') : '—'; })()}</span>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -1542,10 +1611,29 @@ export default function Invoices() {
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Send WhatsApp
                 </Button>
-                <Button className="bg-violet-600 hover:bg-violet-700">
-                  <Edit2 className="w-4 h-4 mr-2" />
-                  Edit Invoice
-                </Button>
+                {isEditingLocation ? (
+                  <>
+                    <Button variant="outline" onClick={() => { setIsEditingLocation(false); setEditLocationId(selectedInvoice?.location_id || ""); }}>Cancel</Button>
+                    <Button className="bg-violet-600 hover:bg-violet-700" onClick={async () => {
+                      if (!selectedInvoice) return;
+                      try {
+                        await updateInvoiceWithFallback(supabase, selectedInvoice.id, { location_id: editLocationId || null });
+                        toast.success('Invoice updated');
+                        setIsEditingLocation(false);
+                        setSelectedInvoice({ ...(selectedInvoice as any), location_id: editLocationId || null } as any);
+                        fetchInvoices();
+                      } catch (e) {
+                        console.error(e);
+                        toast.error('Failed to update invoice');
+                      }
+                    }}>Save</Button>
+                  </>
+                ) : (
+                  <Button className="bg-violet-600 hover:bg-violet-700" onClick={() => { setIsEditingLocation(true); setEditLocationId((selectedInvoice as any)?.location_id || ""); }}>
+                    <Edit2 className="w-4 h-4 mr-2" />
+                    Edit Invoice
+                  </Button>
+                )}
               </div>
             </div>
           )}

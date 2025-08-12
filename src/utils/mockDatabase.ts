@@ -429,6 +429,7 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
       total_amount: invoiceData.total_amount ?? 0,
       status: invoiceData.status || 'draft',
       notes: invoiceData.notes || null,
+      location_id: invoiceData.location_id || null,
     };
 
     const { data: invoice, error: invoiceError } = await supabase
@@ -474,6 +475,7 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
       total_amount: invoiceData.total_amount ?? 0,
       status: invoiceData.status || 'draft',
       notes: invoiceData.notes || null,
+      location_id: invoiceData.location_id || null,
       updated_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
     } as any);
@@ -512,7 +514,7 @@ export async function getInvoicesWithFallback(supabase: any) {
     const { data, error } = await supabase
       .from('invoices')
       .select(`
-        id, invoice_number, client_id, issue_date, due_date, subtotal, tax_amount, total_amount, status, notes, created_at, updated_at,
+        id, invoice_number, client_id, issue_date, due_date, subtotal, tax_amount, total_amount, status, notes, location_id, created_at, updated_at,
         client:client_id (id, full_name, email, phone)
       `)
       .order('created_at', { ascending: false });
@@ -536,6 +538,7 @@ export async function getInvoicesWithFallback(supabase: any) {
       payment_method: null,
       notes: inv.notes,
       jobcard_id: null,
+      location_id: inv.location_id || null,
       created_at: inv.created_at,
       updated_at: inv.updated_at,
     }));
@@ -850,6 +853,7 @@ export async function updateInvoiceWithFallback(supabase: any, id: string, updat
     if (typeof updates.status !== 'undefined') allowed.status = updates.status;
     if (typeof updates.due_date !== 'undefined') allowed.due_date = updates.due_date;
     if (typeof updates.notes !== 'undefined') allowed.notes = updates.notes;
+    if (typeof updates.location_id !== 'undefined') allowed.location_id = updates.location_id;
 
     const { error } = await supabase
       .from('invoices')
