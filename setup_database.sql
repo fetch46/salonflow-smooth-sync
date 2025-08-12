@@ -12,6 +12,8 @@
 \i supabase/migrations/20250917094500_inventory_item_accounts.sql
 \i supabase/migrations/20250918120000_create_account_transactions.sql
 
+-- Additional consolidated safety script for product tables/links
+\i supabase/sql/create_products_schema.sql
 
 -- Receipts removed; invoices are the source of truth. Ensure invoice tables exist before adding location_id.
 -- (No action needed here)

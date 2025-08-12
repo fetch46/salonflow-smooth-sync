@@ -1,5 +1,4 @@
--- Create compatibility alias so DATETIME works on PostgreSQL
-CREATE DOMAIN DATETIME AS TIMESTAMPTZ;
+-- Using SQLite; DOMAIN not supported. Skipping.
 
 -- CreateTable
 CREATE TABLE "User" (
