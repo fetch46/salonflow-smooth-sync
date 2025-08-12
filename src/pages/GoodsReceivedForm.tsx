@@ -130,6 +130,67 @@ export default function GoodsReceivedForm() {
 
       setLoading(true);
 
+      // Ensure a goods_received header and items exist (used when RPC succeeds but does not persist header)
+      const ensureReceiptRecord = async (lineEntries: [string, number][]) => {
+        try {
+          // Try to locate an existing header that matches this receive
+          const { data: existingRows } = await supabase
+            .from("goods_received")
+            .select("id")
+            .eq("organization_id", orgId)
+            .eq("purchase_id", purchaseId)
+            .eq("location_id", derivedLocationId)
+            .eq("warehouse_id", warehouseId)
+            .eq("received_date", receivedDate)
+            .limit(1);
+          const existing = (existingRows || [])[0] as { id: string } | undefined;
+          if (existing?.id) {
+            // Optionally, ensure items exist. If none, insert lines > 0
+            const { data: itemCheck } = await supabase
+              .from("goods_received_items")
+              .select("id")
+              .eq("goods_received_id", existing.id)
+              .limit(1);
+            if (!itemCheck || itemCheck.length === 0) {
+              const itemsPayload = lineEntries.map(([purchase_item_id, qty]) => ({
+                goods_received_id: existing.id,
+                purchase_item_id,
+                quantity: Number(qty) || 0,
+              }));
+              if (itemsPayload.length > 0) {
+                await supabase.from("goods_received_items").insert(itemsPayload);
+              }
+            }
+            return;
+          }
+          // No header found; create one for listing visibility
+          const { data: header } = await supabase
+            .from("goods_received")
+            .insert([
+              {
+                organization_id: orgId,
+                purchase_id: purchaseId,
+                received_date: receivedDate,
+                warehouse_id: warehouseId,
+                location_id: derivedLocationId,
+                notes: notes || null,
+              },
+            ])
+            .select("id")
+            .single();
+          if (header?.id && lineEntries.length > 0) {
+            const itemsPayload = lineEntries.map(([purchase_item_id, qty]) => ({
+              goods_received_id: header.id,
+              purchase_item_id,
+              quantity: Number(qty) || 0,
+            }));
+            await supabase.from("goods_received_items").insert(itemsPayload);
+          }
+        } catch (_e) {
+          // Do not block the flow on ensure step
+        }
+      };
+
       // Helper fallback: manually update purchase_items and inventory_levels by location
       const manualReceive = async () => {
         // Build a quick index of purchase items by id for lookups
@@ -191,6 +252,7 @@ export default function GoodsReceivedForm() {
             .from("goods_received")
             .insert([
               {
+                organization_id: orgId,
                 purchase_id: purchaseId,
                 received_date: receivedDate,
                 warehouse_id: warehouseId,
@@ -228,6 +290,8 @@ export default function GoodsReceivedForm() {
             p_lines: payload as any,
           });
           if (error) throw error;
+          // Guard: if RPC did not create a header, ensure one exists for listing
+          await ensureReceiptRecord(entries as any);
         } catch (rpcError: any) {
           // If RPC missing or fails, fallback
           console.warn('record_goods_received RPC failed, applying manual receive fallback:', rpcError?.message || rpcError);
@@ -250,6 +314,9 @@ export default function GoodsReceivedForm() {
             p_quantities: qMap as any,
           });
           if (error) throw error;
+          // For update, ensure a header exists and items are present for listing
+          const editEntries = Object.entries(quantities).filter(([, q]) => Number(q) > 0) as [string, number][];
+          await ensureReceiptRecord(editEntries);
         } catch (rpcError: any) {
           // Conservative fallback for edit: apply deltas to inventory and update purchase items
           console.warn('update_goods_received RPC failed, applying manual update fallback:', rpcError?.message || rpcError);
@@ -303,15 +370,16 @@ export default function GoodsReceivedForm() {
 
           // 3) Try updating goods_received header and replacing items
           try {
-            await supabase
-              .from("goods_received")
-              .update({
-                received_date: receivedDate,
-                warehouse_id: warehouseId,
-                location_id: derivedLocationId,
-                notes: notes || null,
-              })
-              .eq("id", id);
+                         await supabase
+               .from("goods_received")
+               .update({
+                 organization_id: orgId,
+                 received_date: receivedDate,
+                 warehouse_id: warehouseId,
+                 location_id: derivedLocationId,
+                 notes: notes || null,
+               })
+               .eq("id", id);
             // Replace items
             await supabase.from("goods_received_items").delete().eq("goods_received_id", id);
             const itemsPayload = Object.entries(quantities)
