@@ -184,7 +184,7 @@ export default function GoodsReceivedForm() {
           }
         }
 
-        // 2) Adjust inventory_levels per location for each item
+        // 2) Adjust inventory_levels per location AND per warehouse for each item
         for (const [purchase_item_id, rawQty] of entries) {
           const addQty = Number(rawQty) || 0;
           if (addQty <= 0) continue;
@@ -192,27 +192,52 @@ export default function GoodsReceivedForm() {
           if (!it) continue;
           const itemId = it.item_id;
 
-          // Fetch existing level for item/location
-          const { data: levelRows, error: levelErr } = await supabase
-            .from("inventory_levels")
-            .select("id, quantity")
-            .eq("item_id", itemId)
-            .eq("location_id", derivedLocationId)
-            .limit(1);
-          if (levelErr) throw levelErr;
+          // 2a) By location (backward compatibility for location-based stock views)
+          {
+            const { data: levelRows, error: levelErr } = await supabase
+              .from("inventory_levels")
+              .select("id, quantity")
+              .eq("item_id", itemId)
+              .eq("location_id", derivedLocationId)
+              .limit(1);
+            if (levelErr) throw levelErr;
+            const existing = (levelRows || [])[0] as { id: string; quantity: number } | undefined;
+            if (existing) {
+              const { error: updErr } = await supabase
+                .from("inventory_levels")
+                .update({ quantity: Number(existing.quantity || 0) + addQty })
+                .eq("id", existing.id);
+              if (updErr) throw updErr;
+            } else {
+              const { error: insErr } = await supabase
+                .from("inventory_levels")
+                .insert([{ item_id: itemId, location_id: derivedLocationId, quantity: addQty }]);
+              if (insErr) throw insErr;
+            }
+          }
 
-          const existing = (levelRows || [])[0] as { id: string; quantity: number } | undefined;
-          if (existing) {
-            const { error: updErr } = await supabase
+          // 2b) By warehouse (required so it appears in warehouse stock views)
+          {
+            const { data: whRows, error: whErr } = await supabase
               .from("inventory_levels")
-              .update({ quantity: Number(existing.quantity || 0) + addQty })
-              .eq("id", existing.id);
-            if (updErr) throw updErr;
-          } else {
-            const { error: insErr } = await supabase
-              .from("inventory_levels")
-              .insert([{ item_id: itemId, location_id: derivedLocationId, quantity: addQty }]);
-            if (insErr) throw insErr;
+              .select("id, quantity")
+              .eq("item_id", itemId)
+              .eq("warehouse_id", warehouseId)
+              .limit(1);
+            if (whErr) throw whErr;
+            const existingWh = (whRows || [])[0] as { id: string; quantity: number } | undefined;
+            if (existingWh) {
+              const { error: updWhErr } = await supabase
+                .from("inventory_levels")
+                .update({ quantity: Number(existingWh.quantity || 0) + addQty })
+                .eq("id", existingWh.id);
+              if (updWhErr) throw updWhErr;
+            } else {
+              const { error: insWhErr } = await supabase
+                .from("inventory_levels")
+                .insert([{ item_id: itemId, warehouse_id: warehouseId, quantity: addQty }]);
+              if (insWhErr) throw insWhErr;
+            }
           }
         }
 
@@ -310,33 +335,59 @@ export default function GoodsReceivedForm() {
             }
           }
 
-          // 2) Adjust inventory by delta per item at derived location
+          // 2) Adjust inventory by delta per item at derived location and warehouse
           for (const it of purchaseItems) {
             const prev = Number(originalQuantities[it.id] || 0);
             const next = Math.max(0, Number(quantities[it.id] || 0));
             const delta = next - prev;
             if (delta === 0) continue;
 
-            const { data: levelRows, error: levelErr } = await supabase
-              .from("inventory_levels")
-              .select("id, quantity")
-              .eq("item_id", it.item_id)
-              .eq("location_id", derivedLocationId)
-              .limit(1);
-            if (levelErr) throw levelErr;
+            // 2a) Location-based levels
+            {
+              const { data: levelRows, error: levelErr } = await supabase
+                .from("inventory_levels")
+                .select("id, quantity")
+                .eq("item_id", it.item_id)
+                .eq("location_id", derivedLocationId)
+                .limit(1);
+              if (levelErr) throw levelErr;
+              const existing = (levelRows || [])[0] as { id: string; quantity: number } | undefined;
+              if (existing) {
+                const { error: updErr } = await supabase
+                  .from("inventory_levels")
+                  .update({ quantity: Number(existing.quantity || 0) + delta })
+                  .eq("id", existing.id);
+                if (updErr) throw updErr;
+              } else {
+                const { error: insErr } = await supabase
+                  .from("inventory_levels")
+                  .insert([{ item_id: it.item_id, location_id: derivedLocationId, quantity: Math.max(0, delta) }]);
+                if (insErr) throw insErr;
+              }
+            }
 
-            const existing = (levelRows || [])[0] as { id: string; quantity: number } | undefined;
-            if (existing) {
-              const { error: updErr } = await supabase
+            // 2b) Warehouse-based levels
+            {
+              const { data: whRows, error: whErr } = await supabase
                 .from("inventory_levels")
-                .update({ quantity: Number(existing.quantity || 0) + delta })
-                .eq("id", existing.id);
-              if (updErr) throw updErr;
-            } else {
-              const { error: insErr } = await supabase
-                .from("inventory_levels")
-                .insert([{ item_id: it.item_id, location_id: derivedLocationId, quantity: Math.max(0, delta) }]);
-              if (insErr) throw insErr;
+                .select("id, quantity")
+                .eq("item_id", it.item_id)
+                .eq("warehouse_id", warehouseId)
+                .limit(1);
+              if (whErr) throw whErr;
+              const existingWh = (whRows || [])[0] as { id: string; quantity: number } | undefined;
+              if (existingWh) {
+                const { error: updWhErr } = await supabase
+                  .from("inventory_levels")
+                  .update({ quantity: Number(existingWh.quantity || 0) + delta })
+                  .eq("id", existingWh.id);
+                if (updWhErr) throw updWhErr;
+              } else {
+                const { error: insWhErr } = await supabase
+                  .from("inventory_levels")
+                  .insert([{ item_id: it.item_id, warehouse_id: warehouseId, quantity: Math.max(0, delta) }]);
+                if (insWhErr) throw insWhErr;
+              }
             }
           }
 
