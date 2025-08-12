@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { SaasProvider, useSaas } from "@/lib/saas";
 import React, { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/sonner";
+import AppFooter from "@/components/layout/AppFooter";
 
 // Layouts
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -223,6 +224,7 @@ function App() {
         <Router>
           <AppRoutes />
           <Toaster />
+          <AppFooter />
         </Router>
       </SaasProvider>
     </ErrorBoundary>

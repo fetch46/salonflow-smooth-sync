@@ -66,6 +66,9 @@ All colors MUST be HSL.
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Fixed footer height */
+    --footer-height: 3.5rem; /* 56px */
   }
 
   .dark {
@@ -120,6 +123,7 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    padding-bottom: var(--footer-height);
   }
 }
 
@@ -135,6 +139,9 @@ All colors MUST be HSL.
   }
   .no-wrap-sm {
     @apply whitespace-nowrap sm:whitespace-normal;
+  }
+  .pb-footer {
+    padding-bottom: var(--footer-height);
   }
 }
 
