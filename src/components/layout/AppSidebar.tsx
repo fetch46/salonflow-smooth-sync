@@ -254,7 +254,7 @@ export function AppSidebar() {
   const [openSubmenus, setOpenSubmenus] = useState<string[]>([]);
   const { hasFeature, getFeatureAccess, usageData } = useFeatureGating();
   const { subscriptionPlan, isTrialing, daysLeftInTrial, isSuperAdmin } = useSaas();
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
 
   const toggleSubmenu = (title: string) => {
     setOpenSubmenus((prev) =>
@@ -262,6 +262,11 @@ export function AppSidebar() {
         ? []
         : [title]
     );
+  };
+
+  const handleNavClick = () => {
+    // Close the sheet on mobile after navigation
+    if (isMobile) setOpenMobile(false);
   };
 
   const getUsageBadge = (_feature: string) => null;
@@ -367,6 +372,7 @@ export function AppSidebar() {
                                         isActive ? "bg-accent text-accent-foreground" : ""
                                       }`
                                     }
+                                    onClick={handleNavClick}
                                   >
                                     <subItem.icon className="w-5 h-5" />
                                     <span className="flex-1">{subItem.title}</span>
@@ -400,6 +406,7 @@ export function AppSidebar() {
                             isActive ? "bg-accent text-accent-foreground" : ""
                           }`
                         }
+                        onClick={handleNavClick}
                       >
                         <item.icon className="w-5 h-5" />
                         <span className="flex-1">{item.title}</span>
@@ -426,7 +433,7 @@ export function AppSidebar() {
                     tooltip={state === 'collapsed' ? superAdminMenuItem.title : undefined}
                     size="lg"
                   >
-                    <a href={superAdminMenuItem.url} className="flex items-center gap-2">
+                    <a href={superAdminMenuItem.url} className="flex items-center gap-2" onClick={handleNavClick}>
                       <superAdminMenuItem.icon className="h-5 w-5" />
                       <span>{superAdminMenuItem.title}</span>
                       <Badge 
@@ -447,7 +454,7 @@ export function AppSidebar() {
                     tooltip={state === 'collapsed' ? 'Landing CMS' : undefined}
                     size="lg"
                   >
-                    <NavLink to="/super-admin/cms" className={({ isActive }) => `flex items-center gap-2 ${isActive ? 'bg-accent text-accent-foreground' : ''}`}>
+                    <NavLink to="/super-admin/cms" className={({ isActive }) => `flex items-center gap-2 ${isActive ? 'bg-accent text-accent-foreground' : ''}`} onClick={handleNavClick}>
                       <Sparkles className="h-5 w-5" />
                       <span>Landing CMS</span>
                     </NavLink>
