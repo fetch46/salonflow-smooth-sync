@@ -245,6 +245,20 @@ export default function Purchases() {
         )
       );
 
+      // After updating items, recompute and update purchase status
+      try {
+        const { data: allItems, error: allErr } = await supabase
+          .from("purchase_items")
+          .select("quantity, received_quantity")
+          .eq("purchase_id", receivePurchaseId);
+        if (allErr) throw allErr;
+        const list = (allItems || []) as Array<{ quantity: number; received_quantity: number }>;
+        const anyReceived = list.some(it => Number(it.received_quantity || 0) > 0);
+        const allReceived = list.length > 0 && list.every(it => Number(it.received_quantity || 0) >= Number(it.quantity || 0));
+        const newStatus = allReceived ? "received" : (anyReceived ? "partial" : "pending");
+        await supabase.from("purchases").update({ status: newStatus }).eq("id", receivePurchaseId);
+      } catch {}
+
       toast({ title: "Received", description: "Items received successfully" });
       setReceiveOpen(false);
       setReceivePurchaseId(null);
@@ -275,6 +289,11 @@ export default function Purchases() {
       await Promise.all(
         toReset.map((it: any) => supabase.from("purchase_items").update({ received_quantity: 0 }).eq("id", it.id))
       );
+
+      // Reset purchase status to pending after undo
+      try {
+        await supabase.from("purchases").update({ status: "pending" }).eq("id", purchaseId);
+      } catch {}
 
       toast({ title: "Receiving undone", description: "All received quantities reset" });
       await fetchPurchases();
@@ -504,6 +523,10 @@ export default function Purchases() {
       });
       if (error) throw error;
 
+      // After successful payment, mark purchase as closed
+      try {
+        await supabase.from("purchases").update({ status: "closed" }).eq("id", payPurchaseId);
+      } catch {}
 
       toast({ title: "Paid", description: "Purchase payment recorded" });
       setIsPayDialogOpen(false);

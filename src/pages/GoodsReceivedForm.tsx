@@ -130,6 +130,24 @@ export default function GoodsReceivedForm() {
 
       setLoading(true);
 
+      // Helper to recompute and update purchase status after receiving
+      const updatePurchaseStatusAfterReceiving = async (pid: string) => {
+        try {
+          const { data: items, error } = await supabase
+            .from("purchase_items")
+            .select("quantity, received_quantity")
+            .eq("purchase_id", pid);
+          if (error) throw error;
+          const list = (items || []) as Array<{ quantity: number; received_quantity: number }>;
+          const anyReceived = list.some(it => Number(it.received_quantity || 0) > 0);
+          const allReceived = list.length > 0 && list.every(it => Number(it.received_quantity || 0) >= Number(it.quantity || 0));
+          const newStatus = allReceived ? "received" : (anyReceived ? "partial" : "pending");
+          await supabase.from("purchases").update({ status: newStatus }).eq("id", pid);
+        } catch (ignore) {
+          // Best-effort; ignore status update failure
+        }
+      };
+
       // Helper fallback: manually update purchase_items and inventory_levels by location
       const manualReceive = async () => {
         // Build a quick index of purchase items by id for lookups
@@ -233,6 +251,8 @@ export default function GoodsReceivedForm() {
           console.warn('record_goods_received RPC failed, applying manual receive fallback:', rpcError?.message || rpcError);
           await manualReceive();
         }
+        // After recording receipt (RPC or fallback), update purchase status
+        await updatePurchaseStatusAfterReceiving(purchaseId);
       } else {
         try {
           // Build quantities map for update
@@ -328,6 +348,8 @@ export default function GoodsReceivedForm() {
             // Ignore if tables missing
           }
         }
+        // After updating receipt (RPC or fallback), update purchase status
+        await updatePurchaseStatusAfterReceiving(purchaseId);
       }
 
       toast({ title: "Saved", description: "Goods received recorded" });
