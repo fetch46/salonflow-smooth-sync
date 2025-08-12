@@ -103,7 +103,7 @@ interface BookingService {
   growth_rate: number;
 }
 
-// Removed mock bookings; best sellers now computed from receipt_items
+// Removed mock bookings; best sellers now computed from invoice_items
 
 const SERVICE_CATEGORIES = [
   { name: "Hair Services", icon: Scissors, color: "from-pink-500 to-rose-500" },
@@ -446,7 +446,7 @@ export default function Services() {
       // Pull last 60 days to compute recent and previous period metrics client-side
       const sinceIso = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase
-        .from("receipt_items")
+        .from("invoice_items")
         .select("service_id, quantity, total_price, created_at, services:service_id(name, category)")
         .not("service_id", "is", null)
         .gte("created_at", sinceIso);

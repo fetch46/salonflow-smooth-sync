@@ -12,8 +12,8 @@
 \i supabase/migrations/20250917094500_inventory_item_accounts.sql
 \i supabase/migrations/20250918120000_create_account_transactions.sql
 
--- Replace invoices with receipts (ensures receipts exist before adding location_id)
-\i supabase/migrations/20250809000000_replace_invoices_with_receipts.sql
+-- Receipts removed; invoices are the source of truth. Ensure invoice tables exist before adding location_id.
+-- (No action needed here)
 
 -- Also include business locations and related columns
 \i supabase/migrations/20250812090000_add_business_locations_and_location_filters.sql

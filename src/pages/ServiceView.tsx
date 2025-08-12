@@ -485,7 +485,7 @@ export default function ServiceView() {
         <CardHeader>
           <CardTitle>Sales History</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            Posted from receipts containing this service
+                         Posted from invoices containing this service
           </p>
         </CardHeader>
         <CardContent>

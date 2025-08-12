@@ -107,28 +107,36 @@ export default function ClientProfile() {
         notes: clientData.notes || '',
       });
 
-      // Fetch receipts for this client (with Supabase -> mock fallback)
+      // Fetch invoices for this client
       let receiptsData: any[] = [];
       try {
-        const rcptRes = await supabase
-          .from("receipts")
-          .select("id, receipt_number, total_amount, amount_paid, status, created_at, customer_id")
-          .eq("customer_id", id)
+        const invRes = await supabase
+          .from("invoices")
+          .select("id, invoice_number, total_amount, status, created_at, client_id")
+          .eq("client_id", id)
           .order("created_at", { ascending: false });
-        if (rcptRes.error) throw rcptRes.error;
-        receiptsData = rcptRes.data || [];
+        if (invRes.error) throw invRes.error;
+        receiptsData = (invRes.data || []).map((inv: any) => ({
+          id: inv.id,
+          receipt_number: inv.invoice_number,
+          total_amount: inv.total_amount,
+          amount_paid: null,
+          status: inv.status,
+          created_at: inv.created_at,
+          customer_id: inv.client_id,
+        }));
       } catch (err) {
         const all = await getReceiptsWithFallback(supabase as any);
         receiptsData = (all || []).filter((r: any) => r.customer_id === id);
       }
       setReceipts(receiptsData);
 
-      // Compute total payments received for this client's receipts
+      // Compute total payments received for this client's invoices
       try {
-        const allPayments = await getAllReceiptPaymentsWithFallback(supabase);
-        const receiptIds = new Set((receiptsData || []).map((r: any) => r.id));
-        const totalPayments = (allPayments || [])
-          .filter((p: any) => receiptIds.has(p.receipt_id))
+        const { data: pays } = await supabase.from('invoice_payments').select('invoice_id, amount');
+        const invoiceIds = new Set((receiptsData || []).map((r: any) => r.id));
+        const totalPayments = (pays || [])
+          .filter((p: any) => invoiceIds.has(p.invoice_id))
           .reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
         setPaymentsTotal(totalPayments);
       } catch (payErr) {
@@ -357,7 +365,7 @@ export default function ClientProfile() {
                 {formatMoney(revenuePaid)}
               </div>
               <p className="text-xs text-green-600">
-                From {receipts.length} receipts
+                                 From {receipts.length} invoices
               </p>
             </CardContent>
           </Card>
@@ -390,7 +398,7 @@ export default function ClientProfile() {
 
           <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-orange-700">Receipts</CardTitle>
+              <CardTitle className="text-sm font-medium text-orange-700">Invoices</CardTitle>
               <Receipt className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent>
@@ -431,12 +439,12 @@ export default function ClientProfile() {
 
         {/* Tabs for different data views */}
         <Tabs defaultValue="appointments" className="space-y-4">
-          <TabsList className="justify-start sm:justify-start rounded-xl border bg-card shadow-sm p-2 gap-2 h-auto [&_[role=tab]]:h-12 [&_[role=tab]]:px-4 [&_[role=tab]]:text-base [&_[role=tab]]:gap-2">
-            <TabsTrigger value="appointments">Appointments</TabsTrigger>
-            <TabsTrigger value="receipts">Receipts</TabsTrigger>
-            <TabsTrigger value="jobcards">Job Cards</TabsTrigger>
-            <TabsTrigger value="details">Details</TabsTrigger>
-          </TabsList>
+                       <TabsList className="justify-start sm:justify-start rounded-xl border bg-card shadow-sm p-2 gap-2 h-auto [&_[role=tab]]:h-12 [&_[role=tab]]:px-4 [&_[role=tab]]:text-base [&_[role=tab]]:gap-2">
+              <TabsTrigger value="appointments">Appointments</TabsTrigger>
+              <TabsTrigger value="receipts">Invoices</TabsTrigger>
+              <TabsTrigger value="jobcards">Job Cards</TabsTrigger>
+              <TabsTrigger value="details">Details</TabsTrigger>
+            </TabsList>
 
           <TabsContent value="appointments" className="space-y-4">
             <Card>
@@ -475,9 +483,9 @@ export default function ClientProfile() {
 
           <TabsContent value="receipts" className="space-y-4">
             <Card>
-              <CardHeader>
-                <CardTitle>Receipt History</CardTitle>
-              </CardHeader>
+                               <CardHeader>
+                  <CardTitle>Invoice History</CardTitle>
+                </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
                   <Table>
