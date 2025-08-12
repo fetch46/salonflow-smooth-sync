@@ -267,7 +267,9 @@ export function AppSidebar() {
   const getUsageBadge = (_feature: string) => null;
 
   const isMenuItemAvailable = (item: MenuItem) => {
-    // Check if at least one feature is available
+    if (item.title === 'Services') {
+      return true;
+    }
     if (item.subItems) {
       return item.subItems.some(subItem => hasFeature(subItem.feature));
     }
@@ -386,11 +388,11 @@ export function AppSidebar() {
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton 
                       asChild
-                      className={`text-base ${!isAvailable ? 'opacity-50 pointer-events-none' : ''}`}
-                      tooltip={state === 'collapsed' ? item.title : undefined}
-                      isActive={location.pathname === item.url}
-                      size="lg"
-                    >
+                                                         className={`text-base ${(!isAvailable && item.title !== 'Services') ? 'opacity-50 pointer-events-none' : ''}`}
+                                   tooltip={state === 'collapsed' ? item.title : undefined}
+                                   isActive={location.pathname === item.url}
+                                   size="lg"
+                                 >
                       <NavLink
                         to={item.url!}
                         className={({ isActive }) =>
