@@ -6,11 +6,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RefreshCw, Plus, Truck } from "lucide-react";
+import { useSaas } from "@/lib/saas";
 
 interface GoodsReceivedRow { id: string; grn_number: string | null; received_date: string; warehouse_id?: string | null; location_id: string; purchase_id: string; purchase?: { purchase_number: string; vendor_name: string } | null; warehouse?: { name: string } | null }
 
 export default function GoodsReceived() {
   const navigate = useNavigate();
+  const { organization } = useSaas();
   const [rows, setRows] = useState<GoodsReceivedRow[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -18,20 +20,60 @@ export default function GoodsReceived() {
   const load = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      // Base fetch without FK joins to avoid relationship issues in environments where FKs may be missing
+      let query = supabase
         .from("goods_received")
-        .select("id, grn_number, received_date, warehouse_id, location_id, purchase_id, purchase:purchases(purchase_number, vendor_name), warehouse:warehouses(name)")
+        .select("id, grn_number, received_date, warehouse_id, location_id, purchase_id")
         .order("received_date", { ascending: false });
+
+      if (organization?.id) {
+        query = query.eq("organization_id", organization.id);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
-      setRows((data || []) as any);
+
+      const list = (data || []) as Array<GoodsReceivedRow>;
+
+      // Hydrate related purchase and warehouse display fields in parallel
+      const purchaseIds = Array.from(new Set(list.map(r => r.purchase_id).filter(Boolean)));
+      const warehouseIds = Array.from(new Set(list.map(r => r.warehouse_id).filter(Boolean))) as string[];
+
+      const [purchasesRes, warehousesRes] = await Promise.all([
+        purchaseIds.length
+          ? supabase.from("purchases").select("id, purchase_number, vendor_name").in("id", purchaseIds)
+          : Promise.resolve({ data: [] as any[], error: null }),
+        warehouseIds.length
+          ? supabase.from("warehouses").select("id, name").in("id", warehouseIds)
+          : Promise.resolve({ data: [] as any[], error: null }),
+      ]);
+
+      const purchasesMap = new Map<string, { purchase_number: string; vendor_name: string }>();
+      for (const p of ((purchasesRes.data || []) as any[])) {
+        purchasesMap.set(p.id, { purchase_number: p.purchase_number, vendor_name: p.vendor_name });
+      }
+      const warehousesMap = new Map<string, { name: string }>();
+      for (const w of ((warehousesRes.data || []) as any[])) {
+        warehousesMap.set(w.id, { name: w.name });
+      }
+
+      const hydrated = list.map(r => ({
+        ...r,
+        purchase: purchasesMap.get(r.purchase_id) || null,
+        warehouse: (r.warehouse_id ? warehousesMap.get(r.warehouse_id) : undefined) || null,
+      }));
+
+      setRows(hydrated);
     } catch (e) {
       console.error(e);
+      setRows([]);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organization?.id]);
 
   const filtered = rows.filter(r => {
     const t = search.toLowerCase();
@@ -83,7 +125,17 @@ export default function GoodsReceived() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map(r => (
+                {loading && (
+                  <TableRow>
+                    <TableCell colSpan={6}>Loading...</TableCell>
+                  </TableRow>
+                )}
+                {!loading && filtered.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6}>No receipts found</TableCell>
+                  </TableRow>
+                )}
+                {!loading && filtered.map(r => (
                   <TableRow key={r.id}>
                     <TableCell>{r.grn_number || r.id.slice(0,8)}</TableCell>
                     <TableCell>{(r.received_date || '').slice(0,10)}</TableCell>
