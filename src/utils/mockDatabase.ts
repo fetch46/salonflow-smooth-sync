@@ -118,13 +118,13 @@ export async function createReceiptWithFallback(supabase: any, receiptData: any,
       if (receiptError) throw receiptError;
       receiptIns = receipt;
     }
-    if (!receipt?.id) throw new Error('Receipt created but no ID returned');
+    if (!receiptIns?.id) throw new Error('Receipt created but no ID returned');
 
     if (items?.length) {
       await supabase
         .from('receipt_items')
         .insert(items.map((it: any) => ({
-          receipt_id: receipt.id,
+           receipt_id: receiptIns.id,
           description: it.description,
           quantity: it.quantity || 1,
           unit_price: it.unit_price || 0,
@@ -139,7 +139,7 @@ export async function createReceiptWithFallback(supabase: any, receiptData: any,
         const commissionRows = (items || [])
           .filter((it: any) => it.staff_id && (typeof it.commission_percentage === 'number'))
           .map((it: any) => ({
-            receipt_id: receipt.id,
+             receipt_id: receiptIns.id,
             staff_id: it.staff_id,
             service_id: it.service_id || null,
             commission_rate: Number(it.commission_percentage || 0),
@@ -154,7 +154,7 @@ export async function createReceiptWithFallback(supabase: any, receiptData: any,
         console.warn('Skipping staff_commissions insert:', e);
       }
     }
-    return receipt;
+    return receiptIns;
   } catch (err) {
     console.log('Using mock database for receipts');
     const nowIso = new Date().toISOString();

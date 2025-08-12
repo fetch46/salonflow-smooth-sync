@@ -1265,7 +1265,7 @@ const ProductUsageHistory: React.FC<{ startDate: string; endDate: string; densit
                 </TableHeader>
                 <TableBody>
                   {(entries as any[]).map((r) => (
-                    <TableRow key={`${r.type}-${r.reference}-${r.date}-${r.product_id}`} className={r.type === 'Sold/Used' ? 'cursor-pointer hover:bg-slate-50' : ''} onClick={() => { if (r.type === 'Sold/Used' && r.receipt?.id) navigate(`/receipts/${r.receipt.id}`); }}>
+                    <TableRow key={`${r.type}-${r.reference}-${r.date}-${r.product_id}`} className={r.type === 'Sold/Used' ? 'cursor-pointer hover:bg-slate-50' : ''} onClick={() => { if (r.type === 'Sold/Used' && r.receipt?.id) window.location.assign(`/receipts/${r.receipt.id}`); }}>
                       <TableCell>{new Date(r.date).toLocaleString()}</TableCell>
                       <TableCell>{r.product_name}</TableCell>
                       <TableCell className="text-right">{Number(r.qty || 0).toLocaleString()}</TableCell>
