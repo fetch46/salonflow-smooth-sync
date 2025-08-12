@@ -287,9 +287,7 @@ phone: "",
     is_active: true,
     default_warehouse_id: "",
   })
-  // Default POS Location (organization setting)
-  const [defaultPosLocationId, setDefaultPosLocationId] = useState<string>("")
-  const [defaultPosWarehouseName, setDefaultPosWarehouseName] = useState<string>("")
+  const [defaultPosWarehouseId, setDefaultPosWarehouseId] = useState<string>("")
 
   const openNewLocation = () => {
     setEditingLocation(null)
@@ -366,33 +364,8 @@ phone: "",
       const tax = s.tax_rate_percent
       const parsed = typeof tax === 'number' ? tax : typeof tax === 'string' ? parseFloat(tax) : 0
       setTaxRatePercent(Number.isFinite(parsed) ? String(parsed) : "")
-      // Initialize default POS location from org settings
-      setDefaultPosLocationId(s.pos_default_location_id || "")
-      // Try resolve default warehouse name for selected default location
-      if (s.pos_default_location_id) {
-        (async () => {
-          try {
-            const { data: loc } = await supabase
-              .from('business_locations')
-              .select('id, default_warehouse_id')
-              .eq('id', s.pos_default_location_id)
-              .maybeSingle()
-            const whId = (loc as any)?.default_warehouse_id as string | undefined
-            if (whId) {
-              const { data: wh } = await supabase
-                .from('warehouses')
-                .select('id, name')
-                .eq('id', whId)
-                .maybeSingle()
-              if (wh?.name) setDefaultPosWarehouseName(wh.name)
-            } else {
-              setDefaultPosWarehouseName("")
-            }
-          } catch {}
-        })()
-      } else {
-        setDefaultPosWarehouseName("")
-      }
+      // Initialize default POS warehouse from org settings
+      setDefaultPosWarehouseId(s.pos_default_warehouse_id || "")
       // Initialize deposit account mapping from org settings
       const map = (s.default_deposit_accounts_by_method as Record<string, string>) || {}
       setDepositAccountMap(map)
@@ -569,22 +542,6 @@ phone: "",
     }
   };
 
-  const handleSaveDefaultPosLocation = async () => {
-    if (!organization) return toast.error('No organization selected');
-    try {
-      await updateOrganization(organization.id, {
-        settings: {
-          ...(organization.settings as any),
-          pos_default_location_id: defaultPosLocationId || null,
-        },
-      } as any)
-      toast.success('Default POS location updated')
-    } catch (e) {
-      console.error(e)
-      toast.error('Failed to save default POS location')
-    }
-  }
-
   const handleSaveDepositAccounts = async () => {
     if (!organization) return toast.error('No organization selected');
     try {
@@ -712,6 +669,22 @@ phone: "",
       }
     })()
   }, [organization?.id])
+
+  const handleSaveDefaultPosWarehouse = async () => {
+    if (!organization) return toast.error('No organization selected');
+    try {
+      await updateOrganization(organization.id, {
+        settings: {
+          ...(organization.settings as any),
+          pos_default_warehouse_id: defaultPosWarehouseId || null,
+        },
+      } as any)
+      toast.success('Default POS warehouse updated')
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to save default POS warehouse')
+    }
+  }
 
   return (
     <div className="flex-1 space-y-6 p-8 pt-6">
@@ -876,28 +849,6 @@ phone: "",
                         placeholder="e.g. 8.5"
                       />
                       <p className="text-xs text-muted-foreground">This rate will be used across POS, Invoices and Purchases.</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Default POS Location</Label>
-                      <div className="flex items-center gap-2">
-                        <Select value={defaultPosLocationId || "__none__"} onValueChange={(v) => setDefaultPosLocationId(v === "__none__" ? "" : v)}>
-                          <SelectTrigger className="w-72">
-                            <SelectValue placeholder="Select POS location" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none__">— None —</SelectItem>
-                            {stockLocations.map((l) => (
-                              <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button type="button" variant="outline" onClick={handleSaveDefaultPosLocation}>Save</Button>
-                      </div>
-                      {defaultPosWarehouseName ? (
-                        <p className="text-xs text-muted-foreground">Default warehouse for POS will be: <span className="font-medium">{defaultPosWarehouseName}</span></p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground">Set a default warehouse on the selected location to auto-select it in POS.</p>
-                      )}
                     </div>
                   </div>
 
@@ -1588,6 +1539,23 @@ phone: "",
               </CardHeader>
               <CardContent>
                 <div className="flex justify-end mb-3">
+                  <div className="mr-auto space-y-2">
+                    <Label>Default POS Warehouse</Label>
+                    <div className="flex items-center gap-2">
+                      <Select value={defaultPosWarehouseId || "__none__"} onValueChange={(v) => setDefaultPosWarehouseId(v === "__none__" ? "" : v)}>
+                        <SelectTrigger className="w-72">
+                          <SelectValue placeholder="Select default POS warehouse" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">— None —</SelectItem>
+                          {warehouses.filter(w => w.is_active).map(w => (
+                            <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button type="button" variant="outline" onClick={handleSaveDefaultPosWarehouse}>Save</Button>
+                    </div>
+                  </div>
                   <Button onClick={() => { setEditingWarehouse(null); setWarehouseForm({ name: '', location_id: stockLocations[0]?.id || '', is_active: true }); setWarehouseDialogOpen(true) }} disabled={stockLocations.length === 0}>
                     <Plus className="h-4 w-4 mr-2" /> New Warehouse
                   </Button>
