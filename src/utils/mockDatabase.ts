@@ -591,6 +591,8 @@ export async function getInvoicesWithFallback(supabase: any) {
       notes: r.notes || null,
       jobcard_id: null,
       location_id: r.location_id ?? null,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
     }));
   } catch (error) {
     console.log('Using mock database for invoices');

@@ -201,6 +201,12 @@ export default function Invoices() {
   const [editLocationId, setEditLocationId] = useState<string>("");
   const navigate = useNavigate();
 
+  const safeFormatDate = (dateInput: string | Date | null | undefined, fmt: string): string => {
+    const dateObj = typeof dateInput === 'string' ? new Date(dateInput) : dateInput instanceof Date ? dateInput : null;
+    if (!dateObj || isNaN(dateObj.getTime())) return '—';
+    return format(dateObj, fmt);
+  };
+
   const [formData, setFormData] = useState({
     customer_id: "",
     customer_name: "",
@@ -474,13 +480,11 @@ export default function Invoices() {
     );
   };
 
-  const filterInvoicesByDate = (invoices: Invoice[], preset: string) => {
+  const filterInvoicesByDateRange = (invoices: Invoice[], preset: string) => {
     if (preset === "all_time") return invoices;
-    
     const now = new Date();
     let startDate: Date;
     let endDate: Date = now;
-
     switch (preset) {
       case "today":
         startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -493,27 +497,25 @@ export default function Invoices() {
       }
       case "this_month":
         startDate = startOfMonth(now);
-        endDate = endOfMonth(now);
         break;
-      case "last_month": {
-        const lastMonth = subMonths(now, 1);
-        startDate = startOfMonth(lastMonth);
-        endDate = endOfMonth(lastMonth);
+      case "last_month":
+        startDate = startOfMonth(subMonths(now, 1));
+        endDate = endOfMonth(subMonths(now, 1));
         break;
-      }
       case "last_3_months":
-        startDate = subMonths(now, 3);
+        startDate = startOfMonth(subMonths(now, 2));
         break;
       case "this_year":
         startDate = new Date(now.getFullYear(), 0, 1);
         break;
       default:
-        return invoices;
+        startDate = new Date(0);
     }
-
-    return invoices.filter(invoice => 
-      isWithinInterval(new Date(invoice.created_at), { start: startDate, end: endDate })
-    );
+    return invoices.filter((invoice) => {
+      const created = new Date(invoice.created_at as any);
+      if (isNaN(created.getTime())) return false;
+      return isWithinInterval(created, { start: startDate, end: endDate });
+    });
   };
 
   const filteredInvoices = invoices.filter(invoice => {
@@ -524,7 +526,7 @@ export default function Invoices() {
     return matchesSearch && matchesStatus;
   });
 
-  const dateFilteredInvoices = filterInvoicesByDate(filteredInvoices, dateFilter);
+  const dateFilteredInvoices = filterInvoicesByDateRange(filteredInvoices, dateFilter);
 
   // Statistics
   const totalInvoices = dateFilteredInvoices.length;
@@ -819,13 +821,13 @@ export default function Invoices() {
                     <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                     
                     <TableCell>
-                      <div className="text-slate-700">{format(new Date(invoice.created_at), "MMM dd, yyyy")}</div>
-                      <div className="text-xs text-slate-500">{format(new Date(invoice.created_at), "h:mm a")}</div>
+                      <div className="text-slate-700">{safeFormatDate(invoice.created_at, "MMM dd, yyyy")}</div>
+                      <div className="text-xs text-slate-500">{safeFormatDate(invoice.created_at, "h:mm a")}</div>
                     </TableCell>
                     
                     <TableCell>
                       {invoice.due_date ? (
-                        <div className="text-slate-700">{format(new Date(invoice.due_date), "MMM dd, yyyy")}</div>
+                        <div className="text-slate-700">{safeFormatDate(invoice.due_date, "MMM dd, yyyy")}</div>
                       ) : (
                         <span className="text-slate-400">—</span>
                       )}
@@ -927,7 +929,7 @@ export default function Invoices() {
                 <div className="text-right space-y-1">
                   {getStatusBadge(selectedInvoice.status)}
                   <div className="text-sm text-slate-500">
-                    Created {format(new Date(selectedInvoice.created_at), "MMM dd, yyyy")}
+                    Created {safeFormatDate(selectedInvoice.created_at, "MMM dd, yyyy")}
                   </div>
                 </div>
               )}
@@ -973,14 +975,14 @@ export default function Invoices() {
                     <div className="flex justify-between">
                       <span className="text-slate-600">Date:</span>
                       <span className="font-medium">
-                        {format(new Date(selectedInvoice.created_at), "MMM dd, yyyy")}
+                        {safeFormatDate(selectedInvoice.created_at, "MMM dd, yyyy")}
                       </span>
                     </div>
                     {selectedInvoice.due_date && (
                       <div className="flex justify-between">
                         <span className="text-slate-600">Due:</span>
                         <span className="font-medium">
-                          {format(new Date(selectedInvoice.due_date), "MMM dd, yyyy")}
+                          {safeFormatDate(selectedInvoice.due_date, "MMM dd, yyyy")}
                         </span>
                       </div>
                     )}
