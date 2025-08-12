@@ -130,23 +130,36 @@ export default function GoodsReceivedForm() {
 
       setLoading(true);
 
-        try {
-          const { data: header, error: headerErr } = await supabase
-            .from("goods_received")
-            .insert([
-              {
-                organization_id: orgId,
-                purchase_id: purchaseId,
-                received_date: receivedDate,
-                warehouse_id: warehouseId,
-                location_id: derivedLocationId,
-                notes: notes || null,
-              },
-            ])
-            .select("id")
-            .single();
-        }
-      };
+        const ensureReceiptRecord = async (entriesParam: [string, number][]) => {
+          try {
+            const { data: header, error: headerErr } = await supabase
+              .from("goods_received")
+              .insert([
+                {
+                  organization_id: orgId,
+                  purchase_id: purchaseId,
+                  received_date: receivedDate,
+                  warehouse_id: warehouseId,
+                  location_id: derivedLocationId,
+                  notes: notes || null,
+                },
+              ])
+              .select("id")
+              .single();
+            if (!headerErr && header?.id) {
+              const itemsPayload = entriesParam.map(([purchase_item_id, qty]) => ({
+                goods_received_id: header.id,
+                purchase_item_id,
+                quantity: Number(qty) || 0,
+              }));
+              if (itemsPayload.length > 0) {
+                await supabase.from("goods_received_items").insert(itemsPayload);
+              }
+            }
+          } catch (ignore) {
+            // Ignore if tables do not exist in this environment
+          }
+        };
 
       // Helper fallback: manually update purchase_items and inventory_levels by location
       const manualReceive = async () => {
