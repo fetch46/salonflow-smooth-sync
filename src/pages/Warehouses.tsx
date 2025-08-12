@@ -40,21 +40,32 @@ export default function Warehouses() {
 
   const loadRefs = useCallback(async () => {
     const orgId = organization?.id;
-    const [locs] = await Promise.all([
-      supabase.from("business_locations").select("id, name").eq(orgId ? "organization_id" : "is_active", orgId ? orgId : true).order("name"),
-    ]);
-    setLocations((locs.data || []) as any);
+    try {
+      let query = supabase.from("business_locations").select("id, name").order("name");
+      if (orgId) {
+        query = query.eq("organization_id", orgId);
+      } else {
+        query = query.eq("is_active", true);
+      }
+      const locs = await query;
+      setLocations((locs.data || []) as any);
+    } catch (e) {
+      setLocations([]);
+    }
   }, [organization?.id]);
 
   const loadWarehouses = useCallback(async () => {
     setLoading(true);
     try {
       const orgId = organization?.id;
-      const { data, error } = await supabase
+      let query = supabase
         .from("warehouses")
         .select("id, name, is_active, location_id, business_locations(name)")
-        .eq(orgId ? "organization_id" : "is_active", orgId ? orgId : true)
         .order("name");
+      if (orgId) {
+        query = query.eq("organization_id", orgId);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       setWarehouses((data || []) as any);
     } catch (e) {
@@ -83,7 +94,8 @@ export default function Warehouses() {
     try {
       if (!form.name) { toast({ title: "Name required", description: "Enter a name", variant: "destructive" }); return; }
       if (!form.location_id) { toast({ title: "Location required", description: "Select a business location", variant: "destructive" }); return; }
-      const orgId = organization?.id || null;
+      if (!organization?.id) { toast({ title: "Organization required", description: "No organization selected", variant: "destructive" }); return; }
+      const orgId = organization.id;
       if (editing) {
         const { error } = await supabase
           .from("warehouses")
@@ -110,6 +122,20 @@ export default function Warehouses() {
   const remove = async (row: WarehouseRow) => {
     if (!confirm(`Delete warehouse "${row.name}"?`)) return;
     try {
+      // Check for related transactions before allowing deletion
+      const [levelsRes, grRes, adjRes] = await Promise.all([
+        supabase.from("inventory_levels").select("id", { count: "exact", head: true }).eq("warehouse_id", row.id),
+        supabase.from("goods_received").select("id", { count: "exact", head: true }).eq("warehouse_id", row.id),
+        supabase.from("inventory_adjustments").select("id", { count: "exact", head: true }).eq("warehouse_id", row.id),
+      ]);
+      const levelsCount = levelsRes.count || 0;
+      const goodsReceivedCount = grRes.count || 0;
+      const adjustmentsCount = adjRes.count || 0;
+      if (levelsCount > 0 || goodsReceivedCount > 0 || adjustmentsCount > 0) {
+        toast({ title: "Cannot delete", description: "Warehouse has transactions and cannot be deleted", variant: "destructive" });
+        return;
+      }
+
       const { error } = await supabase.from("warehouses").delete().eq("id", row.id);
       if (error) throw error;
       toast({ title: "Deleted", description: "Warehouse removed" });
