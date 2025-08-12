@@ -16,17 +16,17 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarRange, Download, Edit, Filter, List, MoreVertical, ReceiptText, RefreshCw, Search, Trash2, Bookmark, BookmarkPlus } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { getReceiptsWithFallback, getAllReceiptPaymentsWithFallback, updateReceiptPaymentWithFallback, deleteReceiptPaymentWithFallback } from "@/utils/mockDatabase";
+import { getInvoicesWithBalanceWithFallback, getAllInvoicePaymentsWithFallback, updateInvoicePaymentWithFallback, deleteInvoicePaymentWithFallback } from "@/utils/mockDatabase";
 import { useNavigate } from "react-router-dom";
 import type { DateRange } from "react-day-picker";
 import { useSaas } from "@/lib/saas";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { DollarSign, Plus } from "lucide-react";
-import { postReceiptPaymentWithAccount, postReceiptPaymentToLedger } from "@/utils/ledger";
+import { postInvoicePaymentWithAccount, postInvoicePaymentToLedger } from "@/utils/ledger";
 
-interface ReceiptPayment {
+interface InvoicePayment {
   id: string;
-  receipt_id: string;
+  invoice_id: string;
   amount: number;
   method: string;
   reference_number: string | null;
@@ -34,12 +34,14 @@ interface ReceiptPayment {
   created_at?: string;
 }
 
-interface ReceiptLite {
+interface InvoiceLite {
   id: string;
-  receipt_number: string;
+  invoice_number: string;
   customer_id: string | null;
   total_amount: number;
   created_at: string;
+  amount_paid?: number;
+  status?: string;
 }
 
 interface ClientLite { id: string; full_name: string }
@@ -72,8 +74,8 @@ export default function Payments() {
   const [refreshing, setRefreshing] = useState(false);
 
   // Received
-  const [payments, setPayments] = useState<ReceiptPayment[]>([]);
-  const [receiptsById, setReceiptsById] = useState<Record<string, ReceiptLite>>({});
+  const [payments, setPayments] = useState<InvoicePayment[]>([]);
+  const [invoicesById, setInvoicesById] = useState<Record<string, InvoiceLite>>({});
   const [clientsById, setClientsById] = useState<Record<string, ClientLite>>({});
   const [searchReceived, setSearchReceived] = useState("");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
@@ -95,7 +97,7 @@ export default function Payments() {
 
   // Edit payment dialog (received)
   const [editOpen, setEditOpen] = useState(false);
-  const [editing, setEditing] = useState<ReceiptPayment | null>(null);
+  const [editing, setEditing] = useState<InvoicePayment | null>(null);
   const [editForm, setEditForm] = useState({ amount: "", method: "cash", reference_number: "", payment_date: "" });
 
   // Create payment received dialog
@@ -103,9 +105,9 @@ export default function Payments() {
   const { symbol, format: formatCurrency } = useOrganizationCurrency();
   const [createOpen, setCreateOpen] = useState(false);
   const [createStatus, setCreateStatus] = useState<"unpaid" | "pending">("unpaid");
-  const [receiptOptions, setReceiptOptions] = useState<Array<{ id: string; receipt_number: string; customer_id: string | null; total_amount: number; amount_paid: number; status: string; created_at: string }>>([]);
-  const [receiptSearch, setReceiptSearch] = useState("");
-  const [selectedReceiptId, setSelectedReceiptId] = useState<string>("");
+  const [invoiceOptions, setInvoiceOptions] = useState<Array<{ id: string; invoice_number: string; customer_id: string | null; total_amount: number; amount_paid: number; status: string; created_at: string }>>([]);
+  const [invoiceSearch, setInvoiceSearch] = useState("");
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>("");
   const [createForm, setCreateForm] = useState({
     amount: "",
     method: "cash",
@@ -120,17 +122,17 @@ export default function Payments() {
     try {
       setLoading(true);
       // Payments received
-      const [pays, rcpts] = await Promise.all([
-        getAllReceiptPaymentsWithFallback(supabase),
-        getReceiptsWithFallback(supabase),
+      const [pays, invs] = await Promise.all([
+        getAllInvoicePaymentsWithFallback(supabase),
+        getInvoicesWithBalanceWithFallback(supabase),
       ]);
       setPayments(pays as any);
-      const byId: Record<string, ReceiptLite> = {};
-      (rcpts as any[]).forEach(r => { byId[r.id] = r; });
-      setReceiptsById(byId);
+      const byId: Record<string, InvoiceLite> = {};
+      (invs as any[]).forEach(r => { byId[r.id] = r; });
+      setInvoicesById(byId);
 
       // Clients used in those receipts
-      const clientIds = Array.from(new Set((rcpts as any[]).map(r => r.customer_id).filter(Boolean)));
+      const clientIds = Array.from(new Set((invs as any[]).map(r => r.customer_id).filter(Boolean)));
       if (clientIds.length) {
         try {
           const { data } = await supabase
@@ -231,7 +233,7 @@ export default function Payments() {
 
   const refresh = async () => { setRefreshing(true); await loadData(); setRefreshing(false); };
 
-  const openEdit = (p: ReceiptPayment) => {
+  const openEdit = (p: InvoicePayment) => {
     setEditing(p);
     setEditForm({
       amount: String(p.amount ?? ''),
@@ -248,7 +250,7 @@ export default function Payments() {
     const amt = parseFloat(editForm.amount) || 0;
     if (amt <= 0) { toast.error('Invalid amount'); return; }
     try {
-      await updateReceiptPaymentWithFallback(supabase, editing.id, {
+      await updateInvoicePaymentWithFallback(supabase, editing.id, {
         amount: amt,
         method: editForm.method,
         reference_number: editForm.reference_number || null,
@@ -264,13 +266,13 @@ export default function Payments() {
     }
   };
 
-  const deletePayment = async (p: ReceiptPayment) => {
+  const deletePayment = async (p: InvoicePayment) => {
     if (!confirm('Delete this payment? This cannot be undone.')) return;
-    try {
-      await deleteReceiptPaymentWithFallback(supabase, p.id);
-      toast.success('Payment deleted');
-      await loadData();
-    } catch (err) {
+          try {
+        await deleteInvoicePaymentWithFallback(supabase, p.id);
+        toast.success('Payment deleted');
+        await loadData();
+      } catch (err) {
       console.error(err);
       toast.error('Failed to delete payment');
     }
@@ -279,10 +281,10 @@ export default function Payments() {
   const filteredReceived = useMemo(() => {
     const s = searchReceived.toLowerCase();
     return payments.filter(p => {
-      const r = receiptsById[p.receipt_id];
+      const r = invoicesById[p.invoice_id];
       const clientName = r?.customer_id ? (clientsById[r.customer_id]?.full_name || '') : '';
       const matchesQuery = (
-        (r?.receipt_number || '').toLowerCase().includes(s) ||
+        (r?.invoice_number || '').toLowerCase().includes(s) ||
         clientName.toLowerCase().includes(s) ||
         (p.method || '').toLowerCase().includes(s) ||
         (p.reference_number || '').toLowerCase().includes(s)
@@ -298,7 +300,7 @@ export default function Payments() {
 
       return matchesQuery && inDateRange && matchesMethod && matchesLocation;
     });
-  }, [payments, receiptsById, clientsById, searchReceived, dateRange, methodFilter, locationFilter]);
+  }, [payments, invoicesById, clientsById, searchReceived, dateRange, methodFilter, locationFilter]);
 
   useEffect(() => { setPage(1); }, [searchReceived, dateRange, methodFilter]);
 
@@ -335,12 +337,12 @@ export default function Payments() {
 
   const exportCsv = () => {
     try {
-      const headers = ["Receipt #", "Client", "Payment Date", "Amount", "Method", "Reference"];
+      const headers = ["Invoice #", "Client", "Payment Date", "Amount", "Method", "Reference"];
       const rows = filteredReceived.map(p => {
-        const r = receiptsById[p.receipt_id];
-        const clientName = r?.customer_id ? (clientsById[r.customer_id]?.full_name || '—') : 'Walk-in';
+        const r = invoicesById[p.invoice_id];
+        const clientName = r?.customer_id ? (clientsById[r.customer_id]?.full_name || '—') : '—';
         const dateStr = format(new Date(p.payment_date || r?.created_at || new Date()), 'yyyy-MM-dd');
-        return [r?.receipt_number || '—', clientName, dateStr, String(Number(p.amount || 0).toFixed(2)), (p.method || '').toUpperCase(), p.reference_number || '—'];
+        return [r?.invoice_number || '—', clientName, dateStr, String(Number(p.amount || 0).toFixed(2)), (p.method || '').toUpperCase(), p.reference_number || '—'];
       });
       const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -359,15 +361,15 @@ export default function Payments() {
 
   const openCreatePayment = async () => {
     setCreateOpen(true);
-    setSelectedReceiptId("");
-    setReceiptSearch("");
+    setSelectedInvoiceId("");
+    setInvoiceSearch("");
     setCreateStatus("unpaid");
     setCreateForm({ amount: "", method: "cash", reference: "", payment_date: new Date().toISOString().slice(0,10), account_id: "" });
     try {
-      const rcpts = (await getReceiptsWithFallback(supabase)) as any[];
-      setReceiptOptions(rcpts as any);
+      const invs = (await getInvoicesWithBalanceWithFallback(supabase)) as any[];
+      setInvoiceOptions(invs as any);
     } catch {
-      setReceiptOptions([]);
+      setInvoiceOptions([]);
     }
     try {
       if (organization?.id) {
@@ -406,39 +408,42 @@ export default function Payments() {
 
   const outstandingById = useMemo(() => {
     const map: Record<string, number> = {};
-    (receiptOptions || []).forEach((r) => {
+    (invoiceOptions || []).forEach((r) => {
       const total = Number(r.total_amount || 0);
       const paid = Number(r.amount_paid || 0);
       map[r.id] = Math.max(0, total - paid);
     });
     return map;
-  }, [receiptOptions]);
+  }, [invoiceOptions]);
 
-  const filteredReceiptOptions = useMemo(() => {
-    const s = receiptSearch.toLowerCase();
-    return (receiptOptions || [])
-      .filter(r => createStatus === "unpaid" ? (r.status === "open") : (r.status === "partial"))
-      .filter(r => r.receipt_number.toLowerCase().includes(s));
-  }, [receiptOptions, receiptSearch, createStatus]);
+  const filteredInvoiceOptions = useMemo(() => {
+    const s = invoiceSearch.toLowerCase();
+    return (invoiceOptions || [])
+      .filter(r => {
+        const status = (r as any).derived_status || r.status;
+        return createStatus === "unpaid" ? (status === "sent" || status === "draft" || status === "overdue") : (status === "partial");
+      })
+      .filter(r => (r.invoice_number || '').toLowerCase().includes(s));
+  }, [invoiceOptions, invoiceSearch, createStatus]);
 
-  const onSelectReceipt = (id: string) => {
-    setSelectedReceiptId(id);
+  const onSelectInvoice = (id: string) => {
+    setSelectedInvoiceId(id);
     const outstanding = outstandingById[id] || 0;
     setCreateForm(prev => ({ ...prev, amount: String(outstanding > 0 ? outstanding.toFixed(2) : "") }));
   };
 
   const submitCreatePayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedReceiptId) { toast.error("Select a receipt"); return; }
-    const r = receiptOptions.find(x => x.id === selectedReceiptId);
+    if (!selectedInvoiceId) { toast.error("Select an invoice"); return; }
+    const r = invoiceOptions.find(x => x.id === selectedInvoiceId);
     const outstanding = r ? Math.max(0, Number(r.total_amount || 0) - Number(r.amount_paid || 0)) : 0;
     const amt = parseFloat(createForm.amount) || 0;
     if (amt <= 0 || (outstanding > 0 && amt > outstanding + 0.0001)) { toast.error("Invalid amount"); return; }
     try {
       setCreating(true);
-      const { recordReceiptPaymentWithFallback } = await import("@/utils/mockDatabase");
-      const ok = await recordReceiptPaymentWithFallback(supabase, {
-        receipt_id: selectedReceiptId,
+      const { recordInvoicePaymentWithFallback } = await import("@/utils/mockDatabase");
+      const ok = await recordInvoicePaymentWithFallback(supabase, {
+        invoice_id: selectedInvoiceId,
         amount: amt,
         method: createForm.method,
         reference_number: createForm.reference || null,
@@ -450,21 +455,21 @@ export default function Payments() {
       try {
         if (organization?.id) {
           if (createForm.account_id) {
-            await postReceiptPaymentWithAccount({
+            await postInvoicePaymentWithAccount({
               organizationId: organization.id,
               amount: amt,
               depositAccountId: createForm.account_id,
-              receiptId: selectedReceiptId,
-              receiptNumber: r?.receipt_number,
+              invoiceId: selectedInvoiceId,
+              invoiceNumber: r?.invoice_number,
               paymentDate: createForm.payment_date,
             });
           } else {
-            await postReceiptPaymentToLedger({
+            await postInvoicePaymentToLedger({
               organizationId: organization.id,
               amount: amt,
               method: createForm.method,
-              receiptId: selectedReceiptId,
-              receiptNumber: r?.receipt_number,
+              invoiceId: selectedInvoiceId,
+              invoiceNumber: r?.invoice_number,
               paymentDate: createForm.payment_date,
             });
           }
@@ -544,7 +549,7 @@ export default function Payments() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     className="pl-9"
-                    placeholder="Search by receipt, client, method, reference..."
+                    placeholder="Search by invoice, client, method, reference..."
                     value={searchReceived}
                     onChange={(e) => setSearchReceived(e.target.value)}
                   />
@@ -666,10 +671,10 @@ export default function Payments() {
                 <Table className={`w-full ${compact ? 'text-sm' : ''}`}>
                   <TableHeader className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <TableRow>
-                      <TableHead className={compact ? 'py-2' : ''}>Receipt #</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Invoice #</TableHead>
                       <TableHead className={compact ? 'py-2' : ''}>Client</TableHead>
                       <TableHead className={compact ? 'py-2' : ''}>Location</TableHead>
-                      <TableHead className={compact ? 'py-2' : ''}>Date</TableHead>
+                      <TableHead className={compact ? 'py-2' : ''}>Payment Date</TableHead>
                       <TableHead className={compact ? 'py-2' : ''}>Amount</TableHead>
                       <TableHead className={compact ? 'py-2' : ''}>Method</TableHead>
                       <TableHead className={compact ? 'py-2' : ''}>Reference</TableHead>
@@ -685,11 +690,11 @@ export default function Payments() {
                       </TableRow>
                     )}
                     {paginatedReceived.map((p) => {
-                      const r = receiptsById[p.receipt_id];
+                      const r = invoicesById[p.invoice_id];
                       const clientName = r?.customer_id ? (clientsById[r.customer_id]?.full_name || '—') : 'Walk-in';
                       return (
                         <TableRow key={p.id} className="hover:bg-muted/50">
-                          <TableCell className={`font-medium ${compact ? 'py-2' : ''}`}>{r?.receipt_number || '—'}</TableCell>
+                          <TableCell className={`font-medium ${compact ? 'py-2' : ''}`}>{r?.invoice_number || '—'}</TableCell>
                           <TableCell className={compact ? 'py-2' : ''}>{clientName}</TableCell>
                           <TableCell className={compact ? 'py-2' : ''}>{(() => { const lid = (r as any)?.location_id; return lid ? (locations.find(l => l.id === lid)?.name || '—') : '—'; })()}</TableCell>
                           <TableCell className={compact ? 'py-2' : ''}>{format(new Date(p.payment_date || r?.created_at || new Date()), 'MMM dd, yyyy')}</TableCell>
@@ -705,7 +710,7 @@ export default function Payments() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-48">
                                 <DropdownMenuItem disabled>
-                                  <ReceiptText className="mr-2 h-4 w-4" /> View Receipt
+                                  <ReceiptText className="mr-2 h-4 w-4" /> View Invoice
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => openEdit(p)}>
                                   <Edit className="mr-2 h-4 w-4" /> Edit Payment
@@ -808,7 +813,7 @@ export default function Payments() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuItem onClick={() => { if (e.receipt_url) window.open(e.receipt_url, '_blank'); }} disabled={!e.receipt_url}>
-                                <ReceiptText className="mr-2 h-4 w-4" /> View Receipt
+                                <ReceiptText className="mr-2 h-4 w-4" /> View Invoice
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => navigate('/expenses')}>
                                 <Edit className="mr-2 h-4 w-4" /> Edit Payment
@@ -880,7 +885,7 @@ export default function Payments() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuItem disabled>
-                                <ReceiptText className="mr-2 h-4 w-4" /> View Receipt
+                                <ReceiptText className="mr-2 h-4 w-4" /> View Invoice
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => navigate('/purchases')}>
                                 <Edit className="mr-2 h-4 w-4" /> Edit Payment
@@ -983,32 +988,32 @@ export default function Payments() {
               </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input className="pl-9" placeholder="Search receipts..." value={receiptSearch} onChange={(e) => setReceiptSearch(e.target.value)} />
+                <Input className="pl-9" placeholder="Search invoices..." value={invoiceSearch} onChange={(e) => setInvoiceSearch(e.target.value)} />
               </div>
               <div className="border rounded h-[260px] overflow-auto">
                 <Table className="w-full text-sm">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-12">Select</TableHead>
-                      <TableHead>Receipt #</TableHead>
+                      <TableHead>Invoice #</TableHead>
                       <TableHead>Outstanding</TableHead>
                       <TableHead>Date</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredReceiptOptions.length === 0 && (
+                    {filteredInvoiceOptions.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground py-6">No receipts</TableCell>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground py-6">No invoices</TableCell>
                       </TableRow>
                     )}
-                    {filteredReceiptOptions.map((r) => {
+                    {filteredInvoiceOptions.map((r) => {
                       const outstanding = outstandingById[r.id] || 0;
                       return (
                         <TableRow key={r.id} className="hover:bg-muted/50">
                           <TableCell>
-                            <input type="radio" name="selectedReceipt" checked={selectedReceiptId === r.id} onChange={() => onSelectReceipt(r.id)} />
+                            <input type="radio" name="selectedInvoice" checked={selectedInvoiceId === r.id} onChange={() => onSelectInvoice(r.id)} />
                           </TableCell>
-                          <TableCell className="font-medium">{r.receipt_number}</TableCell>
+                          <TableCell className="font-medium">{r.invoice_number}</TableCell>
                           <TableCell>{formatCurrency(outstanding)}</TableCell>
                           <TableCell>{format(new Date(r.created_at), 'MMM dd, yyyy')}</TableCell>
                         </TableRow>
@@ -1057,7 +1062,7 @@ export default function Payments() {
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-                <Button type="submit" disabled={creating || !selectedReceiptId}>Save Payment</Button>
+                <Button type="submit" disabled={creating || !selectedInvoiceId}>Save Payment</Button>
               </div>
             </form>
           </div>

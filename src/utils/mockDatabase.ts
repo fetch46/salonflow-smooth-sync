@@ -512,6 +512,100 @@ export async function getInvoicesWithFallback(supabase: any) {
   }
 }
 
+// New: fetch invoices with computed amount_paid/outstanding using invoice_payments
+export async function getInvoicesWithBalanceWithFallback(supabase: any): Promise<Array<any>> {
+  try {
+    const invoices = await getInvoicesWithFallback(supabase);
+    // Try to fetch all payments in one query
+    let pays: Array<any> = [];
+    try {
+      const { data } = await supabase.from('invoice_payments').select('id, invoice_id, amount, payment_date, method, reference_number');
+      pays = data || [];
+    } catch {
+      // ignore
+    }
+    const byInv: Record<string, number> = {};
+    for (const p of pays) {
+      const invId = p.invoice_id;
+      const amt = Number(p.amount) || 0;
+      byInv[invId] = (byInv[invId] || 0) + amt;
+    }
+    return invoices.map((inv: any) => {
+      const paid = byInv[inv.id] || 0;
+      const outstanding = Math.max(0, Number(inv.total_amount || 0) - paid);
+      const status = paid >= Number(inv.total_amount || 0) ? 'paid' : paid > 0 ? 'partial' : inv.status;
+      return { ...inv, amount_paid: paid, outstanding, derived_status: status };
+    });
+  } catch (err) {
+    // Fallback to local storage
+    const storage = getStorage();
+    const invoices = (await mockDb.getReceipts()) as any[];
+    const pays = (storage.invoice_payments || []) as any[];
+    const byInv: Record<string, number> = {};
+    for (const p of pays) byInv[p.invoice_id] = (byInv[p.invoice_id] || 0) + Number(p.amount || 0);
+    return invoices.map((inv: any) => {
+      const paid = byInv[inv.id] || 0;
+      const outstanding = Math.max(0, Number(inv.total_amount || 0) - paid);
+      const status = paid >= Number(inv.total_amount || 0) ? 'paid' : paid > 0 ? 'partial' : (inv.status || 'sent');
+      return { ...inv, amount_paid: paid, outstanding, derived_status: status };
+    });
+  }
+}
+
+// New: Invoice payments helpers
+export async function recordInvoicePaymentWithFallback(
+  supabase: any,
+  payment: { invoice_id: string; amount: number; method: string; reference_number?: string | null; payment_date?: string; location_id?: string | null }
+): Promise<boolean> {
+  try {
+    const payload: any = {
+      invoice_id: payment.invoice_id,
+      amount: payment.amount,
+      method: payment.method,
+      reference_number: payment.reference_number || null,
+      payment_date: payment.payment_date || new Date().toISOString().slice(0, 10),
+      location_id: payment.location_id || null,
+    };
+    const { error } = await supabase.from('invoice_payments').insert([payload]);
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.log('Using mock database for invoice payments');
+    const storage = getStorage();
+    const nowIso = new Date().toISOString();
+    const localPay = {
+      id: `inv_pay_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      invoice_id: payment.invoice_id,
+      payment_date: (payment.payment_date || nowIso).slice(0, 10),
+      amount: payment.amount,
+      method: payment.method,
+      reference_number: payment.reference_number || null,
+      created_at: nowIso,
+      updated_at: nowIso,
+      location_id: payment.location_id || null,
+    };
+    storage.invoice_payments = storage.invoice_payments || [];
+    storage.invoice_payments.push(localPay);
+    setStorage(storage);
+    return true;
+  }
+}
+
+export async function getAllInvoicePaymentsWithFallback(supabase: any): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from('invoice_payments')
+      .select('*')
+      .order('payment_date', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.log('Using mock database for fetching all invoice payments');
+    const storage = getStorage();
+    return (storage.invoice_payments || []).slice().sort((a: any, b: any) => String(b.payment_date).localeCompare(String(a.payment_date)));
+  }
+}
+
 export async function updateInvoiceWithFallback(supabase: any, id: string, updates: any) {
   try {
     const allowed: any = {};
@@ -853,4 +947,83 @@ export async function isDateLockedViaRpc(supabase: any, organizationId: string, 
     if (error) return false;
     return !!data;
   } catch { return false; }
+}
+
+// New: Prepayment helpers (for bookings)
+export async function recordPrepaymentWithFallback(
+  supabase: any,
+  prepay: { client_id: string | null; amount: number; method: string; reference_number?: string | null; payment_date?: string; location_id?: string | null }
+): Promise<boolean> {
+  try {
+    const payload: any = {
+      client_id: prepay.client_id,
+      amount: prepay.amount,
+      method: prepay.method,
+      reference_number: prepay.reference_number || null,
+      payment_date: prepay.payment_date || new Date().toISOString().slice(0, 10),
+      location_id: prepay.location_id || null,
+    };
+    const { error } = await supabase.from('prepayments').insert([payload]);
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.log('Using mock database for prepayments');
+    const storage = getStorage();
+    const nowIso = new Date().toISOString();
+    const local = {
+      id: `pp_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      client_id: prepay.client_id,
+      amount: prepay.amount,
+      method: prepay.method,
+      reference_number: prepay.reference_number || null,
+      payment_date: (prepay.payment_date || nowIso).slice(0, 10),
+      created_at: nowIso,
+      updated_at: nowIso,
+      location_id: prepay.location_id || null,
+      applied_amount: 0,
+    };
+    storage.prepayments = storage.prepayments || [];
+    storage.prepayments.push(local);
+    setStorage(storage);
+    return true;
+  }
+}
+
+export async function getPrepaymentsWithFallback(supabase: any, clientId?: string | null): Promise<any[]> {
+  try {
+    let query = supabase.from('prepayments').select('*');
+    if (clientId) query = query.eq('client_id', clientId);
+    const { data, error } = await query.order('payment_date', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.log('Using mock database for fetching prepayments');
+    const storage = getStorage();
+    const arr = (storage.prepayments || []) as any[];
+    return (clientId ? arr.filter((x) => x.client_id === clientId) : arr).slice().sort((a, b) => String(b.payment_date).localeCompare(String(a.payment_date)));
+  }
+}
+
+export async function applyPrepaymentToInvoiceWithFallback(
+  supabase: any,
+  opts: { prepayment_id?: string; client_id?: string | null; invoice_id: string; amount: number }
+): Promise<boolean> {
+  try {
+    const payload: any = { ...opts };
+    const { error } = await supabase.from('prepayment_applications').insert([payload]);
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.log('Using mock database for prepayment applications');
+    const storage = getStorage();
+    storage.prepayment_applications = storage.prepayment_applications || [];
+    storage.prepayment_applications.push({ id: `ppa_${Date.now()}`, ...opts });
+    if (opts.prepayment_id) {
+      storage.prepayments = (storage.prepayments || []).map((p: any) =>
+        p.id === opts.prepayment_id ? { ...p, applied_amount: Number(p.applied_amount || 0) + Number(opts.amount || 0) } : p
+      );
+    }
+    setStorage(storage);
+    return true;
+  }
 }

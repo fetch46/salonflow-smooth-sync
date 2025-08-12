@@ -89,6 +89,67 @@ async function findDefaultIncomeAccountId(organizationId: string): Promise<strin
   return null;
 }
 
+// New: find Accounts Receivable account id (prefer 1100 or name containing Receivable)
+async function findAccountsReceivableAccountId(organizationId: string): Promise<string | null> {
+  try {
+    const { data } = await supabase
+      .from("accounts")
+      .select("id, account_code")
+      .eq("organization_id", organizationId)
+      .eq("account_code", "1100")
+      .limit(1);
+    if (data && data.length) return data[0].id;
+  } catch {}
+  try {
+    const { data } = await supabase
+      .from("accounts")
+      .select("id, account_name, account_type")
+      .eq("organization_id", organizationId)
+      .eq("account_type", "Asset")
+      .ilike("account_name", "%receivable%")
+      .order("account_code", { ascending: true })
+      .limit(1);
+    if (data && data.length) return data[0].id;
+  } catch {}
+  return null;
+}
+
+// New: find Unearned/Deferred Revenue liability account (prefer code 2300 or name containing "unearned"/"deferred")
+async function findUnearnedRevenueAccountId(organizationId: string): Promise<string | null> {
+  try {
+    const { data } = await supabase
+      .from("accounts")
+      .select("id, account_code")
+      .eq("organization_id", organizationId)
+      .eq("account_code", "2300")
+      .limit(1);
+    if (data && data.length) return data[0].id;
+  } catch {}
+  try {
+    const { data } = await supabase
+      .from("accounts")
+      .select("id, account_name, account_type")
+      .eq("organization_id", organizationId)
+      .eq("account_type", "Liability")
+      .or("account_name.ilike.%unearned%,account_name.ilike.%deferred%")
+      .order("account_code", { ascending: true })
+      .limit(1);
+    if (data && data.length) return data[0].id;
+  } catch {}
+  // Fallback: first liability account
+  try {
+    const { data } = await supabase
+      .from("accounts")
+      .select("id, account_type")
+      .eq("organization_id", organizationId)
+      .eq("account_type", "Liability")
+      .order("account_code", { ascending: true })
+      .limit(1);
+    if (data && data.length) return data[0].id;
+  } catch {}
+  return null;
+}
+
 export async function findAccountIdByCode(organizationId: string, code: string): Promise<string | null> {
   try {
     const { data } = await supabase
@@ -288,6 +349,121 @@ export async function postReceiptPaymentWithAccounts(opts: {
     creditAccountId: incomeAccountId,
     referenceType: "receipt_payment",
     referenceId: receiptId,
+    locationId: locationId || null,
+  });
+}
+
+// New: Post an invoice payment (DR Cash/Bank, CR Accounts Receivable)
+export async function postInvoicePaymentToLedger(opts: {
+  organizationId: string;
+  amount: number;
+  method: string;
+  invoiceId: string;
+  invoiceNumber?: string | null;
+  paymentDate?: string;
+  locationId?: string | null;
+}): Promise<boolean> {
+  const { organizationId, amount, method, invoiceId, invoiceNumber, paymentDate, locationId } = opts;
+  const mappedAssetAccountId = await findDepositAccountIdForMethod(organizationId, method);
+  const isBankLike = ["mpesa", "bank_transfer", "card", "bank", "mpesa_paybill", "mpesa_till"].includes(String(method || "").toLowerCase());
+  const assetSubtype = isBankLike ? "Bank" : "Cash";
+  const assetAccountId = mappedAssetAccountId || (await findAccountIdBySubtype(organizationId, assetSubtype));
+  const arAccountId = await findAccountsReceivableAccountId(organizationId);
+  if (!assetAccountId || !arAccountId) return false;
+  const desc = `Invoice ${invoiceNumber || invoiceId} payment via ${method}`;
+  return await postDoubleEntry({
+    organizationId,
+    amount,
+    transactionDate: paymentDate,
+    description: desc,
+    debitAccountId: assetAccountId,
+    creditAccountId: arAccountId,
+    referenceType: "invoice_payment",
+    referenceId: invoiceId,
+    locationId: locationId || null,
+  });
+}
+
+export async function postInvoicePaymentWithAccount(opts: {
+  organizationId: string;
+  amount: number;
+  depositAccountId: string; // Cash/Bank
+  invoiceId: string;
+  invoiceNumber?: string | null;
+  paymentDate?: string;
+  locationId?: string | null;
+}): Promise<boolean> {
+  const { organizationId, amount, depositAccountId, invoiceId, invoiceNumber, paymentDate, locationId } = opts;
+  const arAccountId = await findAccountsReceivableAccountId(organizationId);
+  if (!arAccountId) return false;
+  const desc = `Invoice ${invoiceNumber || invoiceId} payment`;
+  return await postDoubleEntry({
+    organizationId,
+    amount,
+    transactionDate: paymentDate,
+    description: desc,
+    debitAccountId: depositAccountId,
+    creditAccountId: arAccountId,
+    referenceType: "invoice_payment",
+    referenceId: invoiceId,
+    locationId: locationId || null,
+  });
+}
+
+// New: Post booking prepayment to Unearned Revenue (DR Cash/Bank, CR Unearned Revenue)
+export async function postBookingPrepaymentToUnearnedRevenue(opts: {
+  organizationId: string;
+  amount: number;
+  method: string;
+  clientId?: string | null;
+  paymentDate?: string;
+  locationId?: string | null;
+}): Promise<boolean> {
+  const { organizationId, amount, method, clientId, paymentDate, locationId } = opts;
+  const mappedAssetAccountId = await findDepositAccountIdForMethod(organizationId, method);
+  const isBankLike = ["mpesa", "bank_transfer", "card", "bank", "mpesa_paybill", "mpesa_till"].includes(String(method || "").toLowerCase());
+  const assetSubtype = isBankLike ? "Bank" : "Cash";
+  const assetAccountId = mappedAssetAccountId || (await findAccountIdBySubtype(organizationId, assetSubtype));
+  const unearnedRevenueAccountId = await findUnearnedRevenueAccountId(organizationId);
+  if (!assetAccountId || !unearnedRevenueAccountId) return false;
+  const desc = `Booking prepayment${clientId ? ` for client ${clientId}` : ""}`;
+  return await postDoubleEntry({
+    organizationId,
+    amount,
+    transactionDate: paymentDate,
+    description: desc,
+    debitAccountId: assetAccountId,
+    creditAccountId: unearnedRevenueAccountId,
+    referenceType: "prepayment",
+    referenceId: clientId || null,
+    locationId: locationId || null,
+  });
+}
+
+// New: Apply a prepayment to an invoice (DR Unearned Revenue, CR Accounts Receivable)
+export async function applyPrepaymentToInvoice(opts: {
+  organizationId: string;
+  amount: number;
+  invoiceId: string;
+  invoiceNumber?: string | null;
+  clientId?: string | null;
+  applyDate?: string;
+  locationId?: string | null;
+}): Promise<boolean> {
+  const { organizationId, amount, invoiceId, invoiceNumber, clientId, applyDate, locationId } = opts;
+  const unearnedRevenueAccountId = await findUnearnedRevenueAccountId(organizationId);
+  const arAccountId = await findAccountsReceivableAccountId(organizationId);
+  if (!unearnedRevenueAccountId || !arAccountId) return false;
+  const desc = `Apply prepayment${clientId ? ` for client ${clientId}` : ""} to invoice ${invoiceNumber || invoiceId}`;
+  return await postDoubleEntry({
+    organizationId,
+    amount,
+    transactionDate: applyDate,
+    description: desc,
+    debitAccountId: unearnedRevenueAccountId,
+    creditAccountId: arAccountId,
+    referenceType: "prepayment_application",
+    referenceId: invoiceId,
     locationId: locationId || null,
   });
 }
