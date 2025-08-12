@@ -263,10 +263,8 @@ const AdminDashboard = () => {
     fetchRecentActivity();
   }, [fetchSystemStats, fetchRecentActivity]);
 
-  const { symbol } = useOrganizationCurrency();
-  const formatCurrency = (cents: number) => {
-    return `${symbol}${(cents / 100).toLocaleString()}`;
-  };
+  const { formatUsdCents } = useOrganizationCurrency();
+  const formatCurrency = (cents: number) => formatUsdCents(cents);
 
   const getGrowthIcon = (growth: number) => {
     if (growth > 0) return <ArrowUp className="h-4 w-4 text-green-600" />;

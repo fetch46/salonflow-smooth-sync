@@ -28,11 +28,15 @@ const demoReceipts: ReceiptRecord[] = [
   { id: '12', receiptNumber: 'SR-1012', customerName: 'Pied Piper', dateIso: '2025-07-06', amountCents: 49900, paymentMethod: 'Card', status: 'Pending' }
 ]
 
-function formatCurrencyFromCents(amountCents: number, locale = navigator.language, currency = 'USD'): string {
+export interface SalesReceiptListProps {
+  formatUsdCents?: (cents: number) => string
+}
+
+function defaultFormatUsdCents(amountCents: number, locale = navigator.language, currency = 'USD'): string {
   return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(amountCents / 100)
 }
 
-export default function SalesReceiptList() {
+export default function SalesReceiptList({ formatUsdCents = (c) => defaultFormatUsdCents(c) }: SalesReceiptListProps) {
   const [search, setSearch] = useState('')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
@@ -220,11 +224,11 @@ export default function SalesReceiptList() {
           </article>
           <article className="stat-card">
             <div className="stat-label">Revenue</div>
-            <div className="stat-value">{formatCurrencyFromCents(stats.revenueCents)}</div>
+            <div className="stat-value">{formatUsdCents(stats.revenueCents)}</div>
           </article>
           <article className="stat-card">
             <div className="stat-label">Avg. Order Value</div>
-            <div className="stat-value">{formatCurrencyFromCents(stats.averageCents)}</div>
+            <div className="stat-value">{formatUsdCents(stats.averageCents)}</div>
           </article>
           <article className="stat-card">
             <div className="stat-label">Paid Rate</div>
@@ -278,7 +282,7 @@ export default function SalesReceiptList() {
                   <td className="mono">{r.receiptNumber}</td>
                   <td>{r.customerName}</td>
                   <td>{new Date(r.dateIso).toLocaleDateString()}</td>
-                  <td className="num mono">{formatCurrencyFromCents(r.amountCents)}</td>
+                  <td className="num mono">{formatUsdCents(r.amountCents)}</td>
                   <td>{r.paymentMethod}</td>
                   <td>
                     <span className={`badge ${r.status.toLowerCase()}`}>{r.status}</span>

@@ -502,8 +502,8 @@ export default function ProductView() {
                           <TableCell>{formatDate(row.created_at)}</TableCell>
                           <TableCell className="font-medium">{row.job_cards?.job_number || '—'}</TableCell>
                           <TableCell className="text-right">{row.quantity_used}</TableCell>
-                          <TableCell className="hidden sm:table-cell text-right">{row.unit_cost ?? '—'}</TableCell>
-                          <TableCell className="hidden sm:table-cell text-right">{row.total_cost ?? '—'}</TableCell>
+                          <TableCell className="hidden sm:table-cell text-right">{formatMoney(Number(row.unit_cost || 0))}</TableCell>
+                          <TableCell className="hidden sm:table-cell text-right">{formatMoney(Number(row.total_cost || 0))}</TableCell>
                         </TableRow>
                       ))
                     )}
@@ -543,8 +543,8 @@ export default function ProductView() {
                           <TableCell>{formatDate(row.created_at)}</TableCell>
                           <TableCell className="font-medium">{row.purchases?.purchase_number || '—'}</TableCell>
                           <TableCell className="text-right">{row.quantity}</TableCell>
-                          <TableCell className="hidden sm:table-cell text-right">{row.unit_cost ?? '—'}</TableCell>
-                          <TableCell className="hidden sm:table-cell text-right">{row.total_cost ?? '—'}</TableCell>
+                          <TableCell className="hidden sm:table-cell text-right">{formatMoney(Number(row.unit_cost || 0))}</TableCell>
+                          <TableCell className="hidden sm:table-cell text-right">{formatMoney(Number(row.total_cost || 0))}</TableCell>
                           <TableCell className="hidden md:table-cell">{row.purchases?.vendor_name || '—'}</TableCell>
                         </TableRow>
                       ))
@@ -586,8 +586,8 @@ export default function ProductView() {
                           <TableCell className="font-medium">{row.sales?.sale_number || '—'}</TableCell>
                           <TableCell className="hidden md:table-cell">{row.sales?.customer_name || 'Walk-in Customer'}</TableCell>
                           <TableCell className="text-right">{row.quantity}</TableCell>
-                          <TableCell className="hidden sm:table-cell text-right">{row.unit_price ?? '—'}</TableCell>
-                          <TableCell className="hidden sm:table-cell text-right">{row.total_price ?? '—'}</TableCell>
+                          <TableCell className="hidden sm:table-cell text-right">{formatMoney(Number(row.unit_price || 0))}</TableCell>
+                          <TableCell className="hidden sm:table-cell text-right">{formatMoney(Number(row.total_price || 0))}</TableCell>
                         </TableRow>
                       ))
                     )}
