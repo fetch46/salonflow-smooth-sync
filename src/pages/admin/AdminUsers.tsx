@@ -116,7 +116,45 @@ const AdminUsers = () => {
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.warn('Relational fetch for admin organization users failed; attempting fallback without join', error)
+        const { data: memberships, error: membershipsError } = await supabase
+          .from('organization_users')
+          .select('id, organization_id, user_id, role, is_active, invited_by, invited_at, joined_at, created_at, updated_at')
+          .order('created_at', { ascending: false })
+        if (membershipsError) throw membershipsError
+
+        const orgIds = Array.from(new Set((memberships || []).map((m: any) => m.organization_id)))
+        const userIds = Array.from(new Set((memberships || []).map((m: any) => m.user_id).filter(Boolean)))
+
+        let organizationsById: Record<string, any> = {}
+        if (orgIds.length > 0) {
+          const { data: orgs, error: orgsError } = await supabase
+            .from('organizations')
+            .select('id, name')
+            .in('id', orgIds)
+          if (orgsError) throw orgsError
+          organizationsById = Object.fromEntries((orgs || []).map((o: any) => [o.id, o]))
+        }
+
+        let emailByUserId: Record<string, string> = {}
+        if (userIds.length > 0) {
+          const { data: profiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select('user_id, email')
+            .in('user_id', userIds)
+          if (profilesError) throw profilesError
+          emailByUserId = Object.fromEntries((profiles || []).map((p: any) => [p.user_id, p.email]))
+        }
+
+        const transformedData = (memberships || []).map((orgUser: any) => ({
+          ...orgUser,
+          organization_name: organizationsById[orgUser.organization_id]?.name,
+          user_email: emailByUserId[orgUser.user_id] || null,
+        }))
+        setOrganizationUsers(transformedData)
+        return
+      }
 
       // Fetch user emails separately to avoid FK dependency
       const userIds = Array.from(new Set((data || []).map((u: any) => u.user_id).filter(Boolean)));
