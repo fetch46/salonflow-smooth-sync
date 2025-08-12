@@ -150,22 +150,62 @@ export default function POS() {
           .eq("warehouse_id", selectedWarehouseId)
           .gt("quantity", 0);
         if (levelsError) throw levelsError;
-        const itemIds = Array.from(new Set((levels || []).map((l: any) => l.item_id)));
+        let itemIds = Array.from(new Set((levels || []).map((l: any) => l.item_id)));
+        // Fallback: if no levels by warehouse, try levels by the warehouse's location
+        if (itemIds.length === 0) {
+          const wh = warehouses.find(w => w.id === selectedWarehouseId);
+          const locId = wh?.location_id;
+          if (locId) {
+            const { data: locLevels, error: locLevelsError } = await supabase
+              .from("inventory_levels")
+              .select("item_id, quantity")
+              .eq("location_id", locId)
+              .gt("quantity", 0);
+            if (locLevelsError) throw locLevelsError;
+            itemIds = Array.from(new Set((locLevels || []).map((l: any) => l.item_id)));
+          }
+        }
         if (itemIds.length === 0) {
           setProducts([]);
         } else {
           let itemsRes: any[] = [];
           try {
-            const { data: items, error: itemsError } = await supabase
-              .from("inventory_items")
-              .select("*")
-              .in("id", itemIds)
-              .eq("is_active", true)
-              .eq("type", "good")
-              .eq("organization_id", organization?.id || "")
-              .order("name");
-            if (itemsError) throw itemsError;
-            itemsRes = items || [];
+            if (organization?.id) {
+              // Prefer items scoped to this organization, but also include global (NULL org) items
+              const { data: items, error: itemsError } = await supabase
+                .from("inventory_items")
+                .select("*")
+                .in("id", itemIds)
+                .eq("is_active", true)
+                .eq("type", "good")
+                .or(`organization_id.eq.${organization.id},organization_id.is.null`)
+                .order("name");
+              if (itemsError) throw itemsError;
+              itemsRes = items || [];
+              // If none returned (e.g., data seeded without org ids), fall back to no org filter
+              if (itemsRes.length === 0) {
+                const { data: items2, error: itemsError2 } = await supabase
+                  .from("inventory_items")
+                  .select("*")
+                  .in("id", itemIds)
+                  .eq("is_active", true)
+                  .eq("type", "good")
+                  .order("name");
+                if (itemsError2) throw itemsError2;
+                itemsRes = items2 || [];
+              }
+            } else {
+              // No organization context available; fetch by ids only
+              const { data: items, error: itemsError } = await supabase
+                .from("inventory_items")
+                .select("*")
+                .in("id", itemIds)
+                .eq("is_active", true)
+                .eq("type", "good")
+                .order("name");
+              if (itemsError) throw itemsError;
+              itemsRes = items || [];
+            }
           } catch (e: any) {
             // Fallback for schemas without organization_id
             const { data: items, error: itemsError } = await supabase
