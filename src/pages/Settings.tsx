@@ -70,18 +70,104 @@ phone: "",
   const [depositAccountMap, setDepositAccountMap] = useState<Record<string, string>>({})
 
   // Users & Roles State
-  const [users] = useState([
-    { id: "1", name: "Admin User", email: "admin@salon.com", role: "Administrator", status: "Active", last_login: "2024-01-15" },
-    { id: "2", name: "Sarah Johnson", email: "sarah@salon.com", role: "Manager", status: "Active", last_login: "2024-01-14" },
-    { id: "3", name: "Mike Davis", email: "mike@salon.com", role: "Staff", status: "Active", last_login: "2024-01-13" },
-  ]);
-
   const [roles, setRoles] = useState([
     { id: "1", name: "Administrator", description: "Full access to all features", permissions: ["all"], users_count: 1 },
     { id: "2", name: "Manager", description: "Manage operations and staff", permissions: ["manage_staff", "view_reports", "manage_inventory"], users_count: 1 },
     { id: "3", name: "Staff", description: "Basic staff access", permissions: ["manage_appointments", "view_clients"], users_count: 3 },
     { id: "4", name: "Receptionist", description: "Front desk operations", permissions: ["manage_appointments", "manage_clients"], users_count: 2 },
   ]);
+  // Roles UI state for improved usability
+  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
+  const [roleSearch, setRoleSearch] = useState("");
+  const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
+  const [roleForm, setRoleForm] = useState<{ id?: string; name: string; description: string; permissions: string[] }>({ name: "", description: "", permissions: [] });
+  const [roleToDelete, setRoleToDelete] = useState<typeof roles[number] | null>(null);
+
+  useEffect(() => {
+    if (!selectedRoleId && roles.length > 0) {
+      setSelectedRoleId(roles[0].id);
+    }
+  }, [roles, selectedRoleId]);
+
+  const permissionPresets: Record<string, string[]> = {
+    Administrator: ["all"],
+    Manager: ["manage_staff", "view_reports", "manage_inventory"],
+    Staff: ["manage_appointments", "view_clients"],
+    Receptionist: ["manage_appointments", "manage_clients"],
+  };
+
+  const openNewRoleDialog = () => {
+    setRoleForm({ name: "", description: "", permissions: [] });
+    setIsRoleDialogOpen(true);
+  };
+  const openEditRoleDialog = (roleId: string) => {
+    const role = roles.find(r => r.id === roleId);
+    if (!role) return;
+    setRoleForm({ id: role.id, name: role.name, description: role.description, permissions: role.permissions });
+    setIsRoleDialogOpen(true);
+  };
+  const applyPreset = (presetName: string) => {
+    const perms = permissionPresets[presetName] || [];
+    setRoleForm(f => ({ ...f, permissions: perms }));
+  };
+  const saveRoleDefinitions = async (defs: typeof roles = roles) => {
+    if (!organization) return;
+    try {
+      await updateOrganization(organization.id, {
+        settings: {
+          ...(organization.settings as any),
+          role_definitions: defs,
+        },
+      } as any);
+      toast.success("Roles saved");
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to save roles");
+    }
+  };
+  const saveRoleForm = async () => {
+    const id = roleForm.id || (globalThis.crypto?.randomUUID?.() ? crypto.randomUUID() : `role_${Date.now()}`);
+    const updated: typeof roles[number] = {
+      id,
+      name: roleForm.name.trim(),
+      description: roleForm.description.trim(),
+      permissions: roleForm.permissions.length ? roleForm.permissions : [],
+      users_count: roles.find(r => r.id === id)?.users_count || 0,
+    };
+    const next = (() => {
+      const exists = roles.some(r => r.id === id);
+      return exists ? roles.map(r => (r.id === id ? updated : r)) : [...roles, updated];
+    })();
+    setRoles(next);
+    setIsRoleDialogOpen(false);
+    setSelectedRoleId(id);
+    await saveRoleDefinitions(next);
+  };
+  const requestDeleteRole = (roleId: string) => {
+    setRoleToDelete(roles.find(r => r.id === roleId) || null);
+  };
+  const confirmDeleteRole = async () => {
+    if (!roleToDelete) return;
+    const deletedId = roleToDelete.id;
+    const next = roles.filter(r => r.id !== deletedId);
+    setRoles(next);
+    if (selectedRoleId === deletedId) setSelectedRoleId(next[0]?.id || null);
+    setRoleToDelete(null);
+    await saveRoleDefinitions(next);
+  };
+  const filteredRoles = roles.filter(r => r.name.toLowerCase().includes(roleSearch.toLowerCase()));
+  const selectedRole = roles.find(r => r.id === selectedRoleId) || null;
+  const toggleSelectedRolePermission = (permId: string, checked: boolean) => {
+    if (!selectedRole) return;
+    if (selectedRole.permissions.includes("all")) return;
+    setRoles(prev => prev.map(r => {
+      if (r.id !== selectedRole.id) return r;
+      const perms = checked
+        ? Array.from(new Set([...(r.permissions || []), permId]))
+        : (r.permissions || []).filter(p => p !== permId);
+      return { ...r, permissions: perms };
+    }));
+  };
 
   // Roles Editor state (organization-specific overrides)
   type PermRow = { action: string; resource: string }
@@ -257,6 +343,11 @@ phone: "",
       }))
       setSelectedCurrencyId((organization as any).currency_id || "")
       setSelectedCountryCode(s.country || "US")
+      // Load saved role definitions if present
+      const defs = (s.role_definitions as typeof roles) || [];
+      if (Array.isArray(defs) && defs.length > 0) {
+        setRoles(defs);
+      }
       // Load regional settings if present
       if (s.regional_settings) {
         setRegionalSettings({
@@ -852,122 +943,235 @@ phone: "",
             </Card>
           </TabsContent>
 
-          {/* Users & Roles */}
+          {/* Users & Roles - Redesigned */}
           <TabsContent value="roles" className="space-y-6">
-            <div className="grid gap-6">
-              {/* Roles */}
-              <Card>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Left: Role list */}
+              <Card className="md:col-span-1">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span className="flex items-center gap-2">
                       <Shield className="h-5 w-5 text-pink-600" />
                       Roles
                     </span>
-                    <Button size="sm" className="bg-gradient-to-r from-pink-500 to-purple-600">
+                    <Button size="sm" onClick={openNewRoleDialog} className="bg-gradient-to-r from-pink-500 to-purple-600">
                       <Plus className="w-4 h-4 mr-1" />
-                      Add Role
+                      Add
                     </Button>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {roles.map((role) => (
-                      <div key={role.id} className="p-3 border rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
+                  <div className="mb-3">
+                    <Input placeholder="Search roles..." value={roleSearch} onChange={(e) => setRoleSearch(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    {filteredRoles.map((r) => (
+                      <button
+                        key={r.id}
+                        onClick={() => setSelectedRoleId(r.id)}
+                        className={`w-full text-left rounded-md border px-3 py-2 hover:bg-muted ${selectedRoleId === r.id ? 'bg-muted' : ''}`}
+                      >
+                        <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            {getRoleIcon(role.name)}
-                            <span className="font-medium">{role.name}</span>
-                            <Badge variant="outline">{role.users_count} users</Badge>
+                            {getRoleIcon(r.name)}
+                            <span className="font-medium">{r.name}</span>
                           </div>
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="sm">
-                              <Edit2 className="w-3 h-3" />
-                            </Button>
-                            <Button variant="ghost" size="sm" className="text-destructive">
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </div>
+                          <Badge variant="outline">{r.users_count} users</Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground mb-3">{role.description}</p>
+                      </button>
+                    ))}
+                    {filteredRoles.length === 0 && (
+                      <div className="text-sm text-muted-foreground">No roles found</div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
 
-                        {/* Checkbox permissions */}
+              {/* Right: Role details */}
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      {selectedRole ? (
+                        <>
+                          {getRoleIcon(selectedRole.name)}
+                          <span>{selectedRole.name}</span>
+                        </>
+                      ) : (
+                        <span>Select a role</span>
+                      )}
+                    </span>
+                    {selectedRole && (
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => openEditRoleDialog(selectedRole.id)}>
+                          <Edit2 className="w-4 h-4 mr-1" /> Edit
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-destructive" onClick={() => requestDeleteRole(selectedRole.id)}>
+                          <Trash2 className="w-4 h-4 mr-1" /> Delete
+                        </Button>
+                      </div>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {!selectedRole ? (
+                    <div className="text-sm text-muted-foreground">Choose a role from the left to manage permissions.</div>
+                  ) : (
+                    <div className="space-y-6">
+                      <div>
+                        <p className="text-sm text-muted-foreground">{selectedRole.description}</p>
+                      </div>
+                      {/* Permissions matrix */}
+                      <div>
+                        <h4 className="font-semibold mb-2">Permissions</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {allPermissions.map((perm) => (
                             <label key={perm.id} className="flex items-center gap-3 rounded-md border p-2">
                               <Checkbox
-                                checked={role.permissions.includes("all") ? true : role.permissions.includes(perm.id)}
-                                onCheckedChange={(c) => toggleRolePermission(role.id, perm.id, Boolean(c))}
-                                disabled={role.permissions.includes("all")}
+                                checked={selectedRole.permissions.includes('all') ? true : selectedRole.permissions.includes(perm.id)}
+                                onCheckedChange={(c) => toggleSelectedRolePermission(perm.id, Boolean(c))}
+                                disabled={selectedRole.permissions.includes('all')}
                               />
                               <span className="text-sm">{perm.label}</span>
                             </label>
                           ))}
                         </div>
-
-                        {/* Organization overrides editor */}
-                        <div className="mt-4 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-xs">Overrides for this organization</Label>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => addPermissionRow(role.name.toLowerCase())}
-                            >
-                              Add Permission
-                            </Button>
-                          </div>
-                          <div className="space-y-2">
-                            {(roleOverrides[role.name.toLowerCase()] || []).map((row, idx) => (
-                              <div key={idx} className="grid grid-cols-12 gap-2 items-center">
-                                <div className="col-span-5">
-                                  <Select
-                                    value={row.action}
-                                    onValueChange={(v) => updatePermissionRow(role.name.toLowerCase(), idx, 'action', v)}
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Action" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="read">View</SelectItem>
-                                      <SelectItem value="create">Create</SelectItem>
-                                      <SelectItem value="update">Edit</SelectItem>
-                                      <SelectItem value="delete">Delete</SelectItem>
-                                      <SelectItem value="approve">Approve</SelectItem>
-                                      <SelectItem value="*">All</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div className="col-span-6">
-                                  <Input
-                                    value={row.resource}
-                                    onChange={(e) => updatePermissionRow(role.name.toLowerCase(), idx, 'resource', e.target.value)}
-                                    placeholder="Resource e.g. appointments, job_cards"
-                                  />
-                                </div>
-                                <div className="col-span-1 flex justify-end">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => removePermissionRow(role.name.toLowerCase(), idx)}
-                                    className="text-destructive"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </div>
+                      </div>
+                      {/* Organization overrides editor for selected role */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs">Overrides for this organization</Label>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => addPermissionRow(selectedRole.name.toLowerCase())}
+                          >
+                            Add Permission
+                          </Button>
+                        </div>
+                        <div className="space-y-2">
+                          {(roleOverrides[selectedRole.name.toLowerCase()] || []).map((row, idx) => (
+                            <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                              <div className="col-span-5">
+                                <Select
+                                  value={row.action}
+                                  onValueChange={(v) => updatePermissionRow(selectedRole.name.toLowerCase(), idx, 'action', v)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Action" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="read">View</SelectItem>
+                                    <SelectItem value="create">Create</SelectItem>
+                                    <SelectItem value="update">Edit</SelectItem>
+                                    <SelectItem value="delete">Delete</SelectItem>
+                                    <SelectItem value="approve">Approve</SelectItem>
+                                    <SelectItem value="*">All</SelectItem>
+                                  </SelectContent>
+                                </Select>
                               </div>
-                            ))}
-                          </div>
+                              <div className="col-span-6">
+                                <Input
+                                  value={row.resource}
+                                  onChange={(e) => updatePermissionRow(selectedRole.name.toLowerCase(), idx, 'resource', e.target.value)}
+                                  placeholder="Resource e.g. appointments, job_cards"
+                                />
+                              </div>
+                              <div className="col-span-1 flex justify-end">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => removePermissionRow(selectedRole.name.toLowerCase(), idx)}
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                  <div className="flex justify-end mt-4">
-                    <Button onClick={saveRoleOverrides}>Save Role Permissions</Button>
-                  </div>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button variant="outline" onClick={() => saveRoleDefinitions()}>Save Roles</Button>
+                        <Button onClick={saveRoleOverrides}>Save Role Permissions</Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
+
+            {/* Role create/edit dialog */}
+            <UIDialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{roleForm.id ? 'Edit Role' : 'Add Role'}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3 py-2">
+                  <div className="space-y-2">
+                    <Label>Name</Label>
+                    <Input value={roleForm.name} onChange={(e) => setRoleForm(f => ({ ...f, name: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Description</Label>
+                    <Input value={roleForm.description} onChange={(e) => setRoleForm(f => ({ ...f, description: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Preset</Label>
+                    <Select onValueChange={(v) => applyPreset(v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a preset (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Administrator">Administrator</SelectItem>
+                        <SelectItem value="Manager">Manager</SelectItem>
+                        <SelectItem value="Staff">Staff</SelectItem>
+                        <SelectItem value="Receptionist">Receptionist</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Permissions</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {allPermissions.map((perm) => (
+                        <label key={perm.id} className="flex items-center gap-3 rounded-md border p-2">
+                          <Checkbox
+                            checked={roleForm.permissions.includes('all') ? true : roleForm.permissions.includes(perm.id)}
+                            onCheckedChange={(c) => setRoleForm(f => ({
+                              ...f,
+                              permissions: c ? Array.from(new Set([...(f.permissions || []), perm.id])) : (f.permissions || []).filter(p => p !== perm.id),
+                            }))}
+                            disabled={roleForm.permissions.includes('all')}
+                          />
+                          <span className="text-sm">{perm.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsRoleDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={saveRoleForm}>{roleForm.id ? 'Save' : 'Create'}</Button>
+                </DialogFooter>
+              </DialogContent>
+            </UIDialog>
+
+            {/* Delete role confirm */}
+            <UIDialog open={!!roleToDelete} onOpenChange={(open) => setRoleToDelete(open ? roleToDelete : null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete role</DialogTitle>
+                </DialogHeader>
+                <div className="text-sm text-muted-foreground">
+                  Are you sure you want to delete the role "{roleToDelete?.name}"? This cannot be undone.
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setRoleToDelete(null)}>Cancel</Button>
+                  <Button className="text-destructive" onClick={confirmDeleteRole}>Delete</Button>
+                </DialogFooter>
+              </DialogContent>
+            </UIDialog>
           </TabsContent>
 
           {/* Subscription */}
