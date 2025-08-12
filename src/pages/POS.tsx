@@ -65,6 +65,7 @@ const PAYMENT_METHODS = [
   "Cash",
   "Credit Card", 
   "Debit Card",
+  "Mobile money",
   "Mobile Payment",
   "Bank Transfer",
   "Store Credit"
@@ -93,6 +94,7 @@ export default function POS() {
     tax_percentage: 8.5, // Default tax rate
     notes: "",
     cash_received: "",
+    transaction_number: "",
   });
   const [applyTax, setApplyTax] = useState<boolean>(false);
 
@@ -312,6 +314,7 @@ export default function POS() {
       tax_percentage: 8.5,
       notes: "",
       cash_received: "",
+      transaction_number: "",
     });
   };
 
@@ -364,7 +367,9 @@ export default function POS() {
         total_amount: totals.total,
         payment_method: paymentData.payment_method,
         status: "completed",
-        notes: paymentData.notes || null,
+        notes: (paymentData.notes || paymentData.transaction_number) 
+          ? `${paymentData.notes || ""}${paymentData.notes && paymentData.transaction_number ? "\n" : ""}${paymentData.transaction_number ? `Transaction #: ${paymentData.transaction_number}` : ""}` 
+          : null,
       };
 
       // Use fallback function to handle missing database tables
@@ -784,6 +789,19 @@ export default function POS() {
                             Change: {formatMoney(parseFloat(paymentData.cash_received) - totals.total)}
                           </p>
                         )}
+                      </div>
+                    )}
+
+                    {(paymentData.payment_method === "Mobile money" || paymentData.payment_method === "Mobile Payment") && (
+                      <div>
+                        <Label htmlFor="transaction_number">Transaction Number</Label>
+                        <Input
+                          id="transaction_number"
+                          type="text"
+                          value={paymentData.transaction_number}
+                          onChange={(e) => setPaymentData({ ...paymentData, transaction_number: e.target.value })}
+                          placeholder="e.g. M-Pesa/Mobile money ref"
+                        />
                       </div>
                     )}
 
