@@ -121,10 +121,10 @@ export default function ProductForm() {
       const { data: inserted, error } = await supabase
         .from("inventory_items")
         .insert({
-          name: payload.name,
+          name: (payload.name || '').trim(),
           description: payload.description,
-          sku: payload.sku,
-          unit: payload.unit,
+          sku: (payload.sku || '').trim() ? (payload.sku || '').trim() : null,
+          unit: (payload.unit || '').trim() || null,
           reorder_point: payload.reorder_point,
           cost_price: payload.cost_price,
           selling_price: payload.selling_price,

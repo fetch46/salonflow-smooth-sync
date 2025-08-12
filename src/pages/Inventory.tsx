@@ -521,10 +521,10 @@ export default function Inventory() {
       }
       if (editingItem) {
         const { error } = await supabase.from("inventory_items").update({
-          name: formData.name,
+          name: (formData.name || '').trim(),
           description: formData.description,
-          sku: formData.sku,
-          unit: formData.unit,
+          sku: (formData.sku || '').trim() ? (formData.sku || '').trim() : null,
+          unit: (formData.unit || '').trim() || null,
           reorder_point: formData.reorder_point,
           cost_price: formData.cost_price,
           selling_price: formData.selling_price,
@@ -567,10 +567,10 @@ export default function Inventory() {
         const { data: inserted, error } = await supabase
           .from("inventory_items")
           .insert({
-            name: payload.name,
+            name: (payload.name || '').trim(),
             description: payload.description,
-            sku: payload.sku,
-            unit: payload.unit,
+            sku: (payload.sku || '').trim() ? (payload.sku || '').trim() : null,
+            unit: (payload.unit || '').trim() || null,
             reorder_point: payload.reorder_point,
             cost_price: payload.cost_price,
             selling_price: payload.selling_price,
