@@ -62,6 +62,7 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, warehouses }: 
   const [incomeAccounts, setIncomeAccounts] = useState<any[]>([]);
   const [expenseAccounts, setExpenseAccounts] = useState<any[]>([]);
   const [assetAccounts, setAssetAccounts] = useState<any[]>([]);
+  const [errors, setErrors] = useState<{ sales?: string; purchase?: string; inventory?: string }>({});
 
   useEffect(() => {
     if (editingItem) {
@@ -80,6 +81,7 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, warehouses }: 
         opening_stock_quantity: 0,
         opening_stock_warehouse_id: "",
       });
+      setErrors({});
     } else {
       setFormData({
         name: "",
@@ -96,6 +98,7 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, warehouses }: 
         opening_stock_quantity: 0,
         opening_stock_warehouse_id: "",
       });
+      setErrors({});
     }
   }, [editingItem]);
 
@@ -161,6 +164,15 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, warehouses }: 
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
+    const nextErrors: { sales?: string; purchase?: string; inventory?: string } = {};
+    if (!formData.sales_account_id) nextErrors.sales = "Required";
+    if (!formData.purchase_account_id) nextErrors.purchase = "Required";
+    if (!formData.inventory_account_id) nextErrors.inventory = "Required";
+    setErrors(nextErrors);
+    if (nextErrors.sales || nextErrors.purchase || nextErrors.inventory) {
+      toast({ title: "Missing accounts", description: "Please select Sales, Purchase, and Inventory accounts.", variant: "destructive" });
+      return;
+    }
     // Ensure numeric fields are numbers
     const payload = {
       ...formData,
@@ -300,6 +312,7 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, warehouses }: 
                   ))}
                 </SelectContent>
               </Select>
+              {errors.sales && (<p className="text-xs text-destructive">{errors.sales}</p>)}
             </div>
             <div className="space-y-2">
               <Label>Purchase Account</Label>
@@ -316,6 +329,7 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, warehouses }: 
                   ))}
                 </SelectContent>
               </Select>
+              {errors.purchase && (<p className="text-xs text-destructive">{errors.purchase}</p>)}
             </div>
             <div className="space-y-2">
               <Label>Inventory Account</Label>
@@ -332,6 +346,7 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, warehouses }: 
                   ))}
                 </SelectContent>
               </Select>
+              {errors.inventory && (<p className="text-xs text-destructive">{errors.inventory}</p>)}
             </div>
           </div>
 
@@ -500,6 +515,10 @@ export default function Inventory() {
 
   const handleItemSubmit = async (formData) => {
     try {
+      if (!formData.sales_account_id || !formData.purchase_account_id || !formData.inventory_account_id) {
+        toast({ title: "Missing accounts", description: "Please select Sales, Purchase, and Inventory accounts.", variant: "destructive" });
+        return;
+      }
       if (editingItem) {
         const { error } = await supabase.from("inventory_items").update({
           name: formData.name,
