@@ -1402,7 +1402,7 @@ phone: "",
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Address</TableHead>
-                      <TableHead>Default Warehouse</TableHead>
+                      <TableHead>Warehouse</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
