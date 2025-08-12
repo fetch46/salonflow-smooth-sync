@@ -289,6 +289,7 @@ phone: "",
   })
   // Default POS Location (organization setting)
   const [defaultPosLocationId, setDefaultPosLocationId] = useState<string>("")
+  const [defaultPosWarehouseName, setDefaultPosWarehouseName] = useState<string>("")
 
   const openNewLocation = () => {
     setEditingLocation(null)
@@ -367,6 +368,31 @@ phone: "",
       setTaxRatePercent(Number.isFinite(parsed) ? String(parsed) : "")
       // Initialize default POS location from org settings
       setDefaultPosLocationId(s.pos_default_location_id || "")
+      // Try resolve default warehouse name for selected default location
+      if (s.pos_default_location_id) {
+        (async () => {
+          try {
+            const { data: loc } = await supabase
+              .from('business_locations')
+              .select('id, default_warehouse_id')
+              .eq('id', s.pos_default_location_id)
+              .maybeSingle()
+            const whId = (loc as any)?.default_warehouse_id as string | undefined
+            if (whId) {
+              const { data: wh } = await supabase
+                .from('warehouses')
+                .select('id, name')
+                .eq('id', whId)
+                .maybeSingle()
+              if (wh?.name) setDefaultPosWarehouseName(wh.name)
+            } else {
+              setDefaultPosWarehouseName("")
+            }
+          } catch {}
+        })()
+      } else {
+        setDefaultPosWarehouseName("")
+      }
       // Initialize deposit account mapping from org settings
       const map = (s.default_deposit_accounts_by_method as Record<string, string>) || {}
       setDepositAccountMap(map)
@@ -836,6 +862,28 @@ phone: "",
                         placeholder="e.g. 8.5"
                       />
                       <p className="text-xs text-muted-foreground">This rate will be used across POS, Invoices and Purchases.</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Default POS Location</Label>
+                      <div className="flex items-center gap-2">
+                        <Select value={defaultPosLocationId || "__none__"} onValueChange={(v) => setDefaultPosLocationId(v === "__none__" ? "" : v)}>
+                          <SelectTrigger className="w-72">
+                            <SelectValue placeholder="Select POS location" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">— None —</SelectItem>
+                            {stockLocations.map((l) => (
+                              <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button type="button" variant="outline" onClick={handleSaveDefaultPosLocation}>Save</Button>
+                      </div>
+                      {defaultPosWarehouseName ? (
+                        <p className="text-xs text-muted-foreground">Default warehouse for POS will be: <span className="font-medium">{defaultPosWarehouseName}</span></p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">Set a default warehouse on the selected location to auto-select it in POS.</p>
+                      )}
                     </div>
                   </div>
 

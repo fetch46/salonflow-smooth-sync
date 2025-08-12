@@ -18,6 +18,7 @@ import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { useOrganizationTaxRate } from "@/lib/saas/hooks";
 import { Switch } from "@/components/ui/switch";
 import { postSaleCOGSAndInventory } from "@/utils/ledger";
+import { postMultiLineEntry, findAccountIdByCode } from "@/utils/ledger";
 
 interface Product {
   id: string;
@@ -71,6 +72,8 @@ const PAYMENT_METHODS = [
 
 export default function POS() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [warehouses, setWarehouses] = useState<Array<{ id: string; name: string; location_id?: string | null }>>([]);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -98,54 +101,81 @@ export default function POS() {
   }, [orgTaxRate])
 
   useEffect(() => {
-    fetchProducts();
     fetchCustomers();
+    (async () => {
+      try {
+        const { data: whs } = await supabase
+          .from("warehouses")
+          .select("id, name, location_id, is_active")
+          .order("name");
+        const active = (whs || []).filter((w: any) => w.is_active);
+        setWarehouses(active.map((w: any) => ({ id: w.id, name: w.name, location_id: w.location_id || null })));
+      } catch {}
+      // Try to default from org settings: default POS location -> its default warehouse
+      try {
+        const defaultLocationId = ((organization?.settings as any) || {})?.pos_default_location_id as string | undefined;
+        if (defaultLocationId) {
+          const { data: loc } = await supabase
+            .from("business_locations")
+            .select("id, default_warehouse_id")
+            .eq("id", defaultLocationId)
+            .maybeSingle();
+          const defWh = (loc as any)?.default_warehouse_id as string | undefined;
+          if (defWh) setSelectedWarehouseId(defWh);
+        }
+      } catch {}
+      await fetchProducts();
+    })();
   }, []);
   // Ensure products refetch when organization changes
   useEffect(() => {
     if (organization?.id) {
       fetchProducts();
     }
-  }, [organization?.id, (organization?.settings as any)?.pos_default_location_id]);
+  }, [organization?.id, selectedWarehouseId]);
 
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const defaultLocationId = ((organization?.settings as any) || {}).pos_default_location_id as string | undefined;
-      if (defaultLocationId) {
-        // First get item_ids that have stock at the default location
+      if (selectedWarehouseId) {
         const { data: levels, error: levelsError } = await supabase
           .from("inventory_levels")
           .select("item_id, quantity")
-          .eq("location_id", defaultLocationId)
+          .eq("warehouse_id", selectedWarehouseId)
           .gt("quantity", 0);
         if (levelsError) throw levelsError;
         const itemIds = Array.from(new Set((levels || []).map((l: any) => l.item_id)));
         if (itemIds.length === 0) {
           setProducts([]);
         } else {
-          const { data: items, error: itemsError } = await supabase
-            .from("inventory_items")
-            .select("*")
-            .in("id", itemIds)
-            .eq("is_active", true)
-            .eq("type", "good")
-            .eq("organization_id", organization?.id || "")
-            .order("name");
-          if (itemsError) throw itemsError;
-          setProducts(items || []);
+          let itemsRes: any[] = [];
+          try {
+            const { data: items, error: itemsError } = await supabase
+              .from("inventory_items")
+              .select("*")
+              .in("id", itemIds)
+              .eq("is_active", true)
+              .eq("type", "good")
+              .eq("organization_id", organization?.id || "")
+              .order("name");
+            if (itemsError) throw itemsError;
+            itemsRes = items || [];
+          } catch (e: any) {
+            // Fallback for schemas without organization_id
+            const { data: items, error: itemsError } = await supabase
+              .from("inventory_items")
+              .select("*")
+              .in("id", itemIds)
+              .eq("is_active", true)
+              .eq("type", "good")
+              .order("name");
+            if (itemsError) throw itemsError;
+            itemsRes = items || [];
+          }
+          setProducts(itemsRes);
         }
       } else {
-        // No default location set: show all active goods in organization
-        const { data, error } = await supabase
-          .from("inventory_items")
-          .select("*")
-          .eq("is_active", true)
-          .eq("type", "good")
-          .eq("organization_id", organization?.id || "")
-          .order("name");
-        if (error) throw error;
-        setProducts(data || []);
+        setProducts([]);
       }
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -266,6 +296,11 @@ export default function POS() {
       return;
     }
 
+    if (!selectedWarehouseId) {
+      toast.error("Select a POS warehouse first");
+      return;
+    }
+
     if (!paymentData.payment_method) {
       toast.error("Please select a payment method");
       return;
@@ -289,51 +324,83 @@ export default function POS() {
       // Use fallback function to handle missing database tables
       const sale = await createSaleWithFallback(supabase, saleData, cart);
 
-      // Decrease inventory at default POS location if configured
+      // Decrease inventory at selected warehouse
       try {
-        const defaultLocationId = ((organization?.settings as any) || {})?.pos_default_location_id as string | undefined;
-        if (defaultLocationId) {
-          for (const line of cart) {
-            const itemId = line.product.id;
-            const qty = Number(line.quantity || 0);
-            if (!qty) continue;
-            const { data: levelRows, error: levelErr } = await supabase
-              .from("inventory_levels")
-              .select("id, quantity")
-              .eq("item_id", itemId)
-              .eq("location_id", defaultLocationId)
-              .limit(1);
-            if (levelErr) throw levelErr;
-            const existing = (levelRows || [])[0] as { id: string; quantity: number } | undefined;
-            if (existing) {
-              const newQty = Math.max(0, Number(existing.quantity || 0) - qty);
-              await supabase.from("inventory_levels").update({ quantity: newQty }).eq("id", existing.id);
-            } else {
-              // No stock row exists; create one with zero (cannot go negative)
-              await supabase.from("inventory_levels").insert([{ item_id: itemId, location_id: defaultLocationId, quantity: 0 }]);
-            }
-            // Post COGS for this line based on product cost_price
-            try {
-              if (organization?.id) {
-                const unitCost = Number(line.product.cost_price || 0);
-                if (unitCost > 0) {
-                  await postSaleCOGSAndInventory({
-                    organizationId: organization.id,
-                    productId: itemId,
-                    quantity: qty,
-                    unitCost,
-                    locationId: defaultLocationId,
-                    referenceId: sale.id,
-                  });
-                }
+        for (const line of cart) {
+          const itemId = line.product.id;
+          const qty = Number(line.quantity || 0);
+          if (!qty) continue;
+          const { data: levelRows, error: levelErr } = await supabase
+            .from("inventory_levels")
+            .select("id, quantity")
+            .eq("item_id", itemId)
+            .eq("warehouse_id", selectedWarehouseId)
+            .limit(1);
+          if (levelErr) throw levelErr;
+          const existing = (levelRows || [])[0] as { id: string; quantity: number } | undefined;
+          if (existing) {
+            const available = Number(existing.quantity || 0);
+            if (available + 1e-9 < qty) throw new Error("Insufficient stock at selected warehouse");
+            const newQty = Math.max(0, available - qty);
+            await supabase.from("inventory_levels").update({ quantity: newQty }).eq("id", existing.id);
+          } else {
+            throw new Error("Item not available at selected warehouse");
+          }
+          // Post COGS for this line based on product cost_price
+          try {
+            if (organization?.id) {
+              const unitCost = Number(line.product.cost_price || 0);
+              if (unitCost > 0) {
+                await postSaleCOGSAndInventory({
+                  organizationId: organization.id,
+                  productId: itemId,
+                  quantity: qty,
+                  unitCost,
+                  locationId: null,
+                  referenceId: sale.id,
+                });
               }
-            } catch (cogsErr) {
-              console.warn("COGS posting failed", cogsErr);
             }
+          } catch (cogsErr) {
+            console.warn("COGS posting failed", cogsErr);
           }
         }
       } catch (invErr) {
         console.warn("Inventory decrement after sale failed:", invErr);
+      }
+
+      // Post POS sale to ledger: DR Cash/Bank total, CR Revenue (net of tax), CR Sales Tax Payable (tax)
+      try {
+        if (organization?.id) {
+          const methodKey = String(paymentData.payment_method || "cash").toLowerCase();
+          const settings = (organization.settings as any) || {};
+          const mapped = (settings.default_deposit_accounts_by_method || {})[methodKey] as string | undefined;
+          let depositAccId: string | null = mapped || null;
+          if (!depositAccId) {
+            // Fallback: Cash -> 1001, else 1002
+            const code = methodKey === "cash" ? "1001" : "1002";
+            depositAccId = await findAccountIdByCode(organization.id, code);
+          }
+          // Revenue: prefer Product Sales Revenue 4002, fallback Hair Services 4001
+          let revenueAccId: string | null = await findAccountIdByCode(organization.id, "4002");
+          if (!revenueAccId) revenueAccId = await findAccountIdByCode(organization.id, "4001");
+          // Tax payable
+          const taxAccId: string | null = await findAccountIdByCode(organization.id, "2100");
+          if (depositAccId && revenueAccId) {
+            const revenueAmount = totals.discountedSubtotal;
+            const taxAmount = totals.taxAmount;
+            const lines: Array<{ accountId: string; debit: number; credit: number }> = [
+              { accountId: depositAccId, debit: totals.total, credit: 0 },
+              { accountId: revenueAccId, debit: 0, credit: Math.max(0, revenueAmount) },
+            ];
+            if (applyTax && taxAmount > 0 && taxAccId) {
+              lines.push({ accountId: taxAccId, debit: 0, credit: taxAmount });
+            }
+            await postMultiLineEntry({ description: `POS Sale ${sale.sale_number}`, referenceType: "pos_sale", referenceId: sale.id, lines });
+          }
+        }
+      } catch (ledgerErr) {
+        console.warn("Ledger posting failed", ledgerErr);
       }
 
       setCurrentSale(sale);
@@ -370,6 +437,20 @@ export default function POS() {
                 Sell products and manage transactions
               </p>
             </div>
+            <div className="flex items-center gap-3">
+              <Label>Warehouse</Label>
+              <Select value={selectedWarehouseId || "__none__"} onValueChange={(v) => setSelectedWarehouseId(v === "__none__" ? "" : v)}>
+                <SelectTrigger className="w-56">
+                  <SelectValue placeholder="Select warehouse" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— Select —</SelectItem>
+                  {warehouses.map((w) => (
+                    <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Search */}
@@ -385,7 +466,9 @@ export default function POS() {
 
           {/* Products Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {loading ? (
+            {(!selectedWarehouseId && !loading) ? (
+              <div className="col-span-full text-center py-8 text-muted-foreground">Select a warehouse to start selling</div>
+            ) : loading ? (
               Array.from({ length: 8 }).map((_, index) => (
                 <Card key={index} className="animate-pulse">
                   <CardContent className="p-4">

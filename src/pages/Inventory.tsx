@@ -779,8 +779,10 @@ export default function Inventory() {
             <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button onClick={() => { setEditingItem(null); setIsItemDialogOpen(true); }}>
-            <Plus className="w-4 h-4 mr-2" /> Add Product
+          <Button asChild>
+            <Link to="/inventory/new">
+              <Plus className="w-4 h-4 mr-2" /> Add Product
+            </Link>
           </Button>
         </div>
       </div>
@@ -821,13 +823,7 @@ export default function Inventory() {
         </Card>
       </div>
 
-      <ItemFormDialog
-        isOpen={isItemDialogOpen}
-        onClose={() => setIsItemDialogOpen(false)}
-        onSubmit={handleItemSubmit}
-        editingItem={editingItem}
-        warehouses={warehouses}
-      />
+
 
       <Tabs defaultValue="goods" className="space-y-6">
         <TabsList className="grid w-full grid-cols-1 md:w-fit">

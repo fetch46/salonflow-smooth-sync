@@ -50,6 +50,7 @@ const ServiceForm = lazy(() => import("@/pages/ServiceForm"));
 const Booking = lazy(() => import("@/pages/Booking"));
 const SupplierProfile = lazy(() => import("@/pages/SupplierProfile"));
 const ProductView = lazy(() => import("@/pages/ProductView"));
+const ProductForm = lazy(() => import("@/pages/ProductForm"));
 const InventoryAdjustmentForm = lazy(() => import("@/pages/InventoryAdjustmentForm"));
 const AccountView = lazy(() => import("@/pages/AccountView"));
 const Invoices = lazy(() => import("@/pages/Invoices"));
@@ -167,6 +168,7 @@ const AppRoutes = () => {
           
           {/* Inventory Management */}
           <Route path="inventory" element={<Inventory />} />
+          <Route path="inventory/new" element={<ProductForm />} />
           <Route path="inventory/:id" element={<ProductView />} />
           <Route path="inventory-adjustments" element={<InventoryAdjustments />} />
           <Route path="inventory-adjustments/new" element={<InventoryAdjustmentForm />} />
