@@ -108,8 +108,24 @@ export default function InventoryAdjustmentForm() {
             reason: adj.reason,
             notes: adj.notes || "",
                          adjustment_number: adj.adjustment_number,
-             warehouse_id: (adj as any).warehouse_id || (adj as any).location_id || ""
+             warehouse_id: (adj as any).warehouse_id || ""
            });
+
+          // If the adjustment has only a legacy location_id and no warehouse_id,
+          // try to map that location to an active warehouse so the form field is valid.
+          if (!(adj as any).warehouse_id && (adj as any).location_id) {
+            const legacyLocationId = (adj as any).location_id as string;
+            const { data: mappedWarehouses, error: mapErr } = await supabase
+              .from("warehouses")
+              .select("id, is_default")
+              .eq("location_id", legacyLocationId)
+              .eq("is_active", true)
+              .order("is_default", { ascending: false })
+              .limit(1);
+            if (!mapErr && mappedWarehouses && mappedWarehouses.length > 0) {
+              setFormData((prev) => ({ ...prev, warehouse_id: mappedWarehouses[0].id }));
+            }
+          }
 
           const { data: items, error: itemsErr } = await supabase
             .from("inventory_adjustment_items")
@@ -331,6 +347,20 @@ export default function InventoryAdjustmentForm() {
       effectiveLocationId = whRow.location_id as string | null;
     } else {
       effectiveLocationId = (latestAdj as any)?.location_id ?? null;
+    }
+
+    // Early validation: ensure the business location actually exists before writing inventory_levels
+    if (effectiveLocationId) {
+      const { data: locRow, error: locErr } = await supabase
+        .from("business_locations")
+        .select("id")
+        .eq("id", effectiveLocationId)
+        .maybeSingle();
+      if (locErr || !locRow) {
+        throw new Error(
+          "The selected warehouse/location was removed. Please set a valid warehouse or location and try again."
+        );
+      }
     }
 
     if (!effectiveLocationId) {

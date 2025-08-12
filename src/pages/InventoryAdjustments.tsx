@@ -207,6 +207,20 @@ export default function InventoryAdjustments() {
         effectiveLocationId = latestAdj?.location_id ?? null;
       }
 
+      // Early validation: ensure the business location actually exists before writing inventory_levels
+      if (effectiveLocationId) {
+        const { data: locRow, error: locErr } = await supabase
+          .from("business_locations")
+          .select("id")
+          .eq("id", effectiveLocationId)
+          .maybeSingle();
+        if (locErr || !locRow) {
+          throw new Error(
+            "The selected warehouse/location was removed. Please set a valid warehouse or location on this adjustment and try again."
+          );
+        }
+      }
+
       if (!effectiveLocationId) {
         toast.error(
           "This adjustment has no warehouse/location set. Please edit and select a warehouse or location before approval."
