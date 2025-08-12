@@ -115,6 +115,7 @@ export default function Staff() {
   const { organization } = useOrganization();
   const [todayAppts, setTodayAppts] = useState<{ staff_id: string | null; status: string }[]>([]);
   const [staffRevenueMap, setStaffRevenueMap] = useState<Record<string, number>>({});
+  const [staffCommissionMap, setStaffCommissionMap] = useState<Record<string, number>>({});
 
   const ROLE_OPTIONS = ["owner","admin","manager","staff","viewer"] as const;
 
@@ -204,25 +205,46 @@ export default function Staff() {
       try {
         const today = new Date();
         const todayStr = format(today, 'yyyy-MM-dd');
-                  const [{ data: appts }, { data: items }] = await Promise.all([
-            supabase
-              .from('appointments')
-              .select('staff_id, status, appointment_date')
-              .eq('appointment_date', todayStr),
-            supabase
-              .from('invoice_items')
-              .select('staff_id, total_price, created_at')
-              .not('staff_id', 'is', null)
-              .gte('created_at', startOfDay(today).toISOString())
-              .lte('created_at', endOfDay(today).toISOString()),
-          ]);
+        const [{ data: appts }, { data: items }, { data: jcs } ] = await Promise.all([
+          supabase
+            .from('appointments')
+            .select('staff_id, status, appointment_date')
+            .eq('appointment_date', todayStr),
+          supabase
+            .from('invoice_items')
+            .select('staff_id, total_price, created_at')
+            .not('staff_id', 'is', null)
+            .gte('created_at', startOfDay(today).toISOString())
+            .lte('created_at', endOfDay(today).toISOString()),
+          supabase
+            .from('job_card_services')
+            .select('staff_id, quantity, unit_price, commission_percentage, services:service_id ( commission_percentage ), created_at')
+            .gte('created_at', startOfDay(today).toISOString())
+            .lte('created_at', endOfDay(today).toISOString()),
+        ]);
         setTodayAppts((appts || []).map((a: any) => ({ staff_id: a.staff_id, status: a.status || '' })));
-        const map: Record<string, number> = {};
+        const revMap: Record<string, number> = {};
         (items || []).forEach((it: any) => {
           const id = String(it.staff_id);
-          map[id] = (map[id] || 0) + (Number(it.total_price) || 0);
+          revMap[id] = (revMap[id] || 0) + (Number(it.total_price) || 0);
         });
-        setStaffRevenueMap(map);
+        setStaffRevenueMap(revMap);
+        const commMap: Record<string, number> = {};
+        (jcs || []).forEach((row: any) => {
+          const sid = row.staff_id ? String(row.staff_id) : null;
+          if (!sid) return;
+          const qty = Number(row.quantity || 1);
+          const unit = Number(row.unit_price || 0);
+          const gross = qty * unit;
+          const rate = typeof row.commission_percentage === 'number' && !isNaN(row.commission_percentage)
+            ? Number(row.commission_percentage)
+            : (typeof row.services?.commission_percentage === 'number' && !isNaN(row.services?.commission_percentage)
+              ? Number(row.services?.commission_percentage)
+              : 0);
+          const commission = (gross * (rate || 0)) / 100;
+          commMap[sid] = (commMap[sid] || 0) + commission;
+        });
+        setStaffCommissionMap(commMap);
       } catch (e) {
         // silent fail; cards will show zeros
       }
@@ -980,6 +1002,7 @@ export default function Staff() {
                         <TableHead>Phone</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Commission %</TableHead>
+                        <TableHead>Today Comm.</TableHead>
                         <TableHead>Hire Date</TableHead>
                         <TableHead>Role</TableHead>
                         <TableHead>Default Location</TableHead>
@@ -994,6 +1017,7 @@ export default function Staff() {
                           <TableCell>{member.phone || '—'}</TableCell>
                           <TableCell>{member.is_active ? <Badge>Active</Badge> : <Badge variant="secondary">Inactive</Badge>}</TableCell>
                           <TableCell>{typeof member.commission_rate === 'number' ? `${member.commission_rate}%` : '—'}</TableCell>
+                          <TableCell>{(staffCommissionMap[member.id] || 0).toFixed(2)}</TableCell>
                           <TableCell>{member.hire_date || '—'}</TableCell>
                           <TableCell>
                             {rolesByStaffId[member.id] ? (
@@ -1191,6 +1215,9 @@ export default function Staff() {
                                     {member.commission_rate}% comm.
                                   </Badge>
                                 )}
+                                <Badge variant="secondary" className="text-xs">
+                                  Today: {(staffCommissionMap[member.id] || 0).toFixed(2)}
+                                </Badge>
                               </div>
                             </div>
                           </div>
