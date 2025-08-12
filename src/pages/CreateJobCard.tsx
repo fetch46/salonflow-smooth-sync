@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,6 +52,7 @@ import { toast } from "sonner";
 import { format, addMinutes } from "date-fns";
 import { useFeatureGating } from "@/hooks/useFeatureGating";
 import { CreateButtonGate, FeatureGate } from "@/components/features/FeatureGate";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 
 interface Staff {
   id: string;
@@ -141,6 +142,7 @@ export default function CreateJobCard() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const { hasFeature, getFeatureAccess } = useFeatureGating();
+  const { format: formatMoney } = useOrganizationCurrency();
   
   // Data State
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -1237,7 +1239,7 @@ function StepServicesStaff({
                             </div>
                             <div className="flex items-center gap-1">
                               <DollarSign className="w-4 h-4" />
-                              ${service.price}
+                              {formatMoney(service.price)}
                             </div>
                             {service.category && (
                               <Badge variant="outline" className="text-xs">
@@ -1275,7 +1277,7 @@ function StepServicesStaff({
                       <div>
                         <div className="font-medium">{svc.name}</div>
                         <div className="text-xs text-slate-500">
-                          {svc.duration_minutes} min • ${svc.price}
+                          {svc.duration_minutes} min • {formatMoney(svc.price)}
                         </div>
                       </div>
                       <div className="w-64">
@@ -1313,7 +1315,7 @@ function StepServicesStaff({
                 <div className="mt-2 space-y-1">
                   {selectedServices.map(service => (
                     <div key={service.id} className="text-sm text-blue-700">
-                      {service.name} - ${service.price}
+                      {service.name} - {formatMoney(service.price)}
                       {localAssignments[service.id] && (
                         <span className="ml-2 text-xs text-blue-600">[
                           {staff.find(s => s.id === localAssignments[service.id])?.full_name}
@@ -1333,7 +1335,7 @@ function StepServicesStaff({
                 <Label className="text-blue-800">Totals</Label>
                 <div className="mt-2 space-y-1 text-sm text-blue-700">
                   <div>Duration: {totalDuration} minutes</div>
-                  <div className="font-medium">Cost: ${totalCost}</div>
+                  <div className="font-medium">Cost: {formatMoney(totalCost)}</div>
                 </div>
               </div>
             </div>
@@ -1417,7 +1419,7 @@ function StepProductsMaterials({
                           <div>
                             <div className="font-medium text-slate-900">{kit.inventory_items.name}</div>
                             <div className="text-sm text-slate-600">
-                              {kit.inventory_items.type} • ${kit.inventory_items.cost_price?.toFixed(2) || '0.00'} per {kit.inventory_items.unit || 'unit'}
+                              {kit.inventory_items.type} • {formatMoney(kit.inventory_items.cost_price)} per {kit.inventory_items.unit || 'unit'}
                             </div>
                           </div>
                         </div>
@@ -1459,7 +1461,7 @@ function StepProductsMaterials({
                           <div>
                             <Label className="text-sm text-slate-600">Total Cost</Label>
                             <div className="text-sm font-medium text-green-600">
-                              ${totalItemCost.toFixed(2)}
+                              {formatMoney(totalItemCost)}
                             </div>
                           </div>
                         </div>
@@ -1477,7 +1479,7 @@ function StepProductsMaterials({
                 Total Materials Cost
               </div>
               <div className="text-xl font-bold text-green-600">
-                ${productCosts.toFixed(2)}
+                {formatMoney(productCosts)}
               </div>
             </div>
           </CardContent>
@@ -1905,7 +1907,7 @@ function StepPaymentReceipt({
                     <div className="font-medium">{selectedStaff?.full_name}</div>
                     {selectedStaff?.commission_rate && (
                       <div className="text-sm text-slate-600">
-                        Commission: ${staffCommission.toFixed(2)}
+                        Commission: {formatMoney(staffCommission)}
                       </div>
                     )}
                   </div>
@@ -1919,7 +1921,7 @@ function StepPaymentReceipt({
                   {selectedServices.map(service => (
                     <div key={service.id} className="flex justify-between items-center p-2 bg-slate-50 rounded">
                       <span className="text-sm">{service.name}</span>
-                      <span className="text-sm font-medium">${service.price}</span>
+                      <span className="text-sm font-medium">{formatMoney(service.price)}</span>
                     </div>
                   ))}
                 </div>
@@ -1929,15 +1931,15 @@ function StepPaymentReceipt({
               <div className="space-y-2 pt-4 border-t">
                 <div className="flex justify-between text-sm">
                   <span>Services Total:</span>
-                  <span>${totalCost.toFixed(2)}</span>
+                  <span>{formatMoney(totalCost)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Materials Cost:</span>
-                  <span>${productCosts.toFixed(2)}</span>
+                  <span>{formatMoney(productCosts)}</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold border-t pt-2">
                   <span>Final Total:</span>
-                  <span>${finalTotal.toFixed(2)}</span>
+                  <span>{formatMoney(finalTotal)}</span>
                 </div>
               </div>
             </div>

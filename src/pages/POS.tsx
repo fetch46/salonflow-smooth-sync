@@ -536,12 +536,12 @@ export default function POS() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span>${totals.subtotal.toFixed(2)}</span>
+                  <span>{formatMoney(totals.subtotal)}</span>
                 </div>
                 {totals.globalDiscount > 0 && (
                   <div className="flex justify-between text-red-600">
                     <span>Discount ({paymentData.discount_percentage}%):</span>
-                    <span>-${totals.globalDiscount.toFixed(2)}</span>
+                    <span>-{formatMoney(totals.globalDiscount)}</span>
                   </div>
                 )}
                 <div className="flex items-center justify-between">
@@ -550,12 +550,12 @@ export default function POS() {
                   </span>
                   <div className="flex items-center gap-2">
                     <Switch checked={applyTax} onCheckedChange={setApplyTax} />
-                    <span>${totals.taxAmount.toFixed(2)}</span>
+                    <span>{formatMoney(totals.taxAmount)}</span>
                   </div>
                 </div>
                 <div className="flex justify-between font-bold text-lg border-t pt-2">
                   <span>Total:</span>
-                  <span>${totals.total.toFixed(2)}</span>
+                  <span>{formatMoney(totals.total)}</span>
                 </div>
               </div>
 
@@ -653,12 +653,12 @@ export default function POS() {
                       <div className="space-y-1 text-sm">
                         <div className="flex justify-between">
                           <span>Subtotal:</span>
-                          <span>${totals.subtotal.toFixed(2)}</span>
+                          <span>{formatMoney(totals.subtotal)}</span>
                         </div>
                         {totals.globalDiscount > 0 && (
                           <div className="flex justify-between text-red-600">
                             <span>Discount:</span>
-                            <span>-${totals.globalDiscount.toFixed(2)}</span>
+                            <span>-{formatMoney(totals.globalDiscount)}</span>
                           </div>
                         )}
                         <div className="flex items-center justify-between">
@@ -667,12 +667,12 @@ export default function POS() {
                           </span>
                           <div className="flex items-center gap-2">
                             <Switch checked={applyTax} onCheckedChange={setApplyTax} />
-                            <span>${totals.taxAmount.toFixed(2)}</span>
+                            <span>{formatMoney(totals.taxAmount)}</span>
                           </div>
                         </div>
                         <div className="flex justify-between font-bold text-lg border-t pt-1">
                           <span>Total:</span>
-                          <span>${totals.total.toFixed(2)}</span>
+                          <span>{formatMoney(totals.total)}</span>
                         </div>
                       </div>
                     </div>
@@ -736,7 +736,7 @@ export default function POS() {
                 {currentSale.discount_amount > 0 && (
                   <div className="flex justify-between text-red-600">
                     <span>Discount:</span>
-                    <span>-${currentSale.discount_amount.toFixed(2)}</span>
+                    <span>-{formatMoney(currentSale.discount_amount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between">

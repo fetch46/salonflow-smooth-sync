@@ -27,7 +27,7 @@ export default function ReceiptView() {
   const [items, setItems] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { symbol } = useOrganizationCurrency();
+  const { symbol, format: formatMoney } = useOrganizationCurrency();
   const { organization } = useOrganization();
   const isPrintMode = useMemo(() => new URLSearchParams(location.search).get('print') === '1', [location.search]);
 
@@ -330,8 +330,8 @@ export default function ReceiptView() {
                     <TableRow key={it.id}>
                       <TableCell className="font-medium">{it.description}</TableCell>
                       <TableCell>{it.quantity}</TableCell>
-                      <TableCell>{symbol}{Number(it.unit_price).toFixed(2)}</TableCell>
-                      <TableCell className="font-semibold">{symbol}{Number(it.total_price).toFixed(2)}</TableCell>
+                      <TableCell>{formatMoney(Number(it.unit_price))}</TableCell>
+                      <TableCell className="font-semibold">{formatMoney(Number(it.total_price))}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -364,16 +364,16 @@ export default function ReceiptView() {
                       <TableCell>{format(new Date(p.payment_date), 'MMM dd, yyyy')}</TableCell>
                       <TableCell>{p.method}</TableCell>
                       <TableCell>{p.reference_number || '—'}</TableCell>
-                      <TableCell>{symbol}{Number(p.amount).toFixed(2)}</TableCell>
+                      <TableCell>{formatMoney(Number(p.amount))}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             )}
             <div className="mt-4 text-sm">
-              <div>Total: {symbol}{Number(receipt.total_amount).toFixed(2)}</div>
-              <div>Paid: {symbol}{Number(receipt.amount_paid || 0).toFixed(2)}</div>
-              <div>Outstanding: {symbol}{Number(outstanding).toFixed(2)}</div>
+              <div>Total: {formatMoney(Number(receipt.total_amount))}</div>
+              <div>Paid: {formatMoney(Number(receipt.amount_paid || 0))}</div>
+              <div>Outstanding: {formatMoney(Number(outstanding))}</div>
             </div>
           </CardContent>
         </Card>
@@ -385,22 +385,22 @@ export default function ReceiptView() {
               <div className="w-64 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Subtotal:</span>
-                  <span className="font-semibold">{symbol}{Number(receipt.subtotal || 0).toFixed(2)}</span>
+                  <span className="font-semibold">{formatMoney(Number(receipt.subtotal || 0))}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Tax:</span>
-                  <span className="font-semibold">{symbol}{Number(receipt.tax_amount || 0).toFixed(2)}</span>
+                  <span className="font-semibold">{formatMoney(Number(receipt.tax_amount || 0))}</span>
                 </div>
                 {Number(receipt.discount_amount || 0) > 0 && (
                   <div className="flex justify-between text-sm text-red-600">
                     <span>Discount:</span>
-                    <span className="font-semibold">-{symbol}{Number(receipt.discount_amount).toFixed(2)}</span>
+                    <span className="font-semibold">-{formatMoney(Number(receipt.discount_amount))}</span>
                   </div>
                 )}
                 <Separator />
                 <div className="flex justify-between text-lg font-bold">
                   <span>Total:</span>
-                  <span className="text-violet-600">{symbol}{Number(receipt.total_amount || 0).toFixed(2)}</span>
+                  <span className="text-violet-600">{formatMoney(Number(receipt.total_amount || 0))}</span>
                 </div>
               </div>
             </div>
@@ -471,10 +471,10 @@ export default function ReceiptView() {
                       <TableCell className="font-medium">{it.description}</TableCell>
                       <TableCell>{it.staff_name}</TableCell>
                       <TableCell>{it.quantity}</TableCell>
-                      <TableCell>{symbol}{Number(it.unit_price).toFixed(2)}</TableCell>
-                      <TableCell>{symbol}{Number(it.total_price).toFixed(2)}</TableCell>
+                      <TableCell>{formatMoney(Number(it.unit_price))}</TableCell>
+                      <TableCell>{formatMoney(Number(it.total_price))}</TableCell>
                       <TableCell>{Number(it.commission_percentage || 0).toFixed(2)}%</TableCell>
-                      <TableCell className="font-semibold">{symbol}{Number(it.commission_amount || 0).toFixed(2)}</TableCell>
+                      <TableCell className="font-semibold">{formatMoney(Number(it.commission_amount || 0))}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -499,7 +499,7 @@ export default function ReceiptView() {
                     {commissionByStaff.map((row) => (
                       <TableRow key={`s_${row.staff_id}`}>
                         <TableCell className="font-medium">{row.staff_name}</TableCell>
-                        <TableCell className="font-semibold">{symbol}{row.commission_due.toFixed(2)}</TableCell>
+                        <TableCell className="font-semibold">{formatMoney(row.commission_due)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

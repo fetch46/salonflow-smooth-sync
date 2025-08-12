@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Plus, Search, Receipt, DollarSign, TrendingUp, AlertTriangle, RefreshCw, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { useSaas } from "@/lib/saas";
+import { useSaas, useOrganizationCurrency } from "@/lib/saas";
 import { postExpensePaymentToLedger } from "@/utils/ledger";
 import { useNavigate } from "react-router-dom";
 
@@ -55,6 +55,7 @@ export default function Expenses() {
   const { toast } = useToast();
   const { organization } = useSaas();
   const navigate = useNavigate();
+  const { format: formatMoney } = useOrganizationCurrency();
 
   const [formData, setFormData] = useState({
     expense_number: "",
@@ -518,7 +519,7 @@ export default function Expenses() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.total}</div>
-              <p className="text-xs text-muted-foreground">${stats.totalAmount.toFixed(2)} total</p>
+              <p className="text-xs text-muted-foreground">{formatMoney(stats.totalAmount)} total</p>
             </CardContent>
           </Card>
           
@@ -548,7 +549,7 @@ export default function Expenses() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${stats.totalPaidAmount.toFixed(2)}</div>
+              <div className="text-2xl font-bold">{formatMoney(stats.totalPaidAmount)}</div>
               <p className="text-xs text-muted-foreground">{stats.paid} expenses</p>
             </CardContent>
           </Card>
@@ -594,7 +595,7 @@ export default function Expenses() {
                       </div>
                     </TableCell>
                     <TableCell>{format(new Date(expense.expense_date), "MMM dd, yyyy")}</TableCell>
-                    <TableCell>${expense.amount.toFixed(2)}</TableCell>
+                    <TableCell>{formatMoney(expense.amount)}</TableCell>
                     <TableCell>{getStatusBadge(expense.status)}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
@@ -613,5 +614,5 @@ export default function Expenses() {
           </CardContent>
         </Card>
       </div>
-  );
+    );
 }

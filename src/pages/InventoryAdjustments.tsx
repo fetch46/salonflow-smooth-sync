@@ -14,6 +14,7 @@ import { Plus, Search, Package, TrendingUp, TrendingDown, Edit2, Trash2, AlertTr
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { MapPin } from "lucide-react";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 
 interface InventoryItem {
   id: string;
@@ -97,6 +98,7 @@ export default function InventoryAdjustments() {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [viewingAdjustment, setViewingAdjustment] = useState<Adjustment | null>(null);
   const navigate = useNavigate();
+  const { format: formatMoney } = useOrganizationCurrency();
 
   useEffect(() => {
     fetchAdjustments();
@@ -688,7 +690,7 @@ export default function InventoryAdjustments() {
                     <Package className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-xl font-bold">${totalCostValue.toFixed(2)}</div>
+                    <div className="text-xl font-bold">{formatMoney(totalCostValue)}</div>
                   </CardContent>
                 </Card>
                 <Card>
@@ -697,7 +699,7 @@ export default function InventoryAdjustments() {
                     <Package className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-xl font-bold">${totalSalesValue.toFixed(2)}</div>
+                    <div className="text-xl font-bold">{formatMoney(totalSalesValue)}</div>
                   </CardContent>
                 </Card>
               </div>
@@ -750,10 +752,10 @@ export default function InventoryAdjustments() {
                             <TableCell className={item.difference > 0 ? "text-green-600" : item.difference < 0 ? "text-red-600" : ""}>
                               {item.difference > 0 ? "+" : ""}{item.difference}
                             </TableCell>
-                            <TableCell>${(item.unit_cost ?? 0).toFixed(2)}</TableCell>
-                            <TableCell>${costValue.toFixed(2)}</TableCell>
-                            <TableCell>${unitSales.toFixed(2)}</TableCell>
-                            <TableCell>${salesValue.toFixed(2)}</TableCell>
+                            <TableCell>{formatMoney(item.unit_cost ?? 0)}</TableCell>
+                            <TableCell>{formatMoney(costValue)}</TableCell>
+                            <TableCell>{formatMoney(unitSales)}</TableCell>
+                            <TableCell>{formatMoney(salesValue)}</TableCell>
                           </TableRow>
                         );
                       })}

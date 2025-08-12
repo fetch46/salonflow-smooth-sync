@@ -17,6 +17,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 
 const Landing = () => {
   const features = [
@@ -132,6 +133,7 @@ const Landing = () => {
   const [settings, setSettings] = useState<LandingSettings | null>(null);
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
   const [scrolled, setScrolled] = useState<boolean>(false);
+  const { formatUsdCents } = useOrganizationCurrency();
 
   useEffect(() => {
     const loadPlans = async () => {
@@ -204,8 +206,8 @@ const Landing = () => {
     ? dbPlans.map((p) => ({
         name: p.name,
         description: p.description ?? "",
-        priceMonthly: `$${Math.round(((p.price_monthly ?? 0) as number) / 100)}`,
-        priceYearlyPerMonth: p.price_yearly ? `$${Math.round((((p.price_yearly ?? 0) as number) / 100) / 12)}` : undefined,
+        priceMonthly: formatUsdCents((p.price_monthly ?? 0) as number),
+        priceYearlyPerMonth: p.price_yearly ? formatUsdCents(Math.round((((p.price_yearly ?? 0) as number) / 12))) : undefined,
         periodLabel: billing === 'yearly' ? "/mo, billed yearly" : "/month",
         features: Object.entries(p.features ?? {})
           .filter(([, v]) => Boolean(v))

@@ -13,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useNavigate } from "react-router-dom";
 import { useSaas } from "@/lib/saas";
 import { tableExists, createReceiptWithFallback, recordReceiptPaymentWithFallback } from "@/utils/mockDatabase";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 
 interface Appointment {
   id: string;
@@ -117,6 +118,8 @@ export default function Appointments() {
   const [bookingPaymentMethod, setBookingPaymentMethod] = useState<string>("");
   const [bookingTxnNumber, setBookingTxnNumber] = useState<string>("");
   const [bookingAccountId, setBookingAccountId] = useState<string>("");
+
+  const { format: formatMoney } = useOrganizationCurrency();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -976,7 +979,7 @@ export default function Appointments() {
                             {String(appointment.status || 'scheduled').replace('_', ' ')}
                           </Badge>
                           <div className="text-right font-semibold">
-                            {Number(appointment.price || 0) > 0 ? `$${Number(appointment.price || 0).toFixed(2)}` : '—'}
+                            {Number(appointment.price || 0) > 0 ? formatMoney(Number(appointment.price || 0)) : '—'}
                           </div>
                         </div>
 

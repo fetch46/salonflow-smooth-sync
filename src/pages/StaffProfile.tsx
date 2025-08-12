@@ -25,6 +25,7 @@ import {
   ImagePlus,
   Trash2,
 } from 'lucide-react';
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 
 interface StaffRecord {
   id: string;
@@ -54,6 +55,7 @@ export default function StaffProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { format: formatMoney, symbol } = useOrganizationCurrency();
 
   const [loading, setLoading] = useState(true);
   const [staff, setStaff] = useState<StaffRecord | null>(null);
@@ -426,7 +428,7 @@ export default function StaffProfile() {
             <CardTitle className="text-sm text-slate-600 flex items-center gap-2"><DollarSign className="w-4 h-4 text-green-600"/>Revenue (Gross)</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totals.gross.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{formatMoney(totals.gross)}</div>
             <div className="text-xs text-slate-600">From services linked to receipts</div>
           </CardContent>
         </Card>
@@ -435,7 +437,7 @@ export default function StaffProfile() {
             <CardTitle className="text-sm text-slate-600 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-violet-600"/>Commission</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totals.commission.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{formatMoney(totals.commission)}</div>
             <div className="text-xs text-slate-600">Based on service/staff rates</div>
           </CardContent>
         </Card>
@@ -453,7 +455,7 @@ export default function StaffProfile() {
             <CardTitle className="text-sm text-slate-600 flex items-center gap-2"><Zap className="w-4 h-4 text-blue-600"/>Efficiency</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totals.avgPerService.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{formatMoney(totals.avgPerService)}</div>
             <div className="text-xs text-slate-600">Revenue per service</div>
           </CardContent>
         </Card>
@@ -480,9 +482,9 @@ export default function StaffProfile() {
                   <div className="flex items-center justify-between text-sm text-slate-600 mb-3">
                     <div>Entries: <span className="font-medium text-slate-900">{commissionTotals.count}</span></div>
                     <div className="flex items-center gap-4">
-                      <div>Gross: <span className="font-medium text-slate-900">${commissionTotals.gross.toFixed(2)}</span></div>
+                      <div>Gross: <span className="font-medium text-slate-900">{formatMoney(commissionTotals.gross)}</span></div>
                       <Separator orientation="vertical" className="h-4" />
-                      <div>Commission: <span className="font-medium text-slate-900">${commissionTotals.commission.toFixed(2)}</span></div>
+                      <div>Commission: <span className="font-medium text-slate-900">{formatMoney(commissionTotals.commission)}</span></div>
                     </div>
                   </div>
                   {commissionRows.length === 0 ? (
@@ -504,9 +506,9 @@ export default function StaffProfile() {
                             <TableRow key={r.id}>
                               <TableCell>{String(r.date || '').slice(0,10)}</TableCell>
                               <TableCell>{r.service}</TableCell>
-                              <TableCell className="text-right">${r.gross.toFixed(2)}</TableCell>
+                              <TableCell className="text-right">{formatMoney(r.gross)}</TableCell>
                               <TableCell className="text-right">{r.rate.toFixed(2)}</TableCell>
-                              <TableCell className="text-right">${r.commission.toFixed(2)}</TableCell>
+                              <TableCell className="text-right">{formatMoney(r.commission)}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -532,8 +534,8 @@ export default function StaffProfile() {
                     <div className="text-xl font-semibold">{totals.services}</div>
                   </div>
                   <div>
-                    <div className="text-sm text-slate-600">Avg. $/Service</div>
-                    <div className="text-xl font-semibold">${totals.avgPerService.toFixed(2)}</div>
+                    <div className="text-sm text-slate-600">Avg. {symbol}/Service</div>
+                    <div className="text-xl font-semibold">{formatMoney(totals.avgPerService)}</div>
                   </div>
                 </CardContent>
               </Card>
@@ -566,7 +568,7 @@ export default function StaffProfile() {
                                   </Badge>
                                 ) : '—'}
                               </TableCell>
-                              <TableCell className="text-right">${Number(a.total_amount || 0).toFixed(2)}</TableCell>
+                              <TableCell className="text-right">{formatMoney(Number(a.total_amount || 0))}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -623,7 +625,7 @@ export default function StaffProfile() {
                                       </Badge>
                                     ) : '—'}
                                   </TableCell>
-                                  <TableCell className="text-right">${Number(a.total_amount || 0).toFixed(2)}</TableCell>
+                                  <TableCell className="text-right">{formatMoney(Number(a.total_amount || 0))}</TableCell>
                                 </TableRow>
                               ))
                           )}

@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 
 interface Supplier {
   id: string;
@@ -62,6 +63,7 @@ export default function SupplierProfile() {
     payment_terms: "",
     notes: "",
   });
+  const { format: formatMoney } = useOrganizationCurrency();
 
   const normalizeUrl = (url: string | null): string | null => {
     if (!url) return null;
@@ -263,7 +265,7 @@ export default function SupplierProfile() {
             <ShoppingCart className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-700">${totalSpent.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-emerald-700">{formatMoney(totalSpent)}</div>
             <p className="text-xs text-emerald-600">Across {purchases.length} purchases</p>
           </CardContent>
         </Card>
@@ -372,7 +374,7 @@ export default function SupplierProfile() {
                         <TableCell>
                           <Badge>{(p.status || '').toUpperCase()}</Badge>
                         </TableCell>
-                        <TableCell>${(p.total_amount || 0).toFixed(2)}</TableCell>
+                        <TableCell>{formatMoney(p.total_amount || 0)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
