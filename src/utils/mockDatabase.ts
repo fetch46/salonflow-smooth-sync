@@ -475,7 +475,7 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
       service_id: item.service_id || null,
       product_id: item.product_id || null,
       staff_id: item.staff_id || null,
-      location_id: item.location_id || null,
+      location_id: (item.location_id ?? dbInvoice.location_id) || null,
       commission_percentage: typeof item.commission_percentage === 'number' ? item.commission_percentage : null,
       commission_amount: typeof item.commission_percentage === 'number'
         ? Number(((item.commission_percentage / 100) * (item.total_price ?? (item.quantity * item.unit_price))).toFixed(2))
@@ -568,6 +568,7 @@ export async function getInvoicesWithFallback(supabase: any) {
         jobcard_id: null,
         created_at: inv.created_at,
         updated_at: inv.updated_at,
+        location_id: inv.location_id ?? null,
       }));
     }
 
@@ -589,7 +590,9 @@ export async function getInvoicesWithFallback(supabase: any) {
       payment_method: null,
       notes: r.notes || null,
       jobcard_id: null,
-
+      location_id: r.location_id ?? null,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
     }));
   } catch (error) {
     console.log('Using mock database for invoices');
@@ -613,6 +616,7 @@ export async function getInvoicesWithFallback(supabase: any) {
       jobcard_id: null,
       created_at: r.created_at,
       updated_at: r.updated_at,
+      location_id: r.location_id ?? null,
     }));
   }
 }

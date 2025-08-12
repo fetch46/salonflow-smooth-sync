@@ -101,6 +101,84 @@ export default function Payments() {
 
   // Full-page form lives at /payments/received/new; modal state removed
 
+  // Auto-open create dialog when navigated with invoiceId
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const invoiceId = params.get('invoiceId');
+    const action = params.get('action');
+    if (invoiceId) {
+      setCreateOpen(true);
+      setSelectedInvoiceId(invoiceId);
+      // Ensure default form values are reset
+      setCreateStatus("unpaid");
+      setCreateForm({ amount: "", method: "cash", reference: "", payment_date: new Date().toISOString().slice(0,10), account_id: "" });
+      // Remove params from URL to prevent re-trigger on state changes
+      const url = new URL(window.location.href);
+      url.searchParams.delete('invoiceId');
+      url.searchParams.delete('action');
+      window.history.replaceState({}, '', url.toString());
+    } else if (action === 'record') {
+      setCreateOpen(true);
+    }
+  }, []);
+
+  // When options load and an invoice is preselected, auto-fill amount
+  useEffect(() => {
+    if (createOpen && selectedInvoiceId && invoiceOptions.length) {
+      const r = invoiceOptions.find(x => x.id === selectedInvoiceId);
+      if (r) {
+        const outstanding = Math.max(0, Number(r.total_amount || 0) - Number(r.amount_paid || 0));
+        setCreateForm(prev => ({ ...prev, amount: String(outstanding > 0 ? outstanding.toFixed(2) : "") }));
+      }
+    }
+  }, [createOpen, selectedInvoiceId, invoiceOptions]);
+
+  // If dialog opened (e.g. via URL) and options not loaded yet, fetch them
+  useEffect(() => {
+    (async () => {
+      if (createOpen && invoiceOptions.length === 0) {
+        try {
+          const invs = (await getInvoicesWithBalanceWithFallback(supabase)) as any[];
+          setInvoiceOptions(invs as any);
+        } catch {
+          setInvoiceOptions([]);
+        }
+        try {
+          if (organization?.id) {
+            let data: any[] | null = null;
+            let error: any = null;
+            try {
+              const res = await supabase
+                .from("accounts")
+                .select("id, account_code, account_name, account_type, account_subtype")
+                .eq("organization_id", organization.id)
+                .eq("account_type", "Asset")
+                .order("account_code", { ascending: true });
+              data = res.data as any[] | null;
+              error = res.error;
+            } catch (err: any) {
+              error = err;
+            }
+            if (error) {
+              const res = await supabase
+                .from("accounts")
+                .select("id, account_code, account_name, account_type")
+                .eq("organization_id", organization.id)
+                .order("account_code", { ascending: true });
+              data = res.data as any[] | null;
+            }
+            const filtered = (data || []).filter((a: any) => (a.account_type === "Asset") && (!a.account_subtype || ["Cash","Bank"].includes(a.account_subtype)));
+            setAssetAccounts(filtered.map((a: any) => ({ id: a.id, account_code: a.account_code, account_name: a.account_name, account_subtype: (a as any).account_subtype || null })));
+          } else {
+            setAssetAccounts([]);
+          }
+        } catch {
+          setAssetAccounts([]);
+        }
+      }
+    })();
+  }, [createOpen]);
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -343,7 +421,6 @@ export default function Payments() {
     }
   };
 
-  // create payment helpers removed; handled by full-page component
 
   if (loading) {
     return (

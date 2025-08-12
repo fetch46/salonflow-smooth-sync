@@ -330,26 +330,7 @@ export default function StaffProfile() {
     }
   };
 
-  const setPresetRange = (preset: 'today' | '7d' | '30d' | 'month' | 'ytd') => {
-    const now = new Date();
-    let start = new Date();
-    let end = new Date();
-    if (preset === 'today') {
-      // start and end are today
-    } else if (preset === '7d') {
-      start.setDate(now.getDate() - 6);
-    } else if (preset === '30d') {
-      start.setDate(now.getDate() - 29);
-    } else if (preset === 'month') {
-      start = new Date(now.getFullYear(), now.getMonth(), 1);
-      end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    } else if (preset === 'ytd') {
-      start = new Date(now.getFullYear(), 0, 1);
-    }
-    const iso = (d: Date) => d.toISOString().slice(0,10);
-    setStartDate(iso(start));
-    setEndDate(iso(end));
-  };
+  // Preset quick ranges removed
 
   if (loading && !staff) return <div className="p-6">Loading...</div>;
   if (!staff) return <div className="p-6">Staff not found</div>;
@@ -406,14 +387,6 @@ export default function StaffProfile() {
           </div>
         </div>
         <div className="flex flex-wrap items-end gap-3 sm:justify-end w-full sm:w-auto">
-          <div className="hidden md:flex items-center gap-2 mr-2 p-2 bg-white rounded-lg border">
-            <span className="text-xs text-slate-600">Quick ranges:</span>
-            <Button variant="ghost" size="sm" onClick={() => setPresetRange('today')}>Today</Button>
-            <Button variant="ghost" size="sm" onClick={() => setPresetRange('7d')}>7d</Button>
-            <Button variant="ghost" size="sm" onClick={() => setPresetRange('30d')}>30d</Button>
-            <Button variant="ghost" size="sm" onClick={() => setPresetRange('month')}>This month</Button>
-            <Button variant="ghost" size="sm" onClick={() => setPresetRange('ytd')}>YTD</Button>
-          </div>
           <div className="w-full sm:w-auto">
             <div className="text-xs text-slate-600">Start</div>
             <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full sm:w-40" />
@@ -790,7 +763,7 @@ export default function StaffProfile() {
               <CardTitle className="text-base">Tips</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-slate-600 space-y-2">
-              <p>Use the date presets to quickly analyze this staff member's performance over common periods.</p>
+              <p>Use the date filters above to analyze this staff member's performance over your desired period.</p>
               <p>Upload work photos to keep a portfolio that you can showcase to clients.</p>
             </CardContent>
           </Card>
