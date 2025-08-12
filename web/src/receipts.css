@@ -25,6 +25,41 @@
   color: var(--text);
 }
 
+/* Segmented control */
+.segmented { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-right: 8px; }
+.segmented button { height: 36px; padding: 0 12px; background: var(--muted-surface); color: var(--text); border: none; border-right: 1px solid var(--border); }
+.segmented button:last-child { border-right: 0; }
+.segmented button.active { background: linear-gradient(180deg, var(--primary), var(--primary-700)); color: #fff; }
+
+/* Status chip count */
+.chip { position: relative; }
+.chip .chip-count { margin-left: 8px; color: var(--muted); font-size: 12px; }
+
+/* Sortable headers */
+.sortable .th-sort { display: inline-flex; align-items: center; gap: 8px; background: transparent; color: inherit; border: 0; padding: 0; font: inherit; cursor: pointer; }
+.sortable .sort-indicator { opacity: 0.5; }
+.sorted-asc .sort-indicator::after { content: '▲'; margin-left: 4px; }
+.sorted-desc .sort-indicator::after { content: '▼'; margin-left: 4px; }
+
+/* Empty state */
+.empty-state { padding: 32px; text-align: center; color: var(--muted); }
+.empty-title { font-size: 16px; color: var(--text); }
+.empty-sub { font-size: 13px; }
+
+/* Pagination */
+.sr-pagination { max-width: 1600px; margin: 8px auto 0; padding: 0 24px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.sr-pagination .pager-left { display: flex; align-items: center; gap: 12px; color: var(--muted); }
+.sr-pagination select { height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--muted-surface); color: var(--text); }
+.sr-pagination .pager-controls { display: flex; align-items: center; gap: 8px; }
+.sr-pagination .pager-page { color: var(--muted); }
+
+/* Compact density */
+.sr-page.compact .sr-header__content { padding: 24px 20px; }
+.sr-page.compact .sr-filters__row { padding: 10px 20px; gap: 8px; }
+.sr-page.compact .stat-card { padding: 12px; border-radius: 12px; }
+.sr-page.compact .sr-table thead th, .sr-page.compact .sr-table tbody td { padding: 10px 10px; }
+.sr-page.compact .btn { height: 34px; padding: 0 10px; border-radius: 8px; }
+
 .sr-header {
   position: relative;
   border-bottom: 1px solid var(--border);

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, DollarSign } from "lucide-react";
+import { RefreshCw, DollarSign, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { format, startOfToday, endOfToday, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
 import { toast } from "sonner";
 import { getReceiptsWithFallback } from "@/utils/mockDatabase";
@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useSaas } from "@/lib/saas";
 import { postReceiptPaymentToLedger, postReceiptPaymentWithAccount, postReceiptPaymentWithAccounts, postReceiptPaymentToLedgerWithIncomeAccount } from "@/utils/ledger";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 interface Receipt {
   id: string;
@@ -62,6 +63,9 @@ export default function Receipts() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [reportApplyTax, setReportApplyTax] = useState<boolean>(false);
   const navigate = useNavigate();
+  const [compact, setCompact] = useState<boolean>(false);
+  const [sortBy, setSortBy] = useState<'number' | 'date' | 'customer' | 'status' | 'total' | 'paid' | 'balance'>("date");
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>("desc");
 
   // Load Cash/Bank asset accounts for deposit selection
   const loadAssetAccounts = useCallback(async () => {
@@ -122,6 +126,28 @@ export default function Receipts() {
   const [pageSize, setPageSize] = useState<number>(10);
   const [quickDate, setQuickDate] = useState<string>("all_time");
 
+  // Pre-status filtered results for status counts
+  const preStatusFiltered = useMemo(() => {
+    const s = search.toLowerCase();
+    return receipts
+      .filter(r => (customerId === 'all' ? true : r.customer_id === customerId))
+      .filter(r => (locationIdFilter === 'all' ? true : (r as any).location_id === locationIdFilter))
+      .filter(r => {
+        if (!dateFrom && !dateTo) return true;
+        const d = new Date(r.created_at).toISOString().slice(0, 10);
+        if (dateFrom && d < dateFrom) return false;
+        if (dateTo && d > dateTo) return false;
+        return true;
+      })
+      .filter(r => r.receipt_number.toLowerCase().includes(s) || (r.notes || '').toLowerCase().includes(s));
+  }, [receipts, search, customerId, dateFrom, dateTo, locationIdFilter]);
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = { open: 0, partial: 0, paid: 0, cancelled: 0 };
+    for (const r of preStatusFiltered) { counts[r.status] = (counts[r.status] || 0) + 1; }
+    return counts;
+  }, [preStatusFiltered]);
+
   const fetchReceipts = async () => {
     try {
       setLoading(true);
@@ -179,6 +205,35 @@ export default function Receipts() {
       .filter(r => r.receipt_number.toLowerCase().includes(s) || (r.notes || '').toLowerCase().includes(s));
   }, [receipts, search, status, customerId, dateFrom, dateTo, locationIdFilter]);
 
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    arr.sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === 'date') {
+        cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      } else if (sortBy === 'number') {
+        cmp = a.receipt_number.localeCompare(b.receipt_number, undefined, { numeric: true });
+      } else if (sortBy === 'customer') {
+        const an = a.customer_id ? (customersById[a.customer_id] || '') : 'Walk-in';
+        const bn = b.customer_id ? (customersById[b.customer_id] || '') : 'Walk-in';
+        cmp = an.localeCompare(bn);
+      } else if (sortBy === 'status') {
+        const order: Record<string, number> = { open: 1, partial: 2, paid: 3, cancelled: 4 };
+        cmp = (order[a.status] || 99) - (order[b.status] || 99);
+      } else if (sortBy === 'total') {
+        cmp = (a.total_amount || 0) - (b.total_amount || 0);
+      } else if (sortBy === 'paid') {
+        cmp = (a.amount_paid || 0) - (b.amount_paid || 0);
+      } else if (sortBy === 'balance') {
+        const balA = Math.max(0, (a.total_amount || 0) - (a.amount_paid || 0));
+        const balB = Math.max(0, (b.total_amount || 0) - (b.amount_paid || 0));
+        cmp = balA - balB;
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    return arr;
+  }, [filtered, sortBy, sortDir, customersById]);
+
   const outstanding = (r: Receipt) => Math.max(0, (r.total_amount || 0) - (r.amount_paid || 0));
   const paidPct = (r: Receipt) => {
     const total = Number(r.total_amount || 0);
@@ -194,17 +249,22 @@ export default function Receipts() {
     return reportApplyTax ? { total, paid, due } : { total: totalWithoutTax, paid, due: Math.max(0, totalWithoutTax - paid) };
   }, [filtered, reportApplyTax]);
 
-  const totalPages = useMemo(() => Math.max(1, Math.ceil(filtered.length / pageSize)), [filtered.length, pageSize]);
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(sorted.length / pageSize)), [sorted.length, pageSize]);
   const currentPage = useMemo(() => Math.min(page, totalPages), [page, totalPages]);
   const paginated = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     const end = start + pageSize;
-    return filtered.slice(start, end);
-  }, [filtered, currentPage, pageSize]);
+    return sorted.slice(start, end);
+  }, [sorted, currentPage, pageSize]);
 
   useEffect(() => {
     setPage(1);
-  }, [search, status, customerId, dateFrom, dateTo, pageSize]);
+  }, [search, status, customerId, dateFrom, dateTo, pageSize, sortBy, sortDir]);
+
+  function toggleSort(key: 'number' | 'date' | 'customer' | 'status' | 'total' | 'paid' | 'balance') {
+    if (sortBy === key) setSortDir(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    else { setSortBy(key); setSortDir('desc'); }
+  }
 
   const exportCsv = () => {
     const headers = [
@@ -437,6 +497,10 @@ export default function Receipts() {
           <div className="text-sm text-muted-foreground">{filtered.length} result{filtered.length === 1 ? '' : 's'}</div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <ToggleGroup type="single" value={compact ? 'compact' : 'comfortable'} onValueChange={(v) => v && setCompact(v === 'compact')}>
+            <ToggleGroupItem value="comfortable" aria-label="Comfortable density">Comfort</ToggleGroupItem>
+            <ToggleGroupItem value="compact" aria-label="Compact density">Compact</ToggleGroupItem>
+          </ToggleGroup>
           <Button variant="outline" onClick={exportCsv}>Export CSV</Button>
           <Button variant="outline" onClick={exportSelectedCsv} disabled={selectedIds.size === 0}>Export Selected</Button>
           <Button variant="outline" onClick={refresh} disabled={refreshing}>
@@ -449,11 +513,11 @@ export default function Receipts() {
 
       <Tabs value={status} onValueChange={setStatus}>
         <TabsList>
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="open">Open</TabsTrigger>
-          <TabsTrigger value="partial">Partial</TabsTrigger>
-          <TabsTrigger value="paid">Paid</TabsTrigger>
-          <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
+          <TabsTrigger value="all">All ({preStatusFiltered.length})</TabsTrigger>
+          <TabsTrigger value="open">Open ({statusCounts.open || 0})</TabsTrigger>
+          <TabsTrigger value="partial">Partial ({statusCounts.partial || 0})</TabsTrigger>
+          <TabsTrigger value="paid">Paid ({statusCounts.paid || 0})</TabsTrigger>
+          <TabsTrigger value="cancelled">Cancelled ({statusCounts.cancelled || 0})</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -555,47 +619,75 @@ export default function Receipts() {
           <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>
+                <TableRow className={compact ? 'h-10' : ''}>
+                  <TableHead className={compact ? 'py-2' : ''}>
                     <input type="checkbox" onChange={(e) => toggleSelectAll(e.currentTarget.checked)} checked={selectedIds.size === filtered.length && filtered.length > 0} />
                   </TableHead>
-                  <TableHead>#</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Paid</TableHead>
-                  <TableHead>Balance</TableHead>
-                  <TableHead>Progress</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className={compact ? 'py-2' : ''}>
+                    <button className="inline-flex items-center gap-1" onClick={() => toggleSort('number')}>
+                      # {sortBy === 'number' ? (sortDir === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />) : <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />}
+                    </button>
+                  </TableHead>
+                  <TableHead className={compact ? 'py-2' : ''}>
+                    <button className="inline-flex items-center gap-1" onClick={() => toggleSort('date')}>
+                      Date {sortBy === 'date' ? (sortDir === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />) : <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />}
+                    </button>
+                  </TableHead>
+                  <TableHead className={compact ? 'py-2' : ''}>
+                    <button className="inline-flex items-center gap-1" onClick={() => toggleSort('customer')}>
+                      Customer {sortBy === 'customer' ? (sortDir === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />) : <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />}
+                    </button>
+                  </TableHead>
+                  <TableHead className={compact ? 'py-2' : ''}>Location</TableHead>
+                  <TableHead className={compact ? 'py-2' : ''}>
+                    <button className="inline-flex items-center gap-1" onClick={() => toggleSort('status')}>
+                      Status {sortBy === 'status' ? (sortDir === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />) : <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />}
+                    </button>
+                  </TableHead>
+                  <TableHead className={compact ? 'py-2' : ''}>
+                    <button className="inline-flex items-center gap-1" onClick={() => toggleSort('total')}>
+                      Total {sortBy === 'total' ? (sortDir === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />) : <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />}
+                    </button>
+                  </TableHead>
+                  <TableHead className={compact ? 'py-2' : ''}>
+                    <button className="inline-flex items-center gap-1" onClick={() => toggleSort('paid')}>
+                      Paid {sortBy === 'paid' ? (sortDir === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />) : <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />}
+                    </button>
+                  </TableHead>
+                  <TableHead className={compact ? 'py-2' : ''}>
+                    <button className="inline-flex items-center gap-1" onClick={() => toggleSort('balance')}>
+                      Balance {sortBy === 'balance' ? (sortDir === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />) : <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />}
+                    </button>
+                  </TableHead>
+                  <TableHead className={compact ? 'py-2' : ''}>Progress</TableHead>
+                  <TableHead className={`text-right ${compact ? 'py-2' : ''}`}>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginated.map(r => (
-                  <TableRow key={r.id}>
-                    <TableCell>
+                  <TableRow key={r.id} className={compact ? 'h-10' : ''}>
+                    <TableCell className={compact ? 'py-2' : ''}>
                       <input type="checkbox" checked={selectedIds.has(r.id)} onChange={(e) => toggleSelect(r.id, e.currentTarget.checked)} />
                     </TableCell>
-                    <TableCell className="font-medium">{r.receipt_number}</TableCell>
-                    <TableCell>{format(new Date(r.created_at), 'MMM dd, yyyy')}</TableCell>
-                    <TableCell>{r.customer_id ? (customersById[r.customer_id] || 'Customer') : 'Walk-in'}</TableCell>
-                    <TableCell>{(() => { const lid = (r as any).location_id; return lid ? (locations.find(l => l.id === lid)?.name || '—') : '—'; })()}</TableCell>
-                    <TableCell>
+                    <TableCell className={`font-medium ${compact ? 'py-2' : ''}`}>{r.receipt_number}</TableCell>
+                    <TableCell className={compact ? 'py-2' : ''}>{format(new Date(r.created_at), 'MMM dd, yyyy')}</TableCell>
+                    <TableCell className={compact ? 'py-2' : ''}>{r.customer_id ? (customersById[r.customer_id] || 'Customer') : 'Walk-in'}</TableCell>
+                    <TableCell className={compact ? 'py-2' : ''}>{(() => { const lid = (r as any).location_id; return lid ? (locations.find(l => l.id === lid)?.name || '—') : '—'; })()}</TableCell>
+                    <TableCell className={compact ? 'py-2' : ''}>
                       <Badge variant={r.status === 'paid' ? 'default' : r.status === 'partial' ? 'outline' : 'secondary'}>
                         {r.status.toUpperCase()}
                       </Badge>
                     </TableCell>
-                    <TableCell>{formatMoney(r.total_amount || 0)}</TableCell>
-                    <TableCell>{formatMoney(r.amount_paid || 0)}</TableCell>
-                    <TableCell>{formatMoney(outstanding(r))}</TableCell>
-                    <TableCell className="w-[180px]">
+                    <TableCell className={compact ? 'py-2' : ''}>{formatMoney(r.total_amount || 0)}</TableCell>
+                    <TableCell className={compact ? 'py-2' : ''}>{formatMoney(r.amount_paid || 0)}</TableCell>
+                    <TableCell className={compact ? 'py-2' : ''}>{formatMoney(outstanding(r))}</TableCell>
+                    <TableCell className={`w-[180px] ${compact ? 'py-2' : ''}`}>
                       <div className="flex items-center gap-2">
                         <Progress value={paidPct(r)} />
                         <span className="text-xs text-muted-foreground w-10 text-right">{paidPct(r)}%</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className={`text-right ${compact ? 'py-2' : ''}`}>
                       <div className="flex justify-end items-center gap-2 flex-wrap">
                         <Button
                           variant="outline"
