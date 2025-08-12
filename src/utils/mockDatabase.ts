@@ -372,9 +372,14 @@ export async function tableExists(supabase: any, tableName: string): Promise<boo
 export async function createSaleWithFallback(supabase: any, saleData: any, items: any[]) {
   try {
     // Try to use real database first
+    const payload: any = { ...saleData, status: saleData.status || 'sent' };
+    // Try to set payment_status to paid if such a column exists (best-effort)
+    try {
+      payload.payment_status = 'paid';
+    } catch {}
     const { data: sale, error: saleError } = await supabase
       .from('sales')
-      .insert([saleData])
+      .insert([payload])
       .select()
       .single();
 
@@ -398,7 +403,8 @@ export async function createSaleWithFallback(supabase: any, saleData: any, items
     return sale;
   } catch (error) {
     console.log('Using mock database for sales');
-    // Fallback to mock database
+    // Fallback to mock database as a paid receipt
+    const nowIso = new Date().toISOString();
     const sale = await mockDb.createReceipt({
       receipt_number: saleData.sale_number,
       customer_id: saleData.customer_id || null,
@@ -406,11 +412,30 @@ export async function createSaleWithFallback(supabase: any, saleData: any, items
       tax_amount: saleData.tax_amount,
       discount_amount: saleData.discount_amount,
       total_amount: saleData.total_amount,
-      status: 'open',
+      status: 'paid',
       notes: saleData.notes || null,
-      updated_at: new Date().toISOString(),
-      created_at: new Date().toISOString(),
+      updated_at: nowIso,
+      created_at: nowIso,
     } as any);
+
+    // Also record a matching payment to reflect paid status in local storage
+    try {
+      const storage = getStorage();
+      storage.receipt_payments = storage.receipt_payments || [];
+      storage.receipt_payments.push({
+        id: `pay_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+        receipt_id: sale.id,
+        payment_date: nowIso.slice(0, 10),
+        amount: Number(saleData.total_amount || 0),
+        method: String(saleData.payment_method || 'cash'),
+        reference_number: null,
+        created_at: nowIso,
+        updated_at: nowIso,
+        location_id: null,
+      });
+      setStorage(storage);
+    } catch {}
+
     return sale;
   }
 }
