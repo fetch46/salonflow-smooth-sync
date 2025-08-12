@@ -198,12 +198,6 @@ const menuItems: MenuItem[] = [
             icon: CreditCard,
             feature: "accounting",
           },
-          {
-            title: "Trial Balance",
-            url: "/trial-balance",
-            icon: TrendingUp,
-            feature: "accounting",
-          },
         ],
       },
   {
@@ -217,6 +211,7 @@ const menuItems: MenuItem[] = [
       { title: "Clients", url: "/reports?tab=clients", icon: Users, feature: "reports" },
       { title: "P&L", url: "/reports?tab=pnl", icon: Calculator, feature: "reports" },
       { title: "Balance Sheet", url: "/reports?tab=balancesheet", icon: Calculator, feature: "reports" },
+      { title: "Trial Balance", url: "/reports?tab=trialbalance", icon: Calculator, feature: "reports" },
       { title: "Commissions", url: "/reports?tab=commissions", icon: DollarSign, feature: "reports" },
       { title: "Product Usage", url: "/reports?tab=product_usage", icon: Package, feature: "reports" },
     ],
