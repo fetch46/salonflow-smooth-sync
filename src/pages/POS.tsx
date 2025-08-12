@@ -17,6 +17,7 @@ import { createSaleWithFallback } from "@/utils/mockDatabase";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { useOrganizationTaxRate } from "@/lib/saas/hooks";
 import { Switch } from "@/components/ui/switch";
+import { postSaleCOGSAndInventory } from "@/utils/ledger";
 
 interface Product {
   id: string;
@@ -310,6 +311,24 @@ export default function POS() {
             } else {
               // No stock row exists; create one with zero (cannot go negative)
               await supabase.from("inventory_levels").insert([{ item_id: itemId, location_id: defaultLocationId, quantity: 0 }]);
+            }
+            // Post COGS for this line based on product cost_price
+            try {
+              if (organization?.id) {
+                const unitCost = Number(line.product.cost_price || 0);
+                if (unitCost > 0) {
+                  await postSaleCOGSAndInventory({
+                    organizationId: organization.id,
+                    productId: itemId,
+                    quantity: qty,
+                    unitCost,
+                    locationId: defaultLocationId,
+                    referenceId: sale.id,
+                  });
+                }
+              }
+            } catch (cogsErr) {
+              console.warn("COGS posting failed", cogsErr);
             }
           }
         }

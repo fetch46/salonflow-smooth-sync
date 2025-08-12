@@ -9,6 +9,7 @@
 \i supabase/migrations/20250915093000_inventory_transfers.sql
 \i supabase/migrations/20250916094500_inventory_adjustments.sql
 \i supabase/migrations/20250917094500_inventory_item_accounts.sql
+\i supabase/migrations/20250918120000_create_account_transactions.sql
 
 -- Replace invoices with receipts (ensures receipts exist before adding location_id)
 \i supabase/migrations/20250809000000_replace_invoices_with_receipts.sql

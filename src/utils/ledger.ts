@@ -496,3 +496,148 @@ export async function deleteTransactionsByReference(referenceType: string, refer
     return total;
   }
 }
+
+export type MultiLineEntry = {
+  accountId: string;
+  debit: number;
+  credit: number;
+  description?: string;
+  productId?: string;
+  locationId?: string | null;
+};
+
+export async function postMultiLineEntry(opts: {
+  date?: string;
+  description?: string;
+  lines: MultiLineEntry[];
+  referenceType?: string;
+  referenceId?: string;
+}): Promise<boolean> {
+  const { date, description, lines, referenceType, referenceId } = opts;
+  try {
+    const txDate = date || new Date().toISOString().slice(0, 10);
+    const rows = lines.map((l) => ({
+      account_id: l.accountId,
+      transaction_date: txDate,
+      description: l.description || description || null,
+      debit_amount: Number(l.debit || 0),
+      credit_amount: Number(l.credit || 0),
+      reference_type: referenceType || null,
+      reference_id: referenceId || null,
+      location_id: l.locationId || null,
+    }));
+    const total = rows.reduce((s, r) => s + Number(r.debit_amount) - Number(r.credit_amount), 0);
+    if (Math.abs(total) > 0.0001) {
+      console.warn("Unbalanced multi-line entry", { total });
+      return false;
+    }
+    const { error } = await supabase.from("account_transactions").insert(rows);
+    if (error) throw error;
+    return true;
+  } catch (e) {
+    console.error("postMultiLineEntry failed", e);
+    return false;
+  }
+}
+
+export async function postSaleCOGSAndInventory(opts: {
+  organizationId: string;
+  productId: string;
+  quantity: number;
+  unitCost: number;
+  locationId?: string | null;
+  date?: string;
+  referenceId?: string;
+  cogsAccountId?: string | null; // optional override
+  inventoryAccountId?: string | null; // optional override
+}): Promise<boolean> {
+  const { organizationId, productId, quantity, unitCost, locationId, date, referenceId, cogsAccountId, inventoryAccountId } = opts;
+  try {
+    const totalCost = Number(quantity || 0) * Number(unitCost || 0);
+    if (totalCost <= 0) return false;
+
+    let invAccId = inventoryAccountId || null;
+    let cogsAccId = cogsAccountId || null;
+
+    // Try per-item mapping first
+    try {
+      const { data: map } = await supabase
+        .from("inventory_item_accounts")
+        .select("inventory_account_id")
+        .eq("item_id", productId)
+        .maybeSingle();
+      invAccId = invAccId || (map as any)?.inventory_account_id || null;
+    } catch {}
+
+    // Fallbacks: Inventory (1200), COGS (5001)
+    if (!invAccId) invAccId = await findAccountIdByCode(organizationId, "1200");
+    if (!cogsAccId) cogsAccId = await findAccountIdByCode(organizationId, "5001");
+    if (!invAccId || !cogsAccId) return false;
+
+    return await postMultiLineEntry({
+      date,
+      description: "COGS posting",
+      referenceType: "sale_cogs",
+      referenceId: referenceId || productId,
+      lines: [
+        { accountId: cogsAccId, debit: totalCost, credit: 0, locationId: locationId || null },
+        { accountId: invAccId, debit: 0, credit: totalCost, locationId: locationId || null },
+      ],
+    });
+  } catch (e) {
+    console.error("postSaleCOGSAndInventory failed", e);
+    return false;
+  }
+}
+
+export async function postPurchaseInventoryCapitalization(opts: {
+  organizationId: string;
+  itemId: string;
+  quantity: number;
+  unitCost: number;
+  date?: string;
+  locationId?: string | null;
+  referenceId?: string;
+  inventoryAccountId?: string | null; // optional override
+  apOrClearingAccountId?: string | null; // optional; if omitted, posts to Supplies Expense as credit to offset; can be set to GRNI
+}): Promise<boolean> {
+  const { organizationId, itemId, quantity, unitCost, date, locationId, referenceId, inventoryAccountId, apOrClearingAccountId } = opts;
+  try {
+    const total = Number(quantity || 0) * Number(unitCost || 0);
+    if (total <= 0) return false;
+
+    let invAccId = inventoryAccountId || null;
+    if (!invAccId) {
+      try {
+        const { data: map } = await supabase
+          .from("inventory_item_accounts")
+          .select("inventory_account_id")
+          .eq("item_id", itemId)
+          .maybeSingle();
+        invAccId = (map as any)?.inventory_account_id || null;
+      } catch {}
+    }
+    if (!invAccId) invAccId = await findAccountIdByCode(organizationId, "1200");
+
+    let creditAccId = apOrClearingAccountId || null;
+    if (!creditAccId) {
+      // Default to Accounts Payable if available; else Other Liability or Owner Equity as placeholder
+      creditAccId = await findAccountIdByCode(organizationId, "2001");
+    }
+    if (!creditAccId) return false;
+
+    return await postMultiLineEntry({
+      date,
+      description: "Inventory capitalization",
+      referenceType: "purchase_receive",
+      referenceId: referenceId || itemId,
+      lines: [
+        { accountId: invAccId, debit: total, credit: 0, locationId: locationId || null },
+        { accountId: creditAccId, debit: 0, credit: total, locationId: locationId || null },
+      ],
+    });
+  } catch (e) {
+    console.error("postPurchaseInventoryCapitalization failed", e);
+    return false;
+  }
+}
