@@ -29,7 +29,7 @@ export default function AccountForm({ accountId }: AccountFormProps) {
   const subtypeOptionsByType: Record<string, string[]> = {
     Asset: ["Cash", "Bank", "Fixed Asset", "Accounts Receivable", "Stock"],
     Income: ["Income", "Other Income"],
-    Liability: ["Accounts Payable", "Current Liability", "Other Liability", "Non Current Liability"],
+    Liability: ["Accounts Payable", "Current Liability", "Goods Received Not Invoiced", "Other Liability", "Non Current Liability"],
     Expense: ["Expense", "Cost of Goods Sold", "Other Expense"],
     Equity: ["Equity"],
   };

@@ -21,6 +21,7 @@ import { useSaas } from "@/lib/saas";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Edit3, Truck as TruckIcon, Trash2, CreditCard, RefreshCw } from "lucide-react";
 import { postDoubleEntry, findAccountIdByCode } from "@/utils/ledger";
+import { postPurchaseInventoryCapitalization } from "@/utils/ledger";
 
 interface AccountOption { id: string; account_code: string; account_name: string; account_type: string; account_subtype: string | null; balance?: number | null }
 
@@ -244,6 +245,28 @@ export default function Purchases() {
           supabase.from("purchase_items").update({ received_quantity: u.received_quantity }).eq("id", u.id)
         )
       );
+
+      // Post inventory capitalization per received delta for each item
+      try {
+        if (organization?.id) {
+          for (const it of selectedPurchaseItems) {
+            const add = Number(receiveQuantities[it.item_id] || 0);
+            if (add > 0) {
+              await postPurchaseInventoryCapitalization({
+                organizationId: organization.id,
+                itemId: it.item_id,
+                quantity: add,
+                unitCost: Number(it.unit_cost || 0),
+                date: new Date().toISOString().slice(0,10),
+                locationId: receiveLocationId || null,
+                referenceId: receivePurchaseId,
+              });
+            }
+          }
+        }
+      } catch (ledgerErr) {
+        console.warn("Inventory capitalization posting failed", ledgerErr);
+      }
 
       // After updating items, recompute and update purchase status
       try {
