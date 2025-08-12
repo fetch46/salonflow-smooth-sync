@@ -1,14 +1,14 @@
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
-import authRoutes from './routes/auth';
-import accountRoutes from './routes/accounts';
-import productRoutes from './routes/products';
-import locationRoutes from './routes/locations';
-import journalRoutes from './routes/journal';
-import transactionRoutes from './routes/transactions';
-import reportRoutes from './routes/reports';
-import bankRoutes from './routes/bank';
+import authRoutes from './routes/auth.js';
+import accountRoutes from './routes/accounts.js';
+import productRoutes from './routes/products.js';
+import locationRoutes from './routes/locations.js';
+import journalRoutes from './routes/journal.js';
+import transactionRoutes from './routes/transactions.js';
+import reportRoutes from './routes/reports.js';
+import bankRoutes from './routes/bank.js';
 import cron from 'node-cron';
 import { createClient } from '@supabase/supabase-js';
 import fetch from 'node-fetch';
@@ -31,7 +31,7 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/bank', bankRoutes);
 
-import notificationsRoutes from './routes/notifications';
+import notificationsRoutes from './routes/notifications.js';
 app.use('/api/notifications', notificationsRoutes);
 
 const PORT = process.env.PORT || 4000;
