@@ -20,9 +20,9 @@ const ClientProfile = lazy(() => import("@/pages/ClientProfile"));
 const Staff = lazy(() => import("@/pages/Staff"));
 const Services = lazy(() => import("@/pages/Services"));
 const Inventory = lazy(() => import("@/pages/Inventory"));
-const Receipts = lazy(() => import("@/pages/Receipts"));
-const ReceiptView = lazy(() => import("@/pages/ReceiptView"));
-const ReceiptForm = lazy(() => import("@/pages/ReceiptForm"));
+// const Receipts = lazy(() => import("@/pages/Receipts"));
+// const ReceiptView = lazy(() => import("@/pages/ReceiptView"));
+// const ReceiptForm = lazy(() => import("@/pages/ReceiptForm"));
 const StaffProfile = lazy(() => import("@/pages/StaffProfile"));
 const Expenses = lazy(() => import("@/pages/Expenses"));
 const ExpenseForm = lazy(() => import("@/pages/ExpenseForm"));
@@ -176,10 +176,10 @@ const AppRoutes = () => {
           <Route path="expenses" element={<Expenses />} />
           <Route path="expenses/new" element={<ExpenseForm />} />
           <Route path="expenses/:id/edit" element={<ExpenseForm />} />
-          <Route path="receipts" element={<Receipts />} />
-          <Route path="receipts/new" element={<ReceiptForm />} />
-          <Route path="receipts/:id" element={<ReceiptView />} />
-          <Route path="receipts/:id/edit" element={<ReceiptForm />} />
+          {/* <Route path="receipts" element={<Receipts />} /> */}
+          {/* <Route path="receipts/new" element={<ReceiptForm />} /> */}
+          {/* <Route path="receipts/:id" element={<ReceiptView />} /> */}
+          {/* <Route path="receipts/:id/edit" element={<ReceiptForm />} /> */}
           <Route path="invoices" element={<Invoices />} />
           <Route path="purchases" element={<Purchases />} />
           <Route path="purchases/new" element={<PurchaseForm />} />

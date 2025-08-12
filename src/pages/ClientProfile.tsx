@@ -357,7 +357,7 @@ export default function ClientProfile() {
                 {formatMoney(revenuePaid)}
               </div>
               <p className="text-xs text-green-600">
-                From {receipts.length} sales receipts
+                From {receipts.length} receipts
               </p>
             </CardContent>
           </Card>
@@ -390,7 +390,7 @@ export default function ClientProfile() {
 
           <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-orange-700">Sales Receipts</CardTitle>
+              <CardTitle className="text-sm font-medium text-orange-700">Receipts</CardTitle>
               <Receipt className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent>
@@ -433,7 +433,7 @@ export default function ClientProfile() {
         <Tabs defaultValue="appointments" className="space-y-4">
           <TabsList className="justify-start sm:justify-start rounded-xl border bg-card shadow-sm p-2 gap-2 h-auto [&_[role=tab]]:h-12 [&_[role=tab]]:px-4 [&_[role=tab]]:text-base [&_[role=tab]]:gap-2">
             <TabsTrigger value="appointments">Appointments</TabsTrigger>
-            <TabsTrigger value="receipts">Sales Receipts</TabsTrigger>
+            <TabsTrigger value="receipts">Receipts</TabsTrigger>
             <TabsTrigger value="jobcards">Job Cards</TabsTrigger>
             <TabsTrigger value="details">Details</TabsTrigger>
           </TabsList>

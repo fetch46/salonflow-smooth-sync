@@ -8,8 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Receipt } from "lucide-react";
-import { createReceiptWithFallback, getReceiptsWithFallback } from "@/utils/mockDatabase";
+// import { Receipt } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface Staff {
@@ -102,7 +101,6 @@ export default function EditJobCard() {
   const [clients, setClients] = useState<Client[]>([]);
 
   const [jobCard, setJobCard] = useState<JobCardRecord | null>(null);
-  const [hasReceipt, setHasReceipt] = useState<boolean>(false);
 
   const [jobServices, setJobServices] = useState<JobServiceRow[]>([]);
   const [serviceEdits, setServiceEdits] = useState<Record<string, { staff_id?: string | null; commission_percentage?: number | null }>>({});
@@ -171,8 +169,7 @@ export default function EditJobCard() {
           if (rErr) throw rErr;
           setHasReceipt((rData || []).length > 0);
         } catch {
-          const receipts = await getReceiptsWithFallback(supabase as any);
-          setHasReceipt((receipts || []).some((r: any) => r.job_card_id === id));
+          // receipts feature removed
         }
       } catch (e: any) {
         console.error("Failed to load job card:", e);
@@ -192,54 +189,7 @@ export default function EditJobCard() {
     return true;
   }, [jobCard, status, totalAmount]);
 
-  const handleCreateReceipt = async () => {
-    if (!jobCard) return;
-    try {
-      const receiptNumber = `RCT-${Date.now().toString().slice(-6)}`;
-      const items: any[] = [];
-      // Try to populate items from job_card_services if available
-      try {
-        const { data: jobServices } = await supabase
-          .from('job_card_services')
-          .select('service_id, staff_id, quantity, unit_price, services:service_id(name)')
-          .eq('job_card_id', jobCard.id);
-        if (jobServices && jobServices.length > 0) {
-          for (const js of jobServices as any[]) {
-            const serviceName = Array.isArray((js as any).services)
-              ? (js as any).services[0]?.name
-              : (js as any).services?.name;
-            items.push({
-              description: serviceName || 'Service',
-              quantity: js.quantity || 1,
-              unit_price: js.unit_price || 0,
-              total_price: (js.quantity || 1) * (js.unit_price || 0),
-              service_id: js.service_id || null,
-              product_id: null,
-              staff_id: js.staff_id || null,
-            });
-          }
-        }
-      } catch (err) { console.error(err) }
-
-      await createReceiptWithFallback(supabase as any, {
-        receipt_number: receiptNumber,
-        customer_id: clientId || jobCard.client_id || null,
-        job_card_id: jobCard.id,
-        subtotal: Number(totalAmount) || jobCard.total_amount || 0,
-        tax_amount: 0,
-        discount_amount: 0,
-        total_amount: Number(totalAmount) || jobCard.total_amount || 0,
-        status: 'open',
-        notes: `Receipt for ${jobCard.job_number}`,
-        location_id: locationId || null,
-      }, items);
-      setHasReceipt(true);
-      toast.success('Receipt created');
-    } catch (e: any) {
-      console.error('Failed to create receipt:', e);
-      toast.error(e?.message || 'Failed to create receipt');
-    }
-  };
+// receipts feature removed
 
   const handleSave = async () => {
     if (!id || !jobCard) return;
@@ -547,16 +497,6 @@ export default function EditJobCard() {
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4">
-            {status === 'completed' && (
-              <Button
-                variant={hasReceipt ? 'outline' : 'default'}
-                onClick={handleCreateReceipt}
-                disabled={saving || hasReceipt}
-              >
-                <Receipt className="h-4 w-4 mr-2" />
-                {hasReceipt ? 'Receipt Exists' : 'Create Receipt'}
-              </Button>
-            )}
             <Button variant="secondary" onClick={() => navigate(-1)} disabled={saving}>Cancel</Button>
             <Button onClick={handleSave} disabled={!canSave || saving}>{saving ? "Saving..." : "Save Changes"}</Button>
           </div>

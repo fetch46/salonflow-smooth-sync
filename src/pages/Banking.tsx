@@ -226,7 +226,7 @@ export default function Banking() {
     const refType = String(row.reference_type || "").toLowerCase();
     const refId = row.reference_id;
     if (!refId) return;
-    if (refType === "receipt_payment") { navigate(`/receipts/${refId}`); return; }
+    if (refType === "receipt_payment") { navigate(`/banking`); return; }
     if (refType === "purchase_payment") { navigate(`/purchases/${refId}`); return; }
     if (refType === "expense_payment") { navigate(`/expenses/${refId}/edit`); return; }
     if (refType === "account_transfer") { navigate(`/banking`); return; }

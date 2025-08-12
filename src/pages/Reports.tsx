@@ -1111,7 +1111,7 @@ const Reports = () => {
                               const rate = Number(r.commission_rate ?? r.service?.commission_percentage ?? 0);
                               const comm = gross * (Number(rate) || 0) / 100;
                               return (
-                                <TableRow key={r.id} className="cursor-pointer hover:bg-slate-50" onClick={() => r.receipt?.id && navigate(`/receipts/${r.receipt.id}`)} title={r.receipt?.id ? `Open receipt ${r.receipt.id}` : undefined}>
+                                <TableRow key={r.id} className="cursor-pointer hover:bg-slate-50"  title={r.receipt?.id ? `Open receipt ${r.receipt.id}` : undefined}>
                                   <TableCell className={`${density === 'compact' ? 'px-2 py-1' : ''}`}>{(r.created_at || r.receipt?.created_at || '').split('T')[0]}</TableCell>
                                   <TableCell className={`${density === 'compact' ? 'px-2 py-1' : ''}`}>{r.service?.name || r.description}</TableCell>
                                   <TableCell className={`${density === 'compact' ? 'px-2 py-1' : ''}`}>{r.staff?.full_name || 'Unassigned'}</TableCell>
@@ -1138,7 +1138,7 @@ const Reports = () => {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
                     <CardTitle>Product Usage History</CardTitle>
-                    <p className="text-sm text-slate-600">Detailed movements from Purchases, Sales/Sales Receipts, Inventory Adjustments and Service Kits</p>
+                    <p className="text-sm text-slate-600">Detailed movements from Purchases, Sales, Inventory Adjustments and Service Kits</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="space-y-1">
@@ -1326,7 +1326,7 @@ const ProductUsageHistory: React.FC<{ startDate: string; endDate: string; densit
                 </TableHeader>
                 <TableBody>
                   {(entries as any[]).map((r) => (
-                    <TableRow key={`${r.type}-${r.reference}-${r.date}-${r.product_id}`} className={r.type === 'Sold/Used' ? 'cursor-pointer hover:bg-slate-50' : ''} onClick={() => { if (r.type === 'Sold/Used' && r.receipt?.id) window.location.assign(`/receipts/${r.receipt.id}`); }}>
+                    <TableRow key={`${r.type}-${r.reference}-${r.date}-${r.product_id}`} className={r.type === 'Sold/Used' ? 'cursor-pointer hover:bg-slate-50' : ''} >
                       <TableCell>{new Date(r.date).toLocaleString()}</TableCell>
                       <TableCell>{r.product_name}</TableCell>
                       <TableCell className="text-right">{Number(r.qty || 0).toLocaleString()}</TableCell>

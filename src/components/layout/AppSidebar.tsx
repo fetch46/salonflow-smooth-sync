@@ -86,12 +86,7 @@ const menuItems: MenuItem[] = [
         icon: Users,
         feature: "clients",
       },
-      {
-        title: "Sales Receipts",
-        url: "/receipts",
-        icon: FileText,
-        feature: "accounting",
-      },
+
       {
         title: "Invoices",
         url: "/invoices",
