@@ -1421,14 +1421,15 @@ phone: "",
                           <TableCell className="text-muted-foreground">{location.description}</TableCell>
                           <TableCell>
                             <Select
-                              value={location.default_warehouse_id || ""}
+                              value={location.default_warehouse_id ?? "__none__"}
                               onValueChange={async (val) => {
                                 try {
+                                  const next = val === "__none__" ? null : val
                                   await supabase
                                     .from('business_locations')
-                                    .update({ default_warehouse_id: val || null })
+                                    .update({ default_warehouse_id: next })
                                     .eq('id', location.id);
-                                  setStockLocations(prev => prev.map(l => l.id === location.id ? { ...l, default_warehouse_id: val || null } : l));
+                                  setStockLocations(prev => prev.map(l => l.id === location.id ? { ...l, default_warehouse_id: next } : l));
                                   toast.success('Default warehouse updated');
                                 } catch (e) {
                                   console.error(e);
@@ -1440,7 +1441,7 @@ phone: "",
                                 <SelectValue placeholder="Select default warehouse" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">— None —</SelectItem>
+                                <SelectItem value="__none__">— None —</SelectItem>
                                 {warehouses
                                   .filter(w => w.is_active)
                                   .map(w => (
@@ -1484,14 +1485,14 @@ phone: "",
                       <div className="space-y-2">
                         <Label>Default Warehouse</Label>
                         <Select
-                          value={locationForm.default_warehouse_id}
-                          onValueChange={(v) => setLocationForm(prev => ({ ...prev, default_warehouse_id: v }))}
+                          value={locationForm.default_warehouse_id || ""}
+                          onValueChange={(v) => setLocationForm(prev => ({ ...prev, default_warehouse_id: v === "__none__" ? null : v }))}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select a default warehouse (optional)" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">— None —</SelectItem>
+                            <SelectItem value="__none__">— None —</SelectItem>
                             {warehouses.filter(w => w.is_active).map(w => (
                               <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
                             ))}
