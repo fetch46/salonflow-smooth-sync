@@ -30,6 +30,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { mockDb } from '@/utils/mockDatabase';
 import { useOrganization } from '@/lib/saas/hooks';
 import { useOrganizationCurrency } from '@/lib/saas/hooks';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
+import { LineChart as RLineChart, Line, XAxis, YAxis, CartesianGrid, PieChart as RPieChart, Pie, Cell } from 'recharts';
 
 const Reports = () => {
   const navigate = useNavigate();
@@ -58,6 +60,8 @@ const Reports = () => {
   const [endDate, setEndDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [recalcLoading, setRecalcLoading] = useState(false);
   const [density, setDensity] = useState<'compact' | 'comfortable'>('comfortable');
+  const [revenueSeries, setRevenueSeries] = useState<Array<{ label: string; current: number; previous: number }>>([]);
+  const [serviceDistribution, setServiceDistribution] = useState<Array<{ name: string; value: number; fill?: string }>>([]);
 
   const { symbol, format: formatMoney } = useOrganizationCurrency();
 
@@ -471,6 +475,36 @@ const Reports = () => {
       })).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
       setTopServices(topSvc);
 
+      // Build service distribution for pie chart
+      const COLORS = ['#4f46e5', '#06b6d4', '#f59e0b', '#10b981', '#ef4444'];
+      setServiceDistribution(
+        topSvc.map((s, i) => ({ name: s.name, value: s.revenue, fill: COLORS[i % COLORS.length] }))
+      );
+
+      // Revenue series for current vs previous period aligned by day index
+      const dateKey = (d: Date) => d.toISOString().slice(0, 10);
+      const nowMap: Record<string, number> = {};
+      for (const r of receiptsNow as any[]) {
+        const d = (r.created_at || '').slice(0, 10);
+        nowMap[d] = (nowMap[d] || 0) + (Number(r.total_amount) || 0);
+      }
+      const prevMap: Record<string, number> = {};
+      for (const r of receiptsPrev as any[]) {
+        const d = (r.created_at || '').slice(0, 10);
+        prevMap[d] = (prevMap[d] || 0) + (Number(r.total_amount) || 0);
+      }
+      const points: Array<{ label: string; current: number; previous: number }> = [];
+      for (let i = 0; i < periodDays; i++) {
+        const cur = new Date(start.getTime() + i * dayMs);
+        const prv = new Date(prevStart.getTime() + i * dayMs);
+        points.push({
+          label: toDateStr(cur).slice(5),
+          current: Math.round(nowMap[dateKey(cur)] || 0),
+          previous: Math.round(prevMap[dateKey(prv)] || 0),
+        });
+      }
+      setRevenueSeries(points);
+
       // Top clients by visits/spend
       const byClient: Record<string, { visits: number; spent: number; last: string }> = {};
       for (const r of receiptsNow as any[]) {
@@ -752,11 +786,24 @@ const Reports = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-64 flex items-center justify-center text-slate-500">
-                      <div className="text-center">
-                        <BarChart3 className="w-12 h-12 mx-auto mb-2 text-slate-300" />
-                        <p>Revenue chart will be displayed here</p>
-                      </div>
+                    <div className="h-64">
+                      <ChartContainer
+                        config={{
+                          current: { label: 'Current', color: '#2563eb' },
+                          previous: { label: 'Previous', color: '#94a3b8' },
+                        }}
+                        className="h-64"
+                      >
+                        <RLineChart data={revenueSeries} margin={{ left: 12, right: 12, top: 12, bottom: 12 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                          <YAxis tickLine={false} axisLine={false} />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <ChartLegend content={<ChartLegendContent />} />
+                          <Line type="monotone" dataKey="current" stroke="var(--color-current)" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="previous" stroke="var(--color-previous)" strokeDasharray="4 4" strokeWidth={2} dot={false} />
+                        </RLineChart>
+                      </ChartContainer>
                     </div>
                   </CardContent>
                 </Card>
@@ -769,11 +816,25 @@ const Reports = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-64 flex items-center justify-center text-slate-500">
-                      <div className="text-center">
-                        <PieChart className="w-12 h-12 mx-auto mb-2 text-slate-300" />
-                        <p>Service distribution chart will be displayed here</p>
-                      </div>
+                    <div className="h-64">
+                      <ChartContainer config={{}} className="h-64">
+                        <RPieChart>
+                          <Pie
+                            data={serviceDistribution}
+                            dataKey="value"
+                            nameKey="name"
+                            innerRadius={50}
+                            outerRadius={80}
+                            paddingAngle={4}
+                          >
+                            {serviceDistribution.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.fill || '#94a3b8'} />
+                            ))}
+                          </Pie>
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <ChartLegend content={<ChartLegendContent />} />
+                        </RPieChart>
+                      </ChartContainer>
                     </div>
                   </CardContent>
                 </Card>
@@ -857,7 +918,7 @@ const Reports = () => {
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="font-medium">${client.totalSpent}</div>
+                          <div className="font-medium">{formatMoney(client.totalSpent, { decimals: 0 })}</div>
                           <div className="text-sm text-slate-600">Total spent</div>
                         </div>
                       </div>
@@ -875,24 +936,24 @@ const Reports = () => {
                 <CardContent>
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <div className="text-center p-4 bg-green-50 rounded-lg">
-                      <div className="text-2xl font-bold text-green-700">${pl.income.toFixed(2)}</div>
+                      <div className="text-2xl font-bold text-green-700">{formatMoney(pl.income, { decimals: 2 })}</div>
                       <div className="text-sm text-green-700">Income (Cash-basis)</div>
                     </div>
                     <div className="text-center p-4 bg-amber-50 rounded-lg">
-                      <div className="text-2xl font-bold text-amber-700">${pl.cogs.toFixed(2)}</div>
+                      <div className="text-2xl font-bold text-amber-700">{formatMoney(pl.cogs, { decimals: 2 })}</div>
                       <div className="text-sm text-amber-700">Cost of Goods Sold</div>
                     </div>
                     <div className="text-center p-4 bg-red-50 rounded-lg">
-                      <div className="text-2xl font-bold text-red-700">${pl.expenses.toFixed(2)}</div>
+                      <div className="text-2xl font-bold text-red-700">{formatMoney(pl.expenses, { decimals: 2 })}</div>
                       <div className="text-sm text-red-700">Expenses (Cash-basis)</div>
                     </div>
                     <div className="text-center p-4 bg-blue-50 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-700">${pl.grossProfit.toFixed(2)}</div>
+                      <div className="text-2xl font-bold text-blue-700">{formatMoney(pl.grossProfit, { decimals: 2 })}</div>
                       <div className="text-sm text-blue-700">Gross Profit</div>
                     </div>
                   </div>
                   <div className="mt-6 text-center p-4 bg-indigo-50 rounded-lg">
-                    <div className="text-3xl font-bold text-indigo-700">${pl.netProfit.toFixed(2)}</div>
+                    <div className="text-3xl font-bold text-indigo-700">{formatMoney(pl.netProfit, { decimals: 2 })}</div>
                     <div className="text-sm text-indigo-700">Net Profit</div>
                   </div>
                   {pl.breakdown && (
@@ -903,7 +964,7 @@ const Reports = () => {
                           <TableHeader><TableRow><TableHead>Subtype</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
                           <TableBody>
                             {Object.entries(pl.breakdown.income).map(([k,v]) => (
-                              <TableRow key={k} className="cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/accounts?q=${encodeURIComponent(k)}`)} title={`Open accounts for ${k}`}><TableCell>{k}</TableCell><TableCell className="text-right">${Number(v).toFixed(2)}</TableCell></TableRow>
+                              <TableRow key={k} className="cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/accounts?q=${encodeURIComponent(k)}`)} title={`Open accounts for ${k}`}><TableCell>{k}</TableCell><TableCell className="text-right">{formatMoney(Number(v), { decimals: 2 })}</TableCell></TableRow>
                             ))}
                           </TableBody>
                         </Table>
@@ -914,7 +975,7 @@ const Reports = () => {
                           <TableHeader><TableRow><TableHead>Subtype</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
                           <TableBody>
                             {Object.entries(pl.breakdown.expense).map(([k,v]) => (
-                              <TableRow key={k} className="cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/accounts?q=${encodeURIComponent(k)}`)} title={`Open accounts for ${k}`}><TableCell>{k}</TableCell><TableCell className="text-right">${Number(v).toFixed(2)}</TableCell></TableRow>
+                              <TableRow key={k} className="cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/accounts?q=${encodeURIComponent(k)}`)} title={`Open accounts for ${k}`}><TableCell>{k}</TableCell><TableCell className="text-right">{formatMoney(Number(v), { decimals: 2 })}</TableCell></TableRow>
                             ))}
                           </TableBody>
                         </Table>
@@ -933,20 +994,20 @@ const Reports = () => {
                 <CardContent>
                   <div className="grid gap-4 md:grid-cols-3">
                     <div className="text-center p-4 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100" onClick={() => navigate(`/accounts?q=${encodeURIComponent('Asset')}`)} title="Open Asset accounts">
-                      <div className="text-2xl font-bold text-slate-700">${bs.assets.toFixed(2)}</div>
+                      <div className="text-2xl font-bold text-slate-700">{formatMoney(bs.assets, { decimals: 2 })}</div>
                       <div className="text-sm text-slate-700">Assets</div>
                     </div>
                     <div className="text-center p-4 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100" onClick={() => navigate(`/accounts?q=${encodeURIComponent('Liability')}`)} title="Open Liability accounts">
-                      <div className="text-2xl font-bold text-slate-700">${bs.liabilities.toFixed(2)}</div>
+                      <div className="text-2xl font-bold text-slate-700">{formatMoney(bs.liabilities, { decimals: 2 })}</div>
                       <div className="text-sm text-slate-700">Liabilities</div>
                     </div>
                     <div className="text-center p-4 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100" onClick={() => navigate(`/accounts?q=${encodeURIComponent('Equity')}`)} title="Open Equity accounts">
-                      <div className="text-2xl font-bold text-slate-700">${bs.equity.toFixed(2)}</div>
+                      <div className="text-2xl font-bold text-slate-700">{formatMoney(bs.equity, { decimals: 2 })}</div>
                       <div className="text-sm text-slate-700">Equity</div>
                     </div>
                   </div>
                   <div className="mt-6 text-center text-sm text-slate-600">
-                    Check: Assets (${bs.assets.toFixed(2)}) = Liabilities (${bs.liabilities.toFixed(2)}) + Equity (${bs.equity.toFixed(2)})
+                    {`Check: Assets (${formatMoney(bs.assets, { decimals: 2 })}) = Liabilities (${formatMoney(bs.liabilities, { decimals: 2 })}) + Equity (${formatMoney(bs.equity, { decimals: 2 })})`}
                   </div>
                 </CardContent>
               </Card>
@@ -1015,9 +1076,9 @@ const Reports = () => {
                             {Object.values(commissionSummary).map(row => (
                               <TableRow key={row.staffId}>
                                 <TableCell className={`${density === 'compact' ? 'px-2 py-1' : ''}`}>{row.staffName}</TableCell>
-                                <TableCell className="text-right">${row.gross.toFixed(2)}</TableCell>
+                                <TableCell className="text-right">{formatMoney(row.gross, { decimals: 2 })}</TableCell>
                                 <TableCell className="text-right">{row.commissionRate.toFixed(2)}</TableCell>
-                                <TableCell className="text-right">${row.commission.toFixed(2)}</TableCell>
+                                <TableCell className="text-right">{formatMoney(row.commission, { decimals: 2 })}</TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
@@ -1055,10 +1116,10 @@ const Reports = () => {
                                   <TableCell className={`${density === 'compact' ? 'px-2 py-1' : ''}`}>{r.service?.name || r.description}</TableCell>
                                   <TableCell className={`${density === 'compact' ? 'px-2 py-1' : ''}`}>{r.staff?.full_name || 'Unassigned'}</TableCell>
                                   <TableCell className="text-right">{qty}</TableCell>
-                                  <TableCell className="text-right">${unit.toFixed(2)}</TableCell>
-                                  <TableCell className="text-right">${gross.toFixed(2)}</TableCell>
+                                  <TableCell className="text-right">{formatMoney(unit, { decimals: 2 })}</TableCell>
+                                  <TableCell className="text-right">{formatMoney(gross, { decimals: 2 })}</TableCell>
                                   <TableCell className="text-right">{Number(rate).toFixed(2)}</TableCell>
-                                  <TableCell className="text-right">${comm.toFixed(2)}</TableCell>
+                                  <TableCell className="text-right">{formatMoney(comm, { decimals: 2 })}</TableCell>
                                 </TableRow>
                               );
                             })}
