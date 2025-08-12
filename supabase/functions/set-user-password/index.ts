@@ -54,14 +54,10 @@ serve(async (req) => {
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
-    if (!isSuperAdmin) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
-    }
 
-    const { user_id, new_password } = await req.json();
+    const body = await req.json();
+    const { user_id, new_password, organization_id } = body || {};
+
     if (!user_id || !new_password) {
       return new Response(JSON.stringify({ error: "user_id and new_password are required" }), {
         status: 400,
@@ -74,6 +70,64 @@ serve(async (req) => {
         status: 400,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
+    }
+
+    // If caller is not a super admin, require that they are an OWNER of the provided organization
+    // and that the target user belongs to the same organization
+    if (!isSuperAdmin) {
+      if (!organization_id) {
+        return new Response(JSON.stringify({ error: "organization_id is required for non-super-admins" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      // Verify caller is OWNER in the organization
+      const { data: ownerMembership, error: ownerErr } = await adminClient
+        .from("organization_users")
+        .select("id")
+        .eq("organization_id", organization_id)
+        .eq("user_id", userData.user.id)
+        .eq("role", "owner")
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (ownerErr) {
+        return new Response(JSON.stringify({ error: "Ownership check failed", details: ownerErr.message }), {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      if (!ownerMembership) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      // Verify target user is a member of the same organization
+      const { data: targetMembership, error: targetErr } = await adminClient
+        .from("organization_users")
+        .select("id")
+        .eq("organization_id", organization_id)
+        .eq("user_id", user_id)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (targetErr) {
+        return new Response(JSON.stringify({ error: "Target membership check failed", details: targetErr.message }), {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      if (!targetMembership) {
+        return new Response(JSON.stringify({ error: "User is not a member of the specified organization" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
     }
 
     // Set the user's password via Admin API

@@ -39,7 +39,9 @@ import {
   CheckCircle,
   AlertTriangle,
   Camera,
-  Shield
+  Shield,
+  KeyRound,
+  Send
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -964,6 +966,90 @@ export default function Staff() {
                                   <Shield className="w-4 h-4 mr-2" />
                                   Assign Role
                                 </DropdownMenuItem>
+                                {member.email && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={async () => {
+                                        try {
+                                          // If the staff user does not yet exist, send invitation
+                                          const { data: profile } = await supabase.from('profiles').select('user_id').eq('email', member.email).maybeSingle();
+                                          if (profile?.user_id) {
+                                            toast({ title: 'User already exists', description: 'This email already has an account.' });
+                                            return;
+                                          }
+                                          const { data: me } = await supabase.auth.getUser();
+                                          const activeOrgId = localStorage.getItem('activeOrganizationId');
+                                          if (!activeOrgId) {
+                                            toast({ title: 'No active organization', variant: 'destructive' });
+                                            return;
+                                          }
+                                          const token = crypto?.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+                                          const expiresAt = new Date();
+                                          expiresAt.setDate(expiresAt.getDate() + 7);
+                                          const { error } = await supabase.from('user_invitations').insert({
+                                            organization_id: activeOrgId,
+                                            email: member.email,
+                                            role: 'staff',
+                                            invited_by: me?.user?.id || null,
+                                            token,
+                                            expires_at: expiresAt.toISOString(),
+                                          });
+                                          if (error) throw error;
+                                          toast({ title: 'Invitation sent' });
+                                        } catch (e) {
+                                          console.error('Invite error', e);
+                                          toast({ title: 'Failed to send invitation', variant: 'destructive' });
+                                        }
+                                      }}
+                                    >
+                                      <Send className="w-4 h-4 mr-2" />
+                                      Send Invitation
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={async () => {
+                                        try {
+                                          const redirectTo = `${window.location.origin}/reset-password`;
+                                          const { error } = await supabase.auth.resetPasswordForEmail(member.email as string, { redirectTo } as any);
+                                          if (error) throw error;
+                                          toast({ title: 'Password reset email sent' });
+                                        } catch (e) {
+                                          console.error('Reset email error', e);
+                                          toast({ title: 'Failed to send reset email', variant: 'destructive' });
+                                        }
+                                      }}
+                                    >
+                                      <Mail className="w-4 h-4 mr-2" />
+                                      Send Reset Email
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={async () => {
+                                        try {
+                                          // lookup profile for user_id
+                                          const { data: profile } = await supabase.from('profiles').select('user_id').eq('email', member.email).maybeSingle();
+                                          if (!profile?.user_id) {
+                                            toast({ title: 'No user account', description: 'Invite the staff to create an account first.', variant: 'destructive' });
+                                            return;
+                                          }
+                                          const activeOrgId = localStorage.getItem('activeOrganizationId');
+                                          const newPass = prompt('Enter new password (min 8 chars)');
+                                          if (!newPass || newPass.length < 8) return;
+                                          const { error } = await supabase.functions.invoke('set-user-password', {
+                                            body: { user_id: profile.user_id, new_password: newPass, organization_id: activeOrgId || undefined }
+                                          });
+                                          if (error) throw error;
+                                          toast({ title: 'Password updated' });
+                                        } catch (e) {
+                                          console.error('Set password error', e);
+                                          toast({ title: 'Failed to set password', variant: 'destructive' });
+                                        }
+                                      }}
+                                    >
+                                      <KeyRound className="w-4 h-4 mr-2" />
+                                      Set Password
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => handleDelete(member.id)} className="text-red-600 focus:text-red-600">
                                   <Trash2 className="w-4 h-4 mr-2" />

@@ -327,10 +327,18 @@ const AdminUsers = () => {
       return;
     }
     try {
+      // Determine current organization for owner-scoped password set
+      const { data: session } = await supabase.auth.getUser();
+      let activeOrgId: string | null = null;
+      try {
+        // Read active organization from SaaS storage key if present
+        activeOrgId = localStorage.getItem('activeOrganizationId');
+      } catch {}
       const { error } = await supabase.functions.invoke('set-user-password', {
         body: {
           user_id: passwordTarget.user_id,
           new_password: newPassword,
+          organization_id: activeOrgId || undefined,
         },
       });
       if (error) throw error;

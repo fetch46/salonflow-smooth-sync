@@ -47,6 +47,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useSaas } from "@/lib/saas";
 import { subDays, startOfDay, endOfDay, format as formatDate } from "date-fns";
+import React from "react";
 
 // Utility helpers for safe percentage and averages
 const safePercent = (current: number, previous: number) => {
@@ -457,6 +458,18 @@ const Dashboard = () => {
     }
   ];
 
+  // Role-tailor quick actions
+  const { organizationRole } = useSaas();
+  const roleQuickActions = React.useMemo(() => {
+    const role = (organizationRole || '').toLowerCase();
+    if (role === 'owner' || role === 'admin' || role === 'manager') return quickActions;
+    if (role === 'staff') {
+      return quickActions.filter(a => a.title === 'New Appointment' || a.title === 'Process Payment');
+    }
+    // viewer/member: minimal
+    return quickActions.filter(a => a.title === 'View Reports');
+  }, [organizationRole]);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "confirmed":
@@ -715,7 +728,7 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent className="p-4">
               <div className="grid grid-cols-2 gap-3">
-                {quickActions.map((action, index) => (
+                {roleQuickActions.map((action, index) => (
                   <Button
                     key={index}
                     variant="outline"
