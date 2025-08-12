@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { CalendarDays, Clock, Phone, Mail, User, Edit2, Trash2, Plus, MoreHorizontal, Eye, FilePlus } from "lucide-react";
+import { CalendarDays, Clock, Phone, Mail, User, Edit2, Trash2, Plus, MoreHorizontal, Eye, FilePlus, RefreshCcw, Search } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
 import { useSaas } from "@/lib/saas";
@@ -90,6 +90,8 @@ export default function Appointments() {
   const [clientsList, setClientsList] = useState<ClientRow[]>([]);
   const [clientSearch, setClientSearch] = useState<string>("");
   const [selectedClientId, setSelectedClientId] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const [form, setForm] = useState({
     customer_name: "",
@@ -744,6 +746,31 @@ export default function Appointments() {
     }
   };
 
+  const filteredAppointments = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return appointments.filter((appt) => {
+      if (statusFilter !== "all" && String(appt.status || "").toLowerCase() !== statusFilter) return false;
+      if (!term) return true;
+
+      const items = appointmentServicesById[appt.id] || [];
+      const serviceNames = items
+        .map((it) => services.find((s) => s.id === it.service_id)?.name)
+        .filter(Boolean)
+        .join(", ")
+        .toLowerCase();
+
+      return (
+        String(appt.customer_name || "").toLowerCase().includes(term) ||
+        String(appt.customer_email || "").toLowerCase().includes(term) ||
+        String(appt.customer_phone || "").toLowerCase().includes(term) ||
+        String(appt.service_name || "").toLowerCase().includes(term) ||
+        serviceNames.includes(term) ||
+        String(appt.appointment_date || "").toLowerCase().includes(term) ||
+        String(appt.appointment_time || "").toLowerCase().includes(term)
+      );
+    });
+  }, [appointments, searchTerm, statusFilter, services, appointmentServicesById]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -762,16 +789,27 @@ export default function Appointments() {
           <h1 className="text-3xl font-bold text-foreground">Appointments</h1>
           <p className="text-muted-foreground">Manage your salon appointments</p>
         </div>
-        <Button 
-          onClick={() => {
-            resetForm();
-            setIsModalOpen(true);
-          }}
-          className="flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          New Appointment
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline"
+            size="icon"
+            onClick={() => fetchData()}
+            disabled={loading}
+            title="Refresh"
+          >
+            <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          </Button>
+          <Button 
+            onClick={() => {
+              resetForm();
+              setIsModalOpen(true);
+            }}
+            className="flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            New Appointment
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -814,42 +852,77 @@ export default function Appointments() {
           <CardTitle>All Appointments</CardTitle>
         </CardHeader>
         <CardContent>
-          {appointments.length === 0 ? (
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+            <div className="relative w-full md:max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search name, phone, email, or service"
+                className="pl-9"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="scheduled">Scheduled</SelectItem>
+                  <SelectItem value="confirmed">Confirmed</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="no_show">No Show</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="ghost" onClick={() => { setSearchTerm(""); setStatusFilter("all"); }}>
+                Clear
+              </Button>
+            </div>
+          </div>
+
+          {filteredAppointments.length === 0 ? (
             <div className="text-center py-8">
               <CalendarDays className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">No appointments found</p>
-              <Button 
-                variant="outline" 
-                className="mt-4"
-                onClick={() => {
-                  resetForm();
-                  setIsModalOpen(true);
-                }}
-              >
-                Create your first appointment
-              </Button>
+              <div className="mt-4 flex items-center justify-center gap-2">
+                <Button 
+                  variant="outline"
+                  onClick={() => { setSearchTerm(""); setStatusFilter("all"); }}
+                >
+                  Reset filters
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => fetchData()}
+                  disabled={loading}
+                >
+                  Refresh
+                </Button>
+              </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              {appointments.map((appointment) => {
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredAppointments.map((appointment) => {
                 const items = appointmentServicesById[appointment.id] || [];
                 return (
                   <div 
                     key={appointment.id} 
-                    className="border rounded-lg p-4 hover:bg-muted/50 transition-colors"
+                    className="group relative overflow-hidden rounded-xl border bg-card p-4 hover:shadow-lg transition-all before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-primary/60 before:via-emerald-500/60 before:to-primary/60 before:opacity-70"
                   >
                     <div className="flex justify-between items-start">
                       <div className="space-y-2 flex-1">
                         <div className="flex items-center gap-4">
                           <div className="flex items-center gap-2">
                             <User className="w-4 h-4 text-muted-foreground" />
-                            <span className="font-medium">{appointment.customer_name}</span>
+                            <span className="font-semibold text-lg">{appointment.customer_name}</span>
                           </div>
                           <Badge className={getStatusColor(appointment.status || 'scheduled')}>
                             {String(appointment.status || 'scheduled').replace('_', ' ')}
                           </Badge>
                         </div>
-                        
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
                           <div className="flex items-center gap-2">
                             <CalendarDays className="w-4 h-4" />
@@ -865,7 +938,6 @@ export default function Appointments() {
                             </span>
                           </div>
                         </div>
-
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
                           {appointment.customer_email && (
                             <div className="flex items-center gap-2">
@@ -890,21 +962,18 @@ export default function Appointments() {
                               : (staff.find(s => s.id === appointment.staff_id)?.full_name || "Not assigned")}
                           </div>
                         </div>
-
                         {appointment.notes && (
                           <div className="text-sm text-muted-foreground">
                             <span className="font-medium">Notes: </span>
                             {appointment.notes}
                           </div>
                         )}
-
                         {Number(appointment.price || 0) > 0 && (
                           <div className="text-sm font-medium text-green-600">
                             ${Number(appointment.price || 0).toFixed(2)}
                           </div>
                         )}
                       </div>
-
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
