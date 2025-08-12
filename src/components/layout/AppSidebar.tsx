@@ -208,13 +208,13 @@ const menuItems: MenuItem[] = [
     feature: "reports",
     subItems: [
       {
-        title: "General Settings",
+        title: "General",
         url: "/settings",
         icon: Settings,
         feature: "reports",
       },
       {
-        title: "Regional Settings",
+        title: "Regional",
         url: "/settings?tab=regional",
         icon: Sliders,
         feature: "reports",
