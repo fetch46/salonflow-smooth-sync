@@ -36,6 +36,8 @@
 \i supabase/migrations/20250910094500_add_commission_rate_to_staff.sql
 -- Add default warehouse for business locations
 \i supabase/migrations/20250915090000_add_default_warehouse_to_business_locations.sql
+-- Ensure warehouses has updated_at and trigger
+\i supabase/migrations/20250921101000_fix_warehouses_updated_at.sql
 
 -- 2. Ensure all required functions exist
 -- Create organization creation function if it doesn't exist
