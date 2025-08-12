@@ -7,6 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Crown } from "lucide-react";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { useLocation, Link } from "react-router-dom";
+import React from "react";
 
 interface DashboardLayoutProps {
   children?: React.ReactNode;
@@ -14,6 +17,8 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps = {}) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const segments = location.pathname.split("/").filter(Boolean);
   const { 
     user, 
     organization, 
@@ -88,6 +93,35 @@ export default function DashboardLayout({ children }: DashboardLayoutProps = {})
 
           {/* Main Content */}
           <main className="flex-1 min-w-0 p-4 md:p-6 lg:p-8">
+            <div className="mb-4">
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem>
+                    <BreadcrumbLink asChild>
+                      <Link to="/dashboard">Dashboard</Link>
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  {segments.map((seg, idx) => {
+                    const href = "/" + segments.slice(0, idx + 1).join("/");
+                    const isLast = idx === segments.length - 1;
+                    return (
+                      <React.Fragment key={href}>
+                        <BreadcrumbSeparator />
+                        <BreadcrumbItem>
+                          {isLast ? (
+                            <BreadcrumbPage>{seg.replace(/-/g, " ")}</BreadcrumbPage>
+                          ) : (
+                            <BreadcrumbLink asChild>
+                              <Link to={href}>{seg.replace(/-/g, " ")}</Link>
+                            </BreadcrumbLink>
+                          )}
+                        </BreadcrumbItem>
+                      </React.Fragment>
+                    );
+                  })}
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
             {children || <Outlet />}
           </main>
         </div>
