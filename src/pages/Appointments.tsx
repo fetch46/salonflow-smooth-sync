@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Table as UITable, TableHeader, TableRow, TableHead, TableBody, TableCell, TableCaption } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -884,132 +885,124 @@ export default function Appointments() {
           </div>
 
           {filteredAppointments.length === 0 ? (
-            <div className="text-center py-8">
-              <CalendarDays className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No appointments found</p>
-              <div className="mt-4 flex items-center justify-center gap-2">
-                <Button 
-                  variant="outline"
-                  onClick={() => { setSearchTerm(""); setStatusFilter("all"); }}
-                >
-                  Reset filters
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => fetchData()}
-                  disabled={loading}
-                >
-                  Refresh
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredAppointments.map((appointment) => {
-                const items = appointmentServicesById[appointment.id] || [];
-                return (
-                  <div 
-                    key={appointment.id} 
-                    className="group relative overflow-hidden rounded-xl border bg-card p-4 hover:shadow-lg transition-all before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-primary/60 before:via-emerald-500/60 before:to-primary/60 before:opacity-70"
+              <div className="text-center py-8">
+                <CalendarDays className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No appointments found</p>
+                <div className="mt-4 flex items-center justify-center gap-2">
+                  <Button 
+                    variant="outline"
+                    onClick={() => { setSearchTerm(""); setStatusFilter("all"); }}
                   >
-                    <div className="flex justify-between items-start">
-                      <div className="space-y-2 flex-1">
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2">
-                            <User className="w-4 h-4 text-muted-foreground" />
-                            <span className="font-semibold text-lg">{appointment.customer_name}</span>
-                          </div>
-                          <Badge className={getStatusColor(appointment.status || 'scheduled')}>
-                            {String(appointment.status || 'scheduled').replace('_', ' ')}
-                          </Badge>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-2">
-                            <CalendarDays className="w-4 h-4" />
-                            <span>{appointment.appointment_date}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4" />
-                            <span>{appointment.appointment_time} ({Number(appointment.duration_minutes ?? 0)}min)</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">
-                              {(items.length ? items.map(it => services.find(s => s.id === it.service_id)?.name).filter(Boolean).join(', ') : appointment.service_name) || '—'}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
-                          {appointment.customer_email && (
-                            <div className="flex items-center gap-2">
-                              <Mail className="w-4 h-4" />
-                              <span>{appointment.customer_email}</span>
+                    Reset filters
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => fetchData()}
+                    disabled={loading}
+                  >
+                    Refresh
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="w-full overflow-x-auto">
+                <UITable>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Time</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>Services</TableHead>
+                      <TableHead>Staff</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Price</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredAppointments.map((appointment) => {
+                      const items = appointmentServicesById[appointment.id] || [];
+                      const serviceNames = (items.length
+                        ? items.map(it => services.find(s => s.id === it.service_id)?.name).filter(Boolean).join(', ')
+                        : appointment.service_name) || '—';
+                      const staffNames = items.length
+                        ? items.map(it => {
+                            const srvName = services.find(s => s.id === it.service_id)?.name || 'Service';
+                            const stfName = staff.find(s => s.id === it.staff_id)?.full_name || 'Unassigned';
+                            return `${srvName} → ${stfName}`;
+                          }).join('; ')
+                        : (staff.find(s => s.id === appointment.staff_id)?.full_name || 'Not assigned');
+                      return (
+                        <TableRow key={appointment.id}>
+                          <TableCell className="whitespace-nowrap">{appointment.appointment_date}</TableCell>
+                          <TableCell className="whitespace-nowrap">{appointment.appointment_time} ({Number(appointment.duration_minutes ?? 0)}min)</TableCell>
+                          <TableCell>
+                            <div className="font-medium flex items-center gap-2">
+                              <User className="w-4 h-4 text-muted-foreground" />
+                              {appointment.customer_name}
                             </div>
-                          )}
-                          {appointment.customer_phone && (
-                            <div className="flex items-center gap-2">
-                              <Phone className="w-4 h-4" />
-                              <span>{appointment.customer_phone}</span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col text-sm text-muted-foreground">
+                              {appointment.customer_email && (
+                                <span className="inline-flex items-center gap-2"><Mail className="w-4 h-4" />{appointment.customer_email}</span>
+                              )}
+                              {appointment.customer_phone && (
+                                <span className="inline-flex items-center gap-2"><Phone className="w-4 h-4" />{appointment.customer_phone}</span>
+                              )}
                             </div>
-                          )}
-                          <div>
-                            <span className="font-medium">Staff: </span>
-                            {items.length
-                              ? items.map(it => {
-                                  const srvName = services.find(s => s.id === it.service_id)?.name || 'Service';
-                                  const stfName = staff.find(s => s.id === it.staff_id)?.full_name || 'Unassigned';
-                                  return `${srvName} → ${stfName}`;
-                                }).join('; ')
-                              : (staff.find(s => s.id === appointment.staff_id)?.full_name || "Not assigned")}
-                          </div>
-                        </div>
-                        {appointment.notes && (
-                          <div className="text-sm text-muted-foreground">
-                            <span className="font-medium">Notes: </span>
-                            {appointment.notes}
-                          </div>
-                        )}
-                        {Number(appointment.price || 0) > 0 && (
-                          <div className="text-sm font-medium text-green-600">
-                            ${Number(appointment.price || 0).toFixed(2)}
-                          </div>
-                        )}
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="z-50 bg-background">
-                          <DropdownMenuItem onClick={() => handleView(appointment)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Appointment
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleCreateJobcard(appointment)}>
-                            <FilePlus className="mr-2 h-4 w-4" />
-                            Create Jobcard
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEdit(appointment)}>
-                            <Edit2 className="mr-2 h-4 w-4" />
-                            Edit Appointment
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => handleDelete(appointment.id)}
-                            disabled={appointmentsWithJobcards.has(appointment.id)}
-                            className={appointmentsWithJobcards.has(appointment.id) ? 'text-slate-400' : ''}
-                            title={appointmentsWithJobcards.has(appointment.id) ? 'Cannot delete: job card exists for this appointment' : undefined}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Appointment
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                          </TableCell>
+                          <TableCell className="max-w-[260px]"><span className="line-clamp-2">{serviceNames}</span></TableCell>
+                          <TableCell className="max-w-[280px]"><span className="line-clamp-2">{staffNames}</span></TableCell>
+                          <TableCell>
+                            <Badge className={getStatusColor(appointment.status || 'scheduled')}>
+                              {String(appointment.status || 'scheduled').replace('_', ' ')}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right whitespace-nowrap">
+                            {Number(appointment.price || 0) > 0 ? `$${Number(appointment.price || 0).toFixed(2)}` : '—'}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="z-50 bg-background">
+                                <DropdownMenuItem onClick={() => handleView(appointment)}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Appointment
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleCreateJobcard(appointment)}>
+                                  <FilePlus className="mr-2 h-4 w-4" />
+                                  Create Jobcard
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEdit(appointment)}>
+                                  <Edit2 className="mr-2 h-4 w-4" />
+                                  Edit Appointment
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDelete(appointment.id)}
+                                  disabled={appointmentsWithJobcards.has(appointment.id)}
+                                  className={appointmentsWithJobcards.has(appointment.id) ? 'text-slate-400' : ''}
+                                  title={appointmentsWithJobcards.has(appointment.id) ? 'Cannot delete: job card exists for this appointment' : undefined}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete Appointment
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                  <TableCaption>{filteredAppointments.length} appointments</TableCaption>
+                </UITable>
+              </div>
+            )}
         </CardContent>
       </Card>
 
