@@ -490,7 +490,8 @@ export default function CreateJobCard() {
       } catch (insErr: any) {
         const message = String(insErr?.message || "");
         const code = (insErr as any)?.code || '';
-        const isMissingLocationCol = code === '42703' || /column\s+"?location_id"?\s+does not exist/i.test(message);
+        const schemaCacheMissingLocation = /schema cache/i.test(message) && /job_cards/i.test(message) && /location_id/i.test(message);
+        const isMissingLocationCol = code === '42703' || /column\s+"?location_id"?\s+does not exist/i.test(message) || schemaCacheMissingLocation;
         const isUnknownColumn = code === '42703' || /column\s+"?[a-zA-Z0-9_]+"?\s+does not exist/i.test(message);
 
         if (isMissingLocationCol) {
