@@ -474,39 +474,17 @@ export default function StaffProfile() {
               <Card className="shadow-lg overflow-hidden">
                 <div className="relative h-28 w-full bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-400" />
                 <CardContent className="pt-0">
-                  <div className="-mt-10 flex items-end gap-4">
-                    <div className="relative">
-                      <Avatar className="w-20 h-20 ring-4 ring-white shadow-xl">
-                        {staff.profile_image ? (
-                          <AvatarImage src={staff.profile_image} alt={staff.full_name} />
-                        ) : (
-                          <AvatarFallback className="text-xl font-semibold">
-                            {getInitials(staff.full_name)}
-                          </AvatarFallback>
-                        )}
-                      </Avatar>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full p-0"
-                        onClick={handleAvatarFilePick}
-                        disabled={avatarUploading}
-                      >
-                        <Camera className="w-3 h-3" />
-                      </Button>
+                  <div className="mt-2">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-semibold">{staff.full_name}</h2>
+                      <Badge variant={staff.is_active ? 'default' : 'secondary'}>
+                        {staff.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-xl font-semibold">{staff.full_name}</h2>
-                        <Badge variant={staff.is_active ? 'default' : 'secondary'}>
-                          {staff.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </div>
-                      <div className="text-slate-600 text-sm flex flex-wrap items-center gap-3 mt-1">
-                        {staff.email && <span className="truncate">{staff.email}</span>}
-                        {staff.phone && <span>{staff.phone}</span>}
-                        {typeof staff.commission_rate === 'number' && <span>{staff.commission_rate}% commission</span>}
-                      </div>
+                    <div className="text-slate-600 text-sm flex flex-wrap items-center gap-3 mt-1">
+                      {staff.email && <span className="truncate">{staff.email}</span>}
+                      {staff.phone && <span>{staff.phone}</span>}
+                      {typeof staff.commission_rate === 'number' && <span>{staff.commission_rate}% commission</span>}
                     </div>
                   </div>
                 </CardContent>
