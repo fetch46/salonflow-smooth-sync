@@ -336,7 +336,7 @@ export default function JobCards() {
       // Also create receipt items from job_card_services for commission allocation
       const { data: jobServices } = await supabase
         .from('job_card_services')
-        .select('service_id, staff_id, quantity, unit_price, services:service_id(name)')
+        .select('id, service_id, staff_id, quantity, unit_price, commission_percentage, services:service_id(name)')
         .eq('job_card_id', card.id);
 
       if (jobServices && jobServices.length > 0) {
@@ -354,6 +354,29 @@ export default function JobCards() {
           .from('receipt_items')
           .insert(items);
         if (itemsError) throw itemsError;
+
+        // Upsert staff commissions per job card service line
+        const commissionRows = jobServices.map((js: any) => {
+          const qty = Number(js.quantity || 1);
+          const price = Number(js.unit_price || 0);
+          const gross = qty * price;
+          const rate = Number(js.commission_percentage ?? 0);
+          const commission = Number(((gross * rate) / 100).toFixed(2));
+          return {
+            receipt_id: receipt.id,
+            job_card_id: card.id,
+            job_card_service_id: js.id,
+            staff_id: js.staff_id || null,
+            service_id: js.service_id,
+            commission_rate: rate,
+            gross_amount: gross,
+            commission_amount: commission,
+          };
+        });
+        const { error: commErr } = await supabase
+          .from('staff_commissions')
+          .upsert(commissionRows as any, { onConflict: 'job_card_service_id' });
+        if (commErr) throw commErr;
       }
 
       // Mark this job card as having a receipt without a full refetch
