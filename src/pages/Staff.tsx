@@ -51,6 +51,7 @@ import { format, startOfDay, endOfDay } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useNavigate } from "react-router-dom";
 import { useOrganizationCurrency, useOrganization } from "@/lib/saas/hooks";
+import { SelectContent as _SC } from "@/components/ui/select";
 
 interface Staff {
   id: string;
@@ -131,7 +132,45 @@ export default function Staff() {
     commission_rate: 15,
     hire_date: "",
     is_active: true,
+    default_location_id: "",
   });
+
+  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
+  const [defaultLocationByStaffId, setDefaultLocationByStaffId] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase.from('business_locations').select('id, name').eq('is_active', true).order('name');
+        setLocations(data || []);
+      } catch {}
+    })();
+  }, []);
+
+  const loadDefaultLocations = useCallback(async () => {
+    try {
+      const { data } = await supabase.from('staff_default_locations').select('staff_id, location_id');
+      const map: Record<string, string> = {};
+      (data || []).forEach((r: any) => { if (r.staff_id && r.location_id) map[r.staff_id] = r.location_id; });
+      setDefaultLocationByStaffId(map);
+    } catch {}
+  }, []);
+
+  useEffect(() => { loadDefaultLocations(); }, [loadDefaultLocations]);
+
+  const saveDefaultLocation = async (staffId: string, locationId: string) => {
+    try {
+      // upsert
+      const { error } = await supabase
+        .from('staff_default_locations')
+        .upsert({ staff_id: staffId, location_id: locationId }, { onConflict: 'staff_id' });
+      if (error) throw error;
+      setDefaultLocationByStaffId((prev) => ({ ...prev, [staffId]: locationId }));
+      toast({ title: 'Default location updated' });
+    } catch (e: any) {
+      toast({ title: 'Failed to update default location', description: e?.message || 'Unexpected error', variant: 'destructive' });
+    }
+  };
  
   const fetchStaff = useCallback(async () => {
     try {
@@ -288,6 +327,22 @@ export default function Staff() {
 
         if (error) throw error;
 
+        // If default location chosen on create, persist it
+        if (formData.default_location_id) {
+          try {
+            const { data: created } = await supabase
+              .from('staff')
+              .select('id')
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
+            const newId = (created as any)?.id;
+            if (newId) {
+              await supabase.from('staff_default_locations').upsert({ staff_id: newId, location_id: formData.default_location_id }, { onConflict: 'staff_id' });
+            }
+          } catch {}
+        }
+
         toast({
           title: "Success",
           description: "Staff member created successfully",
@@ -317,6 +372,7 @@ export default function Staff() {
       commission_rate: 15,
       hire_date: "",
       is_active: true,
+      default_location_id: "",
     });
     setEditingStaff(null);
   };
@@ -331,6 +387,7 @@ export default function Staff() {
       commission_rate: staffMember.commission_rate || 15,
       hire_date: staffMember.hire_date || "",
       is_active: staffMember.is_active,
+      default_location_id: defaultLocationByStaffId[staffMember.id] || "",
     });
     setEditingStaff(staffMember);
     setIsModalOpen(true);
@@ -925,6 +982,7 @@ export default function Staff() {
                         <TableHead>Commission %</TableHead>
                         <TableHead>Hire Date</TableHead>
                         <TableHead>Role</TableHead>
+                        <TableHead>Default Location</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -945,6 +1003,18 @@ export default function Staff() {
                             ) : (
                               <span className="text-slate-400">—</span>
                             )}
+                          </TableCell>
+                          <TableCell>
+                            <Select value={defaultLocationByStaffId[member.id] || ''} onValueChange={(val) => saveDefaultLocation(member.id, val)}>
+                              <SelectTrigger className="w-[200px]">
+                                <SelectValue placeholder="Select" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {locations.map((loc) => (
+                                  <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>

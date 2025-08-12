@@ -449,6 +449,7 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
       service_id: item.service_id || null,
       product_id: item.product_id || null,
       staff_id: item.staff_id || null,
+      location_id: item.location_id || null,
       commission_percentage: typeof item.commission_percentage === 'number' ? item.commission_percentage : null,
       commission_amount: typeof item.commission_percentage === 'number'
         ? Number(((item.commission_percentage / 100) * (item.total_price ?? (item.quantity * item.unit_price))).toFixed(2))
@@ -493,6 +494,7 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
           unit_price: it.unit_price || 0,
           total_price: it.total_price || ((it.quantity || 1) * (it.unit_price || 0)),
           staff_id: it.staff_id || null,
+          location_id: it.location_id || null,
           commission_percentage: typeof it.commission_percentage === 'number' ? it.commission_percentage : null,
           commission_amount: typeof it.commission_percentage === 'number'
             ? Number(((it.commission_percentage / 100) * ((it.total_price ?? ((it.quantity || 1) * (it.unit_price || 0)) ))).toFixed(2))
@@ -519,29 +521,73 @@ export async function getInvoicesWithFallback(supabase: any) {
 
     if (error) throw error;
 
-    // Map to the shape expected by the UI (with customer_*)
-    return (data || []).map((inv: any) => ({
-      id: inv.id,
-      invoice_number: inv.invoice_number,
-      customer_id: inv.client_id,
-      customer_name: inv.client?.full_name || '',
-      customer_email: inv.client?.email || null,
-      customer_phone: inv.client?.phone || null,
-      subtotal: inv.subtotal,
-      tax_amount: inv.tax_amount,
-      discount_amount: 0,
-      total_amount: inv.total_amount,
-      status: inv.status,
-      due_date: inv.due_date,
+    if ((data || []).length > 0) {
+      // Map to the shape expected by the UI (with customer_*)
+      return (data || []).map((inv: any) => ({
+        id: inv.id,
+        invoice_number: inv.invoice_number,
+        customer_id: inv.client_id,
+        customer_name: inv.client?.full_name || '',
+        customer_email: inv.client?.email || null,
+        customer_phone: inv.client?.phone || null,
+        subtotal: inv.subtotal,
+        tax_amount: inv.tax_amount,
+        discount_amount: 0,
+        total_amount: inv.total_amount,
+        status: inv.status,
+        due_date: inv.due_date,
+        payment_method: null,
+        notes: inv.notes,
+        jobcard_id: null,
+        created_at: inv.created_at,
+        updated_at: inv.updated_at,
+      }));
+    }
+
+    // If no rows in Supabase, surface any locally stored receipts as invoices
+    const receipts = await mockDb.getReceipts();
+    return (receipts || []).map((r: any) => ({
+      id: r.id,
+      invoice_number: r.receipt_number,
+      customer_id: r.customer_id || null,
+      customer_name: '',
+      customer_email: null,
+      customer_phone: null,
+      subtotal: Number(r.subtotal || 0),
+      tax_amount: Number(r.tax_amount || 0),
+      discount_amount: Number(r.discount_amount || 0),
+      total_amount: Number(r.total_amount || 0),
+      status: r.status || 'draft',
+      due_date: null,
       payment_method: null,
-      notes: inv.notes,
+      notes: r.notes || null,
       jobcard_id: null,
-      created_at: inv.created_at,
-      updated_at: inv.updated_at,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
     }));
   } catch (error) {
     console.log('Using mock database for invoices');
-    return await mockDb.getReceipts();
+    const receipts = await mockDb.getReceipts();
+    // Map mock receipts to invoice UI shape
+    return (receipts || []).map((r: any) => ({
+      id: r.id,
+      invoice_number: r.receipt_number,
+      customer_id: r.customer_id || null,
+      customer_name: '',
+      customer_email: null,
+      customer_phone: null,
+      subtotal: Number(r.subtotal || 0),
+      tax_amount: Number(r.tax_amount || 0),
+      discount_amount: Number(r.discount_amount || 0),
+      total_amount: Number(r.total_amount || 0),
+      status: r.status || 'draft',
+      due_date: null,
+      payment_method: null,
+      notes: r.notes || null,
+      jobcard_id: null,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+    }));
   }
 }
 

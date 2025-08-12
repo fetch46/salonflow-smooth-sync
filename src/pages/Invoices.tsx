@@ -79,6 +79,7 @@ import {
 } from "@/utils/mockDatabase";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { useOrganizationTaxRate } from "@/lib/saas/hooks";
+import { Database } from "@/integrations/supabase/types";
 
 interface Invoice {
   id: string;
@@ -217,12 +218,23 @@ export default function Invoices() {
   });
 
   const [selectedItems, setSelectedItems] = useState<InvoiceItem[]>([]);
+  const [defaultLocationByStaffId, setDefaultLocationByStaffId] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchInvoices();
     fetchCustomers();
     fetchServices();
     fetchStaff();
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('staff_default_locations')
+          .select('staff_id, location_id');
+        const map: Record<string, string> = {};
+        (data || []).forEach((r: any) => { if (r.staff_id && r.location_id) map[r.staff_id] = r.location_id; });
+        setDefaultLocationByStaffId(map);
+      } catch {}
+    })();
   }, []);
 
   // Prefill from job card if query param present
@@ -391,7 +403,7 @@ export default function Invoices() {
     const staffMember = staff.find(s => s.id === newItem.staff_id);
 
     const unit = parseFloat(newItem.unit_price) || 0;
-    const gross = newItem.quantity * unit * (1 - newItem.discount_percentage / 100);
+    const gross = newItem.quantity * unit * (newItem.discount_percentage / 100 < 1 ? (1 - newItem.discount_percentage / 100) : 1);
     const commissionPct = Number(newItem.commission_percentage || 0);
 
     const item = {
@@ -399,19 +411,23 @@ export default function Invoices() {
       invoice_id: "",
       product_id: newItem.service_id,
       service_id: newItem.service_id,
-      description: newItem.description,
+      description: newItem.description || (service?.name || "Service"),
       quantity: newItem.quantity,
-      discount_percentage: newItem.discount_percentage,
-      staff_id: newItem.staff_id,
-      commission_percentage: commissionPct,
       unit_price: unit,
-      total_price: gross,
-      commission_amount: Number(((commissionPct / 100) * gross).toFixed(2)),
-      service_name: service?.name || "",
-      staff_name: staffMember?.full_name || "",
-    };
+      discount_percentage: newItem.discount_percentage || 0,
+      staff_id: newItem.staff_id || "",
+      commission_percentage: commissionPct,
+      // Attach default location if a staff with default is selected (used by downstream posting flows)
+      location_id: newItem.staff_id ? (defaultLocationByStaffId[newItem.staff_id] || null) : null,
+    } as any;
 
-    setSelectedItems([...selectedItems, item]);
+    const totalPrice = Number((item.quantity * item.unit_price * (1 - (item.discount_percentage / 100))).toFixed(2));
+    (item as any).total_price = totalPrice;
+    (item as any).staff_name = staffMember?.full_name || '';
+    (item as any).service_name = service?.name || '';
+
+    setSelectedItems(prev => [...prev, item as any]);
+
     setNewItem({
       service_id: "",
       description: "",
