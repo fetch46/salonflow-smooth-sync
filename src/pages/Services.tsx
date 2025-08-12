@@ -770,6 +770,10 @@ export default function Services() {
     }
   };
 
+  const handleView = (service: Service) => {
+    navigate(`/services/${service.id}`);
+  };
+
   const toggleServiceStatus = async (id: string, currentStatus: boolean) => {
     try {
       const { error } = await supabase
@@ -1276,6 +1280,7 @@ export default function Services() {
                 <div className="p-6">
                 <ServicesTable
                   services={currentServices}
+                  onView={handleView}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   onToggleStatus={toggleServiceStatus}

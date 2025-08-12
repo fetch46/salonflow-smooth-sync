@@ -11,7 +11,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Edit2, Trash2, Star, Users } from "lucide-react";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Edit2, Trash2, Star, Users, Eye, MoreVertical } from "lucide-react";
 
 type ServiceLite = {
   id: string;
@@ -27,6 +28,7 @@ type ServiceLite = {
 
 interface ServicesTableProps {
   services: ServiceLite[];
+  onView: (service: ServiceLite) => void;
   onEdit: (service: ServiceLite) => void;
   onDelete: (id: string) => void;
   onToggleStatus: (id: string, current: boolean) => void;
@@ -36,6 +38,7 @@ interface ServicesTableProps {
 
 const ServicesTable: React.FC<ServicesTableProps> = ({
   services,
+  onView,
   onEdit,
   onDelete,
   onToggleStatus,
@@ -120,25 +123,31 @@ const ServicesTable: React.FC<ServicesTableProps> = ({
               </div>
             </TableCell>
             <TableCell className="text-right">
-              <div className="inline-flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onEdit(s)}
-                  aria-label="Edit service"
-                >
-                  <Edit2 className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-red-600 hover:text-red-700"
-                  onClick={() => onDelete(s.id)}
-                  aria-label="Delete service"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem onClick={() => onView(s)}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    View
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onEdit(s)}>
+                    <Edit2 className="mr-2 h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-red-600 focus:text-red-600"
+                    onClick={() => onDelete(s.id)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </TableCell>
           </TableRow>
         ))}
