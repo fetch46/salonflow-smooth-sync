@@ -606,6 +606,104 @@ export async function getAllInvoicePaymentsWithFallback(supabase: any): Promise<
   }
 }
 
+export async function updateInvoicePaymentWithFallback(
+  supabase: any,
+  id: string,
+  updates: Partial<{ amount: number; method: string; reference_number: string | null; payment_date: string }>
+): Promise<boolean> {
+  try {
+    const allowed: any = {};
+    if (typeof updates.amount !== 'undefined') allowed.amount = updates.amount;
+    if (typeof updates.method !== 'undefined') allowed.method = updates.method;
+    if (typeof updates.reference_number !== 'undefined') allowed.reference_number = updates.reference_number;
+    if (typeof updates.payment_date !== 'undefined') allowed.payment_date = updates.payment_date;
+
+    const { error } = await supabase
+      .from('invoice_payments')
+      .update(allowed)
+      .eq('id', id);
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.log('Using mock database for updating invoice payment');
+    const storage = getStorage();
+    storage.invoice_payments = (storage.invoice_payments || []).map((p: any) =>
+      p.id === id ? { ...p, ...updates, updated_at: new Date().toISOString() } : p
+    );
+    setStorage(storage);
+    return true;
+  }
+}
+
+export async function deleteInvoicePaymentWithFallback(supabase: any, id: string): Promise<boolean> {
+  // Prefer RPC that also removes ledger entries, if available
+  try {
+    const { error: rpcError } = await supabase.rpc('delete_invoice_payment_and_ledger', { p_payment_id: id });
+    if (!rpcError) return true;
+  } catch {}
+
+  // Legacy: delete just the payment row
+  try {
+    let payment: any = null;
+    try {
+      const { data } = await supabase
+        .from('invoice_payments')
+        .select('id, invoice_id, amount, payment_date')
+        .eq('id', id)
+        .maybeSingle();
+      payment = data || null;
+    } catch {}
+
+    const { error } = await supabase.from('invoice_payments').delete().eq('id', id);
+    if (error) throw error;
+
+    // Best-effort cleanup of ledger rows if policy allows
+    if (payment && payment.invoice_id && payment.amount && payment.payment_date) {
+      try {
+        await supabase
+          .from('account_transactions')
+          .delete()
+          .eq('reference_type', 'invoice_payment')
+          .eq('reference_id', String(payment.invoice_id))
+          .eq('transaction_date', payment.payment_date)
+          .or(`debit_amount.eq.${Number(payment.amount)},credit_amount.eq.${Number(payment.amount)}` as any);
+      } catch {}
+    }
+
+    return true;
+  } catch (err) {
+    console.log('Using mock database for deleting invoice payment');
+    const storage = getStorage();
+
+    const existing = (storage.invoice_payments || []).find((p: any) => p.id === id) || null;
+
+    storage.invoice_payments = (storage.invoice_payments || []).filter((p: any) => p.id !== id);
+
+    // Recalculate related invoice status after deletion in fallback
+    if (existing && existing.invoice_id) {
+      try {
+        const invId = existing.invoice_id;
+        const receiptsArr: any[] = storage.receipts || [];
+        const idx = receiptsArr.findIndex((x: any) => x.id === invId);
+        if (idx !== -1) {
+          const nowIso = new Date().toISOString();
+          const invoice = receiptsArr[idx];
+          const paidSum = (storage.invoice_payments || [])
+            .filter((p: any) => p.invoice_id === invId)
+            .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+          const total = Number(invoice.total_amount || 0);
+          const newStatus = paidSum >= total ? 'paid' : paidSum > 0 ? 'partial' : (invoice.status || 'sent');
+          receiptsArr[idx] = { ...invoice, status: newStatus, updated_at: nowIso };
+          storage.receipts = receiptsArr;
+        }
+      } catch {}
+    }
+
+    setStorage(storage);
+    return true;
+  }
+}
+
 export async function updateInvoiceWithFallback(supabase: any, id: string, updates: any) {
   try {
     const allowed: any = {};
@@ -796,15 +894,17 @@ export async function deleteReceiptPaymentWithFallback(supabase: any, id: string
   try {
     const { error: rpcError } = await supabase.rpc('delete_receipt_payment_and_ledger', { p_payment_id: id });
     if (!rpcError) return true;
-    // If RPC is missing or fails, fall through to legacy path
   } catch {}
 
   // Legacy: delete just the payment row
   try {
-    // Fetch the payment first (to allow potential client-side cleanups if needed)
     let payment: any = null;
     try {
-      const { data } = await supabase.from('receipt_payments').select('id, receipt_id, amount, payment_date').eq('id', id).maybeSingle();
+      const { data } = await supabase
+        .from('receipt_payments')
+        .select('id, receipt_id, amount, payment_date')
+        .eq('id', id)
+        .maybeSingle();
       payment = data || null;
     } catch {}
 
