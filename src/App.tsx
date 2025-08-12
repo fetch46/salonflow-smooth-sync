@@ -68,6 +68,7 @@ const Help = lazy(() => import("@/pages/Help"));
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 // Lazy-load heavy pages to reduce initial bundle size
 const Payments = lazy(() => import("@/pages/Payments"));
+const PaymentReceivedNew = lazy(() => import("@/pages/PaymentReceivedNew"));
 const Banking = lazy(() => import("@/pages/Banking"));
 const Journal = lazy(() => import("@/pages/Journal"));
 // Removed standalone Trial Balance page import
@@ -203,6 +204,7 @@ const AppRoutes = () => {
           <Route path="accounts/:id" element={<AccountView />} />
           <Route path="accounts/:id/edit" element={<AccountEdit />} />
           <Route path="payments" element={<Payments />} />
+          <Route path="payments/received/new" element={<PaymentReceivedNew />} />
           <Route path="banking" element={<Banking />} />
           <Route path="journal" element={<Journal />} />
           {/* Removed standalone Trial Balance route in favor of Reports tab */}
