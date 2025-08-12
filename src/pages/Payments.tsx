@@ -337,12 +337,13 @@ export default function Payments() {
 
   const exportCsv = () => {
     try {
-      const headers = ["Invoice #", "Client", "Payment Date", "Amount", "Method", "Reference"];
+      const headers = ["Invoice #", "Client", "Location", "Payment Date", "Amount", "Method", "Reference"];
       const rows = filteredReceived.map(p => {
         const r = invoicesById[p.invoice_id];
         const clientName = r?.customer_id ? (clientsById[r.customer_id]?.full_name || '—') : '—';
+        const locationName = (() => { const lid = (r as any)?.location_id; return lid ? (locations.find(l => l.id === lid)?.name || '—') : '—'; })();
         const dateStr = format(new Date(p.payment_date || r?.created_at || new Date()), 'yyyy-MM-dd');
-        return [r?.invoice_number || '—', clientName, dateStr, String(Number(p.amount || 0).toFixed(2)), (p.method || '').toUpperCase(), p.reference_number || '—'];
+        return [r?.invoice_number || '—', clientName, locationName, dateStr, String(Number(p.amount || 0).toFixed(2)), (p.method || '').toUpperCase(), p.reference_number || '—'];
       });
       const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
