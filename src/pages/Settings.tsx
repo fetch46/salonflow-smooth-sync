@@ -267,6 +267,7 @@ phone: "",
     name: string;
     description: string | null;
     is_active: boolean;
+    default_warehouse_id?: string | null;
   }[]>([])
   // Warehouses State
   const [warehouses, setWarehouses] = useState<Array<{ id: string; name: string; location_id: string; is_active: boolean }>>([])
@@ -284,13 +285,14 @@ phone: "",
     name: "",
     description: "",
     is_active: true,
+    default_warehouse_id: "",
   })
   // Default POS Location (organization setting)
   const [defaultPosLocationId, setDefaultPosLocationId] = useState<string>("")
 
   const openNewLocation = () => {
     setEditingLocation(null)
-    setLocationForm({ name: "", description: "", is_active: true })
+    setLocationForm({ name: "", description: "", is_active: true, default_warehouse_id: "" })
     setIsLocationDialogOpen(true)
   }
 
@@ -305,6 +307,7 @@ phone: "",
       name: location.name,
       description: location.description || "",
       is_active: location.is_active,
+      default_warehouse_id: location.default_warehouse_id || "",
     })
     setIsLocationDialogOpen(true)
   }
@@ -492,6 +495,7 @@ phone: "",
             name: locationForm.name,
             address: locationForm.description,
             is_active: locationForm.is_active,
+            default_warehouse_id: locationForm.default_warehouse_id || null,
           })
           .eq('id', editingLocation.id);
         toast.success('Location updated successfully');
@@ -510,6 +514,7 @@ phone: "",
             name: locationForm.name,
             address: locationForm.description,
             is_active: locationForm.is_active,
+            default_warehouse_id: locationForm.default_warehouse_id || null,
           });
         toast.success('Location created successfully');
         setIsLocationDialogOpen(false);
@@ -575,7 +580,7 @@ phone: "",
     try {
       const { data, error } = await supabase
         .from('business_locations')
-        .select('id, name, address, is_active')
+        .select('id, name, address, is_active, default_warehouse_id')
         .eq('organization_id', organization.id)
         .order('name');
       if (error) throw error;
@@ -584,6 +589,7 @@ phone: "",
         name: row.name,
         description: row.address ?? null,
         is_active: row.is_active,
+        default_warehouse_id: row.default_warehouse_id || null,
       }));
       setStockLocations(mapped);
     } catch (e: any) {
@@ -1396,6 +1402,7 @@ phone: "",
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Address</TableHead>
+                      <TableHead>Default Warehouse</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -1403,7 +1410,7 @@ phone: "",
                   <TableBody>
                     {stockLocations.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
                           No locations yet. Click "Add Location" to create your first location.
                         </TableCell>
                       </TableRow>
@@ -1412,6 +1419,36 @@ phone: "",
                         <TableRow key={location.id}>
                           <TableCell className="font-medium">{location.name}</TableCell>
                           <TableCell className="text-muted-foreground">{location.description}</TableCell>
+                          <TableCell>
+                            <Select
+                              value={location.default_warehouse_id || ""}
+                              onValueChange={async (val) => {
+                                try {
+                                  await supabase
+                                    .from('business_locations')
+                                    .update({ default_warehouse_id: val || null })
+                                    .eq('id', location.id);
+                                  setStockLocations(prev => prev.map(l => l.id === location.id ? { ...l, default_warehouse_id: val || null } : l));
+                                  toast.success('Default warehouse updated');
+                                } catch (e) {
+                                  console.error(e);
+                                  toast.error('Failed to set default warehouse');
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="w-56">
+                                <SelectValue placeholder="Select default warehouse" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="">— None —</SelectItem>
+                                {warehouses
+                                  .filter(w => w.is_active)
+                                  .map(w => (
+                                    <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
                           <TableCell>
                             <Badge variant={location.is_active ? "default" : "secondary"}>
                               {location.is_active ? "Active" : "Inactive"}
@@ -1443,6 +1480,23 @@ phone: "",
                       <div className="space-y-2">
                         <Label htmlFor="loc_desc">Address</Label>
                         <Textarea id="loc_desc" value={locationForm.description} onChange={(e) => setLocationForm({ ...locationForm, description: e.target.value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Default Warehouse</Label>
+                        <Select
+                          value={locationForm.default_warehouse_id}
+                          onValueChange={(v) => setLocationForm(prev => ({ ...prev, default_warehouse_id: v }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a default warehouse (optional)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">— None —</SelectItem>
+                            {warehouses.filter(w => w.is_active).map(w => (
+                              <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="flex items-center justify-between">
                         <div>

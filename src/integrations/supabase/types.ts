@@ -548,6 +548,7 @@ export type Database = {
           organization_id: string
           phone: string | null
           updated_at: string
+          default_warehouse_id: string | null
         }
         Insert: {
           address?: string | null
@@ -561,6 +562,7 @@ export type Database = {
           organization_id: string
           phone?: string | null
           updated_at?: string
+          default_warehouse_id?: string | null
         }
         Update: {
           address?: string | null
@@ -574,20 +576,21 @@ export type Database = {
           organization_id?: string
           phone?: string | null
           updated_at?: string
+          default_warehouse_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "business_locations_manager_id_fkey"
-            columns: ["manager_id"]
-            isOneToOne: false
-            referencedRelation: "staff"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "business_locations_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_locations_default_warehouse_id_fkey"
+            columns: ["default_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
             referencedColumns: ["id"]
           },
         ]
@@ -989,7 +992,7 @@ export type Database = {
             foreignKeyName: "inventory_levels_location_id_fkey"
             columns: ["location_id"]
             isOneToOne: false
-            referencedRelation: "storage_locations"
+            referencedRelation: "business_locations"
             referencedColumns: ["id"]
           },
         ]
