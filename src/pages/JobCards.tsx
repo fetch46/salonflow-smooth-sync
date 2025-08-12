@@ -643,7 +643,7 @@ export default function JobCards() {
                       Print
                     </DropdownMenuItem>
                     {jobCard.status === 'completed' && !jobCardsWithReceipts.has(jobCard.id) && (
-                      <DropdownMenuItem onClick={() => createReceiptFromJobCard(jobCard)}>
+                      <DropdownMenuItem onClick={() => navigate(`/invoices?fromJobCard=${jobCard.id}`)}>
                         <Receipt className="w-4 h-4 mr-2" />
                         Create Invoice
                       </DropdownMenuItem>
@@ -720,7 +720,7 @@ export default function JobCards() {
                       Edit
                     </DropdownMenuItem>
                     {jobCard.status === 'completed' && !jobCardsWithReceipts.has(jobCard.id) && (
-                      <DropdownMenuItem onClick={() => createReceiptFromJobCard(jobCard)}>
+                      <DropdownMenuItem onClick={() => navigate(`/invoices?fromJobCard=${jobCard.id}`)}>
                         <Receipt className="w-4 h-4 mr-2" />
                         Create Invoice
                       </DropdownMenuItem>
