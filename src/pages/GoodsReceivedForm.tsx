@@ -130,21 +130,7 @@ export default function GoodsReceivedForm() {
 
       setLoading(true);
 
-      // Helper to recompute and update purchase status after receiving
-      const updatePurchaseStatusAfterReceiving = async (pid: string) => {
-        try {
-          const { data: items, error } = await supabase
-            .from("purchase_items")
-            .select("quantity, received_quantity")
-            .eq("purchase_id", pid);
-          if (error) throw error;
-          const list = (items || []) as Array<{ quantity: number; received_quantity: number }>;
-          const anyReceived = list.some(it => Number(it.received_quantity || 0) > 0);
-          const allReceived = list.length > 0 && list.every(it => Number(it.received_quantity || 0) >= Number(it.quantity || 0));
-          const newStatus = allReceived ? "received" : (anyReceived ? "partial" : "pending");
-          await supabase.from("purchases").update({ status: newStatus }).eq("id", pid);
-        } catch (ignore) {
-          // Best-effort; ignore status update failure
+
         }
       };
 
@@ -209,6 +195,7 @@ export default function GoodsReceivedForm() {
             .from("goods_received")
             .insert([
               {
+                organization_id: orgId,
                 purchase_id: purchaseId,
                 received_date: receivedDate,
                 warehouse_id: warehouseId,
@@ -246,6 +233,8 @@ export default function GoodsReceivedForm() {
             p_lines: payload as any,
           });
           if (error) throw error;
+          // Guard: if RPC did not create a header, ensure one exists for listing
+          await ensureReceiptRecord(entries as any);
         } catch (rpcError: any) {
           // If RPC missing or fails, fallback
           console.warn('record_goods_received RPC failed, applying manual receive fallback:', rpcError?.message || rpcError);
@@ -270,6 +259,9 @@ export default function GoodsReceivedForm() {
             p_quantities: qMap as any,
           });
           if (error) throw error;
+          // For update, ensure a header exists and items are present for listing
+          const editEntries = Object.entries(quantities).filter(([, q]) => Number(q) > 0) as [string, number][];
+          await ensureReceiptRecord(editEntries);
         } catch (rpcError: any) {
           // Conservative fallback for edit: apply deltas to inventory and update purchase items
           console.warn('update_goods_received RPC failed, applying manual update fallback:', rpcError?.message || rpcError);
@@ -323,15 +315,16 @@ export default function GoodsReceivedForm() {
 
           // 3) Try updating goods_received header and replacing items
           try {
-            await supabase
-              .from("goods_received")
-              .update({
-                received_date: receivedDate,
-                warehouse_id: warehouseId,
-                location_id: derivedLocationId,
-                notes: notes || null,
-              })
-              .eq("id", id);
+                         await supabase
+               .from("goods_received")
+               .update({
+                 organization_id: orgId,
+                 received_date: receivedDate,
+                 warehouse_id: warehouseId,
+                 location_id: derivedLocationId,
+                 notes: notes || null,
+               })
+               .eq("id", id);
             // Replace items
             await supabase.from("goods_received_items").delete().eq("goods_received_id", id);
             const itemsPayload = Object.entries(quantities)

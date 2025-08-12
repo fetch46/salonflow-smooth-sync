@@ -9,6 +9,7 @@ import { useSaas } from "@/lib/saas";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 function useSignOut() {
   const navigate = useNavigate();
@@ -44,6 +45,7 @@ export function AppTopbar() {
 
   const [notifications, setNotifications] = useState<any[]>([])
   const [notifLoading, setNotifLoading] = useState(false)
+  const [openCmd, setOpenCmd] = useState(false)
 
   useEffect(() => {
     (async () => {
@@ -62,6 +64,17 @@ export function AppTopbar() {
       }
     })()
   }, [user])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setOpenCmd((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [])
 
   const markAllRead = async () => {
     try {
@@ -106,16 +119,20 @@ export function AppTopbar() {
             </Select>
           )}
 
-                     <div className="relative hidden sm:block w-[220px] md:w-[320px]">
+          <div className="relative hidden sm:block w-[220px] md:w-[320px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input placeholder="Search clients, appointments..." className="pl-10 bg-muted/40" />
+            <Input placeholder="Search clients, appointments... (⌘K)" className="pl-10 bg-muted/40" onFocus={() => setOpenCmd(true)} />
           </div>
         </div>
 
         <div className="flex items-center gap-2 md:gap-3">
-          <Button size="sm" className="inline-flex gap-2 px-4 bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700" onClick={() => navigate('/pos')}>
+          <Button size="sm" variant="gradient" className="inline-flex gap-2 px-4" onClick={() => navigate('/pos')}>
             <CreditCard className="w-4 h-4" />
             POS
+          </Button>
+          <Button variant="outline" size="sm" className="hidden sm:inline-flex" onClick={() => setOpenCmd(true)}>
+            <Search className="w-4 h-4 mr-2" />
+            Search (⌘K)
           </Button>
 
           {isTrialing && daysLeftInTrial !== null && daysLeftInTrial <= 3 && (
@@ -138,6 +155,9 @@ export function AppTopbar() {
               <div className="flex items-center justify-between px-2 py-1">
                 <button className="text-xs text-muted-foreground hover:underline" onClick={(e) => { e.preventDefault(); markAllRead(); }}>
                   Mark all as read
+                </button>
+                <button className="text-xs text-muted-foreground hover:underline" onClick={() => navigate('/notifications')}>
+                  View all
                 </button>
               </div>
               <DropdownMenuLabel>Notifications</DropdownMenuLabel>
@@ -201,6 +221,25 @@ export function AppTopbar() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+        <CommandDialog open={openCmd} onOpenChange={setOpenCmd}>
+          <CommandInput placeholder="Search or jump to…" />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandGroup heading="Navigate">
+              <CommandItem onSelect={() => { navigate('/dashboard'); setOpenCmd(false); }}>Dashboard</CommandItem>
+              <CommandItem onSelect={() => { navigate('/clients'); setOpenCmd(false); }}>Clients</CommandItem>
+              <CommandItem onSelect={() => { navigate('/appointments'); setOpenCmd(false); }}>Appointments</CommandItem>
+              <CommandItem onSelect={() => { navigate('/receipts'); setOpenCmd(false); }}>Receipts</CommandItem>
+              <CommandItem onSelect={() => { navigate('/inventory'); setOpenCmd(false); }}>Inventory</CommandItem>
+              <CommandItem onSelect={() => { navigate('/reports'); setOpenCmd(false); }}>Reports</CommandItem>
+            </CommandGroup>
+            <CommandGroup heading="Actions">
+              <CommandItem onSelect={() => { navigate('/receipts/new'); setOpenCmd(false); }}>New Receipt</CommandItem>
+              <CommandItem onSelect={() => { navigate('/job-cards/new'); setOpenCmd(false); }}>New Job Card</CommandItem>
+              <CommandItem onSelect={() => { navigate('/services/new'); setOpenCmd(false); }}>New Service</CommandItem>
+            </CommandGroup>
+          </CommandList>
+        </CommandDialog>
       </div>
     </header>
   );
