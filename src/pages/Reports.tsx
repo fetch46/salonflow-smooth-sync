@@ -611,6 +611,34 @@ const Reports = () => {
     })();
   }, [activeTab, startDate, endDate, locationFilter]);
 
+  // Revenue by location state
+  const [revenueByLocation, setRevenueByLocation] = useState<Array<{ locationId: string | null; locationName: string; revenue: number }>>([]);
+  const [revenueByLocationLoading, setRevenueByLocationLoading] = useState(false);
+
+  useEffect(() => {
+    // Load revenue by location when revenue tab active or filters change
+    if (activeTab !== 'revenue') return;
+    const load = async () => {
+      try {
+        setRevenueByLocationLoading(true);
+        const baseUrl = (window as any).__API_BASE_URL__ || '/api';
+        const params = new URLSearchParams();
+        if (startDate) params.set('start', startDate);
+        if (endDate) params.set('end', endDate);
+        if (locationFilter && locationFilter !== 'all') params.set('locationId', locationFilter);
+        const resp = await fetch(`${baseUrl}/reports/revenue-by-location?${params.toString()}`);
+        const js = await resp.json();
+        setRevenueByLocation(Array.isArray(js.rows) ? js.rows : []);
+      } catch (e) {
+        console.error('Failed to load revenue by location', e);
+        setRevenueByLocation([]);
+      } finally {
+        setRevenueByLocationLoading(false);
+      }
+    };
+    load();
+  }, [activeTab, startDate, endDate]);
+
   return (
     <div className="flex-1 w-full space-y-6 px-4 sm:px-6 py-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen">
       {/* Header */}
@@ -723,6 +751,9 @@ const Reports = () => {
               )}
               <TabsTrigger value="revenue" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
                 <DollarSign className="w-5 h-5" /> Revenue
+              </TabsTrigger>
+              <TabsTrigger value="suggested" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
+                <Target className="w-5 h-5" /> Suggested
               </TabsTrigger>
               {activeTab === 'revenue' && (
                 <div className="ml-6 mt-2 space-y-1 text-sm">
@@ -925,6 +956,75 @@ const Reports = () => {
                         <div className="text-2xl font-bold text-purple-600">{formatMoney(overview.clients.current ? (overview.revenue.current / overview.clients.current) : 0, { decimals: 0 })}</div>
                         <div className="text-sm text-purple-700">Average per Client</div>
                       </div>
+                    </div>
+
+                    <div className="mt-6">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="font-semibold">Revenue by Location</div>
+                        <Button variant="outline" size="sm" onClick={() => setActiveTab('revenue')} disabled={revenueByLocationLoading}>
+                          <RefreshCw className={`w-4 h-4 mr-2 ${revenueByLocationLoading ? 'animate-spin' : ''}`} /> Refresh
+                        </Button>
+                      </div>
+                      <div className="border rounded-md overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Location</TableHead>
+                              <TableHead className="text-right">Revenue</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {revenueByLocation.map((r, idx) => (
+                              <TableRow key={idx}>
+                                <TableCell>{r.locationName}</TableCell>
+                                <TableCell className="text-right">{formatMoney(r.revenue, { decimals: 2 })}</TableCell>
+                              </TableRow>
+                            ))}
+                            {revenueByLocation.length === 0 && (
+                              <TableRow>
+                                <TableCell colSpan={2} className="text-center text-slate-500">No data</TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Suggested Reports */}
+            <TabsContent value="suggested" className="space-y-6">
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle>Suggested Reports</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="p-4 border rounded-md hover:bg-slate-50 cursor-pointer" onClick={() => setActiveTab('pnl')}>
+                      <div className="font-semibold flex items-center gap-2"><DollarSign className="w-4 h-4" /> Profit & Loss</div>
+                      <div className="text-sm text-slate-500">Income, COGS and Expenses for the selected period</div>
+                    </div>
+                    <div className="p-4 border rounded-md hover:bg-slate-50 cursor-pointer" onClick={() => setActiveTab('balancesheet')}>
+                      <div className="font-semibold flex items-center gap-2"><PieChart className="w-4 h-4" /> Balance Sheet</div>
+                      <div className="text-sm text-slate-500">Assets, Liabilities and Equity as of end date</div>
+                    </div>
+                    <div className="p-4 border rounded-md hover:bg-slate-50 cursor-pointer" onClick={() => setActiveTab('trialbalance')}>
+                      <div className="font-semibold flex items-center gap-2"><Calculator className="w-4 h-4" /> Trial Balance</div>
+                      <div className="text-sm text-slate-500">Debits and Credits by account for the period</div>
+                    </div>
+                    <div className="p-4 border rounded-md hover:bg-slate-50 cursor-pointer" onClick={() => setActiveTab('commissions')}>
+                      <div className="font-semibold flex items-center gap-2"><Activity className="w-4 h-4" /> Staff Commissions</div>
+                      <div className="text-sm text-slate-500">Commission summary by staff for the period</div>
+                    </div>
+                    <div className="p-4 border rounded-md hover:bg-slate-50 cursor-pointer" onClick={() => setActiveTab('services')}>
+                      <div className="font-semibold flex items-center gap-2"><BarChart3 className="w-4 h-4" /> Top Services</div>
+                      <div className="text-sm text-slate-500">Best-selling services by revenue</div>
+                    </div>
+                    <div className="p-4 border rounded-md hover:bg-slate-50 cursor-pointer" onClick={() => setActiveTab('clients')}>
+                      <div className="font-semibold flex items-center gap-2"><Users className="w-4 h-4" /> Top Clients</div>
+                      <div className="text-sm text-slate-500">Most valuable clients by spend</div>
                     </div>
                   </div>
                 </CardContent>
