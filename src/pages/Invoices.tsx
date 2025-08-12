@@ -909,9 +909,9 @@ export default function Invoices() {
         </CardContent>
       </Card>
 
-      {/* View Invoice Modal */}
+      {/* View Invoice Window */}
       <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
-        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[100vw] w-screen h-screen max-h-[100vh] overflow-y-auto sm:rounded-none">
           <DialogHeader className="pb-4 border-b">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
@@ -1127,13 +1127,19 @@ export default function Invoices() {
                       }
                     }}>Save</Button>
                   </>
-                ) : (
-                  <Button className="bg-violet-600 hover:bg-violet-700" onClick={() => { if (selectedInvoice) navigate(`/invoices/${selectedInvoice.id}/edit`); }}>
-                    <Edit2 className="w-4 h-4 mr-2" />
-                    Edit Invoice
-                  </Button>
-                )}
-              </div>
+                                 ) : (
+                   <div className="flex gap-2">
+                     <Button variant="default" onClick={() => { if (selectedInvoice) navigate(`/payments?invoiceId=${selectedInvoice.id}&action=record`); }}>
+                       <DollarSign className="w-4 h-4 mr-2" />
+                       Record Payment
+                     </Button>
+                     <Button className="bg-violet-600 hover:bg-violet-700" onClick={() => { if (selectedInvoice) navigate(`/invoices/${selectedInvoice.id}/edit`); }}>
+                       <Edit2 className="w-4 h-4 mr-2" />
+                       Edit Invoice
+                     </Button>
+                   </div>
+                 )}
+               </div>
             </div>
           )}
         </DialogContent>
