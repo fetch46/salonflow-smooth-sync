@@ -130,7 +130,52 @@ export default function GoodsReceivedForm() {
 
       setLoading(true);
 
+      // Helper: persist a minimal goods_received header and items for listing visibility
+      const ensureReceiptRecord = async (entryPairs: [string, number][]) => {
+        try {
+          const { data: header, error: headerErr } = await supabase
+            .from("goods_received")
+            .insert([
+              {
+                organization_id: orgId,
+                purchase_id: purchaseId,
+                received_date: receivedDate,
+                warehouse_id: warehouseId,
+                location_id: derivedLocationId,
+                notes: notes || null,
+              },
+            ])
+            .select("id")
+            .single();
+          if (!headerErr && header?.id) {
+            const itemsPayload = entryPairs.map(([purchase_item_id, qty]) => ({
+              goods_received_id: header.id,
+              purchase_item_id,
+              quantity: Number(qty) || 0,
+            }));
+            if (itemsPayload.length > 0) {
+              await supabase.from("goods_received_items").insert(itemsPayload);
+            }
+          }
+        } catch (ignore) {
+          // ignore if tables do not exist
+        }
+      };
 
+      // Helper: update purchase status after receiving
+      const updatePurchaseStatusAfterReceiving = async (pid: string) => {
+        try {
+          const { data: items } = await supabase
+            .from("purchase_items")
+            .select("quantity, received_quantity")
+            .eq("purchase_id", pid);
+          const rows = items || [];
+          const allReceived = rows.length > 0 && rows.every(r => Number((r as any).received_quantity || 0) >= Number((r as any).quantity || 0));
+          const anyReceived = rows.some(r => Number((r as any).received_quantity || 0) > 0);
+          const status = allReceived ? "complete" : anyReceived ? "partial" : "pending";
+          await supabase.from("purchases").update({ status }).eq("id", pid);
+        } catch (ignore) {
+          // ignore if table not present
         }
       };
 
