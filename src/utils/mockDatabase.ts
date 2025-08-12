@@ -601,6 +601,29 @@ export async function recordInvoicePaymentWithFallback(
     };
     const { error } = await supabase.from('invoice_payments').insert([payload]);
     if (error) throw error;
+
+    // After inserting payment, recalc invoice paid status and persist
+    try {
+      const invId = payment.invoice_id;
+      const [{ data: inv }, { data: pays }] = await Promise.all([
+        supabase
+          .from('invoices')
+          .select('id, total_amount, status')
+          .eq('id', invId)
+          .maybeSingle(),
+        supabase
+          .from('invoice_payments')
+          .select('amount')
+          .eq('invoice_id', invId),
+      ]);
+      const totalAmount = Number((inv as any)?.total_amount || 0);
+      const paidSum = (pays || []).reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
+      const nextStatus = paidSum >= totalAmount ? 'paid' : paidSum > 0 ? 'partial' : ((inv as any)?.status || 'sent');
+      if ((inv as any)?.status !== nextStatus) {
+        await supabase.from('invoices').update({ status: nextStatus }).eq('id', invId);
+      }
+    } catch {}
+
     return true;
   } catch (err) {
     console.log('Using mock database for invoice payments');
@@ -619,6 +642,24 @@ export async function recordInvoicePaymentWithFallback(
     };
     storage.invoice_payments = storage.invoice_payments || [];
     storage.invoice_payments.push(localPay);
+
+    // Update related invoice status based on total paid in fallback
+    try {
+      const invId = payment.invoice_id;
+      const receiptsArr: any[] = storage.receipts || [];
+      const idx = receiptsArr.findIndex((x: any) => x.id === invId);
+      if (idx !== -1) {
+        const invoice = receiptsArr[idx];
+        const paidSum = (storage.invoice_payments || [])
+          .filter((p: any) => p.invoice_id === invId)
+          .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+        const total = Number(invoice.total_amount || 0);
+        const newStatus = paidSum >= total ? 'paid' : paidSum > 0 ? 'partial' : (invoice.status || 'sent');
+        receiptsArr[idx] = { ...invoice, status: newStatus, updated_at: nowIso };
+        storage.receipts = receiptsArr;
+      }
+    } catch {}
+
     setStorage(storage);
     return true;
   }
@@ -651,18 +692,69 @@ export async function updateInvoicePaymentWithFallback(
     if (typeof updates.reference_number !== 'undefined') allowed.reference_number = updates.reference_number;
     if (typeof updates.payment_date !== 'undefined') allowed.payment_date = updates.payment_date;
 
+    // Find the invoice id for this payment first to recalc after update
+    let invId: string | null = null;
+    try {
+      const { data } = await supabase
+        .from('invoice_payments')
+        .select('invoice_id')
+        .eq('id', id)
+        .maybeSingle();
+      invId = (data as any)?.invoice_id || null;
+    } catch {}
+
     const { error } = await supabase
       .from('invoice_payments')
       .update(allowed)
       .eq('id', id);
     if (error) throw error;
+
+    // Recalculate invoice status after edit
+    if (invId) {
+      try {
+        const [{ data: inv }, { data: pays }] = await Promise.all([
+          supabase.from('invoices').select('id, total_amount, status').eq('id', invId).maybeSingle(),
+          supabase.from('invoice_payments').select('amount').eq('invoice_id', invId),
+        ]);
+        const totalAmount = Number((inv as any)?.total_amount || 0);
+        const paidSum = (pays || []).reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
+        const nextStatus = paidSum >= totalAmount ? 'paid' : paidSum > 0 ? 'partial' : ((inv as any)?.status || 'sent');
+        if ((inv as any)?.status !== nextStatus) {
+          await supabase.from('invoices').update({ status: nextStatus }).eq('id', invId);
+        }
+      } catch {}
+    }
+
     return true;
   } catch (err) {
     console.log('Using mock database for updating invoice payment');
     const storage = getStorage();
+    // Locate existing to get invoice id
+    const existing = (storage.invoice_payments || []).find((p: any) => p.id === id) || null;
     storage.invoice_payments = (storage.invoice_payments || []).map((p: any) =>
       p.id === id ? { ...p, ...updates, updated_at: new Date().toISOString() } : p
     );
+
+    // Recalculate related invoice status after update in fallback
+    if (existing && existing.invoice_id) {
+      try {
+        const invId = existing.invoice_id;
+        const receiptsArr: any[] = storage.receipts || [];
+        const idx = receiptsArr.findIndex((x: any) => x.id === invId);
+        if (idx !== -1) {
+          const nowIso = new Date().toISOString();
+          const invoice = receiptsArr[idx];
+          const paidSum = (storage.invoice_payments || [])
+            .filter((p: any) => p.invoice_id === invId)
+            .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+          const total = Number(invoice.total_amount || 0);
+          const newStatus = paidSum >= total ? 'paid' : paidSum > 0 ? 'partial' : (invoice.status || 'sent');
+          receiptsArr[idx] = { ...invoice, status: newStatus, updated_at: nowIso };
+          storage.receipts = receiptsArr;
+        }
+      } catch {}
+    }
+
     setStorage(storage);
     return true;
   }
@@ -700,6 +792,21 @@ export async function deleteInvoicePaymentWithFallback(supabase: any, id: string
           .eq('reference_id', String(payment.invoice_id))
           .eq('transaction_date', payment.payment_date)
           .or(`debit_amount.eq.${Number(payment.amount)},credit_amount.eq.${Number(payment.amount)}` as any);
+      } catch {}
+
+      // Recalculate invoice status in DB after deletion
+      try {
+        const invId = payment.invoice_id;
+        const [{ data: inv }, { data: pays }] = await Promise.all([
+          supabase.from('invoices').select('id, total_amount, status').eq('id', invId).maybeSingle(),
+          supabase.from('invoice_payments').select('amount').eq('invoice_id', invId),
+        ]);
+        const totalAmount = Number((inv as any)?.total_amount || 0);
+        const paidSum = (pays || []).reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
+        const nextStatus = paidSum >= totalAmount ? 'paid' : paidSum > 0 ? 'partial' : ((inv as any)?.status || 'sent');
+        if ((inv as any)?.status !== nextStatus) {
+          await supabase.from('invoices').update({ status: nextStatus }).eq('id', invId);
+        }
       } catch {}
     }
 
