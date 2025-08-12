@@ -47,10 +47,26 @@ export default function GoodsReceivedForm() {
   const loadOpenPurchases = useCallback(async () => {
     const { data } = await supabase
       .from("purchases")
-      .select("id, purchase_number, vendor_name, status")
+      .select("id, purchase_number, vendor_name, status, purchase_items(quantity, received_quantity)")
       .in("status", ["pending", "partial"])
       .order("purchase_date", { ascending: false });
-    setPurchases((data || []) as any);
+
+    // Exclude purchases where all items are fully received
+    const filtered = ((data || []) as any[]).filter((p: any) => {
+      const items: any[] = Array.isArray(p.purchase_items) ? p.purchase_items : [];
+      if (items.length === 0) return true; // keep if no items to allow follow-up fixes
+      return items.some(it => Number(it.quantity || 0) > Number(it.received_quantity || 0));
+    });
+
+    // Strip nested items before storing
+    const mapped: PurchaseOption[] = filtered.map((p: any) => ({
+      id: p.id,
+      purchase_number: p.purchase_number,
+      vendor_name: p.vendor_name,
+      status: p.status,
+    }));
+
+    setPurchases(mapped as any);
   }, []);
 
   const loadWarehouses = useCallback(async () => {
