@@ -54,7 +54,7 @@ const ClientsTable: React.FC<ClientsTableProps> = ({
       <TableBody>
         {clients.map((c) => (
           <TableRow key={c.id}>
-            <TableCell className="font-medium">{c.full_name}</TableCell>
+            <TableCell className="font-medium">{c.full_name || "Unnamed"}</TableCell>
             <TableCell>{c.email || <span className="text-muted-foreground">—</span>}</TableCell>
             <TableCell>{c.phone || <span className="text-muted-foreground">—</span>}</TableCell>
             <TableCell>

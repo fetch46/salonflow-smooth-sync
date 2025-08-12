@@ -405,31 +405,43 @@ export default function Clients() {
   };
 
   const filteredClients = useMemo(() => {
-    return clients.filter((client) => {
-      const matchesSearch =
-        client.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client.phone?.includes(searchTerm);
-      const matchesStatus = statusFilter === "all" || client.client_status === statusFilter;
-      const matchesTier = tierFilter === "all" || getLoyaltyTier(client.total_spent || 0).name === tierFilter;
-      return matchesSearch && matchesStatus && matchesTier;
-    }).sort((a, b) => {
-      switch (sortBy) {
-        case "recent":
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        case "spent":
-          return (b.total_spent || 0) - (a.total_spent || 0);
-        case "visits":
-          return (b.total_visits || 0) - (a.total_visits || 0);
-        case "last_visit":
-          if (!a.last_visit_date && !b.last_visit_date) return 0;
-          if (!a.last_visit_date) return 1;
-          if (!b.last_visit_date) return -1;
-          return new Date(b.last_visit_date).getTime() - new Date(a.last_visit_date).getTime();
-        default:
-          return a.full_name.localeCompare(b.full_name);
-      }
-    });
+    return clients
+      .filter((client) => {
+        const name = (client.full_name || "").toString();
+        const email = (client.email || "").toString();
+        const phone = (client.phone || "").toString();
+        const matchesSearch =
+          name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          phone.includes(searchTerm);
+        const matchesStatus = statusFilter === "all" || client.client_status === statusFilter;
+        const matchesTier =
+          tierFilter === "all" || getLoyaltyTier(client.total_spent || 0).name === tierFilter;
+        return matchesSearch && matchesStatus && matchesTier;
+      })
+      .sort((a, b) => {
+        switch (sortBy) {
+          case "recent": {
+            const ta = new Date(a.created_at || 0).getTime();
+            const tb = new Date(b.created_at || 0).getTime();
+            return tb - ta;
+          }
+          case "spent":
+            return (b.total_spent || 0) - (a.total_spent || 0);
+          case "visits":
+            return (b.total_visits || 0) - (a.total_visits || 0);
+          case "last_visit": {
+            const la = a.last_visit_date ? new Date(a.last_visit_date).getTime() : -Infinity;
+            const lb = b.last_visit_date ? new Date(b.last_visit_date).getTime() : -Infinity;
+            return lb - la;
+          }
+          default: {
+            const na = (a.full_name || "").toString();
+            const nb = (b.full_name || "").toString();
+            return na.localeCompare(nb);
+          }
+        }
+      });
   }, [clients, searchTerm, statusFilter, tierFilter, sortBy]);
 
   const getTabClients = (tab: string) => {
