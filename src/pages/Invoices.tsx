@@ -643,8 +643,9 @@ export default function Invoices() {
   };
 
   const filteredInvoices = invoices.filter(invoice => {
-    const matchesSearch = invoice.invoice_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         invoice.customer_name.toLowerCase().includes(searchTerm.toLowerCase());
+    const normalizedSearch = (searchTerm || "").toLowerCase();
+    const matchesSearch = ((invoice.invoice_number || "").toLowerCase().includes(normalizedSearch)) ||
+                         ((invoice.customer_name || "").toLowerCase().includes(normalizedSearch));
     const matchesStatus = statusFilter === "all" || invoice.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
