@@ -13,12 +13,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Search, ShoppingCart, CreditCard, DollarSign, Package, Trash2, User, Receipt, Calculator } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { createSaleWithFallback } from "@/utils/mockDatabase";
+import { createInvoiceWithFallback, recordInvoicePaymentWithFallback } from "@/utils/mockDatabase";
+import { postInvoicePaymentToLedger } from "@/utils/ledger";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { useOrganizationTaxRate } from "@/lib/saas/hooks";
 import { Switch } from "@/components/ui/switch";
 import { postSaleCOGSAndInventory } from "@/utils/ledger";
-import { postMultiLineEntry, findAccountIdByCode } from "@/utils/ledger";
+
 
 interface Product {
   id: string;
@@ -357,23 +358,46 @@ export default function POS() {
 
     try {
       const totals = calculateTotals();
-      const saleData = {
-        sale_number: generateSaleNumber(),
+      const saleNumber = generateSaleNumber();
+
+      // Determine a location from selected warehouse when possible
+      const selectedWh = warehouses.find(w => w.id === selectedWarehouseId);
+      const inferredLocationId = selectedWh?.location_id || null;
+
+      // Build invoice payload compatible with Supabase or mock fallback
+      const invoicePayload: any = {
+        invoice_number: saleNumber,
         customer_id: selectedCustomer?.id || null,
-        customer_name: selectedCustomer?.full_name || "Walk-in Customer",
         subtotal: totals.subtotal,
         tax_amount: totals.taxAmount,
-        discount_amount: totals.globalDiscount,
         total_amount: totals.total,
+
+        status: "sent",
+        notes: (paymentData.notes || paymentData.transaction_number)
+          ? `${paymentData.notes || ""}${paymentData.notes && paymentData.transaction_number ? "\n" : ""}${paymentData.transaction_number ? `Transaction #: ${paymentData.transaction_number}` : ""}`
+
         payment_method: paymentData.payment_method,
         status: "sent",
         notes: (paymentData.notes || paymentData.transaction_number) 
           ? `${paymentData.notes || ""}${paymentData.notes && paymentData.transaction_number ? "\n" : ""}${paymentData.transaction_number ? `Transaction #: ${paymentData.transaction_number}` : ""}` 
+      main
           : null,
+        location_id: inferredLocationId,
       };
 
-      // Use fallback function to handle missing database tables
-      const sale = await createSaleWithFallback(supabase, saleData, cart);
+      const invoiceItems = cart.map((line) => ({
+        description: line.product.name,
+        quantity: line.quantity,
+        unit_price: line.product.selling_price,
+        total_price: line.total,
+        product_id: line.product.id,
+        service_id: null,
+        staff_id: null,
+        location_id: inferredLocationId,
+      }));
+
+      // Create an invoice (or fallback receipt) with items
+      const invoice = await createInvoiceWithFallback(supabase, invoicePayload, invoiceItems);
 
       // Decrease inventory at selected warehouse
       try {
@@ -407,8 +431,8 @@ export default function POS() {
                   productId: itemId,
                   quantity: qty,
                   unitCost,
-                  locationId: null,
-                  referenceId: sale.id,
+                  locationId: inferredLocationId,
+                  referenceId: invoice.id,
                 });
               }
             }
@@ -420,41 +444,64 @@ export default function POS() {
         console.warn("Inventory decrement after sale failed:", invErr);
       }
 
-      // Post POS sale to ledger: DR Cash/Bank total, CR Revenue (net of tax), CR Sales Tax Payable (tax)
+      // Record payment against invoice and post to ledger
       try {
-        if (organization?.id) {
-          const methodKey = String(paymentData.payment_method || "cash").toLowerCase();
-          const settings = (organization.settings as any) || {};
-          const mapped = (settings.default_deposit_accounts_by_method || {})[methodKey] as string | undefined;
-          let depositAccId: string | null = mapped || null;
-          if (!depositAccId) {
-            // Fallback: Cash -> 1001, else 1002
-            const code = methodKey === "cash" ? "1001" : "1002";
-            depositAccId = await findAccountIdByCode(organization.id, code);
+        // Map UI method labels to normalized methods
+        const methodLabel = String(paymentData.payment_method || "").toLowerCase();
+        const method = methodLabel.includes("cash")
+          ? "cash"
+          : methodLabel.includes("card")
+          ? "card"
+          : methodLabel.includes("bank")
+          ? "bank_transfer"
+          : methodLabel.includes("mobile") || methodLabel.includes("mpesa")
+          ? "mpesa"
+          : "other";
+
+        await recordInvoicePaymentWithFallback(supabase, {
+          invoice_id: invoice.id,
+          amount: totals.total,
+          method,
+          reference_number: paymentData.transaction_number || null,
+          payment_date: new Date().toISOString().slice(0, 10),
+          location_id: inferredLocationId || null,
+        });
+
+        try {
+          if (organization?.id) {
+            await postInvoicePaymentToLedger({
+              organizationId: organization.id,
+              amount: totals.total,
+              method,
+              invoiceId: invoice.id,
+              invoiceNumber: saleNumber,
+              paymentDate: new Date().toISOString().slice(0, 10),
+              locationId: inferredLocationId || null,
+            });
           }
-          // Revenue: prefer Product Sales Revenue 4002, fallback Hair Services 4001
-          let revenueAccId: string | null = await findAccountIdByCode(organization.id, "4002");
-          if (!revenueAccId) revenueAccId = await findAccountIdByCode(organization.id, "4001");
-          // Tax payable
-          const taxAccId: string | null = await findAccountIdByCode(organization.id, "2100");
-          if (depositAccId && revenueAccId) {
-            const revenueAmount = totals.discountedSubtotal;
-            const taxAmount = totals.taxAmount;
-            const lines: Array<{ accountId: string; debit: number; credit: number }> = [
-              { accountId: depositAccId, debit: totals.total, credit: 0 },
-              { accountId: revenueAccId, debit: 0, credit: Math.max(0, revenueAmount) },
-            ];
-            if (applyTax && taxAmount > 0 && taxAccId) {
-              lines.push({ accountId: taxAccId, debit: 0, credit: taxAmount });
-            }
-            await postMultiLineEntry({ description: `POS Sale ${sale.sale_number}`, referenceType: "pos_sale", referenceId: sale.id, lines });
-          }
+        } catch (ledgerPayErr) {
+          console.warn("Invoice payment ledger posting failed", ledgerPayErr);
         }
-      } catch (ledgerErr) {
-        console.warn("Ledger posting failed", ledgerErr);
+      } catch (payErr) {
+        console.warn("Recording POS payment failed", payErr);
       }
 
-      setCurrentSale(sale);
+      // Previous revenue ledger posting removed to avoid double-counting when using invoice + payment
+
+      setCurrentSale({
+        id: invoice.id,
+        sale_number: saleNumber,
+        customer_id: selectedCustomer?.id || null,
+        customer_name: selectedCustomer?.full_name || "Walk-in Customer",
+        subtotal: totals.subtotal,
+        tax_amount: totals.taxAmount,
+        discount_amount: totals.globalDiscount,
+        total_amount: totals.total,
+        payment_method: paymentData.payment_method,
+        status: "completed",
+        notes: invoicePayload.notes,
+        created_at: new Date().toISOString(),
+      } as any);
       setIsPaymentModalOpen(false);
       setIsReceiptModalOpen(true);
       toast.success("Sale completed successfully!");
