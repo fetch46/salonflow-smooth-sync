@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { getReceiptsWithFallback, getAllReceiptPaymentsWithFallback } from "@/utils/mockDatabase";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 
 interface Client {
   id: string;
@@ -78,6 +79,7 @@ export default function ClientProfile() {
     notes: '',
   });
   const [paymentsTotal, setPaymentsTotal] = useState<number>(0);
+  const { format: formatMoney } = useOrganizationCurrency();
 
   const fetchClientData = useCallback(async () => {
     try {
@@ -352,7 +354,7 @@ export default function ClientProfile() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-700">
-                ${revenuePaid.toFixed(2)}
+                {formatMoney(revenuePaid)}
               </div>
               <p className="text-xs text-green-600">
                 From {receipts.length} sales receipts
@@ -462,7 +464,7 @@ export default function ClientProfile() {
                         <TableCell>{appointment.service_name}</TableCell>
                         <TableCell>{appointment.staff?.full_name || "N/A"}</TableCell>
                         <TableCell>{getStatusBadge(appointment.status)}</TableCell>
-                        <TableCell>${appointment.price?.toFixed(2) || "0.00"}</TableCell>
+                        <TableCell>{formatMoney(appointment.price)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -494,8 +496,8 @@ export default function ClientProfile() {
                           <TableCell className="font-medium">{r.receipt_number}</TableCell>
                           <TableCell>{format(new Date(r.created_at), "MMM dd, yyyy")}</TableCell>
                           <TableCell>{getStatusBadge(r.status)}</TableCell>
-                          <TableCell>${(r.total_amount || 0).toFixed(2)}</TableCell>
-                          <TableCell>${(r.amount_paid || 0).toFixed(2)}</TableCell>
+                          <TableCell>{formatMoney(r.total_amount || 0)}</TableCell>
+                          <TableCell>{formatMoney(r.amount_paid || 0)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -535,7 +537,7 @@ export default function ClientProfile() {
                         </TableCell>
                         <TableCell>{jobCard.staff?.full_name || "N/A"}</TableCell>
                         <TableCell>{getStatusBadge(jobCard.status)}</TableCell>
-                        <TableCell>${jobCard.total_amount.toFixed(2)}</TableCell>
+                        <TableCell>{formatMoney(jobCard.total_amount)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
