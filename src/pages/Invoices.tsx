@@ -193,6 +193,7 @@ export default function Invoices() {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
   const [activeTab, setActiveTab] = useState("all");
+  const [applyTax, setApplyTax] = useState<boolean>(true);
 
   const [formData, setFormData] = useState({
     customer_id: "",
@@ -429,7 +430,7 @@ export default function Invoices() {
 
   const calculateTotals = () => {
     const subtotal = selectedItems.reduce((sum, item) => sum + item.total_price, 0);
-    const taxAmount = subtotal * ((orgTaxRate || 0) / 100);
+    const taxAmount = applyTax ? subtotal * ((orgTaxRate || 0) / 100) : 0;
     const total = subtotal + taxAmount;
     return { subtotal, taxAmount, total };
   };
@@ -1004,8 +1005,15 @@ export default function Invoices() {
                                     <span>Subtotal:</span>
                                     <span className="font-semibold">{symbol}{totals.subtotal.toFixed(2)}</span>
                                   </div>
+                                  <div className="flex items-center justify-between text-sm">
+                                    <div className="flex items-center gap-2">
+                                      <span>Apply Tax</span>
+                                      <Switch checked={applyTax} onCheckedChange={setApplyTax} />
+                                    </div>
+                                    <span className="text-xs text-muted-foreground">{applyTax ? `${orgTaxRate || 0}%` : '0%'}</span>
+                                  </div>
                                   <div className="flex justify-between text-sm">
-                                    <span>Tax ({(orgTaxRate || 0)}%):</span>
+                                    <span>Tax ({applyTax ? (orgTaxRate || 0) : 0}%):</span>
                                     <span className="font-semibold">{symbol}{totals.taxAmount.toFixed(2)}</span>
                                   </div>
                                   <Separator />
@@ -1486,9 +1494,12 @@ export default function Invoices() {
                         <span className="font-semibold">{symbol}{selectedInvoice.subtotal.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span>Tax ({(orgTaxRate || 0)}%):</span>
+                        <span>Tax ({selectedInvoice.tax_amount > 0 ? (orgTaxRate || 0) : 0}%):</span>
                         <span className="font-semibold">{symbol}{selectedInvoice.tax_amount.toFixed(2)}</span>
                       </div>
+                      {selectedInvoice.tax_amount === 0 && (
+                        <div className="text-xs text-muted-foreground">No VAT applied</div>
+                      )}
                       {selectedInvoice.discount_amount > 0 && (
                         <div className="flex justify-between text-sm text-red-600">
                           <span>Discount:</span>
