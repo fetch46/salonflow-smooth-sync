@@ -288,6 +288,35 @@ export default function POS() {
       // Use fallback function to handle missing database tables
       const sale = await createSaleWithFallback(supabase, saleData, cart);
 
+      // Decrease inventory at default POS location if configured
+      try {
+        const defaultLocationId = ((organization?.settings as any) || {})?.pos_default_location_id as string | undefined;
+        if (defaultLocationId) {
+          for (const line of cart) {
+            const itemId = line.product.id;
+            const qty = Number(line.quantity || 0);
+            if (!qty) continue;
+            const { data: levelRows, error: levelErr } = await supabase
+              .from("inventory_levels")
+              .select("id, quantity")
+              .eq("item_id", itemId)
+              .eq("location_id", defaultLocationId)
+              .limit(1);
+            if (levelErr) throw levelErr;
+            const existing = (levelRows || [])[0] as { id: string; quantity: number } | undefined;
+            if (existing) {
+              const newQty = Math.max(0, Number(existing.quantity || 0) - qty);
+              await supabase.from("inventory_levels").update({ quantity: newQty }).eq("id", existing.id);
+            } else {
+              // No stock row exists; create one with zero (cannot go negative)
+              await supabase.from("inventory_levels").insert([{ item_id: itemId, location_id: defaultLocationId, quantity: 0 }]);
+            }
+          }
+        }
+      } catch (invErr) {
+        console.warn("Inventory decrement after sale failed:", invErr);
+      }
+
       setCurrentSale(sale);
       setIsPaymentModalOpen(false);
       setIsReceiptModalOpen(true);
