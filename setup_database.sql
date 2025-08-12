@@ -6,6 +6,7 @@
 \i supabase/migrations/20250116000005_inventory_core_tables.sql
 \i supabase/migrations/20250812090000_add_business_locations_and_location_filters.sql
 \i supabase/migrations/20250827093000_purchase_receiving_and_payments.sql
+\i supabase/migrations/20250923094500_create_accounts_and_rebuild_function.sql
 \i supabase/migrations/20250902091500_goods_received_tables.sql
 \i supabase/migrations/20250915093000_inventory_transfers.sql
 \i supabase/migrations/20250916094500_inventory_adjustments.sql
@@ -26,8 +27,6 @@
 \i supabase/migrations/20250827093000_purchase_receiving_and_payments.sql
 -- Goods received tables
 \i supabase/migrations/20250902091500_goods_received_tables.sql
--- Ensure ledger table exists
-\i supabase/migrations/20250831090000_create_account_transactions.sql
 -- Goods received RPCs and RLS policies
 \i supabase/migrations/20250908093000_goods_received_rpcs_and_policies.sql
 -- Persist confirmed email timestamps on profiles
@@ -105,27 +104,8 @@ BEGIN
         RAISE EXCEPTION 'User must be owner of organization';
     END IF;
     
-    -- Create default accounts
-    INSERT INTO accounts (organization_id, account_code, account_name, account_type, normal_balance, description, balance, is_active) VALUES 
-        (org_id, '1001', 'Cash', 'Asset', 'debit', 'Cash on hand and in registers', 0, true),
-        (org_id, '1002', 'Bank Account', 'Asset', 'debit', 'Primary business bank account', 0, true),
-        (org_id, '1100', 'Accounts Receivable', 'Asset', 'debit', 'Money owed by customers', 0, true),
-        (org_id, '1200', 'Inventory', 'Asset', 'debit', 'Hair products and supplies inventory', 0, true),
-        (org_id, '1500', 'Equipment', 'Asset', 'debit', 'Salon equipment and fixtures', 0, true),
-                (org_id, '2001', 'Accounts Payable', 'Liability', 'credit', 'Money owed to suppliers', 0, true),
-         (org_id, '2100', 'Sales Tax Payable', 'Liability', 'credit', 'Sales tax collected from customers', 0, true),
-         (org_id, '2300', 'Unearned Revenue', 'Liability', 'credit', 'Customer deposits and advance payments', 0, true),
-         (org_id, '3001', 'Owner Equity', 'Equity', 'credit', 'Owner investment in business', 0, true),
-        (org_id, '3002', 'Retained Earnings', 'Equity', 'credit', 'Accumulated business profits', 0, true),
-        (org_id, '4001', 'Hair Services Revenue', 'Income', 'credit', 'Revenue from hair styling services', 0, true),
-        (org_id, '4002', 'Product Sales Revenue', 'Income', 'credit', 'Revenue from product sales', 0, true),
-        (org_id, '5001', 'Cost of Goods Sold', 'Expense', 'debit', 'Direct cost of products sold', 0, true),
-        (org_id, '5100', 'Staff Wages', 'Expense', 'debit', 'Salaries and wages for staff', 0, true),
-        (org_id, '5200', 'Rent Expense', 'Expense', 'debit', 'Monthly rent for salon space', 0, true),
-        (org_id, '5300', 'Utilities Expense', 'Expense', 'debit', 'Electricity, water, internet', 0, true),
-        (org_id, '5400', 'Supplies Expense', 'Expense', 'debit', 'General salon supplies', 0, true),
-        (org_id, '5500', 'Marketing Expense', 'Expense', 'debit', 'Advertising and promotion costs', 0, true)
-    ON CONFLICT (organization_id, account_code) DO NOTHING;
+    -- Initialize or rebuild default Chart of Accounts
+    PERFORM public.rebuild_organization_chart_of_accounts(org_id, false);
     
     RETURN true;
 END;
