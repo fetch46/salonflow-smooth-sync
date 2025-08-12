@@ -14,6 +14,7 @@ import { Plus, Search, Package, TrendingUp, TrendingDown, Edit2, Trash2, AlertTr
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { MapPin } from "lucide-react";
+import { useOrganization } from "@/lib/saas/hooks";
 
 interface InventoryItem {
   id: string;
@@ -88,6 +89,7 @@ const ADJUSTMENT_REASONS = [
 ];
 
 export default function InventoryAdjustments() {
+  const { organization } = useOrganization();
   const [adjustments, setAdjustments] = useState<Adjustment[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -139,9 +141,12 @@ export default function InventoryAdjustments() {
 
   const fetchWarehouses = async () => {
     try {
+      if (!organization?.id) { setWarehouses([]); return; }
       const { data, error } = await supabase
         .from("warehouses")
         .select("id, name")
+        .eq("organization_id", organization.id)
+        .eq("is_active", true)
         .order("name");
       if (error) throw error;
       setWarehouses(data || []);

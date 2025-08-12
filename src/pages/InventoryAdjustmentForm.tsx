@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Plus, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { useOrganization } from "@/lib/saas/hooks";
 
 interface InventoryItem {
   id: string;
@@ -66,6 +67,7 @@ export default function InventoryAdjustmentForm() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = Boolean(id);
+  const { organization } = useOrganization();
 
   const [loading, setLoading] = useState(false);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
@@ -153,9 +155,11 @@ export default function InventoryAdjustmentForm() {
 
   const fetchWarehouses = async () => {
     try {
+      if (!organization?.id) { setWarehouses([]); return; }
       const { data, error } = await supabase
         .from("warehouses")
         .select("id, name, is_default")
+        .eq("organization_id", organization.id)
         .eq("is_active", true)
         .order("name");
       if (error) throw error;

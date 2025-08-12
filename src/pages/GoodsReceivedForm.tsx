@@ -55,10 +55,12 @@ export default function GoodsReceivedForm() {
 
   const loadWarehouses = useCallback(async () => {
     const orgId = organization?.id;
+    if (!orgId) { setWarehouses([]); return; }
     const { data } = await supabase
       .from("warehouses")
       .select("id, name, location_id")
-      .eq(orgId ? "organization_id" : "is_active", orgId ? orgId : true)
+      .eq("organization_id", orgId)
+      .eq("is_active", true)
       .order("name");
     setWarehouses((data || []) as any);
   }, [organization?.id]);

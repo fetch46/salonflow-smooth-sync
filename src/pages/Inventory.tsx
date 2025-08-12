@@ -384,6 +384,7 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, warehouses }: 
 
 // --- Main Component ---
 export default function Inventory() {
+  const { organization } = useOrganization();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
@@ -461,11 +462,17 @@ export default function Inventory() {
 
   // New: fetch warehouses
   const fetchWarehouses = useCallback(async () => {
+    if (!organization?.id) {
+      setWarehouses([]);
+      return;
+    }
     setWarehousesLoading(true);
     try {
       const { data, error } = await supabase
         .from("warehouses")
         .select("id, name")
+        .eq("organization_id", organization.id)
+        .eq("is_active", true)
         .order("name");
       if (error) throw error;
       setWarehouses((data || []) as { id: string; name: string }[]);
@@ -474,7 +481,7 @@ export default function Inventory() {
     } finally {
       setWarehousesLoading(false);
     }
-  }, []);
+  }, [organization?.id]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
