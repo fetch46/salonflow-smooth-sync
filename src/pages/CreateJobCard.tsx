@@ -1131,6 +1131,7 @@ function StepServicesStaff({
   const [serviceSearch, setServiceSearch] = useState("");
   const [staffSearch, setStaffSearch] = useState("");
   const [localAssignments, setLocalAssignments] = useState<Record<string, string>>({});
+  const { format: formatMoney } = useOrganizationCurrency();
 
   // Initialize local assignments from parent-provided map on first render or when selected services change
   useEffect(() => {
@@ -1385,6 +1386,7 @@ function StepProductsMaterials({
   onNext,
   onPrev
 }: StepProductsMaterialsProps) {
+  const { format: formatMoney } = useOrganizationCurrency();
   return (
     <div className="space-y-8">
       <div className="text-center">
@@ -1759,6 +1761,7 @@ function StepPaymentReceipt({
   onSubmit,
   saving
 }: StepPaymentReceiptProps) {
+  const { format: formatMoney } = useOrganizationCurrency();
   const finalTotal = totalCost + productCosts;
   const staffCommission = selectedStaff?.commission_rate ? 
     (totalCost * (selectedStaff.commission_rate / 100)) : 0;
