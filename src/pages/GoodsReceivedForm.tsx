@@ -17,6 +17,18 @@ interface PurchaseItem { id: string; item_id: string; quantity: number; unit_cos
 interface Warehouse { id: string; name: string; location_id?: string }
 interface GoodsReceivedItem { id?: string; purchase_item_id: string; item_id: string; qty: number; unit_cost: number }
 
+// Add types for transactions
+interface AccountTransactionRow {
+  id: string;
+  account_id: string;
+  transaction_date: string;
+  description: string | null;
+  debit_amount: number | null;
+  credit_amount: number | null;
+  reference_type?: string | null;
+  reference_id?: string | null;
+}
+
 export default function GoodsReceivedForm() {
   const { id } = useParams<{ id: string }>();
   const isEdit = Boolean(id);
@@ -35,6 +47,11 @@ export default function GoodsReceivedForm() {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [originalQuantities, setOriginalQuantities] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState<boolean>(false);
+
+  // Transactions state
+  const [transactions, setTransactions] = useState<AccountTransactionRow[]>([]);
+  const [accountsById, setAccountsById] = useState<Record<string, { code?: string; name: string }>>({});
+  const [transactionsLoading, setTransactionsLoading] = useState<boolean>(false);
 
   const remainingByItem = useMemo(() => {
     const map: Record<string, number> = {};
@@ -92,6 +109,44 @@ export default function GoodsReceivedForm() {
     setQuantities(init);
   }, []);
 
+  // Load account transactions for this Goods Received record (if editing)
+  const loadTransactions = useCallback(async () => {
+    if (!id) { setTransactions([]); setAccountsById({}); return; }
+    try {
+      setTransactionsLoading(true);
+      const { data, error } = await supabase
+        .from("account_transactions")
+        .select("id, account_id, transaction_date, description, debit_amount, credit_amount, reference_type, reference_id")
+        .eq("reference_id", id)
+        .order("transaction_date", { ascending: true });
+      if (error) throw error;
+
+      const rows = (data || []) as any as AccountTransactionRow[];
+      setTransactions(rows);
+
+      const accountIds = Array.from(new Set(rows.map(r => r.account_id).filter(Boolean)));
+      if (accountIds.length) {
+        const { data: accs } = await supabase
+          .from("accounts")
+          .select("id, account_code, account_name")
+          .in("id", accountIds);
+        const map: Record<string, { code?: string; name: string }> = {};
+        for (const a of (accs || []) as any[]) {
+          map[a.id] = { code: a.account_code, name: a.account_name };
+        }
+        setAccountsById(map);
+      } else {
+        setAccountsById({});
+      }
+    } catch (e) {
+      console.warn("Failed to load transactions for Goods Received", e);
+      setTransactions([]);
+      setAccountsById({});
+    } finally {
+      setTransactionsLoading(false);
+    }
+  }, [id]);
+
   const loadForEdit = useCallback(async () => {
     if (!id) return;
     const { data: header, error: hErr } = await supabase
@@ -113,7 +168,10 @@ export default function GoodsReceivedForm() {
     }
     setQuantities(q);
     setOriginalQuantities(oq);
-  }, [id, loadPurchaseItems]);
+
+    // After header loads, also load related transactions
+    await loadTransactions();
+  }, [id, loadPurchaseItems, loadTransactions]);
 
   useEffect(() => {
     loadOpenPurchases();
@@ -576,6 +634,51 @@ export default function GoodsReceivedForm() {
               </div>
             </CardContent>
           </Card>
+
+          {isEdit && (
+            <Card className="shadow-lg border-0">
+              <CardHeader>
+                <CardTitle>Transactions</CardTitle>
+                <CardDescription>Ledger entries linked to this receipt</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {transactionsLoading ? (
+                  <div className="text-sm text-muted-foreground">Loading transactions...</div>
+                ) : transactions.length === 0 ? (
+                  <div className="text-sm text-muted-foreground">No transactions</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Account</TableHead>
+                          <TableHead className="text-right">Debit</TableHead>
+                          <TableHead className="text-right">Credit</TableHead>
+                          <TableHead>Description</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {transactions.map(t => {
+                          const acc = accountsById[t.account_id];
+                          const accLabel = acc ? `${acc.code ? acc.code + ' - ' : ''}${acc.name}` : t.account_id;
+                          return (
+                            <TableRow key={t.id}>
+                              <TableCell>{(t.transaction_date || '').slice(0,10)}</TableCell>
+                              <TableCell>{accLabel}</TableCell>
+                              <TableCell className="text-right">{Number(t.debit_amount || 0).toLocaleString()}</TableCell>
+                              <TableCell className="text-right">{Number(t.credit_amount || 0).toLocaleString()}</TableCell>
+                              <TableCell>{t.description || ''}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
