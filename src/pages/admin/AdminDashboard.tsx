@@ -133,7 +133,7 @@ const AdminDashboard = () => {
         // Fallback to profiles table if admin API is not available
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
-          .select('created_at');
+          .select('created_at, email_confirmed_at');
 
         if (!profilesError && profiles) {
           userStats = {
@@ -141,7 +141,7 @@ const AdminDashboard = () => {
             recent: profiles.filter(p => 
               new Date(p.created_at) > subDays(new Date(), 7)
             ).length,
-            confirmed: profiles.length // Assume all profiles are confirmed
+            confirmed: profiles.filter((p: any) => !!p.email_confirmed_at).length
           };
         }
       }
