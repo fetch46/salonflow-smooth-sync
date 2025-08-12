@@ -138,7 +138,51 @@ export default function ServiceForm() {
           }
           throw error;
         }
-        setAvailableProducts(data || []);
+        // Zero-row fallbacks: progressively relax filters while keeping org scope first
+        if (data && data.length > 0) {
+          setAvailableProducts(data);
+          return;
+        }
+        // 1) Allow null type within the org
+        const { data: fb1 } = await supabase
+          .from("inventory_items")
+          .select("id, name, type, category, unit, cost_price, selling_price")
+          .eq("is_active", true)
+          .or('type.eq.good,type.is.null')
+          .eq("organization_id", organization.id)
+          .order("name");
+        if (fb1 && fb1.length > 0) {
+          setAvailableProducts(fb1);
+          return;
+        }
+        // 2) Drop is_active within the org
+        const { data: fb2 } = await supabase
+          .from("inventory_items")
+          .select("id, name, type, category, unit, cost_price, selling_price")
+          .or('type.eq.good,type.is.null')
+          .eq("organization_id", organization.id)
+          .order("name");
+        if (fb2 && fb2.length > 0) {
+          setAvailableProducts(fb2);
+          return;
+        }
+        // 3) As a last resort, try without org filter
+        const { data: fb3 } = await supabase
+          .from("inventory_items")
+          .select("id, name, type, category, unit, cost_price, selling_price")
+          .eq("is_active", true)
+          .or('type.eq.good,type.is.null')
+          .order("name");
+        if (fb3 && fb3.length > 0) {
+          setAvailableProducts(fb3);
+          return;
+        }
+        const { data: fb4 } = await supabase
+          .from("inventory_items")
+          .select("id, name, type, category, unit, cost_price, selling_price")
+          .or('type.eq.good,type.is.null')
+          .order("name");
+        setAvailableProducts(fb4 || []);
         return;
       }
       const { data, error } = await supabase
@@ -576,7 +620,7 @@ export default function ServiceForm() {
 
               <div>
                 <Label htmlFor="addProduct">Add Product to Kit</Label>
-                <Select value={selectedProductId} onValueChange={(value) => { addKitItem(value); setSelectedProductId("") }}>
+                <Select value={selectedProductId || undefined} onValueChange={(value) => { addKitItem(value); setSelectedProductId("") }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a product to add..." />
                   </SelectTrigger>
