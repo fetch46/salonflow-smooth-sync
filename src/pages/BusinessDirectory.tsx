@@ -64,7 +64,7 @@ export default function BusinessDirectory() {
   return (
     <div className="min-h-screen bg-background">
       <section className="py-16 px-4 border-b bg-card/30 backdrop-blur">
-        <div className="container mx-auto max-w-6xl">
+        <div className="w-full">
           <h1 className="text-4xl font-bold mb-2">Business Directory</h1>
           <p className="text-muted-foreground">Discover salons and spas powered by our platform.</p>
 
@@ -85,7 +85,7 @@ export default function BusinessDirectory() {
       </section>
 
       <section className="py-12 px-4">
-        <div className="container mx-auto max-w-6xl">
+        <div className="w-full">
           {loading ? (
             <div className="text-center text-muted-foreground">Loading listings...</div>
           ) : filtered.length === 0 ? (

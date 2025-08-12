@@ -307,7 +307,7 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
   const servicesList = technicianType === "lash" ? lashServices : browServices;
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
+    <div className="w-full p-6 space-y-8">
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
           Enhanced Job Card

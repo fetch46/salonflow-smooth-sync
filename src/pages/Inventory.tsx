@@ -691,7 +691,7 @@ export default function Inventory() {
   );
 
   return (
-    <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8 py-6 space-y-6 lg:space-y-8">
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 lg:space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold">Inventory Management</h1>
         <div className="flex flex-wrap items-center gap-3">

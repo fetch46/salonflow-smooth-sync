@@ -182,7 +182,7 @@ export function JobCardForm({ clientId, appointmentId, onSuccess }: JobCardFormP
   const checklistItems = technicianType === "lash" ? lashChecklist : browChecklist;
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-8">
+    <div className="w-full p-6 space-y-8">
       <div className="text-center space-y-2">
         <div className="flex items-center justify-center gap-2 mb-4">
           <Sparkles className="h-8 w-8 text-primary" />

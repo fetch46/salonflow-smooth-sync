@@ -226,7 +226,7 @@ const Booking = () => {
   };
 
   return (
-    <div className="p-6 mx-auto space-y-6 max-w-5xl">
+    <div className="p-6 w-full space-y-6">
       {/* Page Header */}
       <div className="flex justify-between items-center">
         <div>

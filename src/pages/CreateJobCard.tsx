@@ -706,7 +706,7 @@ export default function CreateJobCard() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
         {/* Header */}
         <div className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40">
-          <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="w-full px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Button 
@@ -793,7 +793,7 @@ export default function CreateJobCard() {
         </div>
 
         {/* Main Content */}
-        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
           {currentStep === 1 && (
             <StepAppointmentClient
               appointments={appointments}
