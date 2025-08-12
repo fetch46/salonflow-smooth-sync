@@ -229,7 +229,42 @@ export class UserService {
         .eq('is_active', true)
         .order('created_at')
 
-      if (error) throw error
+      if (error) {
+        console.warn('Relational fetch for organization users failed; attempting fallback without join', error)
+
+        const { data: memberships, error: membershipsError } = await supabase
+          .from('organization_users')
+          .select('id, organization_id, user_id, role, is_active, invited_by, invited_at, joined_at, metadata, created_at, updated_at')
+          .eq('organization_id', organizationId)
+          .eq('is_active', true)
+          .order('created_at')
+
+        if (membershipsError) throw membershipsError
+
+        if (!memberships || memberships.length === 0) return []
+
+        const userIds = Array.from(new Set(memberships.map(m => m.user_id).filter(Boolean)))
+
+        let profilesByUserId: Record<string, any> = {}
+        if (userIds.length > 0) {
+          const { data: profiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select('user_id, email, full_name, avatar_url, created_at, updated_at')
+            .in('user_id', userIds)
+
+          if (profilesError) throw profilesError
+
+          profilesByUserId = Object.fromEntries((profiles || []).map((p: any) => [p.user_id, p]))
+        }
+
+        const result = (memberships || []).map((m: any) => ({
+          ...m,
+          profiles: profilesByUserId[m.user_id] ?? null,
+        })) as any
+
+        return result
+      }
+
       return data || []
     } catch (error) {
       throw createSaasError('SERVER_ERROR', 'Failed to fetch organization users', error)
