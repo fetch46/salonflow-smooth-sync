@@ -246,13 +246,41 @@ export default function ProductView() {
   const saveAccounts = async () => {
     if (!id) return;
     try {
-      await supabase.from('inventory_item_accounts').upsert({
+      const payload = {
         item_id: id,
         sales_account_id: editForm.sales_account_id || null,
         purchase_account_id: editForm.purchase_account_id || null,
         inventory_account_id: editForm.inventory_account_id || null,
         is_taxable: !!editForm.is_taxable,
-      }, { onConflict: 'item_id' });
+      } as const;
+
+      // Try upsert on unique item_id; if that fails (no constraint), fallback to update-or-insert
+      let upsertError: any = null;
+      try {
+        const res = await supabase.from('inventory_item_accounts').upsert(payload, { onConflict: 'item_id' });
+        upsertError = res.error || null;
+      } catch (err: any) {
+        upsertError = err;
+      }
+
+      if (upsertError) {
+        const { data: existing } = await supabase
+          .from('inventory_item_accounts')
+          .select('item_id')
+          .eq('item_id', id)
+          .maybeSingle();
+        if (existing) {
+          await supabase
+            .from('inventory_item_accounts')
+            .update(payload)
+            .eq('item_id', id);
+        } else {
+          await supabase
+            .from('inventory_item_accounts')
+            .insert(payload);
+        }
+      }
+
       setIsEditAccountsOpen(false);
       // reload mapping
       const { data: mapData } = await supabase
@@ -282,7 +310,7 @@ export default function ProductView() {
         setAccountDisplay(null);
       }
     } catch (e) {
-      // noop
+      // ignore
     }
   };
 

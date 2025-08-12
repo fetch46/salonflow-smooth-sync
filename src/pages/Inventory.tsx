@@ -511,14 +511,35 @@ export default function Inventory() {
           selling_price: formData.selling_price,
         }).eq("id", editingItem.id);
         if (error) throw error;
-        // Upsert per-item account mapping and tax flag
-        await supabase.from('inventory_item_accounts').upsert({
-          item_id: editingItem.id,
-          sales_account_id: formData.sales_account_id || null,
-          purchase_account_id: formData.purchase_account_id || null,
-          inventory_account_id: formData.inventory_account_id || null,
-          is_taxable: !!formData.is_taxable,
-        }, { onConflict: 'item_id' });
+        // Upsert per-item account mapping and tax flag with fallback when unique constraint is missing
+        {
+          const payload = {
+            item_id: editingItem.id,
+            sales_account_id: formData.sales_account_id || null,
+            purchase_account_id: formData.purchase_account_id || null,
+            inventory_account_id: formData.inventory_account_id || null,
+            is_taxable: !!formData.is_taxable,
+          } as const;
+          let upsertError: any = null;
+          try {
+            const res = await supabase.from('inventory_item_accounts').upsert(payload, { onConflict: 'item_id' });
+            upsertError = res.error || null;
+          } catch (err: any) {
+            upsertError = err;
+          }
+          if (upsertError) {
+            const { data: existing } = await supabase
+              .from('inventory_item_accounts')
+              .select('item_id')
+              .eq('item_id', editingItem.id)
+              .maybeSingle();
+            if (existing) {
+              await supabase.from('inventory_item_accounts').update(payload).eq('item_id', editingItem.id);
+            } else {
+              await supabase.from('inventory_item_accounts').insert(payload);
+            }
+          }
+        }
         toast({ title: "Success", description: "Product updated successfully" });
       } else {
         const payload = { ...formData, type: "good" };
@@ -539,14 +560,35 @@ export default function Inventory() {
         if (error) throw error;
         const newItemId = inserted?.id;
         if (newItemId) {
-          // Save mapping
-          await supabase.from('inventory_item_accounts').upsert({
-            item_id: newItemId,
-            sales_account_id: formData.sales_account_id || null,
-            purchase_account_id: formData.purchase_account_id || null,
-            inventory_account_id: formData.inventory_account_id || null,
-            is_taxable: !!formData.is_taxable,
-          }, { onConflict: 'item_id' });
+          // Save mapping with upsert-or-insert fallback
+          {
+            const payload = {
+              item_id: newItemId,
+              sales_account_id: formData.sales_account_id || null,
+              purchase_account_id: formData.purchase_account_id || null,
+              inventory_account_id: formData.inventory_account_id || null,
+              is_taxable: !!formData.is_taxable,
+            } as const;
+            let upsertError: any = null;
+            try {
+              const res = await supabase.from('inventory_item_accounts').upsert(payload, { onConflict: 'item_id' });
+              upsertError = res.error || null;
+            } catch (err: any) {
+              upsertError = err;
+            }
+            if (upsertError) {
+              const { data: existing } = await supabase
+                .from('inventory_item_accounts')
+                .select('item_id')
+                .eq('item_id', newItemId)
+                .maybeSingle();
+              if (existing) {
+                await supabase.from('inventory_item_accounts').update(payload).eq('item_id', newItemId);
+              } else {
+                await supabase.from('inventory_item_accounts').insert(payload);
+              }
+            }
+          }
           // Opening stock if provided
           const openingQty = Number(formData.opening_stock_quantity || 0);
           if (openingQty > 0 && formData.opening_stock_warehouse_id) {

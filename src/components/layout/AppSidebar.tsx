@@ -149,7 +149,7 @@ const menuItems: MenuItem[] = [
     feature: "inventory",
     subItems: [
       {
-        title: "Inventory",
+        title: "Products",
         url: "/inventory",
         icon: Package,
         feature: "inventory",
