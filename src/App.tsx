@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { SaasProvider, useSaas } from "@/lib/saas";
+import { useSaas } from "@/lib/saas";
 import React, { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import AppFooter from "@/components/layout/AppFooter";
@@ -61,8 +61,9 @@ const UpgradePlan = lazy(() => import("@/pages/UpgradePlan"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const Help = lazy(() => import("@/pages/Help"));
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import Payments from "@/pages/Payments";
-import Banking from "@/pages/Banking";
+// Lazy-load heavy pages to reduce initial bundle size
+const Payments = lazy(() => import("@/pages/Payments"));
+const Banking = lazy(() => import("@/pages/Banking"));
 
 // Super Admin Pages
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
@@ -220,13 +221,11 @@ const AppRoutes = () => {
 function App() {
   return (
     <ErrorBoundary>
-      <SaasProvider>
-        <Router>
-          <AppRoutes />
-          <Toaster />
-          <AppFooter />
-        </Router>
-      </SaasProvider>
+      <Router>
+        <AppRoutes />
+        <Toaster />
+        <AppFooter />
+      </Router>
     </ErrorBoundary>
   );
 }

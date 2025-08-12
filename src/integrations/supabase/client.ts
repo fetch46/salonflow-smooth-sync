@@ -20,7 +20,7 @@ function sanitizeEnv(value: unknown): string | undefined {
 function isValidUrl(url: string): boolean {
   try {
     // Throws if invalid
-    // eslint-disable-next-line no-new
+     
     new URL(url)
     return true
   } catch {
@@ -108,7 +108,7 @@ function createSupabaseStub() {
     },
   } as any
 
-  // eslint-disable-next-line no-console
+   
   console.error(
     'Supabase environment variables are missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable backend features.'
   )
@@ -117,7 +117,7 @@ function createSupabaseStub() {
 }
 
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-  // eslint-disable-next-line no-console
+   
   console.warn(
     'Supabase environment variables are missing. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment.'
   )
@@ -129,7 +129,7 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
 function createSupabaseOrStub() {
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY || !isValidUrl(SUPABASE_URL)) {
     if (SUPABASE_URL && !isValidUrl(SUPABASE_URL)) {
-      // eslint-disable-next-line no-console
+       
       console.error('Invalid VITE_SUPABASE_URL value; falling back to stub:', SUPABASE_URL)
     }
     return createSupabaseStub()
@@ -143,7 +143,7 @@ function createSupabaseOrStub() {
       }
     })
   } catch (error) {
-    // eslint-disable-next-line no-console
+     
     console.error('Failed to initialize Supabase client; falling back to stub.', error)
     return createSupabaseStub()
   }
