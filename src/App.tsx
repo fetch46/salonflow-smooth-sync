@@ -54,6 +54,8 @@ const ProductForm = lazy(() => import("@/pages/ProductForm"));
 const InventoryAdjustmentForm = lazy(() => import("@/pages/InventoryAdjustmentForm"));
 const AccountView = lazy(() => import("@/pages/AccountView"));
 const Invoices = lazy(() => import("@/pages/Invoices"));
+const InvoiceCreate = lazy(() => import("@/pages/InvoiceCreate"));
+const InvoiceEdit = lazy(() => import("@/pages/InvoiceEdit"));
 
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const Landing = lazy(() => import("@/pages/Landing"));
@@ -185,6 +187,8 @@ const AppRoutes = () => {
           {/* <Route path="receipts/:id" element={<ReceiptView />} /> */}
           {/* <Route path="receipts/:id/edit" element={<ReceiptForm />} /> */}
           <Route path="invoices" element={<Invoices />} />
+          <Route path="invoices/new" element={<InvoiceCreate />} />
+          <Route path="invoices/:id/edit" element={<InvoiceEdit />} />
           <Route path="purchases" element={<Purchases />} />
           <Route path="purchases/new" element={<PurchaseForm />} />
           <Route path="purchases/:id" element={<PurchaseView />} />

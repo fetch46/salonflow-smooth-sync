@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -80,6 +80,7 @@ import {
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { useOrganizationTaxRate } from "@/lib/saas/hooks";
 import { Database } from "@/integrations/supabase/types";
+import { useNavigate } from "react-router-dom";
 
 interface Invoice {
   id: string;
@@ -189,7 +190,6 @@ export default function Invoices() {
   const [dateFilter, setDateFilter] = useState("all_time");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -199,6 +199,7 @@ export default function Invoices() {
   const [locations, setLocations] = useState<Array<{ id: string; name: string; is_default?: boolean; is_active?: boolean }>>([]);
   const [isEditingLocation, setIsEditingLocation] = useState<boolean>(false);
   const [editLocationId, setEditLocationId] = useState<string>("");
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     customer_id: "",
@@ -232,77 +233,14 @@ export default function Invoices() {
     fetchStaff();
   }, []);
 
-  // Prefill from job card if query param present
+  // Redirect to full-page create if coming from job card
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const fromJobCard = params.get('fromJobCard');
-    if (!fromJobCard) return;
-    (async () => {
-      try {
-        // Load job card, client, and line items
-        const { data: jc, error: jcErr } = await supabase
-          .from('job_cards')
-          .select('id, client_id')
-          .eq('id', fromJobCard)
-          .maybeSingle();
-        if (jcErr) throw jcErr;
-        if (!jc) return;
-        const client = customers.find(c => c.id === jc.client_id);
-        if (client) {
-          setFormData(prev => ({
-            ...prev,
-            customer_id: client.id,
-            customer_name: client.full_name,
-            customer_email: client.email || '',
-            customer_phone: client.phone || '',
-            jobcard_id: jc.id,
-          }));
-        } else if (jc.client_id) {
-          // Fetch client if not in list yet
-          const { data: cli } = await supabase
-            .from('clients')
-            .select('id, full_name, email, phone')
-            .eq('id', jc.client_id)
-            .maybeSingle();
-          if (cli) {
-            setCustomers(prev => (prev.some(c => c.id === cli.id) ? prev : [...prev, cli as any]));
-            setFormData(prev => ({
-              ...prev,
-              customer_id: cli.id,
-              customer_name: cli.full_name || '',
-              customer_email: cli.email || '',
-              customer_phone: cli.phone || '',
-              jobcard_id: jc.id,
-            }));
-          }
-        }
-        // Load job card services to prefill invoice items with staff/commission
-        const { data: jcs } = await supabase
-          .from('job_card_services')
-          .select('service_id, staff_id, quantity, unit_price, commission_percentage, services:service_id(name)')
-          .eq('job_card_id', fromJobCard);
-        const preItems = (jcs || []).map((row: any, idx: number) => ({
-          id: `prefill-${Date.now()}-${idx}`,
-          invoice_id: '',
-          product_id: row.service_id,
-          service_id: row.service_id,
-          description: row.services?.name || 'Service',
-          quantity: Number(row.quantity || 1),
-          unit_price: Number(row.unit_price || 0),
-          discount_percentage: 0,
-          staff_id: row.staff_id || '',
-          commission_percentage: typeof row.commission_percentage === 'number' ? Number(row.commission_percentage) : 0,
-          total_price: Number(row.quantity || 1) * Number(row.unit_price || 0),
-          staff_name: staff.find(s => s.id === row.staff_id)?.full_name || '',
-          service_name: row.services?.name || '',
-        }));
-        if (preItems.length > 0) setSelectedItems(preItems as any);
-        setIsCreateModalOpen(true);
-      } catch (err) {
-        console.error('Failed to prefill from job card:', err);
-      }
-    })();
-  }, [customers, staff]);
+    if (fromJobCard) {
+      navigate(`/invoices/new?fromJobCard=${fromJobCard}`);
+    }
+  }, [navigate]);
 
   const fetchInvoices = async () => {
     try {
@@ -388,6 +326,11 @@ export default function Invoices() {
     }
   };
 
+  // Ensure locations are loaded for view modal and labels
+  useEffect(() => {
+    fetchLocations();
+  }, []);
+
   useEffect(() => {
     if (formData.location_id) return;
     const preferred = locations.find((l) => (l as any).is_default) || locations[0];
@@ -468,48 +411,7 @@ export default function Invoices() {
     return { subtotal, taxAmount, total };
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (selectedItems.length === 0) {
-      toast.error("Please add at least one item to the invoice");
-      return;
-    }
-    if (!formData.location_id) {
-      toast.error("Please select a location");
-      return;
-    }
-
-    try {
-      const totals = calculateTotals();
-      const invoiceData = {
-        invoice_number: generateInvoiceNumber(),
-        customer_id: formData.customer_id || null,
-        customer_name: formData.customer_name,
-        customer_email: formData.customer_email || null,
-        customer_phone: formData.customer_phone || null,
-        subtotal: totals.subtotal,
-        tax_amount: totals.taxAmount,
-        discount_amount: 0,
-        total_amount: totals.total,
-        status: "draft",
-        due_date: formData.due_date || null,
-        payment_method: formData.payment_method || null,
-        notes: formData.notes || null,
-        jobcard_id: formData.jobcard_id || null,
-        location_id: formData.location_id || null,
-      };
-
-      await createInvoiceWithFallback(supabase, invoiceData, selectedItems);
-      toast.success("Invoice created successfully");
-      setIsCreateModalOpen(false);
-      resetForm();
-      fetchInvoices();
-    } catch (error) {
-      console.error("Error creating invoice:", error);
-      toast.error("Failed to create invoice");
-    }
-  };
+  // Create is now handled in full-page form
 
   const resetForm = () => {
     setFormData({
@@ -553,35 +455,7 @@ export default function Invoices() {
 
   const duplicateInvoice = async (invoice: Invoice) => {
     try {
-      const items = await getInvoiceItemsWithFallback(supabase, invoice.id);
-      
-      setFormData({
-        customer_id: invoice.customer_id || "",
-        customer_name: invoice.customer_name,
-        customer_email: invoice.customer_email || "",
-        customer_phone: invoice.customer_phone || "",
-        due_date: "",
-        payment_method: invoice.payment_method || "",
-        notes: invoice.notes || "",
-        jobcard_id: invoice.jobcard_id || "",
-        location_id: invoice.location_id || "",
-      });
-      
-      setSelectedItems(items?.map(item => ({
-        service_id: item.service_id || "",
-        description: item.description,
-        quantity: item.quantity,
-        unit_price: item.unit_price.toString(),
-        discount_percentage: item.discount_percentage,
-        staff_id: item.staff_id || "",
-        commission_percentage: item.commission_percentage,
-        total_price: item.total_price,
-        service_name: "",
-        staff_name: "",
-      })) || []);
-      
-      setIsCreateModalOpen(true);
-      toast.success("Invoice duplicated for editing");
+      navigate(`/invoices/new?duplicateId=${invoice.id}`);
     } catch (error) {
       console.error("Error duplicating invoice:", error);
       toast.error("Failed to duplicate invoice");
@@ -731,395 +605,10 @@ export default function Invoices() {
             </DropdownMenuContent>
           </DropdownMenu>
           
-          <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={resetForm} className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-lg">
-                <Plus className="w-4 h-4 mr-2" />
-                New Invoice
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[950px] max-h-[90vh] overflow-y-auto">
-              <DialogHeader className="pb-4 border-b">
-                <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                  <Receipt className="w-5 h-5 text-violet-600" />
-                  Create New Invoice
-                </DialogTitle>
-                <DialogDescription className="text-slate-600">
-                  Create a professional invoice with itemized services and automatic calculations
-                </DialogDescription>
-              </DialogHeader>
-              
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Customer Information */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                    <Users className="w-4 h-4 text-blue-600" />
-                    Customer Information
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="customer_id">Existing Customer</Label>
-                      <Select 
-                        value={formData.customer_id} 
-                        onValueChange={(value) => {
-                          const customer = customers.find(c => c.id === value);
-                          setFormData({
-                            ...formData,
-                            customer_id: value,
-                            customer_name: customer?.full_name || "",
-                            customer_email: customer?.email || "",
-                            customer_phone: customer?.phone || "",
-                          });
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select existing customer" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {customers.map((customer) => (
-                            <SelectItem key={customer.id} value={customer.id}>
-                              <div className="flex flex-col">
-                                <span className="font-medium">{customer.full_name}</span>
-                                {customer.email && <span className="text-xs text-muted-foreground">{customer.email}</span>}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="customer_name">Customer Name *</Label>
-                      <Input
-                        id="customer_name"
-                        value={formData.customer_name}
-                        onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-                        placeholder="Enter customer name"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="customer_email">Email Address</Label>
-                      <Input
-                        id="customer_email"
-                        type="email"
-                        value={formData.customer_email}
-                        onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })}
-                        placeholder="customer@example.com"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="customer_phone">Phone Number</Label>
-                      <Input
-                        id="customer_phone"
-                        value={formData.customer_phone}
-                        onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
-                        placeholder="+1 (555) 123-4567"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Invoice Details */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                    <Receipt className="w-4 h-4 text-purple-600" />
-                    Invoice Details
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="due_date">Due Date</Label>
-                      <Input
-                        id="due_date"
-                        type="date"
-                        value={formData.due_date}
-                        onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="payment_method">Preferred Payment Method</Label>
-                      <Select value={formData.payment_method} onValueChange={(value) => setFormData({ ...formData, payment_method: value })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select payment method" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PAYMENT_METHODS.map((method) => {
-                            const IconComponent = method.icon;
-                            return (
-                              <SelectItem key={method.value} value={method.value}>
-                                <div className="flex items-center gap-2">
-                                  <IconComponent className="w-4 h-4" />
-                                  {method.label}
-                                </div>
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="location_id">Location *</Label>
-                      <Select value={formData.location_id} onValueChange={(value) => setFormData({ ...formData, location_id: value })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder={locations.length ? "Select a location" : "No locations found"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {locations.map((loc) => (
-                            <SelectItem key={loc.id} value={loc.id}>
-                              {loc.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Items Section */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-green-600" />
-                    Invoice Items
-                  </h3>
-                  
-                  {/* Add Item Form */}
-                  <Card className="bg-slate-50 border-slate-200">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm">Add Item</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 lg:grid-cols-7 gap-3">
-                        <div className="lg:col-span-1">
-                          <Label className="text-sm">Service</Label>
-                          <Select value={newItem.service_id} onValueChange={(value) => {
-                            const service = services.find(s => s.id === value);
-                            setNewItem({ 
-                              ...newItem, 
-                              service_id: value,
-                              description: service?.name || "",
-                              unit_price: service?.price.toString() || ""
-                            });
-                          }}>
-                            <SelectTrigger className="h-9">
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {services.map((service) => (
-                                <SelectItem key={service.id} value={service.id}>
-                                  <div className="flex flex-col">
-                                    <span className="font-medium">{service.name}</span>
-                                    <span className="text-xs text-muted-foreground">{symbol}{service.price}</span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="lg:col-span-2">
-                          <Label className="text-sm">Description *</Label>
-                          <Input
-                            value={newItem.description}
-                            onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
-                            placeholder="Service description"
-                            className="h-9"
-                          />
-                        </div>
-                        
-                        <div className="lg:col-span-1">
-                          <Label className="text-sm">Qty *</Label>
-                          <Input
-                            type="number"
-                            value={newItem.quantity}
-                            onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })}
-                            min="1"
-                            className="h-9"
-                          />
-                        </div>
-                        
-                        <div className="lg:col-span-1">
-                          <Label className="text-sm">Price *</Label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={newItem.unit_price}
-                            onChange={(e) => setNewItem({ ...newItem, unit_price: e.target.value })}
-                            placeholder="0.00"
-                            className="h-9"
-                          />
-                        </div>
-                        
-                        <div className="lg:col-span-1">
-                          <Label className="text-sm">Discount %</Label>
-                          <Input
-                            type="number"
-                            value={newItem.discount_percentage}
-                            onChange={(e) => setNewItem({ ...newItem, discount_percentage: parseFloat(e.target.value) || 0 })}
-                            min="0"
-                            max="100"
-                            placeholder="0"
-                            className="h-9"
-                          />
-                        </div>
-                        
-                        <div className="lg:col-span-1 flex items-end">
-                          <Button 
-                            type="button" 
-                            onClick={addItemToInvoice}
-                            size="sm"
-                            className="w-full h-9 bg-violet-600 hover:bg-violet-700"
-                          >
-                            <Plus className="w-4 h-4 mr-1" />
-                            Add
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      <div className="mt-4">
-                        <Label className="text-sm">Assigned Staff</Label>
-                        <Select value={newItem.staff_id} onValueChange={(value) => setNewItem({ ...newItem, staff_id: value })}>
-                          <SelectTrigger className="max-w-xs h-9">
-                            <SelectValue placeholder="Select staff member" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {staff.map((member) => (
-                              <SelectItem key={member.id} value={member.id}>
-                                {member.full_name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Items List */}
-                  {selectedItems.length > 0 && (
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm">Invoice Items ({selectedItems.length})</CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-0">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Description</TableHead>
-                              <TableHead>Qty</TableHead>
-                              <TableHead>Price</TableHead>
-                              <TableHead>Discount</TableHead>
-                              <TableHead>Total</TableHead>
-                              <TableHead className="w-12"></TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {selectedItems.map((item, index) => (
-                              <TableRow key={index}>
-                                <TableCell className="font-medium">{item.description}</TableCell>
-                                <TableCell>{item.quantity}</TableCell>
-                                <TableCell>{symbol}{parseFloat(String(item.unit_price)).toFixed(2)}</TableCell>
-                                <TableCell>{item.discount_percentage}%</TableCell>
-                                <TableCell className="font-semibold">{symbol}{item.total_price.toFixed(2)}</TableCell>
-                                <TableCell>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => removeItemFromInvoice(index)}
-                                    className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Totals Summary */}
-                  {selectedItems.length > 0 && (
-                    <Card className="bg-violet-50 border-violet-200">
-                      <CardContent className="p-4">
-                        <div className="flex justify-end">
-                          <div className="w-64 space-y-2">
-                            {(() => {
-                              const totals = calculateTotals();
-                              return (
-                                <>
-                                  <div className="flex justify-between text-sm">
-                                    <span>Subtotal:</span>
-                                    <span className="font-semibold">{symbol}{totals.subtotal.toFixed(2)}</span>
-                                  </div>
-                                  <div className="flex items-center justify-between text-sm">
-                                    <div className="flex items-center gap-2">
-                                      <span>Apply Tax</span>
-                                      <Switch checked={applyTax} onCheckedChange={setApplyTax} />
-                                    </div>
-                                    <span className="text-xs text-muted-foreground">{applyTax ? `${orgTaxRate || 0}%` : '0%'}</span>
-                                  </div>
-                                  <div className="flex justify-between text-sm">
-                                    <span>Tax ({applyTax ? (orgTaxRate || 0) : 0}%):</span>
-                                    <span className="font-semibold">{symbol}{totals.taxAmount.toFixed(2)}</span>
-                                  </div>
-                                  <Separator />
-                                  <div className="flex justify-between text-lg font-bold">
-                                    <span>Total:</span>
-                                    <span className="text-violet-600">{symbol}{totals.total.toFixed(2)}</span>
-                                  </div>
-                                </>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-
-                <Separator />
-
-                {/* Notes */}
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Additional Notes</Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    rows={3}
-                    placeholder="Add any additional notes or special instructions..."
-                  />
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setIsCreateModalOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
-                  >
-                    Create Invoice
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <Button onClick={() => navigate('/invoices/new')} className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-lg">
+            <Plus className="w-4 h-4 mr-2" />
+            New Invoice
+          </Button>
         </div>
       </div>
 
@@ -1273,7 +762,7 @@ export default function Invoices() {
               </div>
               {!searchTerm && statusFilter === "all" && (
                 <Button 
-                  onClick={() => setIsCreateModalOpen(true)}
+                  onClick={() => navigate('/invoices/new')}
                   className="bg-violet-600 hover:bg-violet-700"
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -1367,6 +856,10 @@ export default function Invoices() {
                             <DropdownMenuItem onClick={() => duplicateInvoice(invoice)}>
                               <Copy className="w-4 h-4 mr-2" />
                               Duplicate
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/invoices/${invoice.id}/edit`)}>
+                              <Edit2 className="w-4 h-4 mr-2" />
+                              Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem>
                               <Download className="w-4 h-4 mr-2" />
@@ -1635,7 +1128,7 @@ export default function Invoices() {
                     }}>Save</Button>
                   </>
                 ) : (
-                  <Button className="bg-violet-600 hover:bg-violet-700" onClick={() => { setIsEditingLocation(true); setEditLocationId((selectedInvoice as any)?.location_id || ""); }}>
+                  <Button className="bg-violet-600 hover:bg-violet-700" onClick={() => { if (selectedInvoice) navigate(`/invoices/${selectedInvoice.id}/edit`); }}>
                     <Edit2 className="w-4 h-4 mr-2" />
                     Edit Invoice
                   </Button>
