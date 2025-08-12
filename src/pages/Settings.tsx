@@ -667,6 +667,20 @@ phone: "",
   const deleteWarehouse = async (id: string) => {
     if (!confirm('Delete this warehouse?')) return
     try {
+      // Prevent deletion if warehouse has related transactions
+      const [levelsRes, grRes, adjRes] = await Promise.all([
+        supabase.from('inventory_levels').select('id', { count: 'exact', head: true }).eq('warehouse_id', id),
+        supabase.from('goods_received').select('id', { count: 'exact', head: true }).eq('warehouse_id', id),
+        supabase.from('inventory_adjustments').select('id', { count: 'exact', head: true }).eq('warehouse_id', id),
+      ])
+      const levelsCount = levelsRes.count || 0
+      const goodsReceivedCount = grRes.count || 0
+      const adjustmentsCount = adjRes.count || 0
+      if (levelsCount > 0 || goodsReceivedCount > 0 || adjustmentsCount > 0) {
+        toast.error('Cannot delete warehouse with existing transactions')
+        return
+      }
+
       const { error } = await supabase.from('warehouses').delete().eq('id', id)
       if (error) throw error
       setWarehouses(prev => prev.filter(w => w.id !== id))
