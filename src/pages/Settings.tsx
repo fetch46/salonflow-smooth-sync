@@ -448,7 +448,6 @@ phone: "",
           email: companyData.email,
           website: companyData.website,
           timezone: companyData.timezone,
-          tax_rate_percent: taxRatePercent === '' ? null : parseFloat(taxRatePercent),
           regional_settings: regionalSettings,
         },
       } as any)
@@ -555,6 +554,22 @@ phone: "",
     } catch (e) {
       console.error(e)
       toast.error('Failed to save default deposit accounts')
+    }
+  }
+
+  const handleSaveTaxRate = async () => {
+    if (!organization) return toast.error('No organization selected');
+    try {
+      await updateOrganization(organization.id, {
+        settings: {
+          ...(organization.settings as any),
+          tax_rate_percent: taxRatePercent === '' ? null : parseFloat(taxRatePercent),
+        },
+      } as any)
+      toast.success('Tax rate updated')
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to save tax rate')
     }
   }
 
@@ -832,23 +847,6 @@ phone: "",
                     <div className="space-y-2">
                       <Label htmlFor="logo_url">Logo URL</Label>
                       <Input id="logo_url" value={companyData.logo_url} onChange={(e) => setCompanyData({ ...companyData, logo_url: e.target.value })} />
-                    </div>
-                  </div>
-
-                  {/* Finance Settings: Tax Rate */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="tax_rate_percent">Tax Rate (%)</Label>
-                      <Input
-                        id="tax_rate_percent"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={taxRatePercent}
-                        onChange={(e) => setTaxRatePercent(e.target.value)}
-                        placeholder="e.g. 8.5"
-                      />
-                      <p className="text-xs text-muted-foreground">This rate will be used across POS, Invoices and Purchases.</p>
                     </div>
                   </div>
 
@@ -1626,6 +1624,33 @@ phone: "",
 
           {/* Accounting - Default Deposit Accounts */}
           <TabsContent value="accounting">
+            <Card>
+              <CardHeader>
+                <CardTitle>Tax Settings</CardTitle>
+                <CardDescription>Set your default sales tax rate</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="tax_rate_percent">Tax Rate (%)</Label>
+                    <Input
+                      id="tax_rate_percent"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={taxRatePercent}
+                      onChange={(e) => setTaxRatePercent(e.target.value)}
+                      placeholder="e.g. 8.5"
+                    />
+                    <p className="text-xs text-muted-foreground">This rate will be used across POS, Invoices and Purchases.</p>
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button onClick={handleSaveTaxRate}>Save</Button>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Default Deposit Accounts</CardTitle>

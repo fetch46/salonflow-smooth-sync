@@ -371,16 +371,9 @@ export default function POS() {
         subtotal: totals.subtotal,
         tax_amount: totals.taxAmount,
         total_amount: totals.total,
-
         status: "sent",
         notes: (paymentData.notes || paymentData.transaction_number)
           ? `${paymentData.notes || ""}${paymentData.notes && paymentData.transaction_number ? "\n" : ""}${paymentData.transaction_number ? `Transaction #: ${paymentData.transaction_number}` : ""}`
-
-        payment_method: paymentData.payment_method,
-        status: "sent",
-        notes: (paymentData.notes || paymentData.transaction_number) 
-          ? `${paymentData.notes || ""}${paymentData.notes && paymentData.transaction_number ? "\n" : ""}${paymentData.transaction_number ? `Transaction #: ${paymentData.transaction_number}` : ""}` 
-      main
           : null,
         location_id: inferredLocationId,
       };
