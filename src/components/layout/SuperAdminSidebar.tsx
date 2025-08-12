@@ -133,7 +133,7 @@ const superAdminMenuItems: SuperAdminMenuItem[] = [
 export function SuperAdminSidebar() {
   const location = useLocation();
   const [openSubmenus, setOpenSubmenus] = useState<string[]>([]);
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
 
   const toggleSubmenu = (title: string) => {
     setOpenSubmenus((prev) =>
@@ -141,6 +141,10 @@ export function SuperAdminSidebar() {
         ? []
         : [title]
     );
+  };
+
+  const handleNavClick = () => {
+    if (isMobile) setOpenMobile(false);
   };
 
   useEffect(() => {
@@ -217,6 +221,7 @@ export function SuperAdminSidebar() {
                                         : "text-slate-700 hover:text-purple-800"
                                     }`
                                   }
+                                  onClick={handleNavClick}
                                 >
                                   <subItem.icon className="w-5 h-5" />
                                   <span>{subItem.title}</span>
@@ -248,6 +253,7 @@ export function SuperAdminSidebar() {
                               : "text-slate-700 hover:text-purple-800"
                           }`
                         }
+                        onClick={handleNavClick}
                       >
                         <item.icon className="w-5 h-5" />
                         <span>{item.title}</span>

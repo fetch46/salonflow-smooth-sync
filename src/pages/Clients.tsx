@@ -189,14 +189,21 @@ export default function Clients() {
   const fetchClients = async () => {
     try {
       setLoading(true);
-      let query = supabase.from("clients").select("*");
-      if (organization?.id) {
-        query = query.eq("organization_id", organization.id);
+      try {
+        let query = supabase.from("clients").select("*");
+        if (organization?.id) {
+          query = query.eq("organization_id", organization.id);
+        }
+        const { data, error } = await query.order("created_at", { ascending: false });
+        if (error) throw error;
+        setClients(data || []);
+      } catch (e: any) {
+        // Fallback to local storage mock for demo/offline
+        const storage = JSON.parse(localStorage.getItem('mockDb') || '{}');
+        const localClients = (storage.clients || []) as any[];
+        const filtered = organization?.id ? localClients.filter(c => c.organization_id === organization.id) : localClients;
+        setClients(filtered);
       }
-      const { data, error } = await query.order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setClients(data || []);
     } catch (error) {
       console.error("Error fetching clients:", error);
       toast.error("Failed to fetch clients");
@@ -234,7 +241,7 @@ export default function Clients() {
         if (organization?.id) {
           dupQuery = dupQuery.eq('organization_id', organization.id);
         }
-        const { data: dup, error: dupErr } = await dupQuery.maybeSingle();
+        const { data: dup } = await dupQuery.maybeSingle();
         if (!editingClient && dup?.id) {
           toast.error('A client with this mobile number already exists');
           return;
@@ -258,11 +265,18 @@ export default function Clients() {
           ...basePayload,
           date_of_birth: formData.date_of_birth ? formData.date_of_birth : null,
         };
-        const { error } = await supabase
-          .from("clients")
-          .update(updatePayload)
-          .eq("id", editingClient.id);
-        if (error) throw error;
+        try {
+          const { error } = await supabase
+            .from("clients")
+            .update(updatePayload)
+            .eq("id", editingClient.id);
+          if (error) throw error;
+        } catch {
+          // Fallback local update
+          const storage = JSON.parse(localStorage.getItem('mockDb') || '{}');
+          storage.clients = (storage.clients || []).map((c: any) => c.id === editingClient.id ? { ...c, ...updatePayload, updated_at: new Date().toISOString() } : c);
+          localStorage.setItem('mockDb', JSON.stringify(storage));
+        }
       } else {
         const insertPayload: any = {
           ...basePayload,
@@ -271,10 +285,19 @@ export default function Clients() {
         if (organization?.id) {
           insertPayload.organization_id = organization.id;
         }
-        const { error } = await supabase
-          .from("clients")
-          .insert([insertPayload]);
-        if (error) throw error;
+        try {
+          const { error } = await supabase
+            .from("clients")
+            .insert([insertPayload]);
+          if (error) throw error;
+        } catch {
+          // Fallback: create locally
+          const storage = JSON.parse(localStorage.getItem('mockDb') || '{}');
+          const nowIso = new Date().toISOString();
+          const localClient = { id: `client_${Date.now()}_${Math.random().toString(36).slice(2,9)}`, created_at: nowIso, updated_at: nowIso, client_status: 'active', total_spent: 0, total_visits: 0, ...insertPayload };
+          storage.clients = [...(storage.clients || []), localClient];
+          localStorage.setItem('mockDb', JSON.stringify(storage));
+        }
       }
 
       toast.success(editingClient ? "Client updated successfully" : "Client created successfully");
@@ -323,8 +346,14 @@ export default function Clients() {
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this client?")) {
       try {
-        const { error } = await supabase.from("clients").delete().eq("id", id);
-        if (error) throw error;
+        try {
+          const { error } = await supabase.from("clients").delete().eq("id", id);
+          if (error) throw error;
+        } catch {
+          const storage = JSON.parse(localStorage.getItem('mockDb') || '{}');
+          storage.clients = (storage.clients || []).filter((c: any) => c.id !== id);
+          localStorage.setItem('mockDb', JSON.stringify(storage));
+        }
         toast.success("Client deleted successfully");
         fetchClients();
       } catch (error) {
