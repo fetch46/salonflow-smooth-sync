@@ -322,6 +322,186 @@ router.post('/sales-invoices', async (req, res) => {
   }
 });
 
+// Add: Update existing sales invoice with double-entry adjustments
+const salesInvoiceUpdateSchema = z.object({
+  number: z.string().min(1).optional(),
+  date: z.coerce.date().optional(),
+  customerName: z.string().min(1).optional(),
+  arAccountId: z.string().min(1).optional(),
+  revenueAccountId: z.string().optional(),
+  items: z.array(invoiceItemSchema).min(1).optional(),
+  post: z.boolean().optional(),
+});
+
+router.put('/sales-invoices/:id', async (req, res) => {
+  const parsed = salesInvoiceUpdateSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  const data = parsed.data as z.infer<typeof salesInvoiceUpdateSchema>;
+  const invoiceId = req.params.id;
+
+  try {
+    const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const existing = await tx.salesInvoice.findUnique({ where: { id: invoiceId }, include: { items: true } });
+      if (!existing) return null;
+
+      const nextDate = data.date ?? existing.date;
+      const nextNumber = data.number ?? existing.number;
+      const nextCustomerName = data.customerName ?? existing.customerName;
+      const nextArAccountId = data.arAccountId ?? existing.arAccountId;
+      const nextRevenueAccountId = typeof data.revenueAccountId !== 'undefined' ? (data.revenueAccountId || null) : existing.revenueAccountId;
+
+      // If currently posted, remove previous stock movements first to avoid double-count in costing
+      if (existing.postedEntryId) {
+        await tx.stockMovement.deleteMany({ where: { referenceType: 'SALES_INVOICE', referenceId: existing.id } });
+        // Clear previous journal lines; keep the entry row and reuse it
+        await tx.journalLine.deleteMany({ where: { entryId: existing.postedEntryId } });
+        // Update journal entry header to new date/memo if provided
+        await tx.journalEntry.update({ where: { id: existing.postedEntryId }, data: { date: nextDate, memo: `Sales Invoice ${nextNumber}` } });
+      }
+
+      // Prepare items
+      let itemsForPosting: Array<{ productId: string; locationId: string; quantity: number; unitPrice: number; unitCost: number; cogsTotal: number; lineTotal: number }> = [];
+
+      if (data.items) {
+        // Validate products exist up-front
+        const productIds = data.items.map((i) => i.productId);
+        const products = await tx.product.findMany({ where: { id: { in: productIds } } });
+        const productMap = new Map<string, any>(products.map((p: any) => [p.id, p] as const));
+        if (products.length !== productIds.length) throw new Error('One or more products not found');
+
+        // Compute costs per configured costing method, as-of nextDate
+        const computed = await calculateCostsForItems(
+          tx,
+          data.items.map((i) => ({ productId: i.productId, locationId: i.locationId, quantity: i.quantity, unitPrice: i.unitPrice })),
+          nextDate
+        );
+        itemsForPosting = computed;
+
+        // Replace invoice items snapshot
+        await tx.salesInvoiceItem.deleteMany({ where: { invoiceId: existing.id } });
+        await tx.salesInvoiceItem.createMany({
+          data: itemsForPosting.map((i) => ({
+            invoiceId: existing.id,
+            productId: i.productId,
+            locationId: i.locationId,
+            quantity: i.quantity,
+            unitPrice: i.unitPrice,
+            unitCost: i.unitCost,
+            lineTotal: i.lineTotal,
+          })),
+        });
+      } else {
+        // Use existing snapshot; recompute posting values from stored unitCost and quantities
+        itemsForPosting = existing.items.map((it: any) => ({
+          productId: it.productId,
+          locationId: it.locationId,
+          quantity: Number(it.quantity),
+          unitPrice: Number(it.unitPrice),
+          unitCost: Number(it.unitCost),
+          cogsTotal: Number(it.unitCost) * Number(it.quantity),
+          lineTotal: Number(it.lineTotal),
+        }));
+      }
+
+      const productsForMapIds = Array.from(new Set(itemsForPosting.map((i) => i.productId)));
+      const productsForMap = await tx.product.findMany({ where: { id: { in: productsForMapIds } } });
+      const productMap = new Map<string, any>(productsForMap.map((p: any) => [p.id, p] as const));
+
+      // Calculate totals
+      const total = itemsForPosting.reduce((acc, i) => acc + Number(i.lineTotal), 0);
+
+      // Determine posting intent
+      const shouldPost = typeof data.post === 'boolean' ? data.post : existing.status !== 'DRAFT';
+
+      let entryIdToUse: string | null = existing.postedEntryId ?? null;
+
+      if (shouldPost) {
+        // Ensure journal entry exists
+        if (!entryIdToUse) {
+          const createdEntry = await tx.journalEntry.create({
+            data: {
+              date: nextDate,
+              memo: `Sales Invoice ${nextNumber}`,
+              posted: true,
+              createdById: (req as any).user.id,
+              referenceType: 'SALES_INVOICE',
+              referenceId: existing.id,
+            },
+          });
+          entryIdToUse = createdEntry.id;
+        }
+
+        // Recreate journal lines and stock movements
+        for (const item of itemsForPosting) {
+          const product = productMap.get(item.productId)!;
+          const revenueAccountId = nextRevenueAccountId ?? product.revenueAccountId;
+
+          await tx.journalLine.create({ data: { entryId: entryIdToUse, accountId: nextArAccountId, debit: item.lineTotal, credit: 0 } });
+          await tx.journalLine.create({ data: { entryId: entryIdToUse, accountId: revenueAccountId, debit: 0, credit: item.lineTotal } });
+
+          const cogsTotal = typeof item.cogsTotal === 'number' ? item.cogsTotal : Number(item.unitCost) * Number(item.quantity);
+          await tx.journalLine.create({ data: { entryId: entryIdToUse, accountId: product.cogsAccountId, debit: cogsTotal, credit: 0, productId: product.id, locationId: item.locationId } });
+          await tx.journalLine.create({ data: { entryId: entryIdToUse, accountId: product.inventoryAccountId, debit: 0, credit: cogsTotal, productId: product.id, locationId: item.locationId } });
+
+          await tx.stockMovement.create({ data: { productId: product.id, locationId: item.locationId, movementType: 'OUT', quantity: item.quantity, costPerUnit: item.unitCost, referenceType: 'SALES_INVOICE', referenceId: existing.id, journalEntryId: entryIdToUse, date: nextDate } });
+        }
+      } else {
+        // If unposting and entry exists, clean up and null the link
+        if (entryIdToUse) {
+          await tx.journalLine.deleteMany({ where: { entryId: entryIdToUse } });
+          await tx.stockMovement.deleteMany({ where: { referenceType: 'SALES_INVOICE', referenceId: existing.id } });
+          // Keep the entry record for audit but leave it empty; alternatively could delete it
+        }
+        entryIdToUse = null;
+      }
+
+      // Update invoice header and totals
+      const nextStatusIfPosted: 'POSTED' | 'PARTIALLY_PAID' | 'PAID' | 'DRAFT' = shouldPost ? 'POSTED' : 'DRAFT';
+
+      const updatedInvoice = await tx.salesInvoice.update({
+        where: { id: existing.id },
+        data: {
+          number: nextNumber,
+          date: nextDate,
+          customerName: nextCustomerName,
+          arAccountId: nextArAccountId,
+          revenueAccountId: nextRevenueAccountId,
+          total,
+          postedEntryId: entryIdToUse,
+          status: nextStatusIfPosted,
+        },
+      });
+
+      // If posted, recalc payment-based status (PAID/PARTIALLY_PAID)
+      if (shouldPost) {
+        try {
+          const paysAgg = await tx.payment.aggregate({
+            _sum: { amount: true },
+            where: { referenceType: 'SALES_INVOICE', referenceId: existing.id, type: 'IN' },
+          });
+          const paidSum = Number(paysAgg._sum.amount || 0);
+          const totalAmount = Number(total || 0);
+          const nextStatus: 'PAID' | 'PARTIALLY_PAID' | 'POSTED' = paidSum + 1e-9 >= totalAmount
+            ? 'PAID'
+            : paidSum > 0
+            ? 'PARTIALLY_PAID'
+            : 'POSTED';
+          if (updatedInvoice.status !== nextStatus) {
+            await tx.salesInvoice.update({ where: { id: existing.id }, data: { status: nextStatus } });
+          }
+        } catch {}
+      }
+
+      return await tx.salesInvoice.findUnique({ where: { id: existing.id }, include: { items: true } });
+    });
+
+    if (!updated) return res.status(404).json({ error: 'Invoice not found' });
+    res.json(updated);
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 router.post('/purchase-bills', async (req, res) => {
   const parsed = purchaseBillSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
