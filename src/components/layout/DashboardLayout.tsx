@@ -92,7 +92,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps = {})
           <AppTopbar />
 
           {/* Main Content */}
-          <main className="flex-1 min-w-0 p-4 md:p-6 lg:p-8">
+          <main className="flex-1 min-w-0 p-4 md:p-6 lg:p-8 pb-footer">
             <div className="mb-4">
               <Breadcrumb>
                 <BreadcrumbList>
