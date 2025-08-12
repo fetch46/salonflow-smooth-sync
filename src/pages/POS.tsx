@@ -366,7 +366,7 @@ export default function POS() {
         discount_amount: totals.globalDiscount,
         total_amount: totals.total,
         payment_method: paymentData.payment_method,
-        status: "completed",
+        status: "sent",
         notes: (paymentData.notes || paymentData.transaction_number) 
           ? `${paymentData.notes || ""}${paymentData.notes && paymentData.transaction_number ? "\n" : ""}${paymentData.transaction_number ? `Transaction #: ${paymentData.transaction_number}` : ""}` 
           : null,
