@@ -229,66 +229,97 @@ const Reports = () => {
   const loadCommissions = async () => {
     setLoading(true);
     try {
-      // Step 1: find invoices in range
-      const rcptQuery = supabase
-        .from('invoices')
-        .select('id, created_at, location_id')
-        .gte('created_at', startDate)
-        .lte('created_at', endDate);
-      if (locationFilter !== 'all') rcptQuery.eq('location_id', locationFilter);
-      const { data: invoicesInRange, error: rcptErr } = await rcptQuery;
-      if (rcptErr) throw rcptErr;
-      const invoiceIds: string[] = (invoicesInRange || []).map((r: any) => r.id);
+      // Step 1: find job cards in range
+      let jobCardsInRange: any[] = [];
+      try {
+        let jcQuery = supabase
+          .from('job_cards')
+          .select('id, created_at, location_id')
+          .gte('created_at', startDate)
+          .lte('created_at', endDate);
+        if (locationFilter !== 'all') jcQuery = jcQuery.eq('location_id', locationFilter);
+        const { data, error } = await jcQuery;
+        if (error) throw error;
+        jobCardsInRange = data || [];
+      } catch (err: any) {
+        const msg = String(err?.message || '');
+        const code = (err as any)?.code || '';
+        const isMissingLocationCol = code === '42703' || /column\s+"?location_id"?\s+does not exist/i.test(msg) || (/schema cache/i.test(msg) && /job_cards/i.test(msg) && /location_id/i.test(msg));
+        if (isMissingLocationCol) {
+          const { data, error } = await supabase
+            .from('job_cards')
+            .select('id, created_at')
+            .gte('created_at', startDate)
+            .lte('created_at', endDate);
+          if (error) throw error;
+          jobCardsInRange = data || [];
+        } else {
+          throw err;
+        }
+      }
+      const jobCardIds: string[] = (jobCardsInRange || []).map((r: any) => r.id);
 
-      if (invoiceIds.length === 0) {
+      if (jobCardIds.length === 0) {
         setCommissionRows([]);
         setCommissionSummary({});
         return;
       }
 
-      // Step 2: load staff commissions for those invoices
-      const { data: comms, error: commErr } = await supabase
-        .from('staff_commissions')
+      // Step 2: load job card services for those job cards (Services & Commissions)
+      const { data: jcs, error: jcsErr } = await supabase
+        .from('job_card_services')
         .select(`
-          id, commission_rate, gross_amount, commission_amount, created_at,
-          invoice:invoice_id ( id, created_at ),
-          staff:staff_id ( id, full_name ),
-          service:service_id ( id, name )
+          id, created_at, job_card_id, service_id, staff_id, quantity, unit_price, commission_percentage,
+          services:service_id ( id, name, commission_percentage ),
+          staff:staff_id ( id, full_name, commission_rate )
         `)
-        .in('invoice_id', invoiceIds);
-      if (commErr) throw commErr;
+        .in('job_card_id', jobCardIds);
+      if (jcsErr) throw jcsErr;
 
-      const normalized = (comms || []).map((r: any) => {
-        const staff = Array.isArray(r.staff) ? r.staff[0] : r.staff;
-        const service = Array.isArray(r.service) ? r.service[0] : r.service;
-        const invoice = Array.isArray(r.invoice) ? r.invoice[0] : r.invoice;
-        return { ...r, staff, service, invoice };
-      });
+      const computeRate = (row: any) => {
+        if (typeof row.commission_percentage === 'number' && !isNaN(row.commission_percentage)) return Number(row.commission_percentage);
+        if (typeof row.services?.commission_percentage === 'number' && !isNaN(row.services.commission_percentage)) return Number(row.services.commission_percentage);
+        if (typeof row.staff?.commission_rate === 'number' && !isNaN(row.staff.commission_rate)) return Number(row.staff.commission_rate);
+        return 0;
+      };
 
-      const filtered = normalized.filter((r: any) => commissionStaffFilter === 'all' ? true : r.staff?.id === commissionStaffFilter);
-      setCommissionRows(filtered.map((r: any) => ({
-        id: r.id,
-        created_at: r.invoice?.created_at || r.created_at,
-        service: r.service,
-        staff: r.staff,
-        quantity: 1,
-        unit_price: Number(r.gross_amount || 0),
-        gross_amount: Number(r.gross_amount || 0),
-        commission_rate: Number(r.commission_rate || 0),
-        commission_amount: Number(r.commission_amount || 0),
-      })));
+      const filtered = (jcs || []).map((r: any) => ({
+        ...r,
+        staff: Array.isArray(r.staff) ? r.staff[0] : r.staff,
+        services: Array.isArray(r.services) ? r.services[0] : r.services,
+      })).filter((r: any) => commissionStaffFilter === 'all' ? true : (r.staff?.id === commissionStaffFilter || r.staff_id === commissionStaffFilter));
+
+      setCommissionRows(filtered.map((r: any) => {
+        const qty = Number(r.quantity || 1);
+        const unit = Number(r.unit_price || 0);
+        const gross = qty * unit;
+        const rate = computeRate(r);
+        return {
+          id: r.id,
+          created_at: r.created_at,
+          service: r.services,
+          staff: r.staff,
+          quantity: qty,
+          unit_price: unit,
+          gross_amount: gross,
+          commission_rate: rate,
+          commission_amount: Number(((gross * rate) / 100).toFixed(2)),
+        };
+      }));
 
       const summary: Record<string, { staffId: string; staffName: string; gross: number; commissionRate: number; commission: number }> = {};
       for (const r of filtered as any[]) {
-        const staffId = r.staff?.id || 'unassigned';
+        const staffId = r.staff?.id || r.staff_id || 'unassigned';
         const staffName = r.staff?.full_name || 'Unassigned';
-        const gross = Number(r.gross_amount || 0);
-        const rate = Number(r.commission_rate || 0);
-        const commission = Number(r.commission_amount || 0);
+        const qty = Number(r.quantity || 1);
+        const unit = Number(r.unit_price || 0);
+        const gross = qty * unit;
+        const rate = computeRate(r);
+        const commission = (gross * (Number(rate) || 0)) / 100;
         if (!summary[staffId]) summary[staffId] = { staffId, staffName, gross: 0, commissionRate: 0, commission: 0 };
         summary[staffId].gross += gross;
         // For display, keep last non-zero rate; this is a per-line rate in reality
-        summary[staffId].commissionRate = rate || summary[staffId].commissionRate;
+        summary[staffId].commissionRate = Number(rate) || summary[staffId].commissionRate;
         summary[staffId].commission += commission;
       }
       setCommissionSummary(summary);
