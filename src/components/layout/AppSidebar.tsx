@@ -93,6 +93,12 @@ const menuItems: MenuItem[] = [
         feature: "accounting",
       },
       {
+        title: "Invoices",
+        url: "/invoices",
+        icon: FileText,
+        feature: "accounting",
+      },
+      {
         title: "Payments",
         url: "/payments",
         icon: DollarSign,
@@ -180,9 +186,21 @@ const menuItems: MenuItem[] = [
             feature: "accounting",
           },
           {
+            title: "Journal",
+            url: "/journal",
+            icon: FileText,
+            feature: "accounting",
+          },
+          {
             title: "Banking",
             url: "/banking",
             icon: CreditCard,
+            feature: "accounting",
+          },
+          {
+            title: "Trial Balance",
+            url: "/trial-balance",
+            icon: TrendingUp,
             feature: "accounting",
           },
         ],

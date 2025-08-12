@@ -51,6 +51,7 @@ const SupplierProfile = lazy(() => import("@/pages/SupplierProfile"));
 const ProductView = lazy(() => import("@/pages/ProductView"));
 const InventoryAdjustmentForm = lazy(() => import("@/pages/InventoryAdjustmentForm"));
 const AccountView = lazy(() => import("@/pages/AccountView"));
+const Invoices = lazy(() => import("@/pages/Invoices"));
 
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const Landing = lazy(() => import("@/pages/Landing"));
@@ -64,6 +65,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 // Lazy-load heavy pages to reduce initial bundle size
 const Payments = lazy(() => import("@/pages/Payments"));
 const Banking = lazy(() => import("@/pages/Banking"));
+const Journal = lazy(() => import("@/pages/Journal"));
+const TrialBalance = lazy(() => import("@/pages/TrialBalance"));
 
 // Super Admin Pages
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
@@ -177,6 +180,7 @@ const AppRoutes = () => {
           <Route path="receipts/new" element={<ReceiptForm />} />
           <Route path="receipts/:id" element={<ReceiptView />} />
           <Route path="receipts/:id/edit" element={<ReceiptForm />} />
+          <Route path="invoices" element={<Invoices />} />
           <Route path="purchases" element={<Purchases />} />
           <Route path="purchases/new" element={<PurchaseForm />} />
           <Route path="purchases/:id" element={<PurchaseView />} />
@@ -192,6 +196,8 @@ const AppRoutes = () => {
           <Route path="accounts/:id/edit" element={<AccountEdit />} />
           <Route path="payments" element={<Payments />} />
           <Route path="banking" element={<Banking />} />
+          <Route path="journal" element={<Journal />} />
+          <Route path="trial-balance" element={<TrialBalance />} />
           
           {/* Operations */}
           <Route path="job-cards" element={<JobCards />} />
