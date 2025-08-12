@@ -94,6 +94,36 @@ export default function Appointments() {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
+  const handleSendConfirmation = async (appointment: Appointment) => {
+    try {
+      const res = await fetch('/api/notifications/appointment/confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointment_id: appointment.id })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Failed to send confirmation');
+      toast.success('Confirmation sent');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to send confirmation');
+    }
+  };
+
+  const handleSendReminder = async (appointment: Appointment) => {
+    try {
+      const res = await fetch('/api/notifications/appointment/reminder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointment_id: appointment.id })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Failed to send reminder');
+      toast.success('Reminder sent');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to send reminder');
+    }
+  };
+
   const [form, setForm] = useState({
     customer_name: "",
     customer_email: "",
@@ -596,6 +626,16 @@ export default function Appointments() {
         // Booking fee no longer creates a sales receipt
 
         toast.success("Appointment created successfully!");
+        try {
+          if (inserted?.id) {
+            await fetch('/api/notifications/appointment/confirmation', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ appointment_id: inserted.id })
+            });
+          }
+        } catch {}
+
       }
       
       fetchData();
@@ -984,6 +1024,14 @@ export default function Appointments() {
                               <DropdownMenuItem onClick={() => handleEdit(appointment)}>
                                 <Edit2 className="mr-2 h-4 w-4" />
                                 Edit Appointment
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleSendConfirmation(appointment)}>
+                                <Mail className="mr-2 h-4 w-4" />
+                                Send Confirmation
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleSendReminder(appointment)}>
+                                <Clock className="mr-2 h-4 w-4" />
+                                Send Reminder
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleDelete(appointment.id)}

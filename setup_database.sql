@@ -11,6 +11,7 @@
 \i supabase/migrations/20250916094500_inventory_adjustments.sql
 \i supabase/migrations/20250917094500_inventory_item_accounts.sql
 \i supabase/migrations/20250918120000_create_account_transactions.sql
+\i supabase/migrations/20250925093000_appointment_notifications.sql
 
 -- Receipts removed; invoices are the source of truth. Ensure invoice tables exist before adding location_id.
 -- (No action needed here)
