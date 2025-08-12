@@ -534,9 +534,11 @@ export default function Inventory() {
               .eq('item_id', editingItem.id)
               .maybeSingle();
             if (existing) {
-              await supabase.from('inventory_item_accounts').update(payload).eq('item_id', editingItem.id);
+              const { error } = await supabase.from('inventory_item_accounts').update(payload).eq('item_id', editingItem.id);
+              if (error) throw error;
             } else {
-              await supabase.from('inventory_item_accounts').insert(payload);
+              const { error } = await supabase.from('inventory_item_accounts').insert(payload);
+              if (error) throw error;
             }
           }
         }
@@ -583,9 +585,11 @@ export default function Inventory() {
                 .eq('item_id', newItemId)
                 .maybeSingle();
               if (existing) {
-                await supabase.from('inventory_item_accounts').update(payload).eq('item_id', newItemId);
+                const { error } = await supabase.from('inventory_item_accounts').update(payload).eq('item_id', newItemId);
+                if (error) throw error;
               } else {
-                await supabase.from('inventory_item_accounts').insert(payload);
+                const { error } = await supabase.from('inventory_item_accounts').insert(payload);
+                if (error) throw error;
               }
             }
           }
@@ -604,8 +608,8 @@ export default function Inventory() {
       setIsItemDialogOpen(false);
       setEditingItem(null);
       fetchData();
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to save product", variant: "destructive" });
+    } catch (error: any) {
+      toast({ title: "Error", description: String(error?.message || error || 'Failed to save product'), variant: "destructive" });
     }
   };
 

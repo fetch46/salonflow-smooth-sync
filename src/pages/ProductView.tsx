@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useOrganization } from "@/lib/saas/hooks";
 import { useRegionalNumberFormatter, useRegionalDateFormatter } from "@/lib/saas";
+import { toast } from "@/hooks/use-toast";
 
 interface InventoryItem {
   id: string;
@@ -270,24 +271,27 @@ export default function ProductView() {
           .eq('item_id', id)
           .maybeSingle();
         if (existing) {
-          await supabase
+          const { error } = await supabase
             .from('inventory_item_accounts')
             .update(payload)
             .eq('item_id', id);
+          if (error) throw error;
         } else {
-          await supabase
+          const { error } = await supabase
             .from('inventory_item_accounts')
             .insert(payload);
+          if (error) throw error;
         }
       }
 
       setIsEditAccountsOpen(false);
       // reload mapping
-      const { data: mapData } = await supabase
+      const { data: mapData, error: reloadError } = await supabase
         .from("inventory_item_accounts")
         .select("sales_account_id, purchase_account_id, inventory_account_id, is_taxable")
         .eq("item_id", id)
         .maybeSingle();
+      if (reloadError) throw reloadError;
       const m: ItemAccountMapping = {
         sales_account_id: mapData?.sales_account_id || null,
         purchase_account_id: mapData?.purchase_account_id || null,
@@ -297,10 +301,11 @@ export default function ProductView() {
       setMapping(m);
       const ids = [m.sales_account_id, m.purchase_account_id, m.inventory_account_id].filter(Boolean) as string[];
       if (ids.length > 0) {
-        const { data: accounts } = await supabase
+        const { data: accounts, error: accErr } = await supabase
           .from("accounts")
           .select("id, account_code, account_name")
           .in("id", ids);
+        if (accErr) throw accErr;
         const map: Record<string, { code: string; name: string }> = {};
         for (const a of accounts || []) {
           map[a.id] = { code: a.account_code, name: a.account_name } as any;
@@ -309,8 +314,9 @@ export default function ProductView() {
       } else {
         setAccountDisplay(null);
       }
-    } catch (e) {
-      // ignore
+      toast({ title: "Saved", description: "Accounts updated for this product" });
+    } catch (e: any) {
+      toast({ title: "Save failed", description: String(e?.message || e || 'Unknown error'), variant: "destructive" });
     }
   };
 
