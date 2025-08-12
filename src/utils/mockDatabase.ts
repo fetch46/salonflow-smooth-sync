@@ -638,6 +638,7 @@ export async function updateReceiptWithFallback(supabase: any, id: string, updat
     if (typeof updates.total_amount !== 'undefined') allowed.total_amount = updates.total_amount;
     if (typeof updates.customer_id !== 'undefined') allowed.customer_id = updates.customer_id;
     if (typeof updates.job_card_id !== 'undefined') allowed.job_card_id = updates.job_card_id;
+    if (typeof updates.location_id !== 'undefined') allowed.location_id = updates.location_id;
 
     const { error } = await supabase
       .from('receipts')
