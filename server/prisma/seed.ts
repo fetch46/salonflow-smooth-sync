@@ -16,6 +16,19 @@ async function main() {
     },
   });
 
+  // Also create an OWNER user for full admin rights testing
+  const ownerPasswordHash = await bcrypt.hash('owner123', 10);
+  await prisma.user.upsert({
+    where: { email: 'owner@example.com' },
+    update: {},
+    create: {
+      email: 'owner@example.com',
+      name: 'Owner User',
+      role: Role.OWNER,
+      passwordHash: ownerPasswordHash,
+    },
+  });
+
   // Core accounts
   const accounts = [
     { code: '1000', name: 'Cash', category: AccountCategory.ASSET },
@@ -63,6 +76,7 @@ async function main() {
   });
 
   console.log('Seed complete. Admin login: admin@example.com / admin123');
+  console.log('Seed complete. Owner login: owner@example.com / owner123');
 }
 
 main()
