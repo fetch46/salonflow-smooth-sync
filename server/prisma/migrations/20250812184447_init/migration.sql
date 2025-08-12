@@ -1,3 +1,6 @@
+-- Create compatibility alias so DATETIME works on PostgreSQL
+CREATE DOMAIN DATETIME AS TIMESTAMPTZ;
+
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL PRIMARY KEY,
