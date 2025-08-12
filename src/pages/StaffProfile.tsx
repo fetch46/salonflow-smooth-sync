@@ -99,31 +99,30 @@ export default function StaffProfile() {
     if (!id) return;
     setLoading(true);
     try {
-      // Filter receipts in date range
-      const { data: receipts } = await supabase
-        .from('receipts')
+      // Filter invoices in date range
+      const { data: invoices } = await supabase
+        .from('invoices')
         .select('id, created_at')
         .gte('created_at', startDate)
         .lte('created_at', endDate);
-      const receiptIds: string[] = (receipts || []).map((r: any) => r.id);
+      const invoiceIds: string[] = (invoices || []).map((r: any) => r.id);
 
       let comms: any[] = [];
-      if (receiptIds.length > 0) {
-        const { data } = await supabase
+      if (invoiceIds.length > 0) {
+        const { data: dataComms } = await supabase
           .from('staff_commissions')
           .select(`
-            id, commission_rate, gross_amount, commission_amount,
-            receipt:receipt_id ( id, created_at ),
+            id, commission_rate, gross_amount, commission_amount, created_at,
+            invoice:invoice_id ( id, created_at ),
             service:service_id ( id, name )
           `)
-          .eq('staff_id', id)
-          .in('receipt_id', receiptIds);
-        comms = data || [];
+          .in('invoice_id', invoiceIds);
+        comms = dataComms || [];
       }
 
       const normalized = (comms || []).map((r: any) => ({
         id: r.id,
-        date: (Array.isArray(r.receipt) ? r.receipt[0] : r.receipt)?.created_at,
+        date: (Array.isArray(r.invoice) ? r.invoice[0] : r.invoice)?.created_at,
         service: (Array.isArray(r.service) ? r.service[0] : r.service)?.name || 'Service',
         gross: Number(r.gross_amount || 0),
         rate: Number(r.commission_rate || 0),

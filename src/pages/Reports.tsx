@@ -229,46 +229,45 @@ const Reports = () => {
   const loadCommissions = async () => {
     setLoading(true);
     try {
-      // Step 1: find receipts in range
-      const rcptQuery = supabase
-        .from('receipts')
-        .select('id, created_at, location_id')
+      // Step 1: find invoices in range
+      const invQuery = supabase
+        .from('invoices')
+        .select('id, created_at')
         .gte('created_at', startDate)
         .lte('created_at', endDate);
-      if (locationFilter !== 'all') rcptQuery.eq('location_id', locationFilter);
-      const { data: receiptsInRange, error: rcptErr } = await rcptQuery;
-      if (rcptErr) throw rcptErr;
-      const receiptIds: string[] = (receiptsInRange || []).map((r: any) => r.id);
+      const { data: invoicesInRange, error: invErr } = await invQuery;
+      if (invErr) throw invErr;
+      const invoiceIds: string[] = (invoicesInRange || []).map((r: any) => r.id);
 
-      if (receiptIds.length === 0) {
+      if (invoiceIds.length === 0) {
         setCommissionRows([]);
         setCommissionSummary({});
         return;
       }
 
-      // Step 2: load staff commissions for those receipts
+      // Step 2: load staff commissions for those invoices
       const { data: comms, error: commErr } = await supabase
         .from('staff_commissions')
         .select(`
           id, commission_rate, gross_amount, commission_amount, created_at,
-          receipt:receipt_id ( id, created_at ),
+          invoice:invoice_id ( id, created_at ),
           staff:staff_id ( id, full_name ),
           service:service_id ( id, name )
         `)
-        .in('receipt_id', receiptIds);
+        .in('invoice_id', invoiceIds);
       if (commErr) throw commErr;
 
       const normalized = (comms || []).map((r: any) => {
         const staff = Array.isArray(r.staff) ? r.staff[0] : r.staff;
         const service = Array.isArray(r.service) ? r.service[0] : r.service;
-        const receipt = Array.isArray(r.receipt) ? r.receipt[0] : r.receipt;
-        return { ...r, staff, service, receipt };
+        const invoice = Array.isArray(r.invoice) ? r.invoice[0] : r.invoice;
+        return { ...r, staff, service, invoice };
       });
 
       const filtered = normalized.filter((r: any) => commissionStaffFilter === 'all' ? true : r.staff?.id === commissionStaffFilter);
       setCommissionRows(filtered.map((r: any) => ({
         id: r.id,
-        created_at: r.receipt?.created_at || r.created_at,
+        created_at: r.invoice?.created_at || r.created_at,
         service: r.service,
         staff: r.staff,
         quantity: 1,

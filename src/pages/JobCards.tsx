@@ -57,7 +57,7 @@ import {
 import { format, differenceInMinutes, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, isSameDay } from "date-fns";
 import { toast } from "sonner";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
-import { getReceiptsWithFallback } from "@/utils/mockDatabase";
+import { getInvoicesWithFallback } from "@/utils/mockDatabase";
 
 interface JobCard {
   id: string;
@@ -187,22 +187,22 @@ export default function JobCards() {
         try {
           // Prefer live DB when available
           const { data: receiptsData, error: receiptsError } = await supabase
-            .from('receipts')
-            .select('job_card_id')
-            .in('job_card_id', jobIds as string[]);
+            .from('invoices')
+            .select('jobcard_id')
+            .in('jobcard_id', jobIds as string[]);
 
           if (receiptsError) throw receiptsError;
           const idsWithReceipts = new Set<string>((receiptsData || [])
-            .map((r: any) => r.job_card_id)
+            .map((r: any) => r.jobcard_id)
             .filter(Boolean));
           setJobCardsWithReceipts(idsWithReceipts);
-        } catch {
-          // Fallback path (table missing or RLS denies select)
-          const allReceipts = await getReceiptsWithFallback(supabase as any);
+        } catch (linkErr) {
+          // Fallback to mocked persistence when Supabase fails
+          const allReceipts = await getInvoicesWithFallback(supabase as any);
           const idsWithReceipts = new Set<string>(
             (allReceipts || [])
-              .map((r: any) => r.job_card_id)
-              .filter(Boolean)
+              .filter((r: any) => r.jobcard_id)
+              .map((r: any) => r.jobcard_id)
           );
           setJobCardsWithReceipts(idsWithReceipts);
         }
@@ -237,16 +237,19 @@ export default function JobCards() {
       // Guard: block deletion if a receipt exists for this job card
       let hasReceipt = false;
       try {
-        const { data: existingRcpt, error: rcptErr } = await supabase
-          .from('receipts')
-          .select('id')
-          .eq('job_card_id', id)
+        const { data: receipts } = await supabase
+          .from('invoices')
+          .select('jobcard_id')
+          .eq('jobcard_id', id)
           .limit(1);
-        if (rcptErr) throw rcptErr;
-        hasReceipt = !!(existingRcpt && existingRcpt.length > 0);
-      } catch {
-        const allReceipts = await getReceiptsWithFallback(supabase as any);
-        hasReceipt = allReceipts.some((r: any) => r.job_card_id === id);
+        let hasReceipt = Array.isArray(receipts) && receipts.length > 0;
+        if (!hasReceipt) {
+          const allReceipts = await getInvoicesWithFallback(supabase as any);
+          hasReceipt = allReceipts.some((r: any) => r.jobcard_id === id);
+        }
+      } catch (e) {
+        console.warn('Error building appointment->jobcard linkage:', linkErr);
+        setJobCardsWithReceipts(new Set());
       }
       if (hasReceipt) {
         toast.error('Cannot delete job card: a receipt has been created for this job');
@@ -310,30 +313,30 @@ export default function JobCards() {
     return `INV-${y}${m}${d}-${rand}`;
   };
 
-  // Create receipt from job card
+  // Create invoice from job card
   const createReceiptFromJobCard = async (card: JobCard) => {
-        try {
-      const receiptNumber = `RCT-${Date.now().toString().slice(-6)}`;
-      const { data: receipt, error } = await supabase
-        .from('receipts')
+    try {
+      const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
+      const issueDate = new Date().toISOString().slice(0, 10);
+      const { data: invoice, error } = await supabase
+        .from('invoices')
         .insert([
           {
-            receipt_number: receiptNumber,
-            customer_id: card.client?.id || null,
-            job_card_id: card.id,
+            invoice_number: invoiceNumber,
+            client_id: card.client?.id || null,
             subtotal: card.total_amount,
             tax_amount: 0,
-            discount_amount: 0,
             total_amount: card.total_amount,
-            status: 'open',
-            notes: `Receipt for ${card.job_number}`,
+            status: 'draft',
+            issue_date: issueDate,
+            notes: `Invoice for ${card.job_number}`,
           },
         ])
         .select()
         .single();
       if (error) throw error;
 
-      // Also create receipt items from job_card_services for commission allocation
+      // Also create invoice items from job_card_services for commission allocation
       const { data: jobServices } = await supabase
         .from('job_card_services')
         .select('id, service_id, staff_id, quantity, unit_price, commission_percentage, services:service_id(name)')
@@ -341,17 +344,14 @@ export default function JobCards() {
 
       if (jobServices && jobServices.length > 0) {
         const items = jobServices.map((js: any) => ({
-          receipt_id: receipt.id,
-          service_id: js.service_id,
-          product_id: null,
+          invoice_id: invoice.id,
           description: js.services?.name || 'Service',
           quantity: js.quantity || 1,
           unit_price: js.unit_price || 0,
           total_price: (js.quantity || 1) * (js.unit_price || 0),
-          staff_id: js.staff_id || null,
         }));
         const { error: itemsError } = await supabase
-          .from('receipt_items')
+          .from('invoice_items')
           .insert(items);
         if (itemsError) throw itemsError;
 
@@ -363,7 +363,7 @@ export default function JobCards() {
           const rate = Number(js.commission_percentage ?? 0);
           const commission = Number(((gross * rate) / 100).toFixed(2));
           return {
-            receipt_id: receipt.id,
+            invoice_id: invoice.id,
             job_card_id: card.id,
             job_card_service_id: js.id,
             staff_id: js.staff_id || null,
@@ -379,17 +379,17 @@ export default function JobCards() {
         if (commErr) throw commErr;
       }
 
-      // Mark this job card as having a receipt without a full refetch
+      // Mark this job card as having an invoice without a full refetch
       setJobCardsWithReceipts(prev => {
         const next = new Set(prev);
         next.add(card.id);
         return next;
       });
 
-      toast.success('Receipt created');
+      toast.success('Invoice created');
     } catch (e: any) {
-      console.error('Error creating receipt from job card:', e);
-      toast.error(e?.message || 'Failed to create receipt');
+      console.error('Error creating invoice from job card:', e);
+      toast.error(e?.message || 'Failed to create invoice');
     }
   };
 
@@ -654,7 +654,7 @@ export default function JobCards() {
                       onClick={() => handleDeleteJobCard(jobCard.id)}
                       disabled={jobCardsWithReceipts.has(jobCard.id)}
                       className={`focus:text-red-600 ${jobCardsWithReceipts.has(jobCard.id) ? 'text-slate-400' : 'text-red-600'}`}
-                      title={jobCardsWithReceipts.has(jobCard.id) ? 'Cannot delete: receipt exists for this job card' : undefined}
+                      title={jobCardsWithReceipts.has(jobCard.id) ? 'Cannot delete: invoice exists for this job card' : undefined}
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
                       Delete
@@ -731,7 +731,7 @@ export default function JobCards() {
                       onClick={() => handleDeleteJobCard(jobCard.id)}
                       disabled={jobCardsWithReceipts.has(jobCard.id)}
                       className={`focus:text-red-600 ${jobCardsWithReceipts.has(jobCard.id) ? 'text-slate-400' : 'text-red-600'}`}
-                      title={jobCardsWithReceipts.has(jobCard.id) ? 'Cannot delete: receipt exists for this job card' : undefined}
+                      title={jobCardsWithReceipts.has(jobCard.id) ? 'Cannot delete: invoice exists for this job card' : undefined}
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
                       Delete
