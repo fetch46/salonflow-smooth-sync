@@ -13,43 +13,48 @@ if [ ! -f "setup_database.sql" ]; then
     exit 1
 fi
 
-# Check if supabase CLI is available
-if ! command -v supabase &> /dev/null; then
-    echo "❌ Error: Supabase CLI not found"
-    echo "Please install Supabase CLI first: https://supabase.com/docs/guides/cli"
-    echo "Alternatively, run the SQL in Supabase Dashboard > SQL Editor: setup_database.sql and the migrations in supabase/migrations/*.sql"
+# Ensure psql is available
+if ! command -v psql &> /dev/null; then
+    echo "❌ Error: psql not found"
+    echo "Please install PostgreSQL client (psql) first"
+    echo "Ubuntu/Debian: sudo apt-get update && sudo apt-get install -y postgresql-client"
     exit 1
 fi
 
-echo "✅ Supabase CLI found"
-
-# Check if we're connected to a Supabase project
-if ! supabase status &> /dev/null; then
-    echo "❌ Error: Not connected to a Supabase project"
-    echo "Please run 'supabase login' and 'supabase link' first"
+# Require a DATABASE_URL for the target database
+if [ -z "$DATABASE_URL" ]; then
+    echo "❌ Error: DATABASE_URL environment variable is not set"
+    echo "Set it to your database connection string, for example:"
+    echo "  export DATABASE_URL=\"postgresql://USER:PASSWORD@HOST:PORT/DBNAME?sslmode=require\""
+    echo "For Supabase, use the 'Connection string' from Settings → Database (Project connection string)."
     exit 1
 fi
 
-echo "✅ Connected to Supabase project"
+# Optional: show the target host for confirmation
+DB_HOST=$(python3 - <<'PY'
+import os
+from urllib.parse import urlparse
+u = urlparse(os.environ.get('DATABASE_URL',''))
+print(u.hostname or '')
+PY
+)
+
+if [ -n "$DB_HOST" ]; then
+  echo "Target host: $DB_HOST"
+fi
 
 # Run the database setup
-echo "📊 Running database setup..."
+echo "📊 Running database setup via psql..."
 echo "This may take a few minutes..."
 
-# Run the setup script
-psql "$(supabase db reset --linked)" -f setup_database.sql
+# -v ON_ERROR_STOP=1 to stop on first error
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f setup_database.sql
 
 if [ $? -eq 0 ]; then
     echo "✅ Database setup completed successfully!"
     echo ""
     echo "🎉 Your database is now ready with:"
-    echo "   • 23+ tables for complete salon management"
-    echo "   • Multi-tenant architecture"
-    echo "   • Row Level Security (RLS) policies"
-    echo "   • Comprehensive indexing"
-    echo "   • Default subscription plans"
-    echo "   • Default business locations"
-    echo "   • Default accounting structure"
+    echo "   • Core tables, functions, policies, and defaults"
     echo ""
     echo "📚 Check DATABASE_STRUCTURE.md for complete documentation"
     echo ""
@@ -60,7 +65,8 @@ if [ $? -eq 0 ]; then
     echo "   4. Start managing appointments and sales"
 else
     echo "❌ Database setup failed"
-    echo "Please check the error messages above"
+    echo "Please review the error messages above."
+    echo "If you attempted to run this in a non-psql context (e.g., Supabase SQL editor), note that psql meta-commands like \i are not supported there."
     exit 1
 fi
 
