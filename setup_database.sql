@@ -3,6 +3,7 @@
 
 -- 1. Run the complete schema migration
 \i supabase/migrations/20250116000004_complete_database_schema.sql
+\i supabase/migrations/20250116000005_inventory_core_tables.sql
 \i supabase/migrations/20250812090000_add_business_locations_and_location_filters.sql
 \i supabase/migrations/20250827093000_purchase_receiving_and_payments.sql
 \i supabase/migrations/20250902091500_goods_received_tables.sql
