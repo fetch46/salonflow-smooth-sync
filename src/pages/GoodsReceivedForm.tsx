@@ -130,64 +130,7 @@ export default function GoodsReceivedForm() {
 
       setLoading(true);
 
-      // Ensure a goods_received header and items exist (used when RPC succeeds but does not persist header)
-      const ensureReceiptRecord = async (lineEntries: [string, number][]) => {
-        try {
-          // Try to locate an existing header that matches this receive
-          const { data: existingRows } = await supabase
-            .from("goods_received")
-            .select("id")
-            .eq("organization_id", orgId)
-            .eq("purchase_id", purchaseId)
-            .eq("location_id", derivedLocationId)
-            .eq("warehouse_id", warehouseId)
-            .eq("received_date", receivedDate)
-            .limit(1);
-          const existing = (existingRows || [])[0] as { id: string } | undefined;
-          if (existing?.id) {
-            // Optionally, ensure items exist. If none, insert lines > 0
-            const { data: itemCheck } = await supabase
-              .from("goods_received_items")
-              .select("id")
-              .eq("goods_received_id", existing.id)
-              .limit(1);
-            if (!itemCheck || itemCheck.length === 0) {
-              const itemsPayload = lineEntries.map(([purchase_item_id, qty]) => ({
-                goods_received_id: existing.id,
-                purchase_item_id,
-                quantity: Number(qty) || 0,
-              }));
-              if (itemsPayload.length > 0) {
-                await supabase.from("goods_received_items").insert(itemsPayload);
-              }
-            }
-            return;
-          }
-          // No header found; create one for listing visibility
-          const { data: header } = await supabase
-            .from("goods_received")
-            .insert([
-              {
-                organization_id: orgId,
-                purchase_id: purchaseId,
-                received_date: receivedDate,
-                warehouse_id: warehouseId,
-                location_id: derivedLocationId,
-                notes: notes || null,
-              },
-            ])
-            .select("id")
-            .single();
-          if (header?.id && lineEntries.length > 0) {
-            const itemsPayload = lineEntries.map(([purchase_item_id, qty]) => ({
-              goods_received_id: header.id,
-              purchase_item_id,
-              quantity: Number(qty) || 0,
-            }));
-            await supabase.from("goods_received_items").insert(itemsPayload);
-          }
-        } catch (_e) {
-          // Do not block the flow on ensure step
+
         }
       };
 
@@ -297,6 +240,8 @@ export default function GoodsReceivedForm() {
           console.warn('record_goods_received RPC failed, applying manual receive fallback:', rpcError?.message || rpcError);
           await manualReceive();
         }
+        // After recording receipt (RPC or fallback), update purchase status
+        await updatePurchaseStatusAfterReceiving(purchaseId);
       } else {
         try {
           // Build quantities map for update
@@ -396,6 +341,8 @@ export default function GoodsReceivedForm() {
             // Ignore if tables missing
           }
         }
+        // After updating receipt (RPC or fallback), update purchase status
+        await updatePurchaseStatusAfterReceiving(purchaseId);
       }
 
       toast({ title: "Saved", description: "Goods received recorded" });
