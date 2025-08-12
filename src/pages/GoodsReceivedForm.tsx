@@ -130,8 +130,6 @@ export default function GoodsReceivedForm() {
 
       setLoading(true);
 
-      // Ensure a goods_received header and items exist when RPC is unavailable
-      const ensureReceiptRecord = async (entries: [string, number][]) => {
         try {
           const { data: header, error: headerErr } = await supabase
             .from("goods_received")
@@ -147,41 +145,6 @@ export default function GoodsReceivedForm() {
             ])
             .select("id")
             .single();
-
-          if (!headerErr && header?.id) {
-            const itemsPayload = entries.map(([purchase_item_id, qty]) => ({
-              goods_received_id: header.id,
-              purchase_item_id,
-              quantity: Number(qty) || 0,
-            }));
-            if (itemsPayload.length > 0) {
-              await supabase.from("goods_received_items").insert(itemsPayload);
-            }
-          }
-        } catch (ignore) {
-          // ignore if tables do not exist
-        }
-      };
-
-      // Update purchase status based on received quantities
-      const updatePurchaseStatusAfterReceiving = async (pid: string) => {
-        try {
-          const { data: items, error: piErr } = await supabase
-            .from("purchase_items")
-            .select("quantity, received_quantity")
-            .eq("purchase_id", pid);
-          if (piErr) throw piErr;
-
-          const list = (items || []) as Array<{ quantity: number; received_quantity: number }>;
-          const anyReceived = list.some((it) => Number(it.received_quantity || 0) > 0);
-          const allReceived =
-            list.length > 0 &&
-            list.every((it) => Number(it.received_quantity || 0) >= Number(it.quantity || 0));
-
-          const status = allReceived ? "completed" : anyReceived ? "partial" : "pending";
-          await supabase.from("purchases").update({ status }).eq("id", pid);
-        } catch (ignore) {
-          // ignore
         }
       };
 
