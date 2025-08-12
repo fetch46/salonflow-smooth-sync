@@ -209,6 +209,17 @@ export default function Services() {
           }
           throw error
         }
+        // Zero-row compatibility fallback: fetch all services if org-scoped returns none
+        if (!data || data.length === 0) {
+          const { data: fallbackAll, error: fallbackAllErr } = await supabase
+            .from("services")
+            .select("*")
+            .order("created_at", { ascending: false })
+          if (!fallbackAllErr && fallbackAll) {
+            setServices(fallbackAll)
+            return
+          }
+        }
         setServices(data || [])
         return
       }
@@ -258,25 +269,69 @@ export default function Services() {
           const code = (error as any)?.code;
           const message = (error as any)?.message || String(error);
           const isMissingOrgId = code === '42703' || /column\s+("?[\w\.]*organization_id"?)\s+does not exist/i.test(message);
+          const isMissingIsActive = code === '42703' || /column\s+("?[\w\.]*is_active"?)\s+does not exist/i.test(message);
+          const isMissingType = code === '42703' || /column\s+("?[\w\.]*type"?)\s+does not exist/i.test(message);
           const isRlsOrPermission = /permission denied|rls/i.test(message);
 
+          // 1) If org_id missing or permission blocked, try without org_id
           if (isMissingOrgId || isRlsOrPermission) {
-            const { data: fallbackData, error: fallbackError } = await supabase
+            // Try with columns present
+            const { data: fallbackData1, error: fallbackError1 } = await supabase
               .from("inventory_items")
               .select("id, name, type, category, unit, cost_price, selling_price")
               .eq("is_active", true)
               .eq("type", "good")
               .order("name");
-            if (fallbackError) throw fallbackError;
-            setAvailableProducts(fallbackData || []);
-            return;
+            if (!fallbackError1 && fallbackData1 && fallbackData1.length > 0) {
+              setAvailableProducts(fallbackData1);
+              return;
+            }
+
+            // 2) If still empty or columns might be missing, relax filters progressively
+            // 2a) Handle missing is_active column
+            if (isMissingIsActive) {
+              const { data: fallbackData2, error: fallbackError2 } = await supabase
+                .from("inventory_items")
+                .select("id, name, type, category, unit, cost_price, selling_price")
+                .eq("type", "good")
+                .order("name");
+              if (!fallbackError2 && fallbackData2 && fallbackData2.length > 0) {
+                setAvailableProducts(fallbackData2);
+                return;
+              }
+            }
+
+            // 2b) Handle missing type column or rows with null type
+            if (isMissingType) {
+              const { data: fallbackData3, error: fallbackError3 } = await supabase
+                .from("inventory_items")
+                .select("id, name, type, category, unit, cost_price, selling_price")
+                .order("name");
+              if (!fallbackError3 && fallbackData3 && fallbackData3.length > 0) {
+                setAvailableProducts(fallbackData3);
+                return;
+              }
+            } else {
+              // Try including rows where type is null as well
+              const { data: fallbackData4, error: fallbackError4 } = await supabase
+                .from("inventory_items")
+                .select("id, name, type, category, unit, cost_price, selling_price")
+                .or('type.eq.good,type.is.null')
+                .order("name");
+              if (!fallbackError4 && fallbackData4 && fallbackData4.length > 0) {
+                setAvailableProducts(fallbackData4);
+                return;
+              }
+            }
           }
 
+          // If none of the above matched, rethrow
           throw error;
         }
 
         // If org-scoped query returned zero rows, try a compatibility fallback
         if (!data || data.length === 0) {
+          // Try without org filter
           const { data: fallbackData, error: fallbackError } = await supabase
             .from("inventory_items")
             .select("id, name, type, category, unit, cost_price, selling_price")
@@ -286,6 +341,17 @@ export default function Services() {
 
           if (!fallbackError && fallbackData && fallbackData.length > 0) {
             setAvailableProducts(fallbackData);
+            return;
+          }
+
+          // Try including null type
+          const { data: fallbackDataNullType } = await supabase
+            .from("inventory_items")
+            .select("id, name, type, category, unit, cost_price, selling_price")
+            .or('type.eq.good,type.is.null')
+            .order("name");
+          if (fallbackDataNullType && fallbackDataNullType.length > 0) {
+            setAvailableProducts(fallbackDataNullType);
             return;
           }
         }
@@ -301,7 +367,35 @@ export default function Services() {
         .eq("is_active", true)
         .eq("type", "good")
         .order("name");
-      if (error) throw error;
+      if (error) {
+        const code = (error as any)?.code;
+        const message = (error as any)?.message || String(error);
+        const isMissingIsActive = code === '42703' || /column\s+("?[\w\.]*is_active"?)\s+does not exist/i.test(message);
+        const isMissingType = code === '42703' || /column\s+("?[\w\.]*type"?)\s+does not exist/i.test(message);
+        if (isMissingIsActive || isMissingType) {
+          const { data: relaxed, error: relaxedErr } = await supabase
+            .from("inventory_items")
+            .select("id, name, type, category, unit, cost_price, selling_price")
+            .or(isMissingType ? undefined as any : 'type.eq.good,type.is.null')
+            .order("name");
+          if (!relaxedErr && relaxed) {
+            setAvailableProducts(relaxed);
+            return;
+          }
+        }
+        throw error;
+      }
+      if (!data || data.length === 0) {
+        const { data: fallbackDataNullType } = await supabase
+          .from("inventory_items")
+          .select("id, name, type, category, unit, cost_price, selling_price")
+          .or('type.eq.good,type.is.null')
+          .order("name");
+        if (fallbackDataNullType && fallbackDataNullType.length > 0) {
+          setAvailableProducts(fallbackDataNullType);
+          return;
+        }
+      }
       setAvailableProducts(data || []);
     } catch (error) {
       console.error("Error fetching products:", error);
