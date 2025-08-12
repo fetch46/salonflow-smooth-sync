@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { useOrganization } from "@/lib/saas/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -155,6 +156,7 @@ export default function Clients() {
   // View mode toggle (cards | table)
   const [viewMode, setViewMode] = useState<"cards" | "table">("table");
   const navigate = useNavigate();
+  const { organization } = useOrganization();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -182,15 +184,16 @@ export default function Clients() {
 
   useEffect(() => {
     fetchClients();
-  }, []);
+  }, [organization?.id]);
 
   const fetchClients = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("clients")
-        .select("*")
-        .order("created_at", { ascending: false });
+      let query = supabase.from("clients").select("*");
+      if (organization?.id) {
+        query = query.eq("organization_id", organization.id);
+      }
+      const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) throw error;
       setClients(data || []);
@@ -224,11 +227,14 @@ export default function Clients() {
         return;
       }
       if (trimmedPhone) {
-        const { data: dup, error: dupErr } = await supabase
+        let dupQuery = supabase
           .from('clients')
           .select('id, phone')
-          .eq('phone', trimmedPhone)
-          .maybeSingle();
+          .eq('phone', trimmedPhone);
+        if (organization?.id) {
+          dupQuery = dupQuery.eq('organization_id', organization.id);
+        }
+        const { data: dup, error: dupErr } = await dupQuery.maybeSingle();
         if (!editingClient && dup?.id) {
           toast.error('A client with this mobile number already exists');
           return;
@@ -258,10 +264,13 @@ export default function Clients() {
           .eq("id", editingClient.id);
         if (error) throw error;
       } else {
-        const insertPayload = {
+        const insertPayload: any = {
           ...basePayload,
           // Intentionally exclude date_of_birth and any non-existent columns on create
         };
+        if (organization?.id) {
+          insertPayload.organization_id = organization.id;
+        }
         const { error } = await supabase
           .from("clients")
           .insert([insertPayload]);
