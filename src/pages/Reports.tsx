@@ -23,6 +23,7 @@ import {
   Target,
   Package,
   MapPin,
+  Calculator,
 } from 'lucide-react';
 import { useSaas } from '@/lib/saas';
 import { supabase } from '@/integrations/supabase/client';
@@ -583,6 +584,33 @@ const Reports = () => {
     console.log(`Exporting ${type} report...`);
   };
 
+  // Trial Balance state
+  const [tbRows, setTbRows] = useState<Array<{ accountId: string; code: string; name: string; category: string; debit: number; credit: number; balance: number }>>([]);
+  const [tbSearch, setTbSearch] = useState('');
+  const [tbLoading, setTbLoading] = useState(false);
+  const baseUrl = (import.meta.env.VITE_SERVER_URL || "/api").replace(/\/$/, "");
+
+  useEffect(() => {
+    if (activeTab !== 'trialbalance') return;
+    (async () => {
+      try {
+        setTbLoading(true);
+        const params = new URLSearchParams();
+        if (startDate) params.set('start', startDate);
+        if (endDate) params.set('end', endDate);
+        if (locationFilter && locationFilter !== 'all') params.set('locationId', locationFilter);
+        const resp = await fetch(`${baseUrl}/reports/trial-balance?${params.toString()}`);
+        const js = await resp.json();
+        setTbRows(Array.isArray(js.rows) ? js.rows : []);
+      } catch (e) {
+        console.error('Failed to load trial balance', e);
+        setTbRows([]);
+      } finally {
+        setTbLoading(false);
+      }
+    })();
+  }, [activeTab, startDate, endDate, locationFilter]);
+
   return (
     <div className="flex-1 w-full space-y-6 px-4 sm:px-6 py-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen">
       {/* Header */}
@@ -676,6 +704,7 @@ const Reports = () => {
               <SelectItem value="clients">Clients</SelectItem>
               <SelectItem value="pnl">P&L</SelectItem>
               <SelectItem value="balancesheet">Balance Sheet</SelectItem>
+              <SelectItem value="trialbalance">Trial Balance</SelectItem>
               <SelectItem value="commissions">Commissions</SelectItem>
               <SelectItem value="product_usage">Product Usage</SelectItem>
             </SelectContent>
@@ -721,6 +750,9 @@ const Reports = () => {
               </TabsTrigger>
               <TabsTrigger value="balancesheet" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
                 <PieChart className="w-5 h-5" /> Balance Sheet
+              </TabsTrigger>
+              <TabsTrigger value="trialbalance" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
+                <Calculator className="w-5 h-5" /> Trial Balance
               </TabsTrigger>
               <TabsTrigger value="commissions" className="justify-start flex items-center gap-2 rounded-md data-[state=active]:bg-muted">
                 <DollarSign className="w-5 h-5" /> Commissions
@@ -1040,6 +1072,73 @@ const Reports = () => {
                   <div className="mt-6 text-center text-sm text-slate-600">
                     {`Check: Assets (${formatMoney(bs.assets, { decimals: 2 })}) = Liabilities (${formatMoney(bs.liabilities, { decimals: 2 })}) + Equity (${formatMoney(bs.equity, { decimals: 2 })})`}
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Trial Balance Tab */}
+            <TabsContent value="trialbalance" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-xl shadow-lg">
+                    <Calculator className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">Trial Balance</h2>
+                    <p className="text-slate-600 text-sm">Debits and credits by account</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input placeholder="Search code, name, category" value={tbSearch} onChange={(e) => setTbSearch(e.target.value)} className="w-64" />
+                  <Button variant="outline" onClick={() => setActiveTab('trialbalance')} disabled={tbLoading}>
+                    <RefreshCw className={`w-4 h-4 mr-2 ${tbLoading ? 'animate-spin' : ''}`} /> Refresh
+                  </Button>
+                </div>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>As of Selected Period</CardTitle>
+                </CardHeader>
+                <CardContent className="overflow-x-auto">
+                  <Table className="min-w-[900px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Code</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead className="text-right">Debit</TableHead>
+                        <TableHead className="text-right">Credit</TableHead>
+                        <TableHead className="text-right">Balance</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {tbRows
+                        .filter((r) => {
+                          const q = tbSearch.toLowerCase();
+                          return (
+                            r.code.toLowerCase().includes(q) ||
+                            r.name.toLowerCase().includes(q) ||
+                            String(r.category).toLowerCase().includes(q)
+                          );
+                        })
+                        .map((r) => (
+                          <TableRow key={r.accountId}>
+                            <TableCell className="font-medium">{r.code}</TableCell>
+                            <TableCell>{r.name}</TableCell>
+                            <TableCell>{r.category}</TableCell>
+                            <TableCell className="text-right">{Number(r.debit || 0).toLocaleString()}</TableCell>
+                            <TableCell className="text-right">{Number(r.credit || 0).toLocaleString()}</TableCell>
+                            <TableCell className="text-right font-medium">{Number(r.balance || 0).toLocaleString()}</TableCell>
+                          </TableRow>
+                        ))}
+                      {tbRows.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground">No rows</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             </TabsContent>

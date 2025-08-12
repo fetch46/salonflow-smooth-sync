@@ -70,7 +70,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 const Payments = lazy(() => import("@/pages/Payments"));
 const Banking = lazy(() => import("@/pages/Banking"));
 const Journal = lazy(() => import("@/pages/Journal"));
-const TrialBalance = lazy(() => import("@/pages/TrialBalance"));
+// Removed standalone Trial Balance page import
 
 // Super Admin Pages
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
@@ -205,7 +205,7 @@ const AppRoutes = () => {
           <Route path="payments" element={<Payments />} />
           <Route path="banking" element={<Banking />} />
           <Route path="journal" element={<Journal />} />
-          <Route path="trial-balance" element={<TrialBalance />} />
+          {/* Removed standalone Trial Balance route in favor of Reports tab */}
           
           {/* Operations */}
           <Route path="job-cards" element={<JobCards />} />

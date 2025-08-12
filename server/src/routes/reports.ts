@@ -5,22 +5,51 @@ import { requireAuth } from '../middleware/auth';
 const router = Router();
 router.use(requireAuth);
 
-router.get('/trial-balance', async (_req, res) => {
-  const lines = await prisma.journalLine.groupBy({ by: ['accountId'], _sum: { debit: true, credit: true } });
-  const accounts = await prisma.account.findMany();
-  const map = new Map<string, any>(accounts.map((a: any) => [a.id, a] as const));
-  const rows = lines.map((l: any) => {
-    const a = map.get(l.accountId)!;
-    return {
-      code: a.code,
-      name: a.name,
-      category: a.category,
-      debit: Number(l._sum.debit ?? 0),
-      credit: Number(l._sum.credit ?? 0),
+router.get('/trial-balance', async (req, res) => {
+  try {
+    const start = req.query.start ? new Date(String(req.query.start)) : new Date('1900-01-01');
+    const end = req.query.end ? new Date(String(req.query.end)) : new Date('2900-01-01');
+    const locationId = req.query.locationId ? String(req.query.locationId) : undefined;
+
+    const where: any = {
+      entry: { date: { gte: start, lte: end } },
     };
-  }).sort((a: any, b: any) => a.code.localeCompare(b.code));
-  const totals = rows.reduce((acc: any, r: any) => ({ debit: acc.debit + r.debit, credit: acc.credit + r.credit }), { debit: 0, credit: 0 });
-  res.json({ rows, totals });
+    if (locationId && locationId !== 'all') {
+      where.locationId = locationId;
+    }
+
+    const lines = await prisma.journalLine.findMany({
+      where,
+      include: { account: true },
+    });
+
+    const rowsMap: Record<string, { accountId: string; code: string; name: string; category: string; debit: number; credit: number; balance: number }> = {};
+    for (const l of lines) {
+      const key = l.accountId;
+      if (!rowsMap[key]) {
+        rowsMap[key] = {
+          accountId: l.accountId,
+          code: l.account.code,
+          name: l.account.name,
+          category: l.account.category as any,
+          debit: 0,
+          credit: 0,
+          balance: 0,
+        };
+      }
+      rowsMap[key].debit += Number(l.debit || 0);
+      rowsMap[key].credit += Number(l.credit || 0);
+    }
+    const rows = Object.values(rowsMap)
+      .map((r) => ({ ...r, balance: r.debit - r.credit }))
+      .sort((a, b) => a.code.localeCompare(b.code));
+
+    const totals = rows.reduce((acc, r) => ({ debit: acc.debit + r.debit, credit: acc.credit + r.credit }), { debit: 0, credit: 0 });
+
+    res.json({ rows, totals });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'Failed to load trial balance' });
+  }
 });
 
 router.get('/profit-and-loss', async (req, res) => {
@@ -33,7 +62,7 @@ router.get('/profit-and-loss', async (req, res) => {
   const rows: Record<string, { name: string; category: string; debit: number; credit: number }> = {};
   for (const l of lines) {
     const key = l.accountId;
-    if (!rows[key]) rows[key] = { name: l.account.name, category: l.account.category, debit: 0, credit: 0 };
+    if (!rows[key]) rows[key] = { name: l.account.name, category: l.account.category, debit: 0, credit: 0 } as any;
     rows[key].debit += Number(l.debit);
     rows[key].credit += Number(l.credit);
   }
@@ -53,7 +82,7 @@ router.get('/balance-sheet', async (req, res) => {
   const rows: Record<string, { name: string; category: string; balance: number }> = {};
   for (const l of lines) {
     const key = l.accountId;
-    if (!rows[key]) rows[key] = { name: l.account.name, category: l.account.category, balance: 0 };
+    if (!rows[key]) rows[key] = { name: l.account.name, category: l.account.category, balance: 0 } as any;
     const debit = Number(l.debit);
     const credit = Number(l.credit);
     let delta = 0;
