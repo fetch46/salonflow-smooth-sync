@@ -463,11 +463,11 @@ export default function StaffProfile() {
         <div className="space-y-4 lg:col-span-2 xl:col-span-3">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <div className="overflow-x-auto -mx-1 px-1">
-              <TabsList className="min-w-max">
-                <TabsTrigger value="commissions">Commissions</TabsTrigger>
-                <TabsTrigger value="activity">Activity</TabsTrigger>
-                <TabsTrigger value="schedule">Schedule</TabsTrigger>
-                <TabsTrigger value="gallery">Gallery</TabsTrigger>
+              <TabsList className="min-w-max justify-start sm:justify-start">
+                <TabsTrigger value="commissions" className="px-4 py-2 text-base">Commissions</TabsTrigger>
+                <TabsTrigger value="activity" className="px-4 py-2 text-base">Activity</TabsTrigger>
+                <TabsTrigger value="schedule" className="px-4 py-2 text-base">Schedule</TabsTrigger>
+                <TabsTrigger value="gallery" className="px-4 py-2 text-base">Gallery</TabsTrigger>
               </TabsList>
             </div>
 
