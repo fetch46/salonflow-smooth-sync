@@ -21,6 +21,8 @@
 \i supabase/migrations/20250831090000_create_account_transactions.sql
 -- Goods received RPCs and RLS policies
 \i supabase/migrations/20250908093000_goods_received_rpcs_and_policies.sql
+-- Persist confirmed email timestamps on profiles
+\i supabase/migrations/20250912000000_add_email_confirmed_at_to_profiles.sql
 
 -- Ensure staff has commission_rate column
 \i supabase/migrations/20250910094500_add_commission_rate_to_staff.sql

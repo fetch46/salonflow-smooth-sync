@@ -82,10 +82,24 @@ serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ success: true, user: updated?.user ?? null }), {
-      status: 200,
-      headers: { "Content-Type": "application/json", ...corsHeaders },
-    });
+    // Attempt to persist confirmation timestamp in profiles table (best-effort)
+    const confirmedAt = new Date().toISOString();
+    try {
+      await adminClient
+        .from("profiles")
+        .update({ email_confirmed_at: confirmedAt })
+        .eq("user_id", user_id);
+    } catch (_) {
+      // Ignore persistence errors here; email is confirmed in auth regardless
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, user: updated?.user ?? null, email_confirmed_at: confirmedAt }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      }
+    );
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e) }), {
       status: 500,

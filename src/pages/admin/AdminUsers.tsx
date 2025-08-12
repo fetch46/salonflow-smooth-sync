@@ -86,16 +86,26 @@ const AdminUsers = () => {
 
   const fetchUsers = async () => {
     try {
-      const { data, error } = await supabase
+      // Try selecting with email_confirmed_at first
+      let resp = await supabase
         .from('profiles')
-        .select('user_id, email, created_at');
+        .select('user_id, email, created_at, email_confirmed_at');
 
-      if (error) throw error;
+      if (resp.error) {
+        // Fallback if the column does not exist
+        resp = await supabase
+          .from('profiles')
+          .select('user_id, email, created_at');
+      }
 
-      const transformedData = (data || []).map((p: any) => ({
+      const data = resp.data as any[] | null;
+      if (!data) throw resp.error;
+
+      const transformedData = data.map((p: any) => ({
         id: p.user_id,
         email: p.email,
         created_at: p.created_at,
+        email_confirmed_at: (p as any).email_confirmed_at || undefined,
         organization_count: 0,
       }));
 
@@ -284,12 +294,13 @@ const AdminUsers = () => {
 
   const confirmUser = async (userId: string) => {
     try {
-      const { error } = await supabase.functions.invoke('confirm-user', {
+      const { data, error } = await supabase.functions.invoke('confirm-user', {
         body: { user_id: userId },
       });
       if (error) throw error;
+      const confirmedAt: string = (data as any)?.email_confirmed_at || new Date().toISOString();
       setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, email_confirmed_at: new Date().toISOString() } : u))
+        prev.map((u) => (u.id === userId ? { ...u, email_confirmed_at: confirmedAt } : u))
       );
       toast.success('User email confirmed');
     } catch (error) {
@@ -492,6 +503,7 @@ const AdminUsers = () => {
                                 size="sm"
                                 onClick={() => confirmUser(user.id)}
                                 title="Confirm email"
+                                disabled={!!user.email_confirmed_at}
                               >
                                 <Check className="h-4 w-4" />
                               </Button>
@@ -591,6 +603,7 @@ const AdminUsers = () => {
                                 size="sm"
                                 onClick={() => confirmUser(orgUser.user_id)}
                                 title="Confirm email"
+                                disabled={!!users.find((u) => u.id === orgUser.user_id)?.email_confirmed_at}
                               >
                                 <Check className="h-4 w-4" />
                               </Button>
