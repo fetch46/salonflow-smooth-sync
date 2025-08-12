@@ -69,7 +69,7 @@ const AdminOrganizations = lazy(() => import("@/pages/admin/AdminOrganizations")
 const AdminSubscriptionPlans = lazy(() => import("@/pages/admin/AdminSubscriptionPlans"));
 const AdminUsers = lazy(() => import("@/pages/admin/AdminUsers"));
 const AdminInvitations = lazy(() => import("@/pages/admin/AdminInvitations"));
-const AdminBusinessData = lazy(() => import("@/pages/admin/AdminBusinessData"));
+import AdminBusinessData from "@/pages/admin/AdminBusinessData";
 const AdminSuperAdmins = lazy(() => import("@/pages/admin/AdminSuperAdmins"));
 const AdminActivity = lazy(() => import("@/pages/admin/AdminActivity"));
 const AdminSystemSettings = lazy(() => import("@/pages/admin/AdminSystemSettings"));
