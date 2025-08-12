@@ -22,6 +22,15 @@ interface ServiceOption {
 interface StaffOption { id: string; full_name: string }
 interface ClientOption { id: string; full_name: string }
 
+interface JobCardOption {
+  id: string;
+  job_number: string;
+  client_id: string | null;
+  location_id: string | null;
+}
+
+interface BusinessLocation { id: string; name: string }
+
 interface LineItem {
   id: string; // local temp id
   service_id: string | null;
@@ -46,6 +55,8 @@ export default function ReceiptForm() {
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [staff, setStaff] = useState<StaffOption[]>([]);
   const [clients, setClients] = useState<ClientOption[]>([]);
+  const [locations, setLocations] = useState<BusinessLocation[]>([]);
+  const [jobCards, setJobCards] = useState<JobCardOption[]>([]);
 
   const [receiptNumber, setReceiptNumber] = useState<string>("");
   const [status, setStatus] = useState<string>("open");
@@ -55,6 +66,8 @@ export default function ReceiptForm() {
   const [applyTax, setApplyTax] = useState<boolean>(false);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [items, setItems] = useState<LineItem[]>([]);
+  const [locationId, setLocationId] = useState<string>("");
+  const [jobCardId, setJobCardId] = useState<string>("");
 
   const subtotal = useMemo(() => items.reduce((sum, it) => sum + Number(it.total_price || 0), 0), [items]);
   const total = useMemo(() => Math.max(0, subtotal + Number(taxAmount || 0) - Number(discountAmount || 0)), [subtotal, taxAmount, discountAmount]);
@@ -68,7 +81,7 @@ export default function ReceiptForm() {
     }
   }, [applyTax, orgTaxRate, subtotal]);
 
-  const loadOptions = useCallback(async (): Promise<{ services: ServiceOption[]; staff: StaffOption[]; clients: ClientOption[] }> => {
+  const loadOptions = useCallback(async (): Promise<{ services: ServiceOption[]; staff: StaffOption[]; clients: ClientOption[]; locations: BusinessLocation[]; jobCards: JobCardOption[] }> => {
     try {
       // Services
       const { data: svc } = await supabase
@@ -94,10 +107,46 @@ export default function ReceiptForm() {
       const mappedClients = (cl || []) as ClientOption[];
       setClients(mappedClients);
 
-      return { services: mappedServices, staff: mappedStaff, clients: mappedClients };
+      // Locations
+      let locs: BusinessLocation[] = [];
+      try {
+        const { data: locData } = await supabase.from('business_locations').select('id, name').order('name');
+        locs = (locData || []) as any;
+      } catch {
+        locs = [];
+      }
+      setLocations(locs);
+
+      // Completed job cards without receipts
+      let jobs: JobCardOption[] = [];
+      try {
+        const { data: jobData } = await supabase
+          .from('job_cards')
+          .select('id, job_number, client_id, location_id, status')
+          .eq('status', 'completed')
+          .order('created_at', { ascending: false });
+        const allJobs = (jobData || []).map((j: any) => ({ id: j.id, job_number: j.job_number, client_id: j.client_id || null, location_id: (j as any).location_id || null }));
+        const jobIds = allJobs.map(j => j.id);
+        if (jobIds.length > 0) {
+          try {
+            const { data: recs } = await supabase.from('receipts').select('job_card_id').in('job_card_id', jobIds);
+            const withReceipts = new Set<string>((recs || []).map((r: any) => r.job_card_id).filter(Boolean));
+            jobs = allJobs.filter(j => !withReceipts.has(j.id));
+          } catch {
+            jobs = allJobs; // fallback: show all completed
+          }
+        } else {
+          jobs = [];
+        }
+      } catch {
+        jobs = [];
+      }
+      setJobCards(jobs);
+
+      return { services: mappedServices, staff: mappedStaff, clients: mappedClients, locations: locs, jobCards: jobs };
     } catch (e) {
       console.error(e);
-      return { services: [], staff: [], clients: [] };
+      return { services: [], staff: [], clients: [], locations: [], jobCards: [] };
     }
   }, []);
 
@@ -112,6 +161,8 @@ export default function ReceiptForm() {
       setNotes(r.notes || "");
       setTaxAmount(Number(r.tax_amount || 0));
       setDiscountAmount(Number(r.discount_amount || 0));
+      setLocationId((r as any).location_id || "");
+      setJobCardId((r as any).job_card_id || "");
       const existingItems = await getReceiptItemsWithFallback(supabase, id);
       setItems((existingItems || []).map((it: any, idx: number) => {
         const svc = servicesList.find(s => s.id === it.service_id);
@@ -130,6 +181,50 @@ export default function ReceiptForm() {
     } catch (e) {
       console.error(e);
       toast.error("Failed to load receipt");
+    }
+  }, []);
+
+  const prefillFromJobCard = useCallback(async (jcId: string) => {
+    try {
+      // Load job card basic info
+      const { data: jc } = await supabase
+        .from('job_cards')
+        .select('id, client_id, location_id')
+        .eq('id', jcId)
+        .maybeSingle();
+      if (jc) {
+        setCustomerId(jc.client_id || "");
+        setLocationId((jc as any).location_id || "");
+      }
+
+      // Load job card services with joins for names and commission
+      const { data: jcs } = await supabase
+        .from('job_card_services')
+        .select('service_id, staff_id, quantity, unit_price, commission_percentage, services:service_id(name, commission_percentage)')
+        .eq('job_card_id', jcId);
+
+      const mapped: LineItem[] = (jcs || []).map((row: any, idx: number) => {
+        const qty = Number(row.quantity || 1);
+        const price = Number(row.unit_price || 0);
+        const svcName = Array.isArray(row.services) ? row.services[0]?.name : row.services?.name;
+        const svcComm = Array.isArray(row.services) ? row.services[0]?.commission_percentage : row.services?.commission_percentage;
+        const commissionPct = typeof row.commission_percentage === 'number' ? row.commission_percentage : (typeof svcComm === 'number' ? svcComm : 0);
+        return {
+          id: `line_${Date.now()}_${idx}`,
+          service_id: row.service_id || null,
+          description: svcName || 'Service',
+          quantity: qty,
+          unit_price: price,
+          total_price: Number((qty * price).toFixed(2)),
+          staff_id: row.staff_id || null,
+          commission_percentage: Number(commissionPct || 0),
+        };
+      });
+
+      if (mapped.length > 0) setItems(mapped);
+    } catch (e) {
+      console.error('Failed to prefill from job card', e);
+      toast.error('Failed to load job card details');
     }
   }, []);
 
@@ -194,6 +289,11 @@ export default function ReceiptForm() {
     setItems(prev => prev.map(li => li.id === lineId ? { ...li, staff_id: staffId } : li));
   };
 
+  const handleSelectJobCard = async (id: string) => {
+    setJobCardId(id);
+    await prefillFromJobCard(id);
+  };
+
   const addLine = () => {
     setItems(prev => ([
       ...prev,
@@ -222,12 +322,14 @@ export default function ReceiptForm() {
       const payload = {
         receipt_number: receiptNumber || `RC-${Date.now()}`,
         customer_id: customerId || null,
+        job_card_id: jobCardId || null,
         subtotal: subtotal,
         tax_amount: Number(taxAmount || 0),
         discount_amount: Number(discountAmount || 0),
         total_amount: total,
         status: status || 'open',
         notes: notes || null,
+        location_id: locationId || null,
       };
 
       const linePayload = items.map(it => ({
@@ -351,6 +453,35 @@ export default function ReceiptForm() {
           <div className="space-y-2">
             <Label>Notes</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Location</Label>
+            <Select value={locationId || ""} onValueChange={setLocationId}>
+              <SelectTrigger>
+                <SelectValue placeholder={locations.length ? 'Select location' : 'No locations'} />
+              </SelectTrigger>
+              <SelectContent>
+                {locations.map(l => (
+                  <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Job Card</Label>
+            <Select value={jobCardId || ""} onValueChange={handleSelectJobCard}>
+              <SelectTrigger>
+                <SelectValue placeholder={jobCards.length ? 'Select completed job card' : 'No completed job cards'} />
+              </SelectTrigger>
+              <SelectContent>
+                {jobCards.map(j => (
+                  <SelectItem key={j.id} value={j.id}>
+                    {j.job_number} {(() => { const c = clients.find(x => x.id === j.client_id); return c ? `• ${c.full_name}` : ''; })()}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="text-xs text-muted-foreground">Selecting a completed job card will prefill services, staff and commissions.</div>
           </div>
           <div className="space-y-2">
             <Label>Tax</Label>
