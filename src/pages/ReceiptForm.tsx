@@ -68,34 +68,40 @@ export default function ReceiptForm() {
     }
   }, [applyTax, orgTaxRate, subtotal]);
 
-  const loadOptions = useCallback(async () => {
+  const loadOptions = useCallback(async (): Promise<{ services: ServiceOption[]; staff: StaffOption[]; clients: ClientOption[] }> => {
     try {
       // Services
       const { data: svc } = await supabase
         .from("services")
         .select("id, name, price, commission_percentage")
         .order("name");
-      setServices((svc || []).map((s: any) => ({ id: s.id, name: s.name, price: s.price ?? 0, commission_percentage: s.commission_percentage ?? null })));
+      const mappedServices: ServiceOption[] = (svc || []).map((s: any) => ({ id: s.id, name: s.name, price: s.price ?? 0, commission_percentage: s.commission_percentage ?? null }));
+      setServices(mappedServices);
 
       // Staff
       const { data: st } = await supabase
         .from("staff")
         .select("id, full_name")
         .order("full_name");
-      setStaff((st || []) as any);
+      const mappedStaff = (st || []) as StaffOption[];
+      setStaff(mappedStaff);
 
       // Clients
       const { data: cl } = await supabase
         .from("clients")
         .select("id, full_name")
         .order("full_name");
-      setClients((cl || []) as any);
+      const mappedClients = (cl || []) as ClientOption[];
+      setClients(mappedClients);
+
+      return { services: mappedServices, staff: mappedStaff, clients: mappedClients };
     } catch (e) {
       console.error(e);
+      return { services: [], staff: [], clients: [] };
     }
   }, []);
 
-  const loadExisting = useCallback(async (id: string) => {
+  const loadExisting = useCallback(async (id: string, servicesList: ServiceOption[]) => {
     try {
       const { getReceiptByIdWithFallback, getReceiptItemsWithFallback } = await import("@/utils/mockDatabase");
       const r = await getReceiptByIdWithFallback(supabase, id);
@@ -108,7 +114,7 @@ export default function ReceiptForm() {
       setDiscountAmount(Number(r.discount_amount || 0));
       const existingItems = await getReceiptItemsWithFallback(supabase, id);
       setItems((existingItems || []).map((it: any, idx: number) => {
-        const svc = services.find(s => s.id === it.service_id);
+        const svc = servicesList.find(s => s.id === it.service_id);
         const commissionPct = (it.commission_percentage ?? (svc?.commission_percentage ?? 0)) as number;
         return {
           id: it.id || `line_${idx}`,
@@ -124,17 +130,17 @@ export default function ReceiptForm() {
     } catch (e) {
       console.error(e);
       toast.error("Failed to load receipt");
-    } finally {
-      setLoading(false);
     }
-  }, [services]);
+  }, []);
 
   useEffect(() => {
+    let isMounted = true;
     (async () => {
       setLoading(true);
-      await loadOptions();
+      const { services: loadedServices } = await loadOptions();
+      if (!isMounted) return;
       if (isEdit && params.id) {
-        await loadExisting(params.id);
+        await loadExisting(params.id, loadedServices);
       } else {
         // Initialize with one blank line
         setItems([
@@ -149,9 +155,10 @@ export default function ReceiptForm() {
             commission_percentage: 0,
           },
         ]);
-        setLoading(false);
       }
+      if (isMounted) setLoading(false);
     })();
+    return () => { isMounted = false; };
   }, [isEdit, params.id, loadOptions, loadExisting]);
 
   const handleServiceChange = (lineId: string, serviceId: string) => {
