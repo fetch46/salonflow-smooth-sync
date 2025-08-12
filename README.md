@@ -86,3 +86,26 @@ node scripts/expand-sql-includes.mjs -i setup_database.sql -o dist/setup_databas
 Then copy the contents of `dist/setup_database_expanded.sql` into the Supabase SQL Editor and run it.
 
 The migration `supabase/migrations/20250822000000_enforce_pks_fks.sql` adds/repairs primary keys, foreign keys, unique constraints, and indexes used by the app for lookups and references.
+
+## Notifications for Appointments (Email + WhatsApp)
+
+The app can send appointment confirmations and reminders via Email (SMTP) and WhatsApp (Twilio) from the backend server.
+
+Configure these environment variables for the server (`/workspace/server`):
+
+- SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
+- SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+- TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM (e.g. `whatsapp:+14155238886`)
+
+Usage:
+- From the Appointments page, open the action menu for a booking and choose "Send Confirmation" or "Send Reminder".
+- On create, the app automatically triggers a confirmation send.
+- A background job runs every 10 minutes to send reminders for appointments in the next 24 hours that haven't been reminded.
+
+Dev setup:
+- Start backend: `cd server && npm i && npm run dev`
+- Start frontend: from repo root `npm i && npm run dev` (Vite dev server proxies `/api` to `http://localhost:4000`).
+
+Notes:
+- If SMTP/Twilio env vars are not set, the server logs the message payload as a fallback (no real send).
+- WhatsApp via Twilio may require pre-approved message templates and verified senders. Ensure client phone numbers are E.164 formatted (e.g., `+15551234567`).
