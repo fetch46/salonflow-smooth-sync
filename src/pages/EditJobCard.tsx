@@ -115,6 +115,7 @@ export default function EditJobCard() {
   const [totalAmount, setTotalAmount] = useState<string>("0");
   const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
   const [locationId, setLocationId] = useState<string>("");
+  const [hasReceipt, setHasReceipt] = useState<boolean>(false);
 
   useEffect(() => {
     const load = async () => {

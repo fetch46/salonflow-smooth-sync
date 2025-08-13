@@ -53,6 +53,15 @@ export default function GoodsReceivedForm() {
   const [accountsById, setAccountsById] = useState<Record<string, { code?: string; name: string }>>({});
   const [transactionsLoading, setTransactionsLoading] = useState<boolean>(false);
 
+  const updatePurchaseStatusAfterReceiving = async (purchaseId: string) => {
+    try {
+      await supabase.rpc('update_purchase_status', { p_purchase_id: purchaseId });
+    } catch (e) {
+      // If RPC is missing in this environment, ignore silently
+      console.warn('update_purchase_status RPC unavailable, skipping');
+    }
+  };
+
   const remainingByItem = useMemo(() => {
     const map: Record<string, number> = {};
     for (const it of purchaseItems) {

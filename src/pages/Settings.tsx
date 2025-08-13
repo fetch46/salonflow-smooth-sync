@@ -306,7 +306,7 @@ phone: "",
       name: location.name,
       description: location.description || "",
       is_active: location.is_active,
-      default_warehouse_id: location.default_warehouse_id || "",
+      default_warehouse_id: (location as any).default_warehouse_id || "",
     })
     setIsLocationDialogOpen(true)
   }

@@ -111,6 +111,11 @@ export default function ProductForm() {
         return;
       }
 
+      if (!organization?.id) {
+        toast({ title: "No organization", description: "Please select or create an organization first.", variant: "destructive" });
+        return;
+      }
+
       const payload = {
         ...formData,
         reorder_point: Number(formData.reorder_point || 0),
@@ -121,6 +126,7 @@ export default function ProductForm() {
       const { data: inserted, error } = await supabase
         .from("inventory_items")
         .insert({
+          organization_id: organization!.id,
           name: (payload.name || '').trim(),
           description: payload.description,
           sku: (payload.sku || '').trim() ? (payload.sku || '').trim() : null,

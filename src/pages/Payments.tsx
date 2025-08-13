@@ -20,7 +20,7 @@ import { getInvoicesWithBalanceWithFallback, getAllInvoicePaymentsWithFallback, 
 import { useNavigate } from "react-router-dom";
 import type { DateRange } from "react-day-picker";
 import { DollarSign } from "lucide-react";
-import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { useOrganizationCurrency, useOrganization } from "@/lib/saas/hooks";
 
 interface InvoicePayment {
   id: string;
@@ -68,6 +68,7 @@ interface PurchaseLite {
 export default function Payments() {
   const navigate = useNavigate();
   const { format: formatCurrency } = useOrganizationCurrency();
+  const { organization } = useOrganization();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -100,6 +101,12 @@ export default function Payments() {
   const [editForm, setEditForm] = useState({ amount: "", method: "cash", reference_number: "", payment_date: "" });
 
   // Full-page form lives at /payments/received/new; modal state removed
+  const [createOpen, setCreateOpen] = useState(false);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>("");
+  const [invoiceOptions, setInvoiceOptions] = useState<Array<{ id: string; invoice_number: string; total_amount: number; amount_paid?: number }>>([]);
+  const [createStatus, setCreateStatus] = useState<string>("unpaid");
+  const [createForm, setCreateForm] = useState<{ amount: string; method: string; reference: string; payment_date: string; account_id: string }>({ amount: "", method: "cash", reference: "", payment_date: new Date().toISOString().slice(0,10), account_id: "" });
+  const [assetAccounts, setAssetAccounts] = useState<Array<{ id: string; account_code: string; account_name: string; account_subtype?: string | null }>>([]);
 
   // Auto-open create dialog when navigated with invoiceId
   useEffect(() => {
