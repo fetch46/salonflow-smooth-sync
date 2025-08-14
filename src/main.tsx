@@ -21,7 +21,10 @@ if (typeof window !== 'undefined') {
         localStorage.removeItem('vite-plugin-pwa:register');
       } catch {}
       sessionStorage.setItem('did-recover-from-chunk-error', '1');
-      window.location.reload();
+      // Perform a cache-busting reload to avoid stale entry/chunk mismatches
+      const url = new URL(window.location.href);
+      url.searchParams.set('v', String(Date.now()));
+      window.location.replace(url.toString());
     }
   };
   window.addEventListener('error', (event) => { void maybeRecoverFromChunkError(event); }, { capture: true });
