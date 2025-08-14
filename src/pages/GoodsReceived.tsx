@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RefreshCw, Plus, Truck } from "lucide-react";
 import { useSaas } from "@/lib/saas";
+import { useToast } from "@/hooks/use-toast";
 
 interface GoodsReceivedRow { id: string; grn_number: string | null; received_date: string; warehouse_id?: string | null; location_id: string; purchase_id: string; purchase?: { purchase_number: string; vendor_name: string } | null; warehouse?: { name: string } | null }
 
 export default function GoodsReceived() {
   const navigate = useNavigate();
   const { organization } = useSaas();
+  const { toast } = useToast();
   const [rows, setRows] = useState<GoodsReceivedRow[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -90,6 +92,132 @@ export default function GoodsReceived() {
   useEffect(() => { load(); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organization?.id]);
 
+  const handleDelete = async (goodsReceivedId: string) => {
+    if (!confirm("Delete this goods received record? This will reverse received quantities and stock.")) return;
+    try {
+      // Load header for location/warehouse/purchase
+      const { data: header, error: hErr } = await supabase
+        .from("goods_received")
+        .select("id, purchase_id, location_id, warehouse_id")
+        .eq("id", goodsReceivedId)
+        .single();
+      if (hErr || !header) throw hErr || new Error("Receipt not found");
+
+      // Load items on this receipt
+      const { data: grItems, error: giErr } = await supabase
+        .from("goods_received_items")
+        .select("purchase_item_id, quantity")
+        .eq("goods_received_id", goodsReceivedId);
+      if (giErr) throw giErr;
+      const lines = (grItems || []) as Array<{ purchase_item_id: string; quantity: number }>;
+
+      if (lines.length === 0) {
+        // No lines, just remove the header
+        await supabase.from("goods_received").delete().eq("id", goodsReceivedId);
+        toast({ title: "Deleted", description: "Receipt removed" });
+        await load();
+        return;
+      }
+
+      // Load the related purchase_items to get item_id and current received
+      const purchaseItemIds = Array.from(new Set(lines.map(l => l.purchase_item_id)));
+      const { data: pItems, error: piErr } = await supabase
+        .from("purchase_items")
+        .select("id, item_id, received_quantity")
+        .in("id", purchaseItemIds);
+      if (piErr) throw piErr;
+      const mapById = new Map<string, { item_id: string; received_quantity: number }>();
+      for (const it of (pItems || []) as Array<{ id: string; item_id: string; received_quantity: number }>) {
+        mapById.set(it.id, { item_id: it.item_id, received_quantity: Number(it.received_quantity || 0) });
+      }
+
+      // 1) Reverse purchase_items.received_quantity
+      await Promise.all(
+        lines.map(async (l) => {
+          const meta = mapById.get(l.purchase_item_id);
+          if (!meta) return;
+          const newReceived = Math.max(0, Number(meta.received_quantity || 0) - Number(l.quantity || 0));
+          await supabase
+            .from("purchase_items")
+            .update({ received_quantity: newReceived })
+            .eq("id", l.purchase_item_id);
+        })
+      );
+
+      // 2) Reverse inventory levels at location and warehouse
+      const locationId: string = (header as any).location_id;
+      const warehouseId: string | null = (header as any).warehouse_id || null;
+      for (const l of lines) {
+        const meta = mapById.get(l.purchase_item_id);
+        if (!meta) continue;
+        const itemId = meta.item_id;
+        const delta = Number(l.quantity || 0) * -1;
+        // Location-based
+        try {
+          const { data: levelRows } = await supabase
+            .from("inventory_levels")
+            .select("id, quantity")
+            .eq("item_id", itemId)
+            .eq("location_id", locationId)
+            .limit(1);
+          const existing = (levelRows || [])[0] as { id: string; quantity: number } | undefined;
+          if (existing) {
+            await supabase
+              .from("inventory_levels")
+              .update({ quantity: Math.max(0, Number(existing.quantity || 0) + delta) })
+              .eq("id", existing.id);
+          }
+        } catch {}
+        // Warehouse-based
+        if (warehouseId) {
+          try {
+            const { data: whRows } = await supabase
+              .from("inventory_levels")
+              .select("id, quantity")
+              .eq("item_id", itemId)
+              .eq("warehouse_id", warehouseId)
+              .limit(1);
+            const existingWh = (whRows || [])[0] as { id: string; quantity: number } | undefined;
+            if (existingWh) {
+              await supabase
+                .from("inventory_levels")
+                .update({ quantity: Math.max(0, Number(existingWh.quantity || 0) + delta) })
+                .eq("id", existingWh.id);
+            }
+          } catch {}
+        }
+      }
+
+      // 3) Remove goods_received items then header
+      await supabase.from("goods_received_items").delete().eq("goods_received_id", goodsReceivedId);
+      await supabase.from("goods_received").delete().eq("id", goodsReceivedId);
+
+      // 4) Best-effort: delete any ledger entries linked to this receipt id
+      try {
+        await supabase.from("account_transactions").delete().eq("reference_id", goodsReceivedId);
+      } catch {}
+
+      // 5) Update purchase status based on remaining received quantities
+      try {
+        const { data: allItems } = await supabase
+          .from("purchase_items")
+          .select("quantity, received_quantity")
+          .eq("purchase_id", header.purchase_id);
+        const list = (allItems || []) as Array<{ quantity: number; received_quantity: number }>;
+        const anyReceived = list.some(it => Number(it.received_quantity || 0) > 0);
+        const allReceived = list.length > 0 && list.every(it => Number(it.received_quantity || 0) >= Number(it.quantity || 0));
+        const newStatus = allReceived ? "received" : (anyReceived ? "partial" : "pending");
+        await supabase.from("purchases").update({ status: newStatus }).eq("id", header.purchase_id);
+      } catch {}
+
+      toast({ title: "Deleted", description: "Goods received deleted" });
+      await load();
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: "Error", description: err?.message || "Failed to delete goods received", variant: "destructive" });
+    }
+  };
+
   const filtered = rows.filter(r => {
     const t = search.toLowerCase();
     return (
@@ -159,7 +287,8 @@ export default function GoodsReceived() {
                     <TableCell>{r.warehouse?.name}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => navigate(`/goods-received/${r.id}/edit`)}>Open</Button>
+                        <Button variant="outline" size="sm" onClick={() => navigate(`/goods-received/${r.id}/edit`)}>Edit</Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleDelete(r.id)}>Delete</Button>
                       </div>
                     </TableCell>
                   </TableRow>

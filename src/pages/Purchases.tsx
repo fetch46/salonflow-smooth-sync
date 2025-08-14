@@ -324,6 +324,7 @@ export default function Purchases() {
       setReceiveQuantities({});
       setSelectedPurchaseItems([]);
       await fetchPurchases();
+      navigate("/goods-received");
     } catch (err: any) {
       console.error(err);
       toast({ title: "Error", description: err?.message || "Failed to receive items", variant: "destructive" });
