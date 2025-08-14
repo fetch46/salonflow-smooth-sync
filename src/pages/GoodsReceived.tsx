@@ -22,39 +22,43 @@ export default function GoodsReceived() {
   const load = async () => {
     try {
       setLoading(true);
-      // Base fetch without FK joins to avoid relationship issues. Fallback if grn_number column is missing.
-      const buildQuery = (includeGrn: boolean) => {
-        let q = supabase
-          .from("goods_received")
-          .select(includeGrn ? "id, grn_number, received_date, warehouse_id, location_id, purchase_id" : "id, received_date, warehouse_id, location_id, purchase_id")
-          .order("received_date", { ascending: false });
-        if (organization?.id) {
-          q = q.eq("organization_id", organization.id);
-        }
-        return q;
-      };
 
-      let data: any[] | null = null;
-      try {
-        const res = await buildQuery(true);
-        if (res.error) throw res.error;
-        data = res.data as any[] | null;
-      } catch (err: any) {
-        const msg = String(err?.message || "").toLowerCase();
-        if (msg.includes("column") && msg.includes("grn_number") && msg.includes("does not exist")) {
-          const res2 = await buildQuery(false);
-          if (res2.error) throw res2.error;
-          data = res2.data as any[] | null;
-        } else {
-          throw err;
+      const orgId = organization?.id;
+      let res: any;
+
+      // Start with a broad select to avoid missing-column errors (e.g., grn_number, warehouse_id)
+      if (orgId) {
+        try {
+          res = await supabase
+            .from("goods_received")
+            .select("*")
+            .or(`organization_id.eq.${orgId},organization_id.is.null` as any)
+            .order("received_date", { ascending: false });
+          if (res.error) throw res.error;
+        } catch (err: any) {
+          const msg = String(err?.message || "").toLowerCase();
+          const code = (err as any)?.code || "";
+          const missingOrgCol = code === "42703" || (msg.includes("column") && msg.includes("organization_id") && msg.includes("does not exist"));
+          if (!missingOrgCol) throw err;
+          // Retry without organization filter when column is missing
+          res = await supabase
+            .from("goods_received")
+            .select("*")
+            .order("received_date", { ascending: false });
         }
+      } else {
+        res = await supabase
+          .from("goods_received")
+          .select("*")
+          .order("received_date", { ascending: false });
       }
 
+      const data = (res?.data || []) as any[];
       const list = (data || []) as Array<GoodsReceivedRow>;
 
       // Hydrate related purchase and warehouse display fields in parallel
-      const purchaseIds = Array.from(new Set(list.map(r => r.purchase_id).filter(Boolean)));
-      const warehouseIds = Array.from(new Set(list.map(r => r.warehouse_id).filter(Boolean))) as string[];
+      const purchaseIds = Array.from(new Set(list.map(r => (r as any).purchase_id).filter(Boolean)));
+      const warehouseIds = Array.from(new Set(list.map(r => (r as any).warehouse_id).filter(Boolean))) as string[];
 
       const [purchasesRes, warehousesRes] = await Promise.all([
         purchaseIds.length
@@ -76,11 +80,11 @@ export default function GoodsReceived() {
 
       const hydrated = list.map(r => ({
         ...r,
-        purchase: purchasesMap.get(r.purchase_id) || null,
-        warehouse: (r.warehouse_id ? warehousesMap.get(r.warehouse_id) : undefined) || null,
+        purchase: purchasesMap.get((r as any).purchase_id) || null,
+        warehouse: ((r as any).warehouse_id ? warehousesMap.get((r as any).warehouse_id) : undefined) || null,
       }));
 
-      setRows(hydrated);
+      setRows(hydrated as any);
     } catch (e) {
       console.error(e);
       setRows([]);
