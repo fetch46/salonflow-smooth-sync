@@ -26,6 +26,8 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { tableExists } from "@/utils/mockDatabase";
+import { format as formatDate } from "date-fns";
 
 interface StaffRecord {
   id: string;
@@ -134,14 +136,41 @@ export default function StaffProfile() {
       });
       setCommissionRows(normalized);
 
-      // Load appointments summary in range
-      const { data: appts } = await supabase
-        .from('appointments')
-        .select('id, appointment_date, status, total_amount')
-        .eq('staff_id', id)
-        .gte('appointment_date', startDate)
-        .lte('appointment_date', endDate);
-      setAppointments(appts || []);
+      // Load appointments for this staff within date range, including multi-staff via appointment_services
+      const [directRes, hasApptServices] = await Promise.all([
+        supabase
+          .from('appointments')
+          .select('id, appointment_date, appointment_time, status, price, staff_id')
+          .eq('staff_id', id)
+          .gte('appointment_date', startDate)
+          .lte('appointment_date', endDate),
+        tableExists(supabase, 'appointment_services').catch(() => false)
+      ]);
+
+      const directAppts = (directRes?.data || []) as any[];
+      let combined: any[] = [...directAppts];
+
+      if (hasApptServices) {
+        const { data: svcRows } = await supabase
+          .from('appointment_services')
+          .select('appointment_id')
+          .eq('staff_id', id);
+        const apptIds = Array.from(new Set((svcRows || []).map((r: any) => r.appointment_id).filter(Boolean)));
+        if (apptIds.length) {
+          const { data: apptsByService } = await supabase
+            .from('appointments')
+            .select('id, appointment_date, appointment_time, status, price')
+            .in('id', apptIds)
+            .gte('appointment_date', startDate)
+            .lte('appointment_date', endDate);
+          const byId: Record<string, any> = {};
+          combined.forEach(a => { if (a?.id) byId[a.id] = a; });
+          (apptsByService || []).forEach((a: any) => { if (a?.id) byId[a.id] = a; });
+          combined = Object.values(byId);
+        }
+      }
+
+      setAppointments(combined || []);
     } catch (e) {
       console.error('Failed to load staff profile data', e);
       setCommissionRows([]);
@@ -545,7 +574,7 @@ export default function StaffProfile() {
                                   </Badge>
                                 ) : '—'}
                               </TableCell>
-                              <TableCell className="text-right">{formatMoney(Number(a.total_amount || 0))}</TableCell>
+                              <TableCell className="text-right">{formatMoney(Number(a.price || 0))}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -573,7 +602,7 @@ export default function StaffProfile() {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <div className="text-sm text-slate-600">Selected date</div>
-                      <div className="text-sm font-medium text-slate-900">{scheduleDate.toISOString().slice(0,10)}</div>
+                      <div className="text-sm font-medium text-slate-900">{formatDate(scheduleDate, 'yyyy-MM-dd')}</div>
                     </div>
                     <div className="rounded-md border overflow-x-auto">
                       <Table className="min-w-[480px]">
@@ -585,16 +614,16 @@ export default function StaffProfile() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {appointments.filter((a) => String(a.appointment_date).slice(0,10) === scheduleDate.toISOString().slice(0,10)).length === 0 ? (
+                          {appointments.filter((a) => String(a.appointment_date).slice(0,10) === formatDate(scheduleDate, 'yyyy-MM-dd')).length === 0 ? (
                             <TableRow>
                               <TableCell colSpan={3} className="text-sm text-muted-foreground">No appointments on this date</TableCell>
                             </TableRow>
                           ) : (
                             appointments
-                              .filter((a) => String(a.appointment_date).slice(0,10) === scheduleDate.toISOString().slice(0,10))
+                              .filter((a) => String(a.appointment_date).slice(0,10) === formatDate(scheduleDate, 'yyyy-MM-dd'))
                               .map((a) => (
                                 <TableRow key={a.id}>
-                                  <TableCell>{String(a.appointment_date).split('T')[1] ? String(a.appointment_date).split('T')[1].slice(0,5) : '—'}</TableCell>
+                                  <TableCell>{a.appointment_time ? String(a.appointment_time).slice(0,5) : '—'}</TableCell>
                                   <TableCell>
                                     {a.status ? (
                                       <Badge variant={a.status === 'completed' ? 'default' : a.status === 'cancelled' ? 'secondary' : 'outline'} className="capitalize">
@@ -602,7 +631,7 @@ export default function StaffProfile() {
                                       </Badge>
                                     ) : '—'}
                                   </TableCell>
-                                  <TableCell className="text-right">{formatMoney(Number(a.total_amount || 0))}</TableCell>
+                                  <TableCell className="text-right">{formatMoney(Number(a.price || 0))}</TableCell>
                                 </TableRow>
                               ))
                           )}
