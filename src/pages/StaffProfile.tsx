@@ -140,7 +140,7 @@ export default function StaffProfile() {
       const [directRes, hasApptServices] = await Promise.all([
         supabase
           .from('appointments')
-          .select('id, appointment_date, appointment_time, status, price, staff_id')
+          .select('id, appointment_date, appointment_time, status, price, staff_id, service_name')
           .eq('staff_id', id)
           .gte('appointment_date', startDate)
           .lte('appointment_date', endDate),
@@ -159,7 +159,7 @@ export default function StaffProfile() {
         if (apptIds.length) {
           const { data: apptsByService } = await supabase
             .from('appointments')
-            .select('id, appointment_date, appointment_time, status, price')
+            .select('id, appointment_date, appointment_time, status, price, service_name')
             .in('id', apptIds)
             .gte('appointment_date', startDate)
             .lte('appointment_date', endDate);
@@ -560,7 +560,7 @@ export default function StaffProfile() {
                           <TableRow>
                             <TableHead>Date</TableHead>
                             <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Amount</TableHead>
+                            <TableHead>Service</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -574,7 +574,7 @@ export default function StaffProfile() {
                                   </Badge>
                                 ) : '—'}
                               </TableCell>
-                              <TableCell className="text-right">{formatMoney(Number(a.price || 0))}</TableCell>
+                              <TableCell>{a.service_name || '—'}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -610,7 +610,7 @@ export default function StaffProfile() {
                           <TableRow>
                             <TableHead>Time</TableHead>
                             <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Amount</TableHead>
+                            <TableHead>Service</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -631,7 +631,7 @@ export default function StaffProfile() {
                                       </Badge>
                                     ) : '—'}
                                   </TableCell>
-                                  <TableCell className="text-right">{formatMoney(Number(a.price || 0))}</TableCell>
+                                  <TableCell>{a.service_name || '—'}</TableCell>
                                 </TableRow>
                               ))
                           )}
