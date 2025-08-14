@@ -187,7 +187,7 @@ export default function Services() {
         const { data, error } = await supabase
           .from("services")
           .select("*")
-          .eq("organization_id", organization.id)
+          .or(`organization_id.eq.${organization.id},organization_id.is.null`)
           .order("created_at", { ascending: false });
 
         if (error) {
