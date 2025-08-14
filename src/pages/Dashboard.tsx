@@ -434,7 +434,7 @@ const Dashboard = () => {
       description: "Book appointment for client",
       icon: Calendar,
       color: "bg-blue-50 text-blue-600 hover:bg-blue-100",
-      action: () => navigate("/appointments?create=1")
+      action: () => navigate("/appointments/new")
     },
     {
       title: "Add Client",
@@ -550,7 +550,7 @@ const Dashboard = () => {
             <span className="hidden sm:inline">Refresh</span>
           </Button>
           
-          <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg px-2 sm:px-4" onClick={() => navigate('/appointments?create=1')}>
+          <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg px-2 sm:px-4" onClick={() => navigate('/appointments/new')}>
             <Plus className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">New Appointment</span>
           </Button>
@@ -835,7 +835,7 @@ const Dashboard = () => {
             <CreditCard className="w-5 h-5" />
             <span className="text-[10px]">POS</span>
           </Button>
-          <Button className="flex flex-col gap-1 py-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white" onClick={() => navigate('/appointments?create=1')}>
+          <Button className="flex flex-col gap-1 py-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white" onClick={() => navigate('/appointments/new')}>
             <Plus className="w-5 h-5" />
             <span className="text-[10px]">New</span>
           </Button>

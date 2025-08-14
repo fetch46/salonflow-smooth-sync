@@ -15,6 +15,7 @@ const Register = lazy(() => import("@/pages/Register"));
 // Main Pages
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Appointments = lazy(() => import("@/pages/Appointments"));
+const AppointmentForm = lazy(() => import("@/pages/AppointmentForm"));
 const Clients = lazy(() => import("@/pages/Clients"));
 const ClientProfile = lazy(() => import("@/pages/ClientProfile"));
 const Staff = lazy(() => import("@/pages/Staff"));
@@ -156,6 +157,8 @@ const AppRoutes = () => {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="appointments" element={<Appointments />} />
+          <Route path="appointments/new" element={<AppointmentForm />} />
+          <Route path="appointments/:id/edit" element={<AppointmentForm />} />
           
           {/* Client Management */}
           <Route path="clients" element={<Clients />} />

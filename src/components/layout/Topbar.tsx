@@ -229,6 +229,7 @@ export function AppTopbar() {
               <CommandItem onSelect={() => { navigate('/dashboard'); setOpenCmd(false); }}>Dashboard</CommandItem>
               <CommandItem onSelect={() => { navigate('/clients'); setOpenCmd(false); }}>Clients</CommandItem>
               <CommandItem onSelect={() => { navigate('/appointments'); setOpenCmd(false); }}>Appointments</CommandItem>
+              <CommandItem onSelect={() => { navigate('/appointments/new'); setOpenCmd(false); }}>New Appointment</CommandItem>
               <CommandItem onSelect={() => { navigate('/inventory'); setOpenCmd(false); }}>Inventory</CommandItem>
               <CommandItem onSelect={() => { navigate('/reports'); setOpenCmd(false); }}>Reports</CommandItem>
             </CommandGroup>
