@@ -7,10 +7,21 @@ const router = Router();
 
 // Supabase service client (server-side)
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
   : null as any;
+
+if (!supabase) {
+	console.warn('[notifications] Supabase not configured; notification endpoints will return errors for data access.');
+}
+
+const INTERNAL_API_TOKEN = process.env.INTERNAL_API_TOKEN || '';
+function assertInternal(req: any) {
+	if (!INTERNAL_API_TOKEN) return true;
+	const provided = req.header('X-Internal-Token') || '';
+	return provided && provided === INTERNAL_API_TOKEN;
+}
 
 // Nodemailer transporter (optional, if env set)
 const SMTP_HOST = process.env.SMTP_HOST;
@@ -38,7 +49,7 @@ const twilioClient = hasTwilio ? twilio(TWILIO_ACCOUNT_SID as string, TWILIO_AUT
 
 function normalizePhoneToWhatsApp(phone: string | null | undefined): string | null {
   if (!phone) return null;
-  let p = String(phone).trim();
+  const p = String(phone).trim();
   if (!p) return null;
   // Basic normalization: ensure it starts with +; caller must store E.164 ideally
   if (!p.startsWith('+')) {
@@ -102,6 +113,7 @@ async function sendWhatsApp(toPhone: string, text: string) {
 
 router.post('/appointment/confirmation', async (req, res) => {
   try {
+    if (!assertInternal(req)) return res.status(403).json({ error: 'Forbidden' });
     const { appointment_id } = req.body ?? {};
     if (!appointment_id) return res.status(400).json({ error: 'appointment_id is required' });
     const appt = await fetchAppointment(appointment_id);
@@ -135,6 +147,7 @@ router.post('/appointment/confirmation', async (req, res) => {
 
 router.post('/appointment/reminder', async (req, res) => {
   try {
+    if (!assertInternal(req)) return res.status(403).json({ error: 'Forbidden' });
     const { appointment_id } = req.body ?? {};
     if (!appointment_id) return res.status(400).json({ error: 'appointment_id is required' });
     const appt = await fetchAppointment(appointment_id);
