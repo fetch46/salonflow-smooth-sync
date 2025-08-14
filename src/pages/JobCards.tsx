@@ -592,157 +592,159 @@ export default function JobCards() {
 
     if (viewMode === 'list') {
       return (
-        <div>
-          <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-2 text-xs font-medium text-slate-500">
-            {visibleColumns.avatar && <div className="col-span-1">#</div>}
-            <div className="col-span-2">Job</div>
-            {visibleColumns.client && <div className="col-span-2">Client</div>}
-            {visibleColumns.staff && <div className="col-span-2">Staff</div>}
-            {visibleColumns.created && <div className="col-span-2">Created</div>}
-            {visibleColumns.amount && <div className="col-span-1 text-right md:text-left">Amount</div>}
-            {visibleColumns.status && <div className="col-span-1">Status</div>}
-            {visibleColumns.actions && <div className="col-span-1">Actions</div>}
-          </div>
+        <div className="w-full overflow-x-auto">
+          <div className="min-w-[900px]">
+            <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-2 text-xs font-medium text-slate-500">
+              {visibleColumns.avatar && <div className="col-span-1">#</div>}
+              <div className="col-span-2">Job</div>
+              {visibleColumns.client && <div className="col-span-2">Client</div>}
+              {visibleColumns.staff && <div className="col-span-2">Staff</div>}
+              {visibleColumns.created && <div className="col-span-2">Created</div>}
+              {visibleColumns.amount && <div className="col-span-1 text-right md:text-left">Amount</div>}
+              {visibleColumns.status && <div className="col-span-1">Status</div>}
+              {visibleColumns.actions && <div className="col-span-1">Actions</div>}
+            </div>
 
-          <div className="max-h-96 overflow-y-auto divide-y divide-slate-100">
-            {filteredJobCards.map((jobCard) => (
-              <div
-                key={jobCard.id}
-                className="grid grid-cols-1 md:grid-cols-12 items-center gap-3 p-4 hover:bg-slate-50/50 transition-colors"
-              >
-                {visibleColumns.avatar && (
-                  <div className="md:col-span-1">
-                    <div className="relative">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-medium text-sm">
-                        {jobCard.job_number.slice(-2)}
-                      </div>
-                      {jobCard.priority === 'urgent' && (
-                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                          <Zap className="w-2 h-2 text-white" />
+            <div className="max-h-96 overflow-y-auto divide-y divide-slate-100">
+              {filteredJobCards.map((jobCard) => (
+                <div
+                  key={jobCard.id}
+                  className="grid grid-cols-1 md:grid-cols-12 items-center gap-3 p-4 hover:bg-slate-50/50 transition-colors"
+                >
+                  {visibleColumns.avatar && (
+                    <div className="md:col-span-1">
+                      <div className="relative">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-medium text-sm">
+                          {jobCard.job_number.slice(-2)}
                         </div>
+                        {jobCard.priority === 'urgent' && (
+                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                            <Zap className="w-2 h-2 text-white" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="md:col-span-2 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-slate-900 truncate">{jobCard.job_number}</h4>
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      {getStatusBadge(jobCard.status)}
+                      {jobCard.priority && getPriorityBadge(jobCard.priority)}
+                      {jobCard.service_type && (
+                        <Badge variant="outline" className="text-xs">
+                          {jobCard.service_type}
+                        </Badge>
                       )}
                     </div>
                   </div>
-                )}
 
-                <div className="md:col-span-2 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-semibold text-slate-900 truncate">{jobCard.job_number}</h4>
-                  </div>
-                  <div className="mt-1 flex flex-wrap gap-2">
-                    {getStatusBadge(jobCard.status)}
-                    {jobCard.priority && getPriorityBadge(jobCard.priority)}
-                    {jobCard.service_type && (
-                      <Badge variant="outline" className="text-xs">
-                        {jobCard.service_type}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-
-                {visibleColumns.client && (
-                  <div className="md:col-span-2 min-w-0">
-                    <div className="flex items-center text-slate-600 truncate">
-                      <User className="w-3 h-3 mr-1" />
-                      <span className="truncate">{jobCard.client?.full_name || "No client"}</span>
+                  {visibleColumns.client && (
+                    <div className="md:col-span-2 min-w-0">
+                      <div className="flex items-center text-slate-600 truncate">
+                        <User className="w-3 h-3 mr-1" />
+                        <span className="truncate">{jobCard.client?.full_name || "No client"}</span>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {visibleColumns.staff && (
-                  <div className="md:col-span-2 min-w-0">
-                    <div className="flex items-center text-slate-600 truncate">
-                      <UserCheck className="w-3 h-3 mr-1" />
-                      <span className="truncate">{jobCard.staff?.full_name || "Unassigned"}</span>
+                  {visibleColumns.staff && (
+                    <div className="md:col-span-2 min-w-0">
+                      <div className="flex items-center text-slate-600 truncate">
+                        <UserCheck className="w-3 h-3 mr-1" />
+                        <span className="truncate">{jobCard.staff?.full_name || "Unassigned"}</span>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {visibleColumns.created && (
-                  <div className="md:col-span-2">
-                    <div className="flex items-center text-slate-600">
-                      <Calendar className="w-3 h-3 mr-1" />
-                      {format(new Date(jobCard.created_at), "MMM dd, yyyy")}
+                  {visibleColumns.created && (
+                    <div className="md:col-span-2">
+                      <div className="flex items-center text-slate-600 whitespace-nowrap">
+                        <Calendar className="w-3 h-3 mr-1" />
+                        {format(new Date(jobCard.created_at), "MMM dd, yyyy")}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {visibleColumns.amount && (
-                  <div className="md:col-span-1 text-right md:text-left">
-                    <div className="flex items-center justify-end md:justify-start text-slate-600">
-                      <DollarSign className="w-3 h-3 mr-1" />
-                      {formatMoney(jobCard.total_amount)}
+                  {visibleColumns.amount && (
+                    <div className="md:col-span-1 text-right md:text-left whitespace-nowrap">
+                      <div className="flex items-center justify-end md:justify-start text-slate-600">
+                        <DollarSign className="w-3 h-3 mr-1" />
+                        {formatMoney(jobCard.total_amount)}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {visibleColumns.status && (
-                  <div className="md:col-span-1">
-                    <Select 
-                      value={jobCard.status} 
-                      onValueChange={(value) => handleStatusUpdate(jobCard.id, value)}
-                    >
-                      <SelectTrigger className="w-full h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {JOB_STATUSES.map((status) => (
-                          <SelectItem key={status.value} value={status.value}>
-                            <div className="flex items-center gap-2">
-                              <status.icon className="w-3 h-3" />
-                              {status.label}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+                  {visibleColumns.status && (
+                    <div className="md:col-span-1">
+                      <Select 
+                        value={jobCard.status} 
+                        onValueChange={(value) => handleStatusUpdate(jobCard.id, value)}
+                      >
+                        <SelectTrigger className="w-full h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {JOB_STATUSES.map((status) => (
+                            <SelectItem key={status.value} value={status.value}>
+                              <div className="flex items-center gap-2">
+                                <status.icon className="w-3 h-3" />
+                                {status.label}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
-                {visibleColumns.actions && (
-                  <div className="md:col-span-1">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-8 w-full md:w-auto">
-                          <MoreHorizontal className="w-4 h-4 mr-2" />
-                          Actions
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-52 z-50 bg-background">
-                        <DropdownMenuItem onClick={() => navigate(`/job-cards/${jobCard.id}`)}>
-                          <Eye className="w-4 h-4 mr-2" />
-                          View
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => navigate(`/job-cards/${jobCard.id}/edit`)}>
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Printer className="w-4 h-4 mr-2" />
-                          Print
-                        </DropdownMenuItem>
-                        {jobCard.status === 'completed' && !jobCardsWithReceipts.has(jobCard.id) && (
-                          <DropdownMenuItem onClick={() => navigate(`/invoices?fromJobCard=${jobCard.id}`)}>
-                            <Receipt className="w-4 h-4 mr-2" />
-                            Create Invoice
+                  {visibleColumns.actions && (
+                    <div className="md:col-span-1">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="h-8 w-full md:w-auto">
+                            <MoreHorizontal className="w-4 h-4 mr-2" />
+                            Actions
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52 z-50 bg-background">
+                          <DropdownMenuItem onClick={() => navigate(`/job-cards/${jobCard.id}`)}>
+                            <Eye className="w-4 h-4 mr-2" />
+                            View
                           </DropdownMenuItem>
-                        )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={() => handleDeleteJobCard(jobCard.id)}
-                          disabled={jobCardsWithReceipts.has(jobCard.id)}
-                          className={`focus:text-red-600 ${jobCardsWithReceipts.has(jobCard.id) ? 'text-slate-400' : 'text-red-600'}`}
-                          title={jobCardsWithReceipts.has(jobCard.id) ? 'Cannot delete: receipt exists for this job card' : undefined}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                )}
-              </div>
-            ))}
+                          <DropdownMenuItem onClick={() => navigate(`/job-cards/${jobCard.id}/edit`)}>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Printer className="w-4 h-4 mr-2" />
+                            Print
+                          </DropdownMenuItem>
+                          {jobCard.status === 'completed' && !jobCardsWithReceipts.has(jobCard.id) && (
+                            <DropdownMenuItem onClick={() => navigate(`/invoices?fromJobCard=${jobCard.id}`)}>
+                              <Receipt className="w-4 h-4 mr-2" />
+                              Create Invoice
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => handleDeleteJobCard(jobCard.id)}
+                            disabled={jobCardsWithReceipts.has(jobCard.id)}
+                            className={`focus:text-red-600 ${jobCardsWithReceipts.has(jobCard.id) ? 'text-slate-400' : 'text-red-600'}`}
+                            title={jobCardsWithReceipts.has(jobCard.id) ? 'Cannot delete: receipt exists for this job card' : undefined}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       );
