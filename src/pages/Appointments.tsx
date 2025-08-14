@@ -940,7 +940,7 @@ export default function Appointments() {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {filteredAppointments.map((appointment) => {
                   const items = appointmentServicesById[appointment.id] || [];
                   const serviceNames = (items.length
@@ -1063,7 +1063,7 @@ export default function Appointments() {
                     </div>
                   );
                 })}
-                <div className="text-xs text-muted-foreground text-right">{filteredAppointments.length} appointments</div>
+                <div className="col-span-full text-xs text-muted-foreground text-right">{filteredAppointments.length} appointments</div>
               </div>
             )}
         </CardContent>
