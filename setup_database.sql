@@ -1,45 +1,15 @@
 -- Complete Database Setup Script
 -- This script sets up all required tables and relationships for the salon management system
+-- NOTE: This is a legacy setup script. All migrations are now handled through Supabase directly.
+-- Use: supabase db push or the Lovable migration tool instead.
 
--- 1. Run the complete schema migration
-\i supabase/migrations/20250116000004_complete_database_schema.sql
-\i supabase/migrations/20250116000005_inventory_core_tables.sql
-\i supabase/migrations/20250812090000_add_business_locations_and_location_filters.sql
-\i supabase/migrations/20250827093000_purchase_receiving_and_payments.sql
-\i supabase/migrations/20250923094500_create_accounts_and_rebuild_function.sql
-\i supabase/migrations/20250902091500_goods_received_tables.sql
-\i supabase/migrations/20250915093000_inventory_transfers.sql
-\i supabase/migrations/20250916094500_inventory_adjustments.sql
-\i supabase/migrations/20250917094500_inventory_item_accounts.sql
-\i supabase/migrations/20250918120000_create_account_transactions.sql
-
--- Additional consolidated safety script for product tables/links
-\i supabase/sql/create_products_schema.sql
-
--- Receipts removed; invoices are the source of truth. Ensure invoice tables exist before adding location_id.
--- (No action needed here)
-
--- Also include business locations and related columns
-\i supabase/migrations/20250812090000_add_business_locations_and_location_filters.sql
--- Migrate prior storage_locations usage to business_locations
-\i supabase/migrations/20250820093000_migrate_storage_locations_to_business_locations.sql
--- Ensure organization_users has invitation fields
-\i supabase/migrations/20250901093000_add_org_users_invitation_fields.sql
--- Purchase receiving base (triggers, payments)
-\i supabase/migrations/20250827093000_purchase_receiving_and_payments.sql
--- Goods received tables
-\i supabase/migrations/20250902091500_goods_received_tables.sql
--- Goods received RPCs and RLS policies
-\i supabase/migrations/20250908093000_goods_received_rpcs_and_policies.sql
--- Persist confirmed email timestamps on profiles
-\i supabase/migrations/20250912000000_add_email_confirmed_at_to_profiles.sql
-
--- Ensure staff has commission_rate column
-\i supabase/migrations/20250910094500_add_commission_rate_to_staff.sql
--- Add default warehouse for business locations
-\i supabase/migrations/20250915090000_add_default_warehouse_to_business_locations.sql
--- Ensure warehouses has updated_at and trigger
-\i supabase/migrations/20250921101000_fix_warehouses_updated_at.sql
+-- Migration order (for reference):
+-- 1. 20250116000004_complete_database_schema.sql
+-- 2. 20250116000005_inventory_core_tables.sql
+-- 3. 20250812090000_add_business_locations_and_location_filters.sql
+-- 4. 20250827093000_purchase_receiving_and_payments.sql
+-- 5. 20250923094500_create_accounts_and_rebuild_function.sql
+-- ... (other migrations in chronological order)
 
 -- 2. Ensure all required functions exist
 -- Create organization creation function if it doesn't exist
