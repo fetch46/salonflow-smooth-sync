@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { CalendarDays, Clock, Phone, Mail, User, Edit2, Trash2, Plus, MoreHorizontal, Eye, FilePlus, RefreshCcw, Search } from "lucide-react";
+import { CalendarDays, Clock, Phone, Mail, User, Edit2, Trash2, Plus, MoreHorizontal, Eye, FilePlus, RefreshCcw, Search, CheckCircle2, XCircle, AlertCircle, MapPin } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
 import { useSaas } from "@/lib/saas";
@@ -803,7 +803,7 @@ export default function Appointments() {
   }
 
   return (
-    <div className="p-6 w-full max-w-7xl mx-auto space-y-6">
+    <div className="p-6 w-full max-w-[1800px] mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Appointments</h1>
@@ -832,37 +832,95 @@ export default function Appointments() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+        <Card className="overflow-hidden">
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-primary">
-              {appointments.filter(a => a.status === "scheduled").length}
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg p-2 bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+                <CalendarDays className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Scheduled</div>
+                <div className="text-2xl font-semibold">
+                  {appointments.filter(a => a.status === "scheduled").length}
+                </div>
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground">Scheduled</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="overflow-hidden">
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-green-600">
-              {appointments.filter(a => a.status === "confirmed").length}
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg p-2 bg-green-100 text-green-600 dark:bg-green-950/40 dark:text-green-400">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Confirmed</div>
+                <div className="text-2xl font-semibold">
+                  {appointments.filter(a => a.status === "confirmed").length}
+                </div>
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground">Confirmed</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="overflow-hidden">
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-yellow-600">
-              {appointments.filter(a => a.status === "in_progress").length}
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg p-2 bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400">
+                <Clock className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">In Progress</div>
+                <div className="text-2xl font-semibold">
+                  {appointments.filter(a => a.status === "in_progress").length}
+                </div>
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground">In Progress</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="overflow-hidden">
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-emerald-600">
-              {appointments.filter(a => a.status === "completed").length}
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg p-2 bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Completed</div>
+                <div className="text-2xl font-semibold">
+                  {appointments.filter(a => a.status === "completed").length}
+                </div>
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground">Completed</p>
+          </CardContent>
+        </Card>
+        <Card className="overflow-hidden">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg p-2 bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400">
+                <XCircle className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Cancelled</div>
+                <div className="text-2xl font-semibold">
+                  {appointments.filter(a => a.status === "cancelled").length}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="overflow-hidden">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg p-2 bg-slate-100 text-slate-600 dark:bg-slate-950/40 dark:text-slate-400">
+                <AlertCircle className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">No Show</div>
+                <div className="text-2xl font-semibold">
+                  {appointments.filter(a => a.status === "no_show").length}
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -882,24 +940,42 @@ export default function Appointments() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="flex items-center gap-2">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  <SelectItem value="scheduled">Scheduled</SelectItem>
-                  <SelectItem value="confirmed">Confirmed</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                  <SelectItem value="no_show">No Show</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant="ghost" onClick={() => { setSearchTerm(""); setStatusFilter("all"); }}>
-                Clear
-              </Button>
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <div className="hidden md:flex items-center flex-wrap gap-2">
+                {["all","scheduled","confirmed","in_progress","completed","cancelled","no_show"].map((s) => (
+                  <Button
+                    key={s}
+                    size="sm"
+                    variant={statusFilter === s ? "default" : "outline"}
+                    className="rounded-full"
+                    onClick={() => setStatusFilter(s)}
+                  >
+                    {s === "all" ? "All" : s.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
+                  </Button>
+                ))}
+                <Button variant="ghost" size="sm" onClick={() => { setSearchTerm(""); setStatusFilter("all"); }}>
+                  Clear
+                </Button>
+              </div>
+              <div className="md:hidden flex items-center gap-2 w-full">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All statuses</SelectItem>
+                    <SelectItem value="scheduled">Scheduled</SelectItem>
+                    <SelectItem value="confirmed">Confirmed</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="no_show">No Show</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button variant="ghost" onClick={() => { setSearchTerm(""); setStatusFilter("all"); }}>
+                  Clear
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -924,47 +1000,86 @@ export default function Appointments() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                 {filteredAppointments.map((appointment) => {
                   const items = appointmentServicesById[appointment.id] || [];
                   const serviceNames = (items.length
                     ? items.map(it => services.find(s => s.id === it.service_id)?.name).filter(Boolean).join(', ')
                     : appointment.service_name) || '—';
-                  const staffNames = items.length
-                    ? items.map(it => {
-                        const srvName = services.find(s => s.id === it.service_id)?.name || 'Service';
-                        const stfName = staff.find(s => s.id === it.staff_id)?.full_name || 'Unassigned';
-                        return `${srvName} → ${stfName}`;
-                      }).join('; ')
-                    : (staff.find(s => s.id === appointment.staff_id)?.full_name || 'Not assigned');
 
                   return (
                     <div
                       key={appointment.id}
-                      className="group rounded-xl border bg-gradient-to-r from-white to-slate-50 dark:from-slate-950 dark:to-slate-900 p-4 sm:p-5 shadow-sm hover:shadow-md transition-colors"
+                      className="group relative rounded-xl border bg-gradient-to-b from-white to-slate-50 dark:from-slate-950 dark:to-slate-900 p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
                     >
-                      <div className="flex flex-col gap-4 md:grid md:grid-cols-[180px_1fr_220px_auto] md:items-center">
-                        <div className="flex items-start gap-3">
-                          <div className="mt-1">
-                            <CalendarDays className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <div className="font-semibold text-slate-900 dark:text-slate-100">{appointment.appointment_date}</div>
-                            <div className="text-sm text-muted-foreground flex items-center gap-2">
-                              <Clock className="w-4 h-4" />
-                              <span>
-                                {appointment.appointment_time} ({Number(appointment.duration_minutes ?? 0)}min)
-                              </span>
-                            </div>
-                          </div>
-                        </div>
+                      <div className="absolute top-3 right-3">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="hover:bg-slate-100 dark:hover:bg-slate-800">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="z-50 bg-background">
+                            <DropdownMenuItem onClick={() => handleView(appointment)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Appointment
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleCreateJobcard(appointment)}
+                              disabled={String(appointment.status || '').toLowerCase() !== 'confirmed'}
+                              className={String(appointment.status || '').toLowerCase() !== 'confirmed' ? 'text-slate-400' : ''}
+                              title={String(appointment.status || '').toLowerCase() !== 'confirmed' ? 'Only confirmed bookings can create a job card' : undefined}
+                            >
+                              <FilePlus className="mr-2 h-4 w-4" />
+                              Create Jobcard
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEdit(appointment)}>
+                              <Edit2 className="mr-2 h-4 w-4" />
+                              Edit Appointment
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSendConfirmation(appointment)}>
+                              <Mail className="mr-2 h-4 w-4" />
+                              Send Confirmation
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSendReminder(appointment)}>
+                              <Clock className="mr-2 h-4 w-4" />
+                              Send Reminder
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(appointment.id)}
+                              disabled={appointmentsWithJobcards.has(appointment.id)}
+                              className={appointmentsWithJobcards.has(appointment.id) ? 'text-slate-400' : ''}
+                              title={appointmentsWithJobcards.has(appointment.id) ? 'Cannot delete: job card exists for this appointment' : undefined}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete Appointment
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
 
-                        <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <Badge className={`${getStatusColor(appointment.status || 'scheduled')} capitalize`}>
+                          {String(appointment.status || 'scheduled').replace('_', ' ')}
+                        </Badge>
+                        <div className="text-xs text-muted-foreground flex items-center gap-2">
+                          <CalendarDays className="w-4 h-4" />
+                          <span>{appointment.appointment_date}</span>
+                          <span>•</span>
+                          <Clock className="w-4 h-4" />
+                          <span>
+                            {appointment.appointment_time} ({Number(appointment.duration_minutes ?? 0)}min)
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex items-start justify-between gap-4">
+                        <div>
                           <div className="flex flex-wrap items-center gap-2">
                             <User className="w-4 h-4 text-muted-foreground" />
                             <span className="font-medium text-slate-900 dark:text-slate-100">{appointment.customer_name}</span>
                           </div>
-                          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 text-sm text-muted-foreground">
+                          <div className="mt-1 flex flex-col sm:flex-row sm:flex-wrap gap-2 text-sm text-muted-foreground">
                             {appointment.customer_email && (
                               <span className="inline-flex items-center gap-2"><Mail className="w-4 h-4" />{appointment.customer_email}</span>
                             )}
@@ -972,84 +1087,43 @@ export default function Appointments() {
                               <span className="inline-flex items-center gap-2"><Phone className="w-4 h-4" />{appointment.customer_phone}</span>
                             )}
                           </div>
-                          <div className="flex flex-wrap gap-2">
-                            {items.length ? (
-                              items.map((it, idx) => {
-                                const srvName = services.find(s => s.id === it.service_id)?.name || 'Service';
-                                const stfName = staff.find(s => s.id === it.staff_id)?.full_name || 'Unassigned';
-                                return (
-                                  <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs">
-                                    {srvName}
-                                    <span className="text-slate-400">→</span>
-                                    {stfName}
-                                  </span>
-                                );
-                              })
-                            ) : (
-                              <span className="text-sm text-muted-foreground">{serviceNames}</span>
-                            )}
-                          </div>
                         </div>
-
-                        <div className="flex items-center md:justify-center gap-3">
-                          <Badge className={getStatusColor(appointment.status || 'scheduled')}>
-                            {String(appointment.status || 'scheduled').replace('_', ' ')}
-                          </Badge>
-                          <div className="text-right font-semibold">
+                        <div className="text-right">
+                          <div className="text-xs text-muted-foreground">Amount</div>
+                          <div className="font-semibold">
                             {Number(appointment.price || 0) > 0 ? formatMoney(Number(appointment.price || 0)) : '—'}
                           </div>
                         </div>
-
-                        <div className="md:justify-self-end">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="hover:bg-slate-100 dark:hover:bg-slate-800">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="z-50 bg-background">
-                              <DropdownMenuItem onClick={() => handleView(appointment)}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Appointment
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleCreateJobcard(appointment)}
-                                disabled={String(appointment.status || '').toLowerCase() !== 'confirmed'}
-                                className={String(appointment.status || '').toLowerCase() !== 'confirmed' ? 'text-slate-400' : ''}
-                                title={String(appointment.status || '').toLowerCase() !== 'confirmed' ? 'Only confirmed bookings can create a job card' : undefined}
-                              >
-                                <FilePlus className="mr-2 h-4 w-4" />
-                                Create Jobcard
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleEdit(appointment)}>
-                                <Edit2 className="mr-2 h-4 w-4" />
-                                Edit Appointment
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleSendConfirmation(appointment)}>
-                                <Mail className="mr-2 h-4 w-4" />
-                                Send Confirmation
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleSendReminder(appointment)}>
-                                <Clock className="mr-2 h-4 w-4" />
-                                Send Reminder
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDelete(appointment.id)}
-                                disabled={appointmentsWithJobcards.has(appointment.id)}
-                                className={appointmentsWithJobcards.has(appointment.id) ? 'text-slate-400' : ''}
-                                title={appointmentsWithJobcards.has(appointment.id) ? 'Cannot delete: job card exists for this appointment' : undefined}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Appointment
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
                       </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {items.length ? (
+                          items.map((it, idx) => {
+                            const srvName = services.find(s => s.id === it.service_id)?.name || 'Service';
+                            const stfName = staff.find(s => s.id === it.staff_id)?.full_name || 'Unassigned';
+                            return (
+                              <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs">
+                                {srvName}
+                                <span className="text-slate-400">→</span>
+                                {stfName}
+                              </span>
+                            );
+                          })
+                        ) : (
+                          <span className="text-sm text-muted-foreground">{serviceNames}</span>
+                        )}
+                      </div>
+
+                      {appointment.location_id ? (
+                        <div className="mt-3 text-xs text-muted-foreground inline-flex items-center gap-1">
+                          <MapPin className="w-4 h-4" />
+                          {locations.find((l: any) => l.id === appointment.location_id)?.name || 'Location'}
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}
-                <div className="text-xs text-muted-foreground text-right">{filteredAppointments.length} appointments</div>
+                <div className="col-span-full text-xs text-muted-foreground text-right">{filteredAppointments.length} appointments</div>
               </div>
             )}
         </CardContent>
