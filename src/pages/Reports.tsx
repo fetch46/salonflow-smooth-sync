@@ -409,11 +409,11 @@ const Reports = () => {
 
       // Fetch core datasets
       const invoicesNowQ = supabase.from('invoices')
-        .select('id, total_amount, created_at, customer_id:client_id, location_id')
+        .select('id, total_amount, created_at, client_id, location_id')
         .gte('created_at', startDate)
         .lte('created_at', endDate);
       const invoicesPrevQ = supabase.from('invoices')
-        .select('id, total_amount, created_at, customer_id:client_id, location_id')
+        .select('id, total_amount, created_at, client_id, location_id')
         .gte('created_at', toDateStr(prevStart))
         .lte('created_at', toDateStr(prevEnd));
       const apptsNowQ = supabase.from('appointments')
@@ -425,9 +425,13 @@ const Reports = () => {
         .gte('appointment_date', toDateStr(prevStart))
         .lte('appointment_date', toDateStr(prevEnd));
       const clientsNowQ = supabase.from('clients')
-        .select('id, created_at');
+        .select('id, created_at')
+        .gte('created_at', startDate)
+        .lte('created_at', endDate);
       const clientsPrevQ = supabase.from('clients')
-        .select('id, created_at');
+        .select('id, created_at')
+        .gte('created_at', toDateStr(prevStart))
+        .lte('created_at', toDateStr(prevEnd));
       const svcItemsNowQ = supabase.from('invoice_items')
         .select('id, created_at, quantity, unit_price, total_price, service_id, location_id')
         .not('service_id', 'is', null)
@@ -459,14 +463,33 @@ const Reports = () => {
         invoicesNowQ, invoicesPrevQ, apptsNowQ, apptsPrevQ, clientsNowQ, clientsPrevQ, svcItemsNowQ, svcItemsPrevQ,
       ]);
 
-      const receiptsNow = (receiptsNowRes as any)?.data || [];
-      const receiptsPrev = (receiptsPrevRes as any)?.data || [];
-      const apptsNow = apptsNowRes.data || [];
-      const apptsPrev = apptsPrevRes.data || [];
-      const clientsNow = clientsNowRes.data || [];
-      const clientsPrev = clientsPrevRes.data || [];
-      const svcItemsNow = svcItemsNowRes.data || [];
-      const svcItemsPrev = svcItemsPrevRes.data || [];
+      let receiptsNow = (receiptsNowRes as any)?.data || [];
+      let receiptsPrev = (receiptsPrevRes as any)?.data || [];
+      let apptsNow = apptsNowRes.data || [];
+      let apptsPrev = apptsPrevRes.data || [];
+      let clientsNow = clientsNowRes.data || [];
+      let clientsPrev = clientsPrevRes.data || [];
+      let svcItemsNow = svcItemsNowRes.data || [];
+      let svcItemsPrev = svcItemsPrevRes.data || [];
+
+      // Fallback to mock storage when Supabase client is stubbed or returned null data
+      const supaIsStub = !(supabase as any)?.auth?.getSession || (receiptsNowRes as any)?.error || (receiptsPrevRes as any)?.error;
+      if (supaIsStub) {
+        try {
+          const storage = await mockDb.getStore();
+          const inNow = (storage.receipts || []).filter((r: any) => r.created_at?.slice(0,10) >= startDate && r.created_at?.slice(0,10) <= endDate);
+          const inPrev = (storage.receipts || []).filter((r: any) => r.created_at?.slice(0,10) >= toDateStr(prevStart) && r.created_at?.slice(0,10) <= toDateStr(prevEnd));
+          receiptsNow = inNow;
+          receiptsPrev = inPrev;
+          svcItemsNow = (storage.receipt_items || []).filter((it: any) => it.created_at?.slice(0,10) >= startDate && it.created_at?.slice(0,10) <= endDate && it.service_id);
+          svcItemsPrev = (storage.receipt_items || []).filter((it: any) => it.created_at?.slice(0,10) >= toDateStr(prevStart) && it.created_at?.slice(0,10) <= toDateStr(prevEnd) && it.service_id);
+          // Approximate appointments and clients from storage if tables are unavailable
+          apptsNow = [];
+          apptsPrev = [];
+          clientsNow = (storage.clients || []).filter((c: any) => c.created_at?.slice(0,10) >= startDate && c.created_at?.slice(0,10) <= endDate);
+          clientsPrev = (storage.clients || []).filter((c: any) => c.created_at?.slice(0,10) >= toDateStr(prevStart) && c.created_at?.slice(0,10) <= toDateStr(prevEnd));
+        } catch {}
+      }
 
       const revenueNow = receiptsNow.reduce((s: number, r: any) => s + (Number(r.total_amount) || 0), 0);
       const revenuePrev = receiptsPrev.reduce((s: number, r: any) => s + (Number(r.total_amount) || 0), 0);
@@ -540,7 +563,7 @@ const Reports = () => {
       // Top clients by visits/spend
       const byClient: Record<string, { visits: number; spent: number; last: string }> = {};
       for (const r of receiptsNow as any[]) {
-        const id = r.customer_id as string;
+        const id = (r.client_id || r.customer_id) as string;
         if (!id) continue;
         if (!byClient[id]) byClient[id] = { visits: 0, spent: 0, last: r.created_at };
         byClient[id].visits += 1;
@@ -599,7 +622,9 @@ const Reports = () => {
         if (startDate) params.set('start', startDate);
         if (endDate) params.set('end', endDate);
         if (locationFilter && locationFilter !== 'all') params.set('locationId', locationFilter);
-        const resp = await fetch(`${baseUrl}/reports/trial-balance?${params.toString()}`);
+        const resp = await fetch(`${baseUrl}/reports/trial-balance?${params.toString()}`, {
+          headers: (() => { const t = localStorage.getItem('jwt_token'); return t ? { Authorization: `Bearer ${t}` } : {}; })(),
+        });
         const js = await resp.json();
         setTbRows(Array.isArray(js.rows) ? js.rows : []);
       } catch (e) {
@@ -626,18 +651,76 @@ const Reports = () => {
         if (startDate) params.set('start', startDate);
         if (endDate) params.set('end', endDate);
         if (locationFilter && locationFilter !== 'all') params.set('locationId', locationFilter);
-        const resp = await fetch(`${baseUrl}/reports/revenue-by-location?${params.toString()}`);
+        const token = localStorage.getItem('jwt_token') || '';
+        const resp = await fetch(`${baseUrl}/reports/revenue-by-location?${params.toString()}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const js = await resp.json();
-        setRevenueByLocation(Array.isArray(js.rows) ? js.rows : []);
+        if (Array.isArray(js.rows)) {
+          setRevenueByLocation(js.rows);
+          return;
+        }
+        throw new Error('Invalid response');
       } catch (e) {
-        console.error('Failed to load revenue by location', e);
-        setRevenueByLocation([]);
+        // Fallback: compute from invoice_items
+        try {
+          let q = supabase
+            .from('invoice_items')
+            .select('id, location_id, created_at, quantity, unit_price, total_price')
+            .gte('created_at', startDate)
+            .lte('created_at', endDate);
+          if (locationFilter && locationFilter !== 'all') q = q.eq('location_id', locationFilter);
+          const { data: items } = await q;
+          const map = new Map<string, { locationId: string | null; locationName: string; revenue: number }>();
+          for (const it of (items || []) as any[]) {
+            const locId = it.location_id || 'unassigned';
+            const cur = map.get(locId) || { locationId: it.location_id || null, locationName: 'Unassigned', revenue: 0 };
+            const line = Number(it.total_price) || (Number(it.quantity) || 0) * (Number(it.unit_price) || 0);
+            cur.revenue += line;
+            map.set(locId, cur);
+          }
+          // Resolve names
+          const locIds = Array.from(map.keys()).filter((k) => k !== 'unassigned');
+          if (locIds.length > 0) {
+            try {
+              const { data: locs } = await supabase.from('business_locations').select('id, name').in('id', locIds);
+              const names = new Map((locs || []).map((l: any) => [l.id, l.name]));
+              for (const [k, v] of map.entries()) {
+                if (k !== 'unassigned') v.locationName = names.get(k) || v.locationName;
+              }
+            } catch {}
+          }
+          const rows = Array.from(map.values()).sort((a, b) => b.revenue - a.revenue);
+          setRevenueByLocation(rows);
+        } catch (e2) {
+          // Final fallback: compute from mock storage if available
+          try {
+            const storage = await mockDb.getStore();
+            const items = (storage.receipt_items || []) as any[];
+            const map = new Map<string, { locationId: string | null; locationName: string; revenue: number }>();
+            for (const it of items) {
+              const d = String(it.created_at || '').slice(0, 10);
+              if ((startDate && d < startDate) || (endDate && d > endDate)) continue;
+              const locId = it.location_id || 'unassigned';
+              const cur = map.get(locId) || { locationId: it.location_id || null, locationName: locId === 'unassigned' ? 'Unassigned' : 'Location', revenue: 0 };
+              const line = Number(it.total_price) || (Number(it.quantity) || 0) * (Number(it.unit_price) || 0);
+              cur.revenue += line;
+              map.set(locId, cur);
+            }
+            const rows = Array.from(map.values()).sort((a, b) => b.revenue - a.revenue);
+            setRevenueByLocation(rows);
+          } catch (e3) {
+            console.error('Failed to load revenue by location (fallback)', e3);
+            setRevenueByLocation([]);
+          }
+        }
       } finally {
         setRevenueByLocationLoading(false);
       }
     };
     load();
-  }, [activeTab, startDate, endDate]);
+  }, [activeTab, startDate, endDate, locationFilter]);
 
   return (
     <div className="flex-1 w-full space-y-6 px-4 sm:px-6 py-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen">
