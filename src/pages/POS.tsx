@@ -74,6 +74,7 @@ const PAYMENT_METHODS = [
 
 export default function POS() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [productQuantities, setProductQuantities] = useState<Record<string, number>>({});
   const [warehouses, setWarehouses] = useState<Array<{ id: string; name: string; location_id?: string | null }>>([]);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -154,6 +155,10 @@ export default function POS() {
           .gt("quantity", 0);
         if (levelsError) throw levelsError;
         let itemIds = Array.from(new Set((levels || []).map((l: any) => l.item_id)));
+        const qtyMap: Record<string, number> = {};
+        for (const row of (levels || [])) {
+          qtyMap[row.item_id] = (qtyMap[row.item_id] || 0) + Number(row.quantity || 0);
+        }
         // Fallback: if no levels by warehouse, try levels by the warehouse's location
         if (itemIds.length === 0) {
           const wh = warehouses.find(w => w.id === selectedWarehouseId);
@@ -166,10 +171,16 @@ export default function POS() {
               .gt("quantity", 0);
             if (locLevelsError) throw locLevelsError;
             itemIds = Array.from(new Set((locLevels || []).map((l: any) => l.item_id)));
+            // Reset and build qty map from location levels
+            for (const key of Object.keys(qtyMap)) delete qtyMap[key];
+            for (const row of (locLevels || [])) {
+              qtyMap[row.item_id] = (qtyMap[row.item_id] || 0) + Number(row.quantity || 0);
+            }
           }
         }
         if (itemIds.length === 0) {
           setProducts([]);
+          setProductQuantities({});
         } else {
           let itemsRes: any[] = [];
           try {
@@ -222,9 +233,11 @@ export default function POS() {
             itemsRes = items || [];
           }
           setProducts(itemsRes);
+          setProductQuantities(qtyMap);
         }
       } else {
         setProducts([]);
+        setProductQuantities({});
       }
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -589,6 +602,9 @@ export default function POS() {
                           {product.category}
                         </Badge>
                       )}
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-muted-foreground">Qty available: {productQuantities[product.id] ?? 0}</span>
+                      </div>
                       <div className="flex justify-between items-center">
                         <span className="text-lg font-bold text-green-600">
                           {formatMoney(product.selling_price)}
