@@ -351,100 +351,48 @@ export default function ProductView() {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-muted-foreground text-sm">
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-              <ArrowLeft className="w-4 h-4 mr-1" /> Back
-            </Button>
-          </div>
-          <h1 className="text-2xl font-semibold mt-1 flex items-center gap-2">
-            <Package className="w-5 h-5 text-primary" /> {item.name}
-            {item.is_active ? (
-              <Badge variant="secondary">Active</Badge>
-            ) : (
-              <Badge variant="outline">Inactive</Badge>
-            )}
-          </h1>
-          <div className="text-sm text-muted-foreground">SKU: {item.sku || '—'} • Unit: {item.unit || '—'} • Reorder point: {item.reorder_point ?? '—'}</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button onClick={() => setIsEditAccountsOpen(true)} variant="outline">
-            <Settings className="w-4 h-4 mr-2" /> Edit Accounts
-          </Button>
-          <Button onClick={() => navigate(`/inventory`)}>
-            <Pencil className="w-4 h-4 mr-2" /> Edit
-          </Button>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
-                <div className="text-xs text-muted-foreground">Description</div>
-                <div className="text-sm">{item.description || '—'}</div>
+    <div className="w-full mx-auto p-2 sm:p-4 md:p-6 space-y-6">
+      {/* Product Header */}
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-start md:items-center gap-4 md:gap-6 flex-1 min-w-0">
+              <Button variant="ghost" onClick={() => navigate(-1)}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
+              <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-xl flex items-center justify-center">
+                <Package className="w-8 h-8 text-white" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-xs text-muted-foreground">Cost Price</div>
-                  <div className="font-medium">{formatMoney(Number(item.cost_price || 0))}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Sales Price</div>
-                  <div className="font-medium">{formatMoney(Number(item.selling_price || 0))}</div>
-                </div>
+              <div className="min-w-0">
+                <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent truncate">
+                  {item.name}
+                </h1>
+                <p className="text-muted-foreground text-sm">
+                  SKU: {item.sku || '—'} • Unit: {item.unit || '—'} • Reorder point: {item.reorder_point ?? '—'}
+                </p>
               </div>
             </div>
-            <div className="space-y-3">
-              <div className="text-sm font-medium">Accounting & Tax</div>
-              <div className="text-xs text-muted-foreground">These accounts apply when you sell or purchase this item.</div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-                <div className="p-3 rounded border">
-                  <div className="text-xs text-muted-foreground">Sales Account</div>
-                  <div className="text-sm">
-                    {mapping?.sales_account_id && accountDisplay?.[mapping.sales_account_id] ? (
-                      `${accountDisplay[mapping.sales_account_id].code} — ${accountDisplay[mapping.sales_account_id].name}`
-                    ) : (
-                      '—'
-                    )}
-                  </div>
-                </div>
-                <div className="p-3 rounded border">
-                  <div className="text-xs text-muted-foreground">Purchase Account</div>
-                  <div className="text-sm">
-                    {mapping?.purchase_account_id && accountDisplay?.[mapping.purchase_account_id] ? (
-                      `${accountDisplay[mapping.purchase_account_id].code} — ${accountDisplay[mapping.purchase_account_id].name}`
-                    ) : (
-                      '—'
-                    )}
-                  </div>
-                </div>
-                <div className="p-3 rounded border">
-                  <div className="text-xs text-muted-foreground">Inventory Account</div>
-                  <div className="text-sm">
-                    {mapping?.inventory_account_id && accountDisplay?.[mapping.inventory_account_id] ? (
-                      `${accountDisplay[mapping.inventory_account_id].code} — ${accountDisplay[mapping.inventory_account_id].name}`
-                    ) : (
-                      '—'
-                    )}
-                  </div>
-                </div>
-                <div className="p-3 rounded border">
-                  <div className="text-xs text-muted-foreground">Taxable</div>
-                  <div className="text-sm">{mapping?.is_taxable ? 'Yes' : 'No'}</div>
-                </div>
+            <div className="flex flex-col items-start md:items-end space-y-2">
+              <div className="flex gap-2 w-full md:w-auto">
+                <Button onClick={() => setIsEditAccountsOpen(true)} variant="outline" className="w-full md:w-auto">
+                  <Settings className="w-4 h-4 mr-2" /> Edit Accounts
+                </Button>
+                <Button onClick={() => navigate(`/inventory?action=edit&itemId=${id}`)} className="w-full md:w-auto">
+                  <Pencil className="w-4 h-4 mr-2" /> Edit Product
+                </Button>
+              </div>
+              <div className="flex space-x-2">
+                <Badge variant={item.is_active ? 'default' : 'secondary'} className="text-xs">
+                  {item.is_active ? 'Active' : 'Inactive'}
+                </Badge>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
+      {/* Mini Dashboard */}
       <Card>
         <CardHeader>
           <CardTitle>Mini Dashboard</CardTitle>
@@ -475,186 +423,259 @@ export default function ProductView() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="usage" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="usage" className="flex items-center gap-2">
-            <ClipboardList className="w-4 h-4" /> Usage History
-          </TabsTrigger>
-          <TabsTrigger value="purchases" className="flex items-center gap-2">
-            <ShoppingCart className="w-4 h-4" /> Purchase History
-          </TabsTrigger>
-          <TabsTrigger value="sales" className="flex items-center gap-2">
-            <Package className="w-4 h-4" /> Sales History
-          </TabsTrigger>
-          <TabsTrigger value="stock" className="flex items-center gap-2">
-            <MapPin className="w-4 h-4" /> Stock by Location
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="usage">
+      {/* Two-column layout: Details + Tabs */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        <div className="xl:col-span-4 xl:order-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Item Usage History</CardTitle>
+              <CardTitle>Details</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-auto rounded-lg border">
-                <Table className="min-w-[720px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Job Card</TableHead>
-                      <TableHead className="text-right">Qty Used</TableHead>
-                      <TableHead className="hidden sm:table-cell text-right">Unit Cost</TableHead>
-                      <TableHead className="hidden sm:table-cell text-right">Total Cost</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {usageHistory.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground">No usage recorded.</TableCell>
-                      </TableRow>
-                    ) : (
-                      usageHistory.map((row) => (
-                        <TableRow key={row.id}>
-                          <TableCell>{formatDate(row.created_at)}</TableCell>
-                          <TableCell className="font-medium">{row.job_cards?.job_number || '—'}</TableCell>
-                          <TableCell className="text-right">{row.quantity_used}</TableCell>
-                          <TableCell className="hidden sm:table-cell text-right">{formatMoney(Number(row.unit_cost || 0))}</TableCell>
-                          <TableCell className="hidden sm:table-cell text-right">{formatMoney(Number(row.total_cost || 0))}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
+              <div className="grid grid-cols-1 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Description</div>
+                    <div className="text-sm">{item.description || '—'}</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-xs text-muted-foreground">Cost Price</div>
+                      <div className="font-medium">{formatMoney(Number(item.cost_price || 0))}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Sales Price</div>
+                      <div className="font-medium">{formatMoney(Number(item.selling_price || 0))}</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="text-sm font-medium">Accounting & Tax</div>
+                  <div className="text-xs text-muted-foreground">These accounts apply when you sell or purchase this item.</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                    <div className="p-3 rounded border">
+                      <div className="text-xs text-muted-foreground">Sales Account</div>
+                      <div className="text-sm">
+                        {mapping?.sales_account_id && accountDisplay?.[mapping.sales_account_id] ? (
+                          `${accountDisplay[mapping.sales_account_id].code} — ${accountDisplay[mapping.sales_account_id].name}`
+                        ) : (
+                          '—'
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-3 rounded border">
+                      <div className="text-xs text-muted-foreground">Purchase Account</div>
+                      <div className="text-sm">
+                        {mapping?.purchase_account_id && accountDisplay?.[mapping.purchase_account_id] ? (
+                          `${accountDisplay[mapping.purchase_account_id].code} — ${accountDisplay[mapping.purchase_account_id].name}`
+                        ) : (
+                          '—'
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-3 rounded border">
+                      <div className="text-xs text-muted-foreground">Inventory Account</div>
+                      <div className="text-sm">
+                        {mapping?.inventory_account_id && accountDisplay?.[mapping.inventory_account_id] ? (
+                          `${accountDisplay[mapping.inventory_account_id].code} — ${accountDisplay[mapping.inventory_account_id].name}`
+                        ) : (
+                          '—'
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-3 rounded border">
+                      <div className="text-xs text-muted-foreground">Taxable</div>
+                      <div className="text-sm">{mapping?.is_taxable ? 'Yes' : 'No'}</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
 
-        <TabsContent value="purchases">
-          <Card>
-            <CardHeader>
-              <CardTitle>Purchase History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-auto rounded-lg border">
-                <Table className="min-w-[720px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Purchase #</TableHead>
-                      <TableHead className="text-right">Qty</TableHead>
-                      <TableHead className="hidden sm:table-cell text-right">Unit Cost</TableHead>
-                      <TableHead className="hidden sm:table-cell text-right">Total Cost</TableHead>
-                      <TableHead className="hidden md:table-cell">Vendor</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {purchaseHistory.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground">No purchases recorded.</TableCell>
-                      </TableRow>
-                    ) : (
-                      purchaseHistory.map((row) => (
-                        <TableRow key={row.id}>
-                          <TableCell>{formatDate(row.created_at)}</TableCell>
-                          <TableCell className="font-medium">{row.purchases?.purchase_number || '—'}</TableCell>
-                          <TableCell className="text-right">{row.quantity}</TableCell>
-                          <TableCell className="hidden sm:table-cell text-right">{formatMoney(Number(row.unit_cost || 0))}</TableCell>
-                          <TableCell className="hidden sm:table-cell text-right">{formatMoney(Number(row.total_cost || 0))}</TableCell>
-                          <TableCell className="hidden md:table-cell">{row.purchases?.vendor_name || '—'}</TableCell>
+        <div className="xl:col-span-8 xl:order-1 space-y-6">
+          <Tabs defaultValue="usage" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="usage" className="flex items-center gap-2">
+                <ClipboardList className="w-4 h-4" /> Usage History
+              </TabsTrigger>
+              <TabsTrigger value="purchases" className="flex items-center gap-2">
+                <ShoppingCart className="w-4 h-4" /> Purchase History
+              </TabsTrigger>
+              <TabsTrigger value="sales" className="flex items-center gap-2">
+                <Package className="w-4 h-4" /> Sales History
+              </TabsTrigger>
+              <TabsTrigger value="stock" className="flex items-center gap-2">
+                <MapPin className="w-4 h-4" /> Stock by Location
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="usage">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Item Usage History</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-auto rounded-lg border">
+                    <Table className="min-w-[720px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Job Card</TableHead>
+                          <TableHead className="text-right">Qty Used</TableHead>
+                          <TableHead className="hidden sm:table-cell text-right">Unit Cost</TableHead>
+                          <TableHead className="hidden sm:table-cell text-right">Total Cost</TableHead>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="sales">
-          <Card>
-            <CardHeader>
-              <CardTitle>Sales History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-auto rounded-lg border">
-                <Table className="min-w-[720px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Sale #</TableHead>
-                      <TableHead className="hidden md:table-cell">Customer</TableHead>
-                      <TableHead className="text-right">Qty</TableHead>
-                      <TableHead className="hidden sm:table-cell text-right">Unit Price</TableHead>
-                      <TableHead className="hidden sm:table-cell text-right">Total</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {salesHistory.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground">No sales recorded.</TableCell>
-                      </TableRow>
-                    ) : (
-                      salesHistory.map((row) => (
-                        <TableRow key={row.id}>
-                          <TableCell>{formatDate(row.created_at)}</TableCell>
-                          <TableCell className="font-medium">{row.sales?.sale_number || '—'}</TableCell>
-                          <TableCell className="hidden md:table-cell">{row.sales?.customer_name || 'Walk-in Customer'}</TableCell>
-                          <TableCell className="text-right">{row.quantity}</TableCell>
-                          <TableCell className="hidden sm:table-cell text-right">{formatMoney(Number(row.unit_price || 0))}</TableCell>
-                          <TableCell className="hidden sm:table-cell text-right">{formatMoney(Number(row.total_price || 0))}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="stock">
-          <Card>
-            <CardHeader>
-              <CardTitle>Stock by Location</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-auto rounded-lg border">
-                <Table className="min-w-[520px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Location</TableHead>
-                      <TableHead className="text-right">Available Qty</TableHead>
-                      <TableHead className="hidden md:table-cell text-right">Share</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {levelsByWarehouse.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-center text-muted-foreground">No stock levels found.</TableCell>
-                      </TableRow>
-                    ) : (
-                      levelsByWarehouse.map((lvl, idx) => {
-                        const qty = Number(lvl.quantity || 0);
-                        const share = onHand > 0 ? Math.round((qty / onHand) * 100) : 0;
-                        return (
-                          <TableRow key={`${lvl.warehouse_id}-${idx}`}>
-                            <TableCell className="font-medium">{(lvl as any).warehouses?.name || '—'}</TableCell>
-                            <TableCell className="text-right">{qty}</TableCell>
-                            <TableCell className="hidden md:table-cell text-right">{share}%</TableCell>
+                      </TableHeader>
+                      <TableBody>
+                        {usageHistory.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center text-muted-foreground">No usage recorded.</TableCell>
                           </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                        ) : (
+                          usageHistory.map((row) => (
+                            <TableRow key={row.id}>
+                              <TableCell>{formatDate(row.created_at)}</TableCell>
+                              <TableCell className="font-medium">{row.job_cards?.job_number || '—'}</TableCell>
+                              <TableCell className="text-right">{row.quantity_used}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-right">{formatMoney(Number(row.unit_cost || 0))}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-right">{formatMoney(Number(row.total_cost || 0))}</TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="purchases">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Purchase History</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-auto rounded-lg border">
+                    <Table className="min-w-[720px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Purchase #</TableHead>
+                          <TableHead className="text-right">Qty</TableHead>
+                          <TableHead className="hidden sm:table-cell text-right">Unit Cost</TableHead>
+                          <TableHead className="hidden sm:table-cell text-right">Total Cost</TableHead>
+                          <TableHead className="hidden md:table-cell">Vendor</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {purchaseHistory.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center text-muted-foreground">No purchases recorded.</TableCell>
+                          </TableRow>
+                        ) : (
+                          purchaseHistory.map((row) => (
+                            <TableRow key={row.id}>
+                              <TableCell>{formatDate(row.created_at)}</TableCell>
+                              <TableCell className="font-medium">{row.purchases?.purchase_number || '—'}</TableCell>
+                              <TableCell className="text-right">{row.quantity}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-right">{formatMoney(Number(row.unit_cost || 0))}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-right">{formatMoney(Number(row.total_cost || 0))}</TableCell>
+                              <TableCell className="hidden md:table-cell">{row.purchases?.vendor_name || '—'}</TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="sales">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Sales History</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-auto rounded-lg border">
+                    <Table className="min-w-[720px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Sale #</TableHead>
+                          <TableHead className="hidden md:table-cell">Customer</TableHead>
+                          <TableHead className="text-right">Qty</TableHead>
+                          <TableHead className="hidden sm:table-cell text-right">Unit Price</TableHead>
+                          <TableHead className="hidden sm:table-cell text-right">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {salesHistory.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center text-muted-foreground">No sales recorded.</TableCell>
+                          </TableRow>
+                        ) : (
+                          salesHistory.map((row) => (
+                            <TableRow key={row.id}>
+                              <TableCell>{formatDate(row.created_at)}</TableCell>
+                              <TableCell className="font-medium">{row.sales?.sale_number || '—'}</TableCell>
+                              <TableCell className="hidden md:table-cell">{row.sales?.customer_name || 'Walk-in Customer'}</TableCell>
+                              <TableCell className="text-right">{row.quantity}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-right">{formatMoney(Number(row.unit_price || 0))}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-right">{formatMoney(Number(row.total_price || 0))}</TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="stock">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Stock by Location</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-auto rounded-lg border">
+                    <Table className="min-w-[520px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Location</TableHead>
+                          <TableHead className="text-right">Available Qty</TableHead>
+                          <TableHead className="hidden md:table-cell text-right">Share</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {levelsByWarehouse.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={3} className="text-center text-muted-foreground">No stock levels found.</TableCell>
+                          </TableRow>
+                        ) : (
+                          levelsByWarehouse.map((lvl, idx) => {
+                            const qty = Number(lvl.quantity || 0);
+                            const share = onHand > 0 ? Math.round((qty / onHand) * 100) : 0;
+                            return (
+                              <TableRow key={`${lvl.warehouse_id}-${idx}`}>
+                                <TableCell className="font-medium">{(lvl as any).warehouses?.name || '—'}</TableCell>
+                                <TableCell className="text-right">{qty}</TableCell>
+                                <TableCell className="hidden md:table-cell text-right">{share}%</TableCell>
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
 
       <Dialog open={isEditAccountsOpen} onOpenChange={setIsEditAccountsOpen}>
         <DialogContent className="max-w-xl">
