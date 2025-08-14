@@ -940,12 +940,12 @@ export default function Appointments() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+              <div className="flex flex-col gap-4">
                 {filteredAppointments.map((appointment) => {
                   const items = appointmentServicesById[appointment.id] || [];
                   const serviceNames = (items.length
-                    ? items.map(it => services.find(s => s.id === it.service_id)?.name).filter(Boolean).join(', ')
-                    : appointment.service_name) || '—';
+                    ? items.map(it => services.find(s => s.id === it.service_id)?.name).filter(Boolean).join(", ")
+                    : appointment.service_name) || "—";
 
                   return (
                     <div
@@ -1063,7 +1063,7 @@ export default function Appointments() {
                     </div>
                   );
                 })}
-                <div className="col-span-full text-xs text-muted-foreground text-right">{filteredAppointments.length} appointments</div>
+                <div className="text-xs text-muted-foreground text-right">{filteredAppointments.length} appointments</div>
               </div>
             )}
         </CardContent>
