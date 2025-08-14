@@ -33,6 +33,7 @@ import { useOrganization } from '@/lib/saas/hooks';
 import { useOrganizationCurrency } from '@/lib/saas/hooks';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { LineChart as RLineChart, Line, XAxis, YAxis, CartesianGrid, PieChart as RPieChart, Pie, Cell } from 'recharts';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const Reports = () => {
   const navigate = useNavigate();
@@ -63,6 +64,10 @@ const Reports = () => {
   const [density, setDensity] = useState<'compact' | 'comfortable'>('comfortable');
   const [revenueSeries, setRevenueSeries] = useState<Array<{ label: string; current: number; previous: number }>>([]);
   const [serviceDistribution, setServiceDistribution] = useState<Array<{ name: string; value: number; fill?: string }>>([]);
+  const [drillOpen, setDrillOpen] = useState(false);
+  const [drillTitle, setDrillTitle] = useState('');
+  const [drillType, setDrillType] = useState<'Income' | 'Expense' | null>(null);
+  const [drillRows, setDrillRows] = useState<Array<any>>([]);
 
   const { symbol, format: formatMoney } = useOrganizationCurrency();
 
@@ -110,6 +115,52 @@ const Reports = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, activeSubTab, locationFilter]);
+
+  const openReferenceFromTxn = (row: any) => {
+    const refType = String(row.reference_type || '').toLowerCase();
+    const refId = row.reference_id;
+    if (!refId) return;
+    if (refType === 'receipt_payment' || refType === 'receipt' || refType === 'receipt_item' || refType === 'account_transfer') {
+      navigate('/banking');
+      return;
+    }
+    if (refType === 'purchase_payment') {
+      navigate(`/purchases/${refId}`);
+      return;
+    }
+    if (refType === 'expense' || refType === 'expense_payment') {
+      navigate(`/expenses/${refId}/edit`);
+      return;
+    }
+    navigate('/banking');
+  };
+
+  const openBreakdownDetails = useCallback(async (type: 'Income' | 'Expense', category: string) => {
+    try {
+      setDrillType(type);
+      setDrillTitle(`${type} — ${category}`);
+      const txnsQuery = supabase
+        .from('account_transactions')
+        .select('id, account_id, transaction_date, description, debit_amount, credit_amount, reference_type, reference_id, location_id, accounts:account_id (account_type, account_code, account_name, account_subtype)')
+        .gte('transaction_date', startDate)
+        .lte('transaction_date', endDate)
+        .order('transaction_date', { ascending: true })
+        .order('id', { ascending: true });
+      if (locationFilter !== 'all') {
+        txnsQuery.eq('location_id', locationFilter);
+      }
+      const { data, error } = await txnsQuery;
+      if (error) throw error;
+      const rows = (data || []) as any[];
+      const filtered = rows.filter((t: any) => t.accounts?.account_type === type && (String(t.accounts?.account_subtype || type) === category));
+      setDrillRows(filtered);
+      setDrillOpen(true);
+    } catch (e) {
+      console.error('Failed to open breakdown details', e);
+      setDrillRows([]);
+      setDrillOpen(true);
+    }
+  }, [startDate, endDate, locationFilter]);
 
   const recalcFinancials = useCallback(async () => {
     setRecalcLoading(true);
@@ -1123,10 +1174,10 @@ const Reports = () => {
                       <div>
                         <div className="font-semibold mb-2">Income Breakdown</div>
                         <Table>
-                          <TableHeader><TableRow><TableHead>Subtype</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
+                          <TableHeader><TableRow><TableHead>Category</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
                           <TableBody>
                             {Object.entries(pl.breakdown.income).map(([k,v]) => (
-                              <TableRow key={k} className="cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/accounts?q=${encodeURIComponent(k)}`)} title={`Open accounts for ${k}`}><TableCell>{k}</TableCell><TableCell className="text-right">{formatMoney(Number(v), { decimals: 2 })}</TableCell></TableRow>
+                              <TableRow key={k} className="cursor-pointer hover:bg-slate-50" onClick={() => openBreakdownDetails('Income', k)} title={`View transactions for ${k}`}><TableCell>{k}</TableCell><TableCell className="text-right">{formatMoney(Number(v), { decimals: 2 })}</TableCell></TableRow>
                             ))}
                           </TableBody>
                         </Table>
@@ -1134,10 +1185,10 @@ const Reports = () => {
                       <div>
                         <div className="font-semibold mb-2">Expense Breakdown</div>
                         <Table>
-                          <TableHeader><TableRow><TableHead>Subtype</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
+                          <TableHeader><TableRow><TableHead>Category</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
                           <TableBody>
                             {Object.entries(pl.breakdown.expense).map(([k,v]) => (
-                              <TableRow key={k} className="cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/accounts?q=${encodeURIComponent(k)}`)} title={`Open accounts for ${k}`}><TableCell>{k}</TableCell><TableCell className="text-right">{formatMoney(Number(v), { decimals: 2 })}</TableCell></TableRow>
+                              <TableRow key={k} className="cursor-pointer hover:bg-slate-50" onClick={() => openBreakdownDetails('Expense', k)} title={`View transactions for ${k}`}><TableCell>{k}</TableCell><TableCell className="text-right">{formatMoney(Number(v), { decimals: 2 })}</TableCell></TableRow>
                             ))}
                           </TableBody>
                         </Table>
@@ -1146,6 +1197,51 @@ const Reports = () => {
                   )}
                 </CardContent>
               </Card>
+              <Dialog open={drillOpen} onOpenChange={setDrillOpen}>
+                <DialogContent className="max-w-3xl">
+                  <DialogHeader>
+                    <DialogTitle>{drillTitle || 'Details'}</DialogTitle>
+                  </DialogHeader>
+                  <div className="text-sm text-slate-600 mb-3">Period {startDate} to {endDate}{locationFilter !== 'all' ? ` • Filtered by location` : ''}</div>
+                  <div className="overflow-x-auto">
+                    <Table className="min-w-[900px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Account</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead className="text-right">Debit</TableHead>
+                          <TableHead className="text-right">Credit</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead>Ref</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {drillRows.length === 0 ? (
+                          <TableRow><TableCell colSpan={7} className="text-center text-sm text-muted-foreground">No transactions</TableCell></TableRow>
+                        ) : (
+                          drillRows.map((r: any) => {
+                            const debit = Number(r.debit_amount || 0);
+                            const credit = Number(r.credit_amount || 0);
+                            const amt = drillType === 'Income' ? (credit - debit) : (debit - credit);
+                            return (
+                              <TableRow key={r.id} onClick={() => openReferenceFromTxn(r)} className={r.reference_id ? 'cursor-pointer hover:bg-slate-50' : ''} title={r.reference_id ? `Open ${(r.reference_type || '').toString()} ${r.reference_id || ''}` : undefined}>
+                                <TableCell>{String(r.transaction_date || '').slice(0,10)}</TableCell>
+                                <TableCell>{r.accounts?.account_code ? `${r.accounts.account_code} · ${r.accounts?.account_name || ''}` : (r.accounts?.account_name || '—')}</TableCell>
+                                <TableCell className="max-w-[380px] truncate" title={r.description || ''}>{r.description || '—'}</TableCell>
+                                <TableCell className="text-right">{formatMoney(debit, { decimals: 2 })}</TableCell>
+                                <TableCell className="text-right">{formatMoney(credit, { decimals: 2 })}</TableCell>
+                                <TableCell className="text-right font-medium">{formatMoney(amt, { decimals: 2 })}</TableCell>
+                                <TableCell className="text-xs text-slate-500">{r.reference_type || '—'}{r.reference_id ? ` #${r.reference_id}` : ''}</TableCell>
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </TabsContent>
 
             <TabsContent value="balancesheet" className="space-y-6">
