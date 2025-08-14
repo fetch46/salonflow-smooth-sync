@@ -169,12 +169,11 @@ export default function Clients() {
   const handleViewProfile = (id: string) => navigate(`/clients/${id}`);
   const handleBookAppointment = (c: Client) => {
     const params = new URLSearchParams({
-      create: "1",
       name: c.full_name || "",
       email: c.email || "",
       phone: c.phone || "",
     });
-    navigate(`/appointments?${params.toString()}`);
+    navigate(`/appointments/new?${params.toString()}`);
   };
 
   const { symbol, format } = useOrganizationCurrency();
