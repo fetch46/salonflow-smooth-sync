@@ -3,7 +3,10 @@ import { prisma } from '../utils/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
-router.use(requireAuth);
+const OPEN_REPORTS = process.env.REPORTS_OPEN_ACCESS === 'true' || process.env.NODE_ENV !== 'production';
+if (!OPEN_REPORTS) {
+  router.use(requireAuth);
+}
 
 router.get('/trial-balance', async (req, res) => {
   try {
