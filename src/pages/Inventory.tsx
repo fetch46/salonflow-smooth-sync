@@ -14,7 +14,7 @@ import { Plus, Package, Trash2, Edit, MapPin, RefreshCw, MoreHorizontal, Eye, Ch
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useMemo } from "react";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Columns3 } from "lucide-react";
@@ -205,7 +205,7 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, warehouses }: 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>{editingItem ? "Edit Product" : "Add New Product"}</DialogTitle>
         </DialogHeader>
@@ -399,6 +399,7 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, warehouses }: 
 
 // --- Main Component ---
 export default function Inventory() {
+  const navigate = useNavigate();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
@@ -505,6 +506,24 @@ export default function Inventory() {
     fetchLevels();
     fetchWarehouses();
   }, [fetchData, fetchLevels, fetchWarehouses]);
+
+  // Auto-open edit dialog when navigated with ?action=edit&itemId=...
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get('action');
+    const itemId = params.get('itemId');
+    if (action === 'edit' && itemId) {
+      const it = items.find(i => String(i.id) === String(itemId));
+      if (it) {
+        setEditingItem(it);
+        setIsItemDialogOpen(true);
+        const url = new URL(window.location.href);
+        url.searchParams.delete('action');
+        url.searchParams.delete('itemId');
+        window.history.replaceState({}, '', url.toString());
+      }
+    }
+  }, [items]);
 
   // Persist visible columns
   useEffect(() => {
@@ -735,7 +754,7 @@ export default function Inventory() {
             <TableHead className="text-right hidden lg:table-cell">Quantity</TableHead>
             <TableHead className="hidden lg:table-cell">Reorder Point</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead className="text-right">Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -940,7 +959,7 @@ export default function Inventory() {
                           {visibleColumns.status && (
                             <TableHead>Status</TableHead>
                           )}
-                          <TableHead className="text-right">Actions</TableHead>
+                          <TableHead className="text-right">Action</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -982,15 +1001,13 @@ export default function Inventory() {
                               <TableCell className="text-right">
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon">
-                                      <MoreHorizontal className="w-4 h-4" />
+                                    <Button variant="outline" size="sm">
+                                      Action
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
-                                    <DropdownMenuItem asChild>
-                                      <Link to={`/inventory/${item.id}`} className="flex items-center">
-                                        <Eye className="w-4 h-4 mr-2" /> View Product
-                                      </Link>
+                                    <DropdownMenuItem onSelect={() => navigate(`/inventory/${item.id}`)}>
+                                      <Eye className="w-4 h-4 mr-2" /> View Product
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onSelect={() => handleEditItem(item)}>
                                       <Edit className="w-4 h-4 mr-2" /> Edit
