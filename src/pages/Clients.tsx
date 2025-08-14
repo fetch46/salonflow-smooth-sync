@@ -454,13 +454,6 @@ export default function Clients() {
           if (!c.last_visit_date) return true;
           return differenceInDays(new Date(), new Date(c.last_visit_date)) > 60;
         });
-      case "birthday":
-        return filteredClients.filter(c => {
-          if (!c.date_of_birth) return false;
-          const birthday = new Date(c.date_of_birth);
-          const today = new Date();
-          return birthday.getMonth() === today.getMonth();
-        });
       default:
         return filteredClients;
     }
@@ -961,7 +954,7 @@ export default function Clients() {
         <CardHeader className="border-b border-slate-200">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-fit">
-              <TabsList className="grid grid-cols-5 w-fit">
+              <TabsList className="grid grid-cols-4 w-fit">
                 <TabsTrigger value="all" className="flex items-center gap-2">
                   <Users className="w-4 h-4" />
                   All ({clients.length})
@@ -977,10 +970,6 @@ export default function Clients() {
                 <TabsTrigger value="inactive" className="flex items-center gap-2">
                   <Clock className="w-4 h-4" />
                   Inactive
-                </TabsTrigger>
-                <TabsTrigger value="birthday" className="flex items-center gap-2">
-                  <Cake className="w-4 h-4" />
-                  Birthdays
                 </TabsTrigger>
               </TabsList>
             </Tabs>

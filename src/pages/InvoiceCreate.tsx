@@ -30,6 +30,21 @@ export default function InvoiceCreate() {
   const [locations, setLocations] = useState<Array<{ id: string; name: string; is_default?: boolean; is_active?: boolean }>>([]);
   const [defaultLocationIdForUser, setDefaultLocationIdForUser] = useState<string | null>(null);
 
+  // Unique locations by name (prefer default when duplicates exist)
+  const uniqueLocations = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; is_default?: boolean; is_active?: boolean }>();
+    for (const loc of locations) {
+      const key = (loc.name || "").trim().toLowerCase();
+      const existing = map.get(key);
+      if (!existing) {
+        map.set(key, loc);
+      } else if (loc.is_default && !existing.is_default) {
+        map.set(key, loc);
+      }
+    }
+    return Array.from(map.values());
+  }, [locations]);
+
   const [formData, setFormData] = useState({
     customer_id: "",
     customer_name: "",
@@ -114,6 +129,15 @@ export default function InvoiceCreate() {
     const candidate = defaultLocationIdForUser || (locations.find(l => (l as any).is_default)?.id || locations[0]?.id) || "";
     if (candidate) setFormData(prev => ({ ...prev, location_id: candidate }));
   }, [locations, defaultLocationIdForUser, formData.location_id]);
+
+  // Ensure selected location exists after deduping
+  useEffect(() => {
+    if (!formData.location_id) return;
+    if (uniqueLocations.every(l => l.id !== formData.location_id)) {
+      const fallback = uniqueLocations[0]?.id || "";
+      if (fallback) setFormData(prev => ({ ...prev, location_id: fallback }));
+    }
+  }, [uniqueLocations, formData.location_id]);
 
   // Prefill from Job Card
   useEffect(() => {
@@ -365,7 +389,7 @@ export default function InvoiceCreate() {
                   <SelectValue placeholder={locations.length ? 'Select a location' : 'No locations found'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {locations.map((loc) => (
+                  {uniqueLocations.map((loc) => (
                     <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
                   ))}
                 </SelectContent>

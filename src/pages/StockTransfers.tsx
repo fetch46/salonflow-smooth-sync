@@ -42,6 +42,17 @@ export default function StockTransfers() {
   const [form, setForm] = useState({ item_id: "", from_location_id: "", to_location_id: "", quantity: "" });
   const qty = Number(form.quantity || 0);
 
+  // Ensure unique locations by name for dropdowns
+  const uniqueLocations = useMemo(() => {
+    const seen = new Set<string>();
+    return locations.filter((loc) => {
+      const key = (loc.name || "").trim().toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [locations]);
+
   // Listing filters and dashboard state
   const [searchText, setSearchText] = useState<string>("");
   const [quickRange, setQuickRange] = useState<string>("last_30");
@@ -496,7 +507,7 @@ export default function StockTransfers() {
                       <SelectValue placeholder="Select source" />
                     </SelectTrigger>
                     <SelectContent>
-                      {locations.map((l) => (
+                      {uniqueLocations.map((l) => (
                         <SelectItem key={l.id} value={l.id}>
                           {l.name}
                         </SelectItem>
@@ -516,7 +527,7 @@ export default function StockTransfers() {
                       <SelectValue placeholder="Select destination" />
                     </SelectTrigger>
                     <SelectContent>
-                      {locations.map((l) => (
+                      {uniqueLocations.map((l) => (
                         <SelectItem key={l.id} value={l.id}>
                           {l.name}
                         </SelectItem>
@@ -760,7 +771,7 @@ export default function StockTransfers() {
                   <SelectValue placeholder="Select source" />
                 </SelectTrigger>
                 <SelectContent>
-                  {locations.map((l) => (
+                  {uniqueLocations.map((l) => (
                     <SelectItem key={l.id} value={l.id}>
                       {l.name}
                     </SelectItem>
@@ -775,7 +786,7 @@ export default function StockTransfers() {
                   <SelectValue placeholder="Select destination" />
                 </SelectTrigger>
                 <SelectContent>
-                  {locations.map((l) => (
+                  {uniqueLocations.map((l) => (
                     <SelectItem key={l.id} value={l.id}>
                       {l.name}
                     </SelectItem>
