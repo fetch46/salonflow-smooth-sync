@@ -765,6 +765,7 @@ export type Database = {
           id: string
           location_id: string | null
           notes: string | null
+          organization_id: string | null
           payment_method: string | null
           receipt_url: string | null
           status: string
@@ -781,6 +782,7 @@ export type Database = {
           id?: string
           location_id?: string | null
           notes?: string | null
+          organization_id?: string | null
           payment_method?: string | null
           receipt_url?: string | null
           status?: string
@@ -797,6 +799,7 @@ export type Database = {
           id?: string
           location_id?: string | null
           notes?: string | null
+          organization_id?: string | null
           payment_method?: string | null
           receipt_url?: string | null
           status?: string
@@ -1331,34 +1334,52 @@ export type Database = {
       }
       invoice_items: {
         Row: {
+          commission_amount: number | null
+          commission_percentage: number | null
           created_at: string
           description: string
+          discount_percentage: number | null
           id: string
           invoice_id: string
           location_id: string | null
+          product_id: string | null
           quantity: number
+          service_id: string | null
+          staff_id: string | null
           total_price: number
           unit_price: number
           updated_at: string
         }
         Insert: {
+          commission_amount?: number | null
+          commission_percentage?: number | null
           created_at?: string
           description: string
+          discount_percentage?: number | null
           id?: string
           invoice_id: string
           location_id?: string | null
+          product_id?: string | null
           quantity?: number
+          service_id?: string | null
+          staff_id?: string | null
           total_price?: number
           unit_price?: number
           updated_at?: string
         }
         Update: {
+          commission_amount?: number | null
+          commission_percentage?: number | null
           created_at?: string
           description?: string
+          discount_percentage?: number | null
           id?: string
           invoice_id?: string
           location_id?: string | null
+          product_id?: string | null
           quantity?: number
+          service_id?: string | null
+          staff_id?: string | null
           total_price?: number
           unit_price?: number
           updated_at?: string
