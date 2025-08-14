@@ -240,7 +240,7 @@ const AppRoutes = () => {
 function App() {
   return (
     <ErrorBoundary>
-      <Router>
+      <Router basename={import.meta.env.BASE_URL}>
         <AppRoutes />
         <Toaster />
         <AppFooter />
