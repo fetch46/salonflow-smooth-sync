@@ -3,14 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, BookOpen } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useOrganization } from "@/lib/saas/hooks";
 
 interface TrialRow {
-  accountId: string;
-  code: string;
-  name: string;
-  category: string;
-  debit: number;
-  credit: number;
+  account_id: string;
+  account_code: string;
+  account_name: string;
+  debit_total: number;
+  credit_total: number;
   balance: number;
 }
 
@@ -19,10 +20,11 @@ export default function Journal() {
   const [loading, setLoading] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+  const { organization } = useOrganization();
 
   const totals = useMemo(() => {
-    const debit = rows.reduce((acc, r) => acc + (Number(r.debit) || 0), 0);
-    const credit = rows.reduce((acc, r) => acc + (Number(r.credit) || 0), 0);
+    const debit = rows.reduce((acc, r) => acc + (Number(r.debit_total) || 0), 0);
+    const credit = rows.reduce((acc, r) => acc + (Number(r.credit_total) || 0), 0);
     const balanced = Math.round((debit - credit) * 100) === 0;
     return { debit, credit, balanced };
   }, [rows]);
@@ -31,15 +33,20 @@ export default function Journal() {
     try {
       setLoading(true);
       setError("");
-      const base = (import.meta.env.VITE_SERVER_URL || "/api").replace(/\/$/, "");
-      const resp = await fetch(`${base}/journal/trial-balance`);
-      const ct = resp.headers.get("content-type") || "";
-      if (!resp.ok || !ct.includes("application/json")) {
-        const text = await resp.text().catch(() => "");
-        throw new Error(`Failed to load trial balance: ${resp.status} ${ct} ${text.slice(0, 200)}`);
+      
+      if (!organization?.id) {
+        setRows([]);
+        return;
       }
-      const json = await resp.json().catch(() => ({ rows: [] }));
-      setRows(Array.isArray(json?.rows) ? json.rows : []);
+      
+      // Use database function for trial balance
+      const { data, error } = await supabase.rpc('calculate_trial_balance', {
+        p_org_id: organization.id,
+        p_date: new Date().toISOString().split('T')[0]
+      });
+      
+      if (error) throw error;
+      setRows(data || []);
     } catch (e: any) {
       console.error(e);
       setError(e?.message || "Failed to load trial balance");
@@ -58,7 +65,7 @@ export default function Journal() {
   useEffect(() => {
     document.title = "Journal | SalonOS";
     loadTrialBalance();
-  }, []);
+  }, [organization?.id]);
 
   return (
     <div className="flex-1 space-y-6 p-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen">
@@ -110,11 +117,11 @@ export default function Journal() {
                     </TableRow>
                   ) : (
                     rows.map((r) => (
-                      <TableRow key={r.accountId}>
-                        <TableCell className="whitespace-nowrap">{r.code}</TableCell>
-                        <TableCell className="whitespace-nowrap">{r.name}</TableCell>
-                        <TableCell className="text-right tabular-nums">{Number(r.debit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                        <TableCell className="text-right tabular-nums">{Number(r.credit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                      <TableRow key={r.account_id}>
+                        <TableCell className="whitespace-nowrap">{r.account_code}</TableCell>
+                        <TableCell className="whitespace-nowrap">{r.account_name}</TableCell>
+                        <TableCell className="text-right tabular-nums">{Number(r.debit_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                        <TableCell className="text-right tabular-nums">{Number(r.credit_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                         <TableCell className="text-right tabular-nums">{Number(r.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                       </TableRow>
                     ))

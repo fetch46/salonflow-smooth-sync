@@ -2714,6 +2714,26 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      calculate_staff_commission: {
+        Args: {
+          p_staff_id: string
+          p_service_id?: string
+          p_amount?: number
+          p_commission_rate?: number
+        }
+        Returns: number
+      }
+      calculate_trial_balance: {
+        Args: { p_org_id: string; p_date?: string }
+        Returns: {
+          account_id: string
+          account_code: string
+          account_name: string
+          debit_total: number
+          credit_total: number
+          balance: number
+        }[]
+      }
       create_goods_received: {
         Args: {
           p_organization_id: string
@@ -2760,6 +2780,17 @@ export type Database = {
       }
       is_super_admin: {
         Args: { uid: string }
+        Returns: boolean
+      }
+      post_bank_transfer: {
+        Args: {
+          p_org_id: string
+          p_from_account_id: string
+          p_to_account_id: string
+          p_amount: number
+          p_transfer_date?: string
+          p_description?: string
+        }
         Returns: boolean
       }
       rebuild_organization_chart_of_accounts: {

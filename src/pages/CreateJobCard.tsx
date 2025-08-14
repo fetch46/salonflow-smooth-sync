@@ -545,6 +545,8 @@ export default function CreateJobCard() {
             unit_price: svc.price,
             duration_minutes: svc.duration_minutes,
             commission_percentage: typeof overrideMap[svc.id] === 'number' ? overrideMap[svc.id] : (svc as any).commission_percentage ?? null,
+            // Add commission calculation
+            commission_amount: 0, // Will be calculated by the commission calculator
           }));
           const { error: jcsError } = await supabase.from("job_card_services").insert(rows as any);
           if (jcsError) throw jcsError;

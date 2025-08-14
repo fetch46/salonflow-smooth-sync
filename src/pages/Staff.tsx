@@ -320,6 +320,15 @@ export default function Staff() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!formData.full_name.trim()) {
+      toast({
+        title: "Error",
+        description: "Full name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // Only send columns that exist in current DB schema
     const payload = {
       full_name: formData.full_name,
@@ -327,6 +336,8 @@ export default function Staff() {
       phone: formData.phone || null,
       specialties: formData.specialties || [],
       is_active: formData.is_active,
+      commission_rate: formData.commission_rate || 15,
+      organization_id: organization?.id || null,
     };
     
     try {

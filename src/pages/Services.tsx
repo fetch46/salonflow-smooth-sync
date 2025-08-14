@@ -443,11 +443,11 @@ export default function Services() {
 
   const fetchServiceMetrics = useCallback(async () => {
     try {
-      // Pull last 60 days to compute recent and previous period metrics client-side
+      // Get service metrics from job_card_services instead of invoice_items
       const sinceIso = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase
-        .from("invoice_items")
-        .select("service_id, quantity, total_price, created_at, services:service_id(name, category)")
+        .from("job_card_services")
+        .select("service_id, quantity, unit_price, created_at, services:service_id(name, category)")
         .not("service_id", "is", null)
         .gte("created_at", sinceIso);
       if (error) throw error;
@@ -467,7 +467,7 @@ export default function Services() {
         const sid = (it.service_id as string) || null;
         if (!sid) continue;
         const qty = Number(it.quantity) || 0;
-        const rev = Number(it.total_price) || 0;
+        const rev = Number(it.unit_price) * qty || 0; // Use unit_price * quantity
         const name = it.services?.name || "Service";
         const category = it.services?.category || undefined;
         if (!byService[sid]) {

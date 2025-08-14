@@ -301,16 +301,18 @@ export default function Banking() {
       const fromAcc = accounts.find(a => a.id === transferFromId);
       const toAcc = accounts.find(a => a.id === transferToId);
       const desc = `Transfer from ${fromAcc?.account_name || "Account"} to ${toAcc?.account_name || "Account"}`;
-      const ok = await postAccountTransfer({
-        organizationId: organization.id,
-        amount,
-        fromAccountId: transferFromId,
-        toAccountId: transferToId,
-        transferDate,
-        description: desc,
-        locationId: null,
+      
+      // Use database function for proper debit/credit posting
+      const { error } = await supabase.rpc('post_bank_transfer', {
+        p_org_id: organization.id,
+        p_from_account_id: transferFromId,
+        p_to_account_id: transferToId,
+        p_amount: amount,
+        p_transfer_date: transferDate,
+        p_description: desc
       });
-      if (!ok) throw new Error("Transfer failed");
+      
+      if (error) throw error;
       setIsTransferOpen(false);
       await onRefresh();
     } catch (err) {
