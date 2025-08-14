@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Info, ShoppingCart, Scissors, ArrowLeft } from "lucide-react";
-import { useOrganization } from "@/lib/saas/hooks";
+import { useOrganization, useOrganizationCurrency } from "@/lib/saas/hooks";
 
 interface ServiceFormState {
   name: string;
@@ -51,11 +51,22 @@ const DURATION_OPTIONS = [
   { label: "3 hours", value: 180 },
 ];
 
+const CATEGORY_SUGGESTIONS = [
+  "Hair Services",
+  "Nail Services",
+  "Facial Treatments",
+  "Body Treatments",
+  "Massage Therapy",
+  "Makeup Services",
+  "Special Treatments",
+];
+
 export default function ServiceForm() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEdit = Boolean(id);
   const { organization } = useOrganization();
+  const { format: formatCurrency } = useOrganizationCurrency();
 
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<ServiceFormState>({
@@ -73,153 +84,51 @@ export default function ServiceForm() {
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [locations, setLocations] = useState<{ id: string; name: string; is_default?: boolean }[]>([]);
 
+  const categoryOptions = useMemo(() => {
+    const base = [...CATEGORY_SUGGESTIONS];
+    if (formData.category && !base.includes(formData.category)) base.unshift(formData.category);
+    return base;
+  }, [formData.category]);
+
   const fetchAvailableProducts = useCallback(async () => {
     try {
       if (organization?.id) {
         const { data, error } = await supabase
           .from("inventory_items")
           .select("id, name, type, category, unit, cost_price, selling_price")
-          .eq("is_active", true)
-          .eq("type", "good")
           .eq("organization_id", organization.id)
           .order("name");
         if (error) {
           const code = (error as any)?.code;
           const message = (error as any)?.message || String(error);
           const isMissingOrgId = code === '42703' || /column\s+("?[\w\.]*organization_id"?)\s+does not exist/i.test(message);
-          const isMissingIsActive = code === '42703' || /column\s+("?[\w\.]*is_active"?)\s+does not exist/i.test(message);
-          const isMissingType = code === '42703' || /column\s+("?[\w\.]*type"?)\s+does not exist/i.test(message);
           const isRlsOrPermission = /permission denied|rls/i.test(message);
           if (isMissingOrgId || isRlsOrPermission) {
-            // Try without org filter first
-            const { data: fallbackData1, error: fallbackError1 } = await supabase
+            const { data: fallbackAll } = await supabase
               .from("inventory_items")
               .select("id, name, type, category, unit, cost_price, selling_price")
-              .eq("is_active", true)
-              .eq("type", "good")
               .order("name");
-            if (!fallbackError1 && fallbackData1 && fallbackData1.length > 0) {
-              setAvailableProducts(fallbackData1);
-              return;
-            }
-            // Relax missing is_active
-            if (isMissingIsActive) {
-              const { data: fallbackData2 } = await supabase
-                .from("inventory_items")
-                .select("id, name, type, category, unit, cost_price, selling_price")
-                .eq("type", "good")
-                .order("name");
-              if (fallbackData2 && fallbackData2.length > 0) {
-                setAvailableProducts(fallbackData2);
-                return;
-              }
-            }
-            // Relax missing type or include null type
-            if (isMissingType) {
-              const { data: fallbackData3 } = await supabase
-                .from("inventory_items")
-                .select("id, name, type, category, unit, cost_price, selling_price")
-                .order("name");
-              if (fallbackData3 && fallbackData3.length > 0) {
-                setAvailableProducts(fallbackData3);
-                return;
-              }
-            } else {
-              const { data: fallbackData4 } = await supabase
-                .from("inventory_items")
-                .select("id, name, type, category, unit, cost_price, selling_price")
-                .or('type.eq.good,type.is.null')
-                .order("name");
-              if (fallbackData4 && fallbackData4.length > 0) {
-                setAvailableProducts(fallbackData4);
-                return;
-              }
-            }
+            setAvailableProducts(fallbackAll || []);
+            return;
           }
           throw error;
         }
-        // Zero-row fallbacks: progressively relax filters while keeping org scope first
-        if (data && data.length > 0) {
-          setAvailableProducts(data);
+        if (!data || data.length === 0) {
+          const { data: fallbackAll } = await supabase
+            .from("inventory_items")
+            .select("id, name, type, category, unit, cost_price, selling_price")
+            .order("name");
+          setAvailableProducts(fallbackAll || []);
           return;
         }
-        // 1) Allow null type within the org
-        const { data: fb1 } = await supabase
-          .from("inventory_items")
-          .select("id, name, type, category, unit, cost_price, selling_price")
-          .eq("is_active", true)
-          .or('type.eq.good,type.is.null')
-          .eq("organization_id", organization.id)
-          .order("name");
-        if (fb1 && fb1.length > 0) {
-          setAvailableProducts(fb1);
-          return;
-        }
-        // 2) Drop is_active within the org
-        const { data: fb2 } = await supabase
-          .from("inventory_items")
-          .select("id, name, type, category, unit, cost_price, selling_price")
-          .or('type.eq.good,type.is.null')
-          .eq("organization_id", organization.id)
-          .order("name");
-        if (fb2 && fb2.length > 0) {
-          setAvailableProducts(fb2);
-          return;
-        }
-        // 3) As a last resort, try without org filter
-        const { data: fb3 } = await supabase
-          .from("inventory_items")
-          .select("id, name, type, category, unit, cost_price, selling_price")
-          .eq("is_active", true)
-          .or('type.eq.good,type.is.null')
-          .order("name");
-        if (fb3 && fb3.length > 0) {
-          setAvailableProducts(fb3);
-          return;
-        }
-        const { data: fb4 } = await supabase
-          .from("inventory_items")
-          .select("id, name, type, category, unit, cost_price, selling_price")
-          .or('type.eq.good,type.is.null')
-          .order("name");
-        setAvailableProducts(fb4 || []);
+        setAvailableProducts(data || []);
         return;
       }
       const { data, error } = await supabase
         .from("inventory_items")
         .select("id, name, type, category, unit, cost_price, selling_price")
-        .eq("is_active", true)
-        .eq("type", "good")
         .order("name");
-      if (error) {
-        const code = (error as any)?.code;
-        const message = (error as any)?.message || String(error);
-        const isMissingIsActive = code === '42703' || /column\s+("?[\w\.]*is_active"?)\s+does not exist/i.test(message);
-        const isMissingType = code === '42703' || /column\s+("?[\w\.]*type"?)\s+does not exist/i.test(message);
-        if (isMissingIsActive || isMissingType) {
-          const { data: relaxed } = await supabase
-            .from("inventory_items")
-            .select("id, name, type, category, unit, cost_price, selling_price")
-            .or(isMissingType ? undefined as any : 'type.eq.good,type.is.null')
-            .order("name");
-          if (relaxed) {
-            setAvailableProducts(relaxed);
-            return;
-          }
-        }
-        throw error;
-      }
-      if (!data || data.length === 0) {
-        const { data: fallbackDataNullType } = await supabase
-          .from("inventory_items")
-          .select("id, name, type, category, unit, cost_price, selling_price")
-          .or('type.eq.good,type.is.null')
-          .order("name");
-        if (fallbackDataNullType && fallbackDataNullType.length > 0) {
-          setAvailableProducts(fallbackDataNullType);
-          return;
-        }
-      }
+      if (error) throw error;
       setAvailableProducts(data || []);
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -553,7 +462,16 @@ export default function ServiceForm() {
                 </div>
                 <div>
                   <Label htmlFor="category">Category</Label>
-                  <Input id="category" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} placeholder="e.g., Hair Services" />
+                  <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categoryOptions.map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label htmlFor="location_id">Location *</Label>
@@ -632,7 +550,7 @@ export default function ServiceForm() {
                           <div className="flex items-center justify-between w-full">
                             <span>{product.name}</span>
                             <span className="text-xs text-slate-500 ml-2">
-                              {product.type} • ${product.cost_price?.toFixed(2) || '0.00'}
+                              {product.type} • {formatCurrency(product.cost_price || 0)}
                             </span>
                           </div>
                         </SelectItem>
@@ -650,7 +568,7 @@ export default function ServiceForm() {
                         <div className="flex-1">
                           <div className="font-medium text-sm">{kit.inventory_items.name}</div>
                           <div className="text-xs text-slate-500">
-                            {kit.inventory_items.type} • {kit.inventory_items.unit || 'Each'} • ${kit.inventory_items.cost_price?.toFixed(2) || '0.00'}
+                            {kit.inventory_items.type} • {kit.inventory_items.unit || 'Each'} • {formatCurrency(kit.inventory_items.cost_price || 0)}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -674,7 +592,7 @@ export default function ServiceForm() {
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-bold text-emerald-600">
-                          ${totalKitCost.toFixed(2)}
+                          {formatCurrency(totalKitCost)}
                         </p>
                       </div>
                     </div>
