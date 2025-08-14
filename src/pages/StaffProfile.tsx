@@ -336,7 +336,7 @@ export default function StaffProfile() {
   if (!staff) return <div className="p-6">Staff not found</div>;
 
   return (
-    <div className="flex-1 space-y-6 px-4 sm:px-6 lg:px-8 py-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen max-w-screen-2xl mx-auto w-full">
+    <div className="flex-1 space-y-6 px-4 sm:px-6 lg:px-8 py-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen w-full">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <Button variant="outline" onClick={() => navigate(-1)}>
