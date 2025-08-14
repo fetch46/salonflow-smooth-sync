@@ -631,4 +631,81 @@ router.post('/payments', async (req, res) => {
   }
 });
 
+// New: Delete a payment and reverse its accounting impact
+router.delete('/payments/:id', async (req, res) => {
+  const id = req.params.id;
+  try {
+    const deleted = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const payment = await tx.payment.findUnique({ where: { id } });
+      if (!payment) return null;
+
+      if (payment.reconciled) {
+        throw new Error('Cannot delete a reconciled payment');
+      }
+
+      // Remove any reconciliation lines that might reference this payment (safeguard)
+      await tx.reconciliationLine.deleteMany({ where: { paymentId: id } });
+
+      // Delete the payment itself first to release FK to journal entry
+      await tx.payment.delete({ where: { id } });
+
+      // Delete associated journal lines and entry
+      if (payment.journalEntryId) {
+        await tx.journalLine.deleteMany({ where: { entryId: payment.journalEntryId } });
+        await tx.journalEntry.delete({ where: { id: payment.journalEntryId } });
+      }
+
+      // Recalculate related document status if applicable
+      if (payment.referenceType === 'SALES_INVOICE' && payment.referenceId && payment.type === 'IN') {
+        try {
+          const invoice = await tx.salesInvoice.findUnique({ where: { id: payment.referenceId } });
+          if (invoice) {
+            const paysAgg = await tx.payment.aggregate({
+              _sum: { amount: true },
+              where: { referenceType: 'SALES_INVOICE', referenceId: invoice.id, type: 'IN' },
+            });
+            const paidSum = Number(paysAgg._sum.amount || 0);
+            const totalAmount = Number(invoice.total || 0);
+            const nextStatus: 'PAID' | 'PARTIALLY_PAID' | 'POSTED' = paidSum + 1e-9 >= totalAmount
+              ? 'PAID'
+              : paidSum > 0
+              ? 'PARTIALLY_PAID'
+              : 'POSTED';
+            if (invoice.status !== nextStatus) {
+              await tx.salesInvoice.update({ where: { id: invoice.id }, data: { status: nextStatus } });
+            }
+          }
+        } catch {}
+      } else if (payment.referenceType === 'PURCHASE_BILL' && payment.referenceId && payment.type === 'OUT') {
+        try {
+          const bill = await tx.purchaseBill.findUnique({ where: { id: payment.referenceId } });
+          if (bill) {
+            const paysAgg = await tx.payment.aggregate({
+              _sum: { amount: true },
+              where: { referenceType: 'PURCHASE_BILL', referenceId: bill.id, type: 'OUT' },
+            });
+            const paidSum = Number(paysAgg._sum.amount || 0);
+            const totalAmount = Number(bill.total || 0);
+            const nextStatus: 'PAID' | 'PARTIALLY_PAID' | 'POSTED' = paidSum + 1e-9 >= totalAmount
+              ? 'PAID'
+              : paidSum > 0
+              ? 'PARTIALLY_PAID'
+              : 'POSTED';
+            if (bill.status !== nextStatus) {
+              await tx.purchaseBill.update({ where: { id: bill.id }, data: { status: nextStatus } });
+            }
+          }
+        } catch {}
+      }
+
+      return true;
+    });
+
+    if (!deleted) return res.status(404).json({ error: 'Payment not found' });
+    res.status(204).send();
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 export default router;
