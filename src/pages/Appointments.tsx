@@ -998,22 +998,22 @@ export default function Appointments() {
                         </DropdownMenu>
                       </div>
 
-                      <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center justify-start gap-3">
                         <Badge className={`${getStatusColor(appointment.status || 'scheduled')} capitalize`}>
                           {String(appointment.status || 'scheduled').replace('_', ' ')}
                         </Badge>
-                        <div className="text-xs text-muted-foreground flex items-center gap-2">
-                          <CalendarDays className="w-4 h-4" />
-                          <span>{appointment.appointment_date}</span>
-                          <span>•</span>
-                          <Clock className="w-4 h-4" />
-                          <span>
-                            {appointment.appointment_time} ({Number(appointment.duration_minutes ?? 0)}min)
-                          </span>
-                        </div>
+                      </div>
+                      <div className="mt-2 text-xs text-muted-foreground flex items-center gap-2 justify-center">
+                        <CalendarDays className="w-4 h-4" />
+                        <span>{appointment.appointment_date}</span>
+                        <span>•</span>
+                        <Clock className="w-4 h-4" />
+                        <span>
+                          {appointment.appointment_time} ({Number(appointment.duration_minutes ?? 0)}min)
+                        </span>
                       </div>
 
-                      <div className="mt-3 flex items-start justify-between gap-4">
+                      <div className="mt-3 flex items-start justify-start gap-4">
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
                             <User className="w-4 h-4 text-muted-foreground" />
@@ -1028,11 +1028,11 @@ export default function Appointments() {
                             )}
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-xs text-muted-foreground">Amount</div>
-                          <div className="font-semibold">
-                            {Number(appointment.price || 0) > 0 ? formatMoney(Number(appointment.price || 0)) : '—'}
-                          </div>
+                      </div>
+                      <div className="mt-3 text-center">
+                        <div className="text-xs text-muted-foreground">Amount</div>
+                        <div className="font-semibold">
+                          {Number(appointment.price || 0) > 0 ? formatMoney(Number(appointment.price || 0)) : '—'}
                         </div>
                       </div>
 
