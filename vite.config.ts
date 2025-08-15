@@ -7,9 +7,12 @@ export default defineConfig(async ({ mode }) => {
 	let componentTagger: any = null;
 	if (mode === 'development') {
 		try {
-			({ componentTagger } = await import('lovable-tagger'));
+			// @ts-ignore - Dynamic import of optional dev dependency
+			const tagger = await import('lovable-tagger');
+			componentTagger = tagger.componentTagger;
 		} catch {
 			// Optional dev-only plugin not installed; ignore
+			componentTagger = null;
 		}
 	}
 

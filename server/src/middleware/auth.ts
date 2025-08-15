@@ -3,10 +3,11 @@ import jwt from 'jsonwebtoken';
 
 function getJwtSecret() {
 	const secret = process.env.JWT_SECRET;
-	if (!secret && process.env.NODE_ENV === 'production') {
-		throw new Error('JWT_SECRET is required in production');
+	if (!secret) {
+		console.warn('JWT_SECRET not set, using default secret. This is insecure for production!');
+		return 'your-super-secret-jwt-key-change-this-in-production';
 	}
-	return secret || 'devsecret';
+	return secret;
 }
 
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
