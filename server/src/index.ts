@@ -2,7 +2,6 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
-import { sanitizeInput, rateLimit } from './middleware/security.js';
 import authRoutes from './routes/auth.js';
 import accountRoutes from './routes/accounts.js';
 import productRoutes from './routes/products.js';
@@ -32,10 +31,8 @@ app.use(cors({
 	},
 	credentials: true,
 }));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json());
 app.use(morgan('dev'));
-app.use(sanitizeInput);
-app.use(rateLimit(500, 15 * 60 * 1000)); // 500 requests per 15 minutes
 
 app.get('/health', (_req, res) => {
 	res.json({ ok: true });

@@ -20,30 +20,25 @@ function sanitizeEnv(value: unknown): string | undefined {
 function isValidUrl(url: string): boolean {
   try {
     // Throws if invalid
-    // eslint-disable-next-line no-new
     new URL(url)
     return true
   } catch {
     return false
   }
 }
-// Preferred: use configured env, but harden and fall back to known project defaults
-const DEFAULT_SUPABASE_URL = 'https://eoxeoyyunhsdvjiwkttx.supabase.co'
-const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVveGVveXl1bmhzZHZqaXdrdHR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5NzI3NDUsImV4cCI6MjA2OTU0ODc0NX0.d3uazVxwI1_kPoF-QAGChcbfKS9PxwB536HrrlCXUrE'
 
-const RAW_SUPABASE_URL = (import.meta as any)?.env?.VITE_SUPABASE_URL
-const RAW_SUPABASE_PUBLISHABLE_KEY = (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY
+const RAW_SUPABASE_URL = (import.meta as any)?.env?.PUBLIC__SUPABASE_URL
+const RAW_SUPABASE_PUBLISHABLE_KEY = (import.meta as any)?.env?.PUBLIC__SUPABASE_ANON_KEY
 
 const ENV_SUPABASE_URL = sanitizeEnv(RAW_SUPABASE_URL)
 const ENV_SUPABASE_PUBLISHABLE_KEY = sanitizeEnv(RAW_SUPABASE_PUBLISHABLE_KEY)
 
-const SUPABASE_URL = ENV_SUPABASE_URL || DEFAULT_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = ENV_SUPABASE_PUBLISHABLE_KEY || DEFAULT_SUPABASE_PUBLISHABLE_KEY;
-
+const SUPABASE_URL = ENV_SUPABASE_URL && isValidUrl(ENV_SUPABASE_URL) ? ENV_SUPABASE_URL : undefined
+const SUPABASE_PUBLISHABLE_KEY = ENV_SUPABASE_PUBLISHABLE_KEY
 
 function createSupabaseStub() {
   const stubError = new Error(
-    'Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
+    'Supabase is not configured. Please set PUBLIC__SUPABASE_URL and PUBLIC__SUPABASE_ANON_KEY.'
   )
 
   class FakeBuilder {
@@ -109,18 +104,16 @@ function createSupabaseStub() {
     },
   } as any
 
-  // eslint-disable-next-line no-console
   console.error(
-    'Supabase environment variables are missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable backend features.'
+    'Supabase environment variables are missing. Set PUBLIC__SUPABASE_URL and PUBLIC__SUPABASE_ANON_KEY to enable backend features.'
   )
 
   return stub
 }
 
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-  // eslint-disable-next-line no-console
   console.warn(
-    'Supabase environment variables are missing. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment.'
+    'Supabase environment variables are missing. Please set PUBLIC__SUPABASE_URL and PUBLIC__SUPABASE_ANON_KEY in your environment.'
   )
 }
 
@@ -130,8 +123,7 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
 function createSupabaseOrStub() {
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY || !isValidUrl(SUPABASE_URL)) {
     if (SUPABASE_URL && !isValidUrl(SUPABASE_URL)) {
-      // eslint-disable-next-line no-console
-      console.error('Invalid VITE_SUPABASE_URL value; falling back to stub:', SUPABASE_URL)
+      console.error('Invalid PUBLIC__SUPABASE_URL value; falling back to stub:', SUPABASE_URL)
     }
     return createSupabaseStub()
   }
@@ -144,7 +136,6 @@ function createSupabaseOrStub() {
       }
     })
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error('Failed to initialize Supabase client; falling back to stub.', error)
     return createSupabaseStub()
   }

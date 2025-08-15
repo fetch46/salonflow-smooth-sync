@@ -5,7 +5,7 @@ import bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  const passwordHash = await bcrypt.hash('admin123', 12);
+  const passwordHash = await bcrypt.hash('admin123', 10);
   const admin = await prisma.user.upsert({
     where: { email: 'admin@example.com' },
     update: {},
@@ -18,7 +18,7 @@ async function main() {
   });
 
   // Also create an OWNER user for full admin rights testing
-  const ownerPasswordHash = await bcrypt.hash('owner123', 12);
+  const ownerPasswordHash = await bcrypt.hash('owner123', 10);
   await prisma.user.upsert({
     where: { email: 'owner@example.com' },
     update: {},
