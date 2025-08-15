@@ -27,8 +27,8 @@ function isValidUrl(url: string): boolean {
   }
 }
 
-const RAW_SUPABASE_URL = (import.meta as any)?.env?.VITE_SUPABASE_URL
-const RAW_SUPABASE_PUBLISHABLE_KEY = (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY
+const RAW_SUPABASE_URL = (import.meta as any)?.env?.PUBLIC__SUPABASE_URL
+const RAW_SUPABASE_PUBLISHABLE_KEY = (import.meta as any)?.env?.PUBLIC__SUPABASE_ANON_KEY
 
 const ENV_SUPABASE_URL = sanitizeEnv(RAW_SUPABASE_URL)
 const ENV_SUPABASE_PUBLISHABLE_KEY = sanitizeEnv(RAW_SUPABASE_PUBLISHABLE_KEY)
@@ -38,7 +38,7 @@ const SUPABASE_PUBLISHABLE_KEY = ENV_SUPABASE_PUBLISHABLE_KEY
 
 function createSupabaseStub() {
   const stubError = new Error(
-    'Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
+    'Supabase is not configured. Please set PUBLIC__SUPABASE_URL and PUBLIC__SUPABASE_ANON_KEY.'
   )
 
   class FakeBuilder {
@@ -105,7 +105,7 @@ function createSupabaseStub() {
   } as any
 
   console.error(
-    'Supabase environment variables are missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable backend features.'
+    'Supabase environment variables are missing. Set PUBLIC__SUPABASE_URL and PUBLIC__SUPABASE_ANON_KEY to enable backend features.'
   )
 
   return stub
@@ -113,7 +113,7 @@ function createSupabaseStub() {
 
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   console.warn(
-    'Supabase environment variables are missing. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment.'
+    'Supabase environment variables are missing. Please set PUBLIC__SUPABASE_URL and PUBLIC__SUPABASE_ANON_KEY in your environment.'
   )
 }
 
@@ -123,7 +123,7 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
 function createSupabaseOrStub() {
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY || !isValidUrl(SUPABASE_URL)) {
     if (SUPABASE_URL && !isValidUrl(SUPABASE_URL)) {
-      console.error('Invalid VITE_SUPABASE_URL value; falling back to stub:', SUPABASE_URL)
+      console.error('Invalid PUBLIC__SUPABASE_URL value; falling back to stub:', SUPABASE_URL)
     }
     return createSupabaseStub()
   }

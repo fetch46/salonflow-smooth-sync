@@ -738,7 +738,7 @@ const Reports = () => {
               const { data: locs } = await supabase.from('business_locations').select('id, name').in('id', locIds);
               const names = new Map((locs || []).map((l: any) => [l.id, l.name]));
               for (const [k, v] of map.entries()) {
-                if (k !== 'unassigned') v.locationName = names.get(k) || v.locationName;
+                if (k !== 'unassigned') v.locationName = names.get(k) as string || v.locationName;
               }
             } catch {}
           }
