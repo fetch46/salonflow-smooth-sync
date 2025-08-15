@@ -8,8 +8,8 @@ import AppFooter from "@/components/layout/AppFooter";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 
 // Auth Pages
-const Login = lazy(() => import("@/pages/Login"));
-const Register = lazy(() => import("@/pages/Register"));
+import Login from "@/pages/Login";
+import Register from "@/pages/Register";
 
 
 // Main Pages
