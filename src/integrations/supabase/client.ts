@@ -4,11 +4,17 @@ import { createClient } from '@supabase/supabase-js';
 
 function sanitizeEnv(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined
-  const trimmed = value.trim()
-  if (!trimmed) return undefined
-  const lowered = trimmed.toLowerCase()
-  if (lowered === 'undefined' || lowered === 'null' || lowered === 'false') return undefined
-  return trimmed
+  let v = value.trim()
+  if (!v) return undefined
+  const lowered = v.toLowerCase()
+  if (['undefined', 'null', 'false'].includes(lowered)) return undefined
+  // strip surrounding quotes
+  if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+    v = v.slice(1, -1)
+  }
+  // remove trailing semicolons and whitespace
+  v = v.replace(/;+$/g, '').trim()
+  return v
 }
 
 function isValidUrl(url: string): boolean {
@@ -21,14 +27,19 @@ function isValidUrl(url: string): boolean {
     return false
   }
 }
-const SUPABASE_URL = https://eoxeoyyunhsdvjiwkttx.supabase.co;
-const SUPABASE_PUBLISHABLE_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVveGVveXl1bmhzZHZqaXdrdHR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5NzI3NDUsImV4cCI6MjA2OTU0ODc0NX0.d3uazVxwI1_kPoF-QAGChcbfKS9PxwB536HrrlCXUrE;
+// Preferred: use configured env, but harden and fall back to known project defaults
+const DEFAULT_SUPABASE_URL = 'https://eoxeoyyunhsdvjiwkttx.supabase.co'
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVveGVveXl1bmhzZHZqaXdrdHR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5NzI3NDUsImV4cCI6MjA2OTU0ODc0NX0.d3uazVxwI1_kPoF-QAGChcbfKS9PxwB536HrrlCXUrE'
 
-//const RAW_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
-//const RAW_SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+const RAW_SUPABASE_URL = (import.meta as any)?.env?.VITE_SUPABASE_URL
+const RAW_SUPABASE_PUBLISHABLE_KEY = (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY
 
-//const SUPABASE_URL = sanitizeEnv(RAW_SUPABASE_URL)
-//const SUPABASE_PUBLISHABLE_KEY = sanitizeEnv(RAW_SUPABASE_PUBLISHABLE_KEY)
+const ENV_SUPABASE_URL = sanitizeEnv(RAW_SUPABASE_URL)
+const ENV_SUPABASE_PUBLISHABLE_KEY = sanitizeEnv(RAW_SUPABASE_PUBLISHABLE_KEY)
+
+const SUPABASE_URL = "https://eoxeoyyunhsdvjiwkttx.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVveGVveXl1bmhzZHZqaXdrdHR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5NzI3NDUsImV4cCI6MjA2OTU0ODc0NX0.d3uazVxwI1_kPoF-QAGChcbfKS9PxwB536HrrlCXUrE";
+
 
 function createSupabaseStub() {
   const stubError = new Error(
