@@ -83,6 +83,7 @@ export default function ServiceForm() {
   const [serviceKits, setServiceKits] = useState<ServiceKitItem[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [locations, setLocations] = useState<{ id: string; name: string; is_default?: boolean }[]>([]);
+  const [serviceOrgId, setServiceOrgId] = useState<string | null>(null);
 
   const categoryOptions = useMemo(() => {
     const base = [...CATEGORY_SUGGESTIONS];
@@ -202,6 +203,7 @@ export default function ServiceForm() {
               commission_percentage: Number((service as any).commission_percentage) || 0,
               location_id: (service as any).location_id || "",
             });
+            setServiceOrgId((service as any).organization_id || null);
           }
           await fetchServiceKits(id);
         } catch (err) {
@@ -369,16 +371,21 @@ export default function ServiceForm() {
           throw new Error('Service was created but no ID was returned');
         }
         serviceId = data.id;
+        if (organization?.id) setServiceOrgId(organization.id);
       }
 
       if (serviceId) {
         await supabase.from("service_kits").delete().eq("service_id", serviceId);
         if (serviceKits.length > 0) {
+          const orgIdForKits = organization?.id || serviceOrgId;
+          if (!orgIdForKits) {
+            throw new Error("Unable to determine organization for kit items. Please select an organization and try again.");
+          }
           const kitData = serviceKits.map((kit) => ({
             service_id: serviceId!,
             good_id: kit.good_id,
             default_quantity: kit.default_quantity,
-            organization_id: organization?.id,
+            organization_id: orgIdForKits,
           }));
           let kitError: any = null;
           try {

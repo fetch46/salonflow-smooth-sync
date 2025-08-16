@@ -699,12 +699,21 @@ export default function Services() {
           .eq("service_id", serviceId);
 
         if (serviceKits.length > 0) {
-          if (!organization?.id) throw new Error("No active organization selected");
+          // Prefer current organization; if unavailable, try to reuse existing service org id by reading the service
+          let orgIdForKits: string | null = organization?.id || null;
+          if (!orgIdForKits && serviceId) {
+            const { data: svcRow } = await supabase
+              .from('services')
+              .select('organization_id')
+              .eq('id', serviceId)
+              .maybeSingle();
+            orgIdForKits = (svcRow as any)?.organization_id || null;
+          }
           const kitData = serviceKits.map(kit => ({
             service_id: serviceId!,
             good_id: kit.good_id,
             default_quantity: kit.default_quantity,
-            organization_id: organization.id,
+            ...(orgIdForKits ? { organization_id: orgIdForKits } : {}),
           })) as any[]
 
           // Try insert with organization_id, then retry without if column missing
