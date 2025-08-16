@@ -79,6 +79,7 @@ export function AppTopbar() {
             <Input
               placeholder="Search..."
               className="pl-8"
+              aria-label="Search"
             />
           </div>
         </div>
@@ -94,6 +95,7 @@ export function AppTopbar() {
           {/* POS Button */}
           <Button
             onClick={() => navigate('/pos')}
+            aria-label="Open POS"
             className="bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-sm h-9 px-3 sm:px-4"
           >
             <CreditCard className="h-4 w-4 mr-0 sm:mr-2" />
@@ -104,7 +106,7 @@ export function AppTopbar() {
           {organizations && organizations.length > 1 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="hidden md:inline-flex items-center space-x-2">
+                <Button variant="outline" className="hidden md:inline-flex items-center space-x-2" aria-label="Select organization">
                   <Building2 className="h-4 w-4" />
                   <span className="max-w-32 truncate">
                     {organization?.name || 'Select Organization'}
@@ -143,7 +145,7 @@ export function AppTopbar() {
           {/* Notifications */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="relative">
+              <Button variant="ghost" size="sm" className="relative" aria-label="Notifications">
                 <Bell className="h-4 w-4" />
                 <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 min-w-5 rounded-full p-0 text-[10px] leading-5 text-center">
                   3
@@ -176,7 +178,7 @@ export function AppTopbar() {
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+              <Button variant="ghost" className="relative h-8 w-8 rounded-full" aria-label="User menu">
                 <User className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>

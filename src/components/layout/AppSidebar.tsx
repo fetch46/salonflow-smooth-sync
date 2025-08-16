@@ -317,7 +317,7 @@ export function AppSidebar() {
   }, [location.pathname, location.search]);
 
   return (
-    <Sidebar variant="inset" collapsible="icon" className="border-r max-w-[260px] md:max-w-[280px]">
+    <Sidebar role="navigation" aria-label="Primary" variant="inset" collapsible="icon" className="border-r max-w-[260px] md:max-w-[280px]">
       <SidebarContent>
         <SidebarHeader className="px-2 pt-3">
           <div className="flex items-center justify-between">
@@ -351,6 +351,9 @@ export function AppSidebar() {
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         onClick={() => toggleSubmenu(item.title)}
+                        aria-expanded={isOpen}
+                        aria-controls={`submenu-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                        aria-disabled={!isAvailable || undefined}
                         className={`text-base ${!isAvailable ? 'opacity-50' : ''}`}
                         tooltip={state === 'collapsed' ? item.title : undefined}
                         size="lg"
@@ -367,7 +370,7 @@ export function AppSidebar() {
                         </div>
                       </SidebarMenuButton>
                       {isOpen && (
-                        <SidebarMenuSub className="gap-2">
+                        <SidebarMenuSub id={`submenu-${item.title.toLowerCase().replace(/\s+/g, '-')}`} className="gap-2">
                           {item.subItems?.map((subItem) => {
                             const subItemAvailable = hasFeature(subItem.feature);
                             const subItemUsageBadge = getUsageBadge(subItem.feature);
@@ -447,7 +450,7 @@ export function AppSidebar() {
                     tooltip={state === 'collapsed' ? superAdminMenuItem.title : undefined}
                     size="lg"
                   >
-                    <a href={superAdminMenuItem.url} className="flex items-center gap-2" onClick={handleNavClick}>
+                    <NavLink to={superAdminMenuItem.url} className={({ isActive }) => `flex items-center gap-2 ${isActive ? 'bg-accent text-accent-foreground' : ''}`} onClick={handleNavClick}>
                       <superAdminMenuItem.icon className="h-5 w-5" />
                       <span>{superAdminMenuItem.title}</span>
                       <Badge 
@@ -457,7 +460,7 @@ export function AppSidebar() {
                         <Crown className="w-2 h-2 mr-1" />
                         Admin
                       </Badge>
-                    </a>
+                    </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
