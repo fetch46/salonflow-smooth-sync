@@ -1,5 +1,5 @@
 
-import { Bell, Search, Settings, User, LogOut, Building2, ChevronDown } from "lucide-react";
+import { Bell, Search, Settings, User, LogOut, Building2, ChevronDown, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -164,6 +164,80 @@ export function AppTopbar() {
               <DropdownMenuItem onClick={() => navigate('/settings')}>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleSignOut}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+export function SuperAdminTopbar() {
+  const navigate = useNavigate();
+  const { user } = useSaas();
+
+  const handleSignOut = async () => {
+    try {
+      const { cleanupAuthState } = await import('@/utils/authUtils');
+      cleanupAuthState();
+      try {
+        await supabase.auth.signOut({ scope: 'global' } as any);
+      } catch (err) { /* ignore sign-out errors */ }
+    } finally {
+      window.location.href = '/login';
+    }
+  };
+
+  const handleBackToApp = () => {
+    navigate('/dashboard');
+  };
+
+  return (
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-14 items-center justify-between px-4">
+        {/* Left side - Back to App */}
+        <div className="flex items-center space-x-4">
+          <Button variant="outline" onClick={handleBackToApp} className="flex items-center space-x-2">
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back to App</span>
+          </Button>
+          <div>
+            <h2 className="text-lg font-semibold">Super Admin Panel</h2>
+          </div>
+        </div>
+
+        {/* Right side - User menu */}
+        <div className="flex items-center space-x-4">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                <User className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">
+                    {user?.user_metadata?.full_name || user?.email}
+                  </p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {user?.email}
+                  </p>
+                  <span className="text-xs text-red-600 font-medium">
+                    Super Admin
+                  </span>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleBackToApp}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                <span>Back to App</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleSignOut}>
