@@ -1017,7 +1017,7 @@ export default function Appointments() {
                         <div>
                           <div className="flex flex-wrap items-center gap-1.5">
                             <User className="w-3 h-3 text-muted-foreground" />
-                            <span className="font-medium text-slate-900 dark:text-slate-100">{appointment.customer_name}</span>
+                            <span className="font-medium text-slate-900 dark:text-slate-100 text-lg">{appointment.customer_name}</span>
                           </div>
                           <div className="mt-1 flex flex-col sm:flex-row sm:flex-wrap gap-2 text-xs text-muted-foreground">
                             {appointment.customer_email && (
@@ -1029,7 +1029,7 @@ export default function Appointments() {
                           </div>
                         </div>
                       </div>
-                      <div className="mt-2 text-center">
+                      <div className="mt-2 text-left">
                         <div className="text-xs text-muted-foreground">Amount</div>
                         <div className="text-sm font-semibold">
                           {Number(appointment.price || 0) > 0 ? formatMoney(Number(appointment.price || 0)) : '—'}
@@ -1042,7 +1042,7 @@ export default function Appointments() {
                             const srvName = services.find(s => s.id === it.service_id)?.name || 'Service';
                             const stfName = staff.find(s => s.id === it.staff_id)?.full_name || 'Unassigned';
                             return (
-                              <span key={idx} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs">
+                              <span key={idx} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm">
                                 {srvName}
                                 <span className="text-slate-400">→</span>
                                 {stfName}
@@ -1050,7 +1050,7 @@ export default function Appointments() {
                             );
                           })
                         ) : (
-                          <span className="text-sm text-muted-foreground">{serviceNames}</span>
+                          <span className="text-base text-muted-foreground">{serviceNames}</span>
                         )}
                       </div>
 
