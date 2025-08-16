@@ -6,6 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Plus, Minus, BookOpen, RefreshCw } from "lucide-react";
+import { useSaas } from "@/lib/saas";
+import { supabase } from "@/integrations/supabase/client";
+import { postMultiLineEntry } from "@/utils/ledger";
 
 interface AccountOption {
   id: string;
@@ -34,12 +37,6 @@ export default function Journal() {
   const [search, setSearch] = useState<string>("");
 
   // Replace server-based account loading with Supabase chart of accounts
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { useSaas } = require("@/lib/saas");
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { supabase } = require("@/integrations/supabase/client");
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { postMultiLineEntry } = require("@/utils/ledger");
   const { organization } = useSaas();
 
   useEffect(() => {
