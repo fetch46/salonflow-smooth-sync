@@ -25,8 +25,8 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   }
 })
 
-// Test connection
-supabase.from('profiles').select('count', { count: 'exact', head: true })
+// Test connection with a simple query that should always work
+supabase.from('organizations').select('count', { count: 'exact', head: true })
   .then(({ error }) => {
     if (error) {
       console.error('Supabase connection test failed:', error)
