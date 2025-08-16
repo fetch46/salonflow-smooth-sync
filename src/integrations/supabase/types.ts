@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
@@ -1931,6 +1931,64 @@ export type Database = {
           },
         ]
       }
+      purchase_payments: {
+        Row: {
+          account_id: string | null
+          amount: number
+          created_at: string
+          id: string
+          notes: string | null
+          organization_id: string | null
+          payment_date: string
+          purchase_id: string
+          reference: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          amount: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          organization_id?: string | null
+          payment_date?: string
+          purchase_id: string
+          reference?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          organization_id?: string | null
+          payment_date?: string
+          purchase_id?: string
+          reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_payments_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_payments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_payments_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchases: {
         Row: {
           created_at: string
@@ -2716,46 +2774,46 @@ export type Database = {
       }
       calculate_staff_commission: {
         Args: {
-          p_staff_id: string
-          p_service_id?: string
           p_amount?: number
           p_commission_rate?: number
+          p_service_id?: string
+          p_staff_id: string
         }
         Returns: number
       }
       calculate_trial_balance: {
-        Args: { p_org_id: string; p_date?: string }
+        Args: { p_date?: string; p_org_id: string }
         Returns: {
-          account_id: string
           account_code: string
+          account_id: string
           account_name: string
-          debit_total: number
-          credit_total: number
           balance: number
+          credit_total: number
+          debit_total: number
         }[]
       }
       create_goods_received: {
         Args: {
+          p_items?: Json
+          p_location_id: string
+          p_notes?: string
           p_organization_id: string
           p_purchase_id: string
-          p_location_id: string
           p_received_date?: string
-          p_notes?: string
-          p_items?: Json
         }
         Returns: string
       }
       create_organization_with_user: {
         Args: {
           org_name: string
-          org_slug: string
           org_settings?: Json
+          org_slug: string
           plan_id?: string
         }
         Returns: string
       }
       delete_account_transactions_by_reference: {
-        Args: { p_reference_type: string; p_reference_id: string }
+        Args: { p_reference_id: string; p_reference_type: string }
         Returns: number
       }
       generate_grn_number: {
@@ -2775,46 +2833,58 @@ export type Database = {
         Returns: boolean
       }
       is_date_locked: {
-        Args: { p_org: string; p_date: string }
+        Args: { p_date: string; p_org: string }
         Returns: boolean
       }
       is_super_admin: {
         Args: { uid: string }
         Returns: boolean
       }
+      pay_purchase: {
+        Args: {
+          p_account_id: string
+          p_amount: number
+          p_notes: string
+          p_org_id: string
+          p_payment_date: string
+          p_purchase_id: string
+          p_reference: string
+        }
+        Returns: string
+      }
       post_bank_transfer: {
         Args: {
-          p_org_id: string
-          p_from_account_id: string
-          p_to_account_id: string
           p_amount: number
-          p_transfer_date?: string
           p_description?: string
+          p_from_account_id: string
+          p_org_id: string
+          p_to_account_id: string
+          p_transfer_date?: string
         }
         Returns: boolean
       }
       rebuild_organization_chart_of_accounts: {
-        Args: { p_organization_id: string; p_force?: boolean }
+        Args: { p_force?: boolean; p_organization_id: string }
         Returns: Json
       }
       record_goods_received: {
         Args:
           | {
+              p_lines: Json
+              p_location_id: string
+              p_notes: string
               p_org_id: string
               p_purchase_id: string
-              p_location_id: string
               p_received_date: string
-              p_notes: string
-              p_lines: Json
             }
           | {
+              p_lines: Json
+              p_location_id: string
+              p_notes: string
               p_org_id: string
               p_purchase_id: string
-              p_location_id: string
-              p_warehouse_id: string
               p_received_date: string
-              p_notes: string
-              p_lines: Json
+              p_warehouse_id: string
             }
         Returns: string
       }
@@ -2829,21 +2899,21 @@ export type Database = {
       update_goods_received: {
         Args:
           | {
-              p_org_id: string
               p_goods_received_id: string
               p_location_id: string
-              p_received_date: string
               p_notes: string
+              p_org_id: string
               p_quantities: Json
+              p_received_date: string
             }
           | {
-              p_org_id: string
               p_goods_received_id: string
               p_location_id: string
-              p_warehouse_id: string
-              p_received_date: string
               p_notes: string
+              p_org_id: string
               p_quantities: Json
+              p_received_date: string
+              p_warehouse_id: string
             }
         Returns: undefined
       }

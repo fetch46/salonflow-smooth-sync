@@ -1,9 +1,1 @@
 project_id = "eoxeoyyunhsdvjiwkttx"
-
-[functions.confirm-user]
-# Require a valid JWT from the caller (default true)
-verify_jwt = true
-
-[functions.set-user-password]
-# Require a valid JWT from the caller (default true)
-verify_jwt = true
