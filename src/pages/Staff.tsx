@@ -820,7 +820,7 @@ export default function Staff() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90 flex items-center gap-2">
               Total Staff
-              <UsageBadge feature="staff" className="bg-white/20 text-white border-white/30" />
+              <UsageBadge feature="staff" className="bg-card/20 text-card-foreground border-border/30" />
             </CardTitle>
             <Users className="h-4 w-4 opacity-80" />
           </CardHeader>

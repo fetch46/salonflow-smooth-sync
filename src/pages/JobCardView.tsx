@@ -236,7 +236,7 @@ export default function JobCardView() {
         </div>
       </div>
 
-      <div ref={pdfRef} className="space-y-6 bg-white">
+      <div ref={pdfRef} className="space-y-6 bg-background">
         <Card>
           <CardHeader>
             <CardTitle>Summary</CardTitle>

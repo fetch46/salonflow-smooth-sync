@@ -134,7 +134,7 @@ const Login = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-purple-50 p-4">
       <div className="w-full max-w-md">
-        <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+        <Card className="shadow-xl border-0 bg-card/80 backdrop-blur-sm">
           <CardHeader className="space-y-1 text-center">
             <div className="flex justify-center mb-4">
               <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl flex items-center justify-center">
@@ -226,7 +226,7 @@ const Login = () => {
             <div className="relative">
               <Separator />
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="bg-white px-2 text-xs text-gray-500">OR</span>
+                <span className="bg-background px-2 text-xs text-muted-foreground">OR</span>
               </div>
             </div>
 
