@@ -14,8 +14,22 @@ export default defineConfig(async ({ mode }) => {
 		}
 	}
 
+	// Normalize base to avoid 404s for dynamically imported chunks when deploying under a subpath
+	const rawBase = process.env.VITE_BASE;
+	const base = (() => {
+		if (!rawBase) return "/";
+		// If full URL, ensure it ends with a slash
+		if (/^[a-z][a-z0-9+.-]*:\/\//i.test(rawBase)) {
+			return rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
+		}
+		let b = rawBase;
+		if (!b.startsWith('/')) b = `/${b}`;
+		if (!b.endsWith('/')) b = `${b}/`;
+		return b;
+	})();
+
 	return {
-		base: process.env.VITE_BASE || "/",
+		base,
 		server: {
 			host: "::",
 			port: 8080,
