@@ -15,6 +15,7 @@ import { useSaas } from "@/lib/saas";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import ThemeToggle from "@/components/ThemeToggle";
+import { cleanupAuthState } from "@/utils/authUtils";
 
 export function AppTopbar() {
   const navigate = useNavigate();
@@ -231,13 +232,18 @@ export function SuperAdminTopbar() {
 
   const handleSignOut = async () => {
     try {
-      const { cleanupAuthState } = await import('@/utils/authUtils');
       cleanupAuthState();
       try {
         await supabase.auth.signOut({ scope: 'global' } as any);
       } catch (err) { /* ignore sign-out errors */ }
     } finally {
-      window.location.href = '/login';
+      const rawBase = (import.meta.env.BASE_URL as string) || '/';
+      let basePath = rawBase;
+      if (/^[a-z][a-z0-9+.-]*:\/\//i.test(rawBase)) {
+        try { basePath = new URL(rawBase).pathname || '/'; } catch { basePath = '/'; }
+      }
+      const prefix = basePath.replace(/\/+$/, '') || '/';
+      window.location.href = `${prefix}/login`;
     }
   };
 

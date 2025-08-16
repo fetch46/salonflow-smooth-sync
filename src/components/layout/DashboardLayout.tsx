@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Crown } from "lucide-react";
 import React from "react";
+import { cleanupAuthState } from "@/utils/authUtils";
 
 interface DashboardLayoutProps {
   children?: React.ReactNode;
@@ -28,7 +29,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps = {})
   const handleSignOut = async () => {
     try {
       // Clean up auth state to avoid limbo
-      const { cleanupAuthState } = await import('@/utils/authUtils');
       cleanupAuthState();
       try {
         await supabase.auth.signOut({ scope: 'global' } as any);
@@ -37,7 +37,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps = {})
       }
     } finally {
       // Force full reload to ensure clean state
-      window.location.href = '/login';
+      const rawBase = (import.meta.env.BASE_URL as string) || '/';
+      let basePath = rawBase;
+      if (/^[a-z][a-z0-9+.-]*:\/\//i.test(rawBase)) {
+        try { basePath = new URL(rawBase).pathname || '/'; } catch { basePath = '/'; }
+      }
+      const prefix = basePath.replace(/\/+$/, '') || '/';
+      window.location.href = `${prefix}/login`;
     }
   };
 
