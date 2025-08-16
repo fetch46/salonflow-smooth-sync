@@ -48,10 +48,10 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps = {
           </a>
           <SuperAdminTopbar />
 
-          {/* Main Content */}
-          <main id="main-content" className="flex-1 bg-slate-50 p-4 md:p-6 lg:p-8 min-w-0">
-            {children || <Outlet />}
-          </main>
+                     {/* Main Content */}
+           <main id="main-content" className="flex-1 bg-background text-foreground p-4 md:p-6 lg:p-8 min-w-0">
+             {children || <Outlet />}
+           </main>
         </div>
       </div>
     </SidebarProvider>

@@ -83,33 +83,33 @@ export default function DashboardLayout({ children }: DashboardLayoutProps = {})
     }
   };
 
-  return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background overflow-x-hidden text-foreground">
-        <AppSidebar />
-        
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Skip link for keyboard users */}
-          <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute left-2 top-2 z-[60] rounded bg-primary text-primary-foreground px-3 py-2">
-            Skip to content
-          </a>
-          <AppTopbar />
-
-          {/* Main Content */}
-          <main id="main-content" className="flex-1 min-w-0 p-4 md:p-6 lg:p-8">
-            <React.Suspense fallback={
-              <div className="flex items-center justify-center min-h-[400px]" role="status" aria-live="polite" aria-busy="true">
-                <div className="text-center space-y-4">
-                  <div className="motion-safe:animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600 mx-auto"></div>
-                  <p className="text-sm text-muted-foreground">Loading...</p>
-                </div>
-              </div>
-            }>
-              {children || <Outlet />}
-            </React.Suspense>
-          </main>
-        </div>
-      </div>
-    </SidebarProvider>
-  );
+     return (
+     <SidebarProvider>
+       <div className="min-h-screen flex w-full bg-background overflow-x-hidden text-foreground">
+         <AppSidebar />
+         
+         <div className="flex-1 flex flex-col min-w-0">
+           {/* Skip link for keyboard users */}
+           <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute left-2 top-2 z-[60] rounded bg-primary text-primary-foreground px-3 py-2">
+             Skip to content
+           </a>
+           <AppTopbar />
+ 
+           {/* Main Content */}
+           <main id="main-content" className="flex-1 min-w-0 p-4 md:p-6 lg:p-8">
+             <React.Suspense fallback={
+               <div className="flex items-center justify-center min-h-[400px]" role="status" aria-live="polite" aria-busy="true">
+                 <div className="text-center space-y-4">
+                   <div className="motion-safe:animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                   <p className="text-sm text-muted-foreground">Loading...</p>
+                 </div>
+               </div>
+             }>
+               {children || <Outlet />}
+             </React.Suspense>
+           </main>
+         </div>
+       </div>
+     </SidebarProvider>
+   );
 }
