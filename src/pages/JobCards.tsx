@@ -170,6 +170,68 @@ export default function JobCards() {
     } catch {}
   }, [visibleColumns]);
 
+  type ColumnId = 'avatar' | 'job' | 'client' | 'staff' | 'created' | 'amount' | 'status' | 'actions';
+
+  const defaultColumnWidths: Record<ColumnId, number> = {
+    avatar: 60,
+    job: 180,
+    client: 200,
+    staff: 200,
+    created: 160,
+    amount: 120,
+    status: 140,
+    actions: 120,
+  };
+
+  const [columnWidths, setColumnWidths] = useState<Record<ColumnId, number>>(() => {
+    try {
+      const stored = localStorage.getItem('jobcards_column_widths');
+      return stored ? { ...defaultColumnWidths, ...JSON.parse(stored) } : { ...defaultColumnWidths };
+    } catch {
+      return { ...defaultColumnWidths };
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('jobcards_column_widths', JSON.stringify(columnWidths));
+    } catch {}
+  }, [columnWidths]);
+
+  const columnOrder: ColumnId[] = ['avatar','job','client','staff','created','amount','status','actions'];
+
+  const visibleOrder = useMemo(() => {
+    return columnOrder.filter((id) => id === 'job' ? true : (visibleColumns as any)[id]);
+  }, [visibleColumns]);
+
+  const gridTemplateColumns = useMemo(() => {
+    return visibleOrder.map((id) => `${Math.max(60, columnWidths[id])}px`).join(' ');
+  }, [visibleOrder, columnWidths]);
+
+  const [resizing, setResizing] = useState<{ col: ColumnId; startX: number; startWidth: number } | null>(null);
+
+  const onMouseDownResizer = useCallback((col: ColumnId) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setResizing({ col, startX: e.clientX, startWidth: columnWidths[col] });
+  }, [columnWidths]);
+
+  useEffect(() => {
+    if (!resizing) return;
+    const onMove = (e: MouseEvent) => {
+      const delta = e.clientX - resizing.startX;
+      const next = Math.max(80, resizing.startWidth + delta);
+      setColumnWidths((prev) => ({ ...prev, [resizing.col]: next }));
+    };
+    const onUp = () => setResizing(null);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [resizing]);
+
   // Removed mock enrichment function and demo defaults
 
   const fetchJobCards = useCallback(async (opts?: { silent?: boolean }) => {
@@ -594,25 +656,93 @@ export default function JobCards() {
       return (
         <div className="w-full overflow-x-auto">
           <div className="min-w-[900px]">
-            <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-2 text-xs font-medium text-slate-500">
-              {visibleColumns.avatar && <div className="col-span-1">#</div>}
-              <div className="col-span-2">Job</div>
-              {visibleColumns.client && <div className="col-span-2">Client</div>}
-              {visibleColumns.staff && <div className="col-span-2">Staff</div>}
-              {visibleColumns.created && <div className="col-span-2">Created</div>}
-              {visibleColumns.amount && <div className="col-span-1 text-right md:text-left">Amount</div>}
-              {visibleColumns.status && <div className="col-span-1">Status</div>}
-              {visibleColumns.actions && <div className="col-span-1">Actions</div>}
+            <div className="hidden md:block px-4 py-2 text-xs font-medium text-slate-500">
+              <div
+                className="grid gap-3"
+                style={{ gridTemplateColumns }}
+              >
+                {visibleColumns.avatar && (
+                  <div className="relative select-none">
+                    #
+                    <span
+                      className="absolute right-0 top-0 h-full w-1 cursor-col-resize"
+                      onMouseDown={onMouseDownResizer('avatar')}
+                    />
+                  </div>
+                )}
+                <div className="relative select-none">
+                  Job
+                  <span
+                    className="absolute right-0 top-0 h-full w-1 cursor-col-resize"
+                    onMouseDown={onMouseDownResizer('job')}
+                  />
+                </div>
+                {visibleColumns.client && (
+                  <div className="relative select-none">
+                    Client
+                    <span
+                      className="absolute right-0 top-0 h-full w-1 cursor-col-resize"
+                      onMouseDown={onMouseDownResizer('client')}
+                    />
+                  </div>
+                )}
+                {visibleColumns.staff && (
+                  <div className="relative select-none">
+                    Staff
+                    <span
+                      className="absolute right-0 top-0 h-full w-1 cursor-col-resize"
+                      onMouseDown={onMouseDownResizer('staff')}
+                    />
+                  </div>
+                )}
+                {visibleColumns.created && (
+                  <div className="relative select-none">
+                    Created
+                    <span
+                      className="absolute right-0 top-0 h-full w-1 cursor-col-resize"
+                      onMouseDown={onMouseDownResizer('created')}
+                    />
+                  </div>
+                )}
+                {visibleColumns.amount && (
+                  <div className="relative select-none text-right md:text-left">
+                    Amount
+                    <span
+                      className="absolute right-0 top-0 h-full w-1 cursor-col-resize"
+                      onMouseDown={onMouseDownResizer('amount')}
+                    />
+                  </div>
+                )}
+                {visibleColumns.status && (
+                  <div className="relative select-none">
+                    Status
+                    <span
+                      className="absolute right-0 top-0 h-full w-1 cursor-col-resize"
+                      onMouseDown={onMouseDownResizer('status')}
+                    />
+                  </div>
+                )}
+                {visibleColumns.actions && (
+                  <div className="relative select-none">
+                    Actions
+                    <span
+                      className="absolute right-0 top-0 h-full w-1 cursor-col-resize"
+                      onMouseDown={onMouseDownResizer('actions')}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="max-h-96 overflow-y-auto divide-y divide-slate-100">
               {filteredJobCards.map((jobCard) => (
                 <div
                   key={jobCard.id}
-                  className="grid grid-cols-1 md:grid-cols-12 items-center gap-3 p-4 hover:bg-slate-50/50 transition-colors"
+                  className="grid items-center gap-3 p-4 hover:bg-slate-50/50 transition-colors"
+                  style={{ gridTemplateColumns }}
                 >
                   {visibleColumns.avatar && (
-                    <div className="md:col-span-1">
+                    <div>
                       <div className="relative">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-medium text-sm">
                           {jobCard.job_number.slice(-2)}
@@ -626,7 +756,7 @@ export default function JobCards() {
                     </div>
                   )}
 
-                  <div className="md:col-span-2 min-w-0">
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <h4 className="font-semibold text-slate-900 truncate">{jobCard.job_number}</h4>
                     </div>
@@ -642,7 +772,7 @@ export default function JobCards() {
                   </div>
 
                   {visibleColumns.client && (
-                    <div className="md:col-span-2 min-w-0">
+                    <div className="min-w-0">
                       <div className="flex items-center text-slate-600 truncate">
                         <User className="w-3 h-3 mr-1" />
                         <span className="truncate">{jobCard.client?.full_name || "No client"}</span>
@@ -651,7 +781,7 @@ export default function JobCards() {
                   )}
 
                   {visibleColumns.staff && (
-                    <div className="md:col-span-2 min-w-0">
+                    <div className="min-w-0">
                       <div className="flex items-center text-slate-600 truncate">
                         <UserCheck className="w-3 h-3 mr-1" />
                         <span className="truncate">{jobCard.staff?.full_name || "Unassigned"}</span>
@@ -660,7 +790,7 @@ export default function JobCards() {
                   )}
 
                   {visibleColumns.created && (
-                    <div className="md:col-span-2">
+                    <div>
                       <div className="flex items-center text-slate-600 whitespace-nowrap">
                         <Calendar className="w-3 h-3 mr-1" />
                         {format(new Date(jobCard.created_at), "MMM dd, yyyy")}
@@ -669,7 +799,7 @@ export default function JobCards() {
                   )}
 
                   {visibleColumns.amount && (
-                    <div className="md:col-span-1 text-right md:text-left whitespace-nowrap">
+                    <div className="text-right md:text-left whitespace-nowrap">
                       <div className="flex items-center justify-end md:justify-start text-slate-600">
                         <DollarSign className="w-3 h-3 mr-1" />
                         {formatMoney(jobCard.total_amount)}
@@ -678,7 +808,7 @@ export default function JobCards() {
                   )}
 
                   {visibleColumns.status && (
-                    <div className="md:col-span-1">
+                    <div>
                       <Select 
                         value={jobCard.status} 
                         onValueChange={(value) => handleStatusUpdate(jobCard.id, value)}
@@ -701,7 +831,7 @@ export default function JobCards() {
                   )}
 
                   {visibleColumns.actions && (
-                    <div className="md:col-span-1">
+                    <div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="outline" size="sm" className="h-8 w-full md:w-auto">
