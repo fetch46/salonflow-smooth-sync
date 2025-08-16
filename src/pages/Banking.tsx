@@ -424,7 +424,7 @@ export default function Banking() {
 
       {isTransferOpen && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-4 w-full max-w-md">
+          <div className="bg-card rounded-lg shadow-xl p-4 w-full max-w-md">
             <div className="text-lg font-semibold mb-3">Transfer Between Accounts</div>
             <form onSubmit={doTransfer} className="space-y-3">
               <div className="space-y-1">

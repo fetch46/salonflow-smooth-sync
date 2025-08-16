@@ -891,7 +891,7 @@ export default function JobCards() {
         </div>
         
         <div className="flex items-center gap-3">
-          <div className="hidden md:flex rounded-lg border border-slate-200 p-1 bg-white shadow-sm">
+          <div className="hidden md:flex rounded-lg border border-border p-1 bg-card shadow-sm">
             <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="sm" className="gap-2" onClick={() => setViewMode('list')}>
               <List className="w-4 h-4" />
               List
@@ -1035,8 +1035,8 @@ export default function JobCards() {
       <div className="grid gap-6 lg:grid-cols-4">
         {/* Job Cards List - Takes 3 columns */}
         <div className="lg:col-span-3">
-          <Card className="shadow-sm border-slate-200">
-            <CardHeader className="border-b border-slate-200">
+          <Card className="shadow-sm border-border">
+            <CardHeader className="border-b border-border">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="relative w-full md:w-64">
@@ -1160,8 +1160,8 @@ export default function JobCards() {
         {/* Right Sidebar - Takes 1 column */}
         <div className="space-y-6 lg:sticky lg:top-24 self-start">
           {/* Quick Stats */}
-          <Card className="shadow-sm border-slate-200">
-            <CardHeader className="border-b border-slate-200">
+          <Card className="shadow-sm border-border">
+            <CardHeader className="border-b border-border">
               <CardTitle className="flex items-center gap-2">
                 <Target className="w-5 h-5 text-blue-600" />
                 Performance
@@ -1181,8 +1181,8 @@ export default function JobCards() {
           </Card>
 
           {/* Recent Activity */}
-          <Card className="shadow-sm border-slate-200">
-            <CardHeader className="border-b border-slate-200">
+          <Card className="shadow-sm border-border">
+            <CardHeader className="border-b border-border">
               <CardTitle className="flex items-center gap-2">
                 <Activity className="w-5 h-5 text-green-600" />
                 Recent Activity

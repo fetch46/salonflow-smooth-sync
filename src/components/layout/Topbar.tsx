@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { useSaas } from "@/lib/saas";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export function AppTopbar() {
   const navigate = useNavigate();
@@ -120,6 +121,8 @@ export function AppTopbar() {
           {/* Subscription Status */}
           {getSubscriptionBadge()}
 
+          <ThemeToggle />
+
           {/* Notifications */}
           <Button variant="ghost" size="sm" className="relative">
             <Bell className="h-4 w-4" />
@@ -214,6 +217,7 @@ export function SuperAdminTopbar() {
 
         {/* Right side - User menu */}
         <div className="flex items-center space-x-4">
+          <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">

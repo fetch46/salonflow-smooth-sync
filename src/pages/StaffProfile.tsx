@@ -591,7 +591,7 @@ export default function StaffProfile() {
                   <CardTitle className="text-base flex items-center gap-2"><Calendar className="w-4 h-4"/> Schedule</CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-6 md:grid-cols-2">
-                  <div className="rounded-lg border p-3 bg-white">
+                  <div className="rounded-lg border p-3 bg-card">
                     <CalendarPicker
                       mode="single"
                       selected={scheduleDate}
@@ -672,7 +672,7 @@ export default function StaffProfile() {
                   ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                       {gallery.map((item) => (
-                        <div key={item.id} className="group relative overflow-hidden rounded-lg border bg-white shadow-sm">
+                        <div key={item.id} className="group relative overflow-hidden rounded-lg border bg-card shadow-sm">
                           <img
                             src={item.public_url}
                             alt={item.caption || 'Work photo'}

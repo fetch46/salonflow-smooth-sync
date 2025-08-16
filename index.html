@@ -15,6 +15,19 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@aura_os" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+    <script>
+      (function() {
+        try {
+          var storageKey = 'theme';
+          var theme = localStorage.getItem(storageKey);
+          var mql = window.matchMedia('(prefers-color-scheme: dark)');
+          var wantsDark = theme === 'dark' || ((!theme || theme === 'system') && mql.matches);
+          var root = document.documentElement;
+          if (wantsDark) root.classList.add('dark'); else root.classList.remove('dark');
+        } catch (e) {}
+      })();
+    </script>
   </head>
 
   <body>

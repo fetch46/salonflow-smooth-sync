@@ -710,7 +710,7 @@ export default function CreateJobCard() {
     <FeatureGate feature="job_cards">
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
         {/* Header */}
-        <div className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40">
+        <div className="bg-background border-b border-border shadow-sm sticky top-0 z-40">
           <div className="w-full px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -1413,7 +1413,7 @@ function StepProductsMaterials({
                 const totalItemCost = quantity * (kit.inventory_items.cost_price || 0);
                 
                 return (
-                  <div key={kit.id} className="border border-slate-200 rounded-lg p-4 bg-white">
+                  <div key={kit.id} className="border border-border rounded-lg p-4 bg-card">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3">
