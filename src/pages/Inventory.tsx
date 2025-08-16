@@ -23,6 +23,7 @@ import { useOrganization } from "@/lib/saas/hooks";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useRegionalNumberFormatter } from "@/lib/saas";
 import Papa from "papaparse";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 // --- Type Definitions ---
 type InventoryItem = {
@@ -451,6 +452,253 @@ export default function Inventory() {
   );
   const [importing, setImporting] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState<boolean>(false);
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [csvRows, setCsvRows] = useState<any[]>([]);
+  const [importMode, setImportMode] = useState<'overwrite' | 'update'>('update');
+  const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({});
+
+  const systemFieldDefs: Array<{ key: string; label: string; required?: boolean; synonyms: string[] }> = [
+    { key: 'name', label: 'Name', required: true, synonyms: ['name','product name','item name'] },
+    { key: 'sku', label: 'SKU', synonyms: ['sku','code','item code','product code'] },
+    { key: 'description', label: 'Description', synonyms: ['description','details'] },
+    { key: 'unit', label: 'Unit', synonyms: ['unit','uom','unit of measure'] },
+    { key: 'reorder_point', label: 'Reorder Point', synonyms: ['reorder point','reorder','reorder_point'] },
+    { key: 'cost_price', label: 'Purchase Price', synonyms: ['cost','cost price','purchase price','buy price'] },
+    { key: 'selling_price', label: 'Selling Price', synonyms: ['price','selling price','sale price','sell price'] },
+    { key: 'is_active', label: 'Active', synonyms: ['active','is active','is_taxable'] },
+    { key: 'sales_account_code', label: 'Sales Account Code', synonyms: ['sales account code','sales account','income account code','income account'] },
+    { key: 'purchase_account_code', label: 'Purchase Account Code', synonyms: ['purchase account code','purchase account','expense account code','expense account'] },
+    { key: 'inventory_account_code', label: 'Inventory Account Code', synonyms: ['inventory account code','inventory account','stock account code','stock account'] },
+    { key: 'is_taxable', label: 'Taxable', synonyms: ['taxable','is taxable','is_taxable'] },
+    { key: 'opening_stock_quantity', label: 'Opening Stock Quantity', synonyms: ['opening stock quantity','opening qty','opening quantity','initial quantity'] },
+    { key: 'opening_stock_warehouse_name', label: 'Opening Stock Warehouse Name', synonyms: ['warehouse','warehouse name','opening stock warehouse','stock warehouse'] },
+  ];
+
+  const normalizeHeader = (s: string) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const inferFieldMapping = (headers: string[]) => {
+    const mapping: Record<string, string> = {};
+    for (const def of systemFieldDefs) {
+      let chosen = '';
+      for (const h of headers) {
+        const nh = normalizeHeader(h);
+        if (def.synonyms.map(normalizeHeader).includes(nh)) {
+          chosen = h;
+          break;
+        }
+      }
+      mapping[def.key] = chosen;
+    }
+    return mapping;
+  };
+
+  const parseBooleanString = (val: any): boolean | null => {
+    if (val == null) return null;
+    const s = String(val).trim().toLowerCase();
+    if (!s) return null;
+    if (["true","1","yes","y"].includes(s)) return true;
+    if (["false","0","no","n"].includes(s)) return false;
+    return null;
+  };
+
+  const getMapped = (row: any, key: string) => {
+    const col = fieldMapping[key];
+    if (!col) return undefined;
+    return row[col];
+  };
+
+  const runImportWithMapping = async () => {
+    if (!csvRows.length) { setImportDialogOpen(false); return; }
+    // Validate required mapping
+    const nameMapped = fieldMapping['name'];
+    if (!nameMapped) {
+      toast({ title: 'Mapping required', description: 'Please map the Name field.', variant: 'destructive' });
+      return;
+    }
+    setImporting(true);
+    try {
+      // Build account code -> id map
+      let allAccounts: any[] | null = null;
+      let hasSubtypeInfo = true;
+      try {
+        const res = await supabase
+          .from('accounts')
+          .select('id, account_code, account_type, account_subtype');
+        allAccounts = (res.data as any[]) || null;
+        if (res.error) throw res.error;
+      } catch (err: any) {
+        const message = String(err?.message || '');
+        if (message.includes('account_subtype') || (message.toLowerCase().includes('column') && message.toLowerCase().includes('does not exist'))) {
+          const { data } = await supabase
+            .from('accounts')
+            .select('id, account_code, account_type');
+          allAccounts = (data as any[]) || null;
+          hasSubtypeInfo = false;
+        } else {
+          throw err;
+        }
+      }
+      const codeToId: Record<string, string> = {};
+      for (const a of allAccounts || []) {
+        if (a.account_code) codeToId[String(a.account_code).trim()] = a.id;
+      }
+      // Warehouses map
+      const { data: allWh } = await supabase.from('warehouses').select('id, name');
+      const whNameToId: Record<string, string> = {};
+      for (const w of allWh || []) whNameToId[(w.name || '').trim().toLowerCase()] = w.id;
+
+      let created = 0, changed = 0, failed = 0;
+      for (const raw of csvRows) {
+        try {
+          const nameValRaw = getMapped(raw, 'name');
+          const name = String(nameValRaw || '').trim();
+          if (!name) throw new Error('name is required');
+          const skuRaw = getMapped(raw, 'sku');
+          const sku = String(skuRaw || '').trim();
+          const description = (getMapped(raw, 'description') ?? '') as string;
+          const unit = (String(getMapped(raw, 'unit') || '').trim() || null) as string | null;
+          const reorderPointRaw = getMapped(raw, 'reorder_point');
+          const costPriceRaw = getMapped(raw, 'cost_price');
+          const sellingPriceRaw = getMapped(raw, 'selling_price');
+          const isActiveRaw = getMapped(raw, 'is_active');
+
+          const reorder_point = reorderPointRaw !== undefined && String(reorderPointRaw).trim() !== '' ? parseInt(String(reorderPointRaw)) || 0 : undefined;
+          const cost_price = costPriceRaw !== undefined && String(costPriceRaw).trim() !== '' ? Number(costPriceRaw) : undefined;
+          const selling_price = sellingPriceRaw !== undefined && String(sellingPriceRaw).trim() !== '' ? Number(sellingPriceRaw) : undefined;
+          const is_activeParsed = parseBooleanString(isActiveRaw);
+
+          const baseCreatePayload: any = {
+            name,
+            description: description || null,
+            sku: sku ? sku : null,
+            unit,
+            type: 'good' as const,
+          };
+          if (reorder_point !== undefined) baseCreatePayload.reorder_point = reorder_point;
+          if (cost_price !== undefined) baseCreatePayload.cost_price = cost_price;
+          if (selling_price !== undefined) baseCreatePayload.selling_price = selling_price;
+          if (is_activeParsed !== null) baseCreatePayload.is_active = is_activeParsed;
+
+          // Find existing by SKU if mapped and present, else by name
+          let existing: any = null;
+          if (sku) {
+            const { data } = await supabase.from('inventory_items').select('id, sku').eq('sku', sku).maybeSingle();
+            existing = data || null;
+          } else {
+            const { data } = await supabase.from('inventory_items').select('id, name').eq('name', name).maybeSingle();
+            existing = data || null;
+          }
+
+          let itemId: string;
+          if (existing) {
+            // Do not create duplicates: either overwrite or update the existing one
+            const updatePayload: any = {};
+            if (importMode === 'overwrite') {
+              // Overwrite mapped fields; required name must not be blank
+              updatePayload.name = name;
+              updatePayload.description = description || null;
+              updatePayload.sku = sku ? sku : null;
+              updatePayload.unit = unit;
+              if (reorder_point !== undefined) updatePayload.reorder_point = reorder_point;
+              if (cost_price !== undefined) updatePayload.cost_price = cost_price;
+              if (selling_price !== undefined) updatePayload.selling_price = selling_price;
+              if (is_activeParsed !== null) updatePayload.is_active = is_activeParsed;
+              updatePayload.type = 'good';
+            } else {
+              // Update only non-empty provided fields
+              if (name) updatePayload.name = name;
+              if (description) updatePayload.description = description;
+              if (sku) updatePayload.sku = sku;
+              if (unit) updatePayload.unit = unit;
+              if (reorder_point !== undefined) updatePayload.reorder_point = reorder_point;
+              if (cost_price !== undefined) updatePayload.cost_price = cost_price;
+              if (selling_price !== undefined) updatePayload.selling_price = selling_price;
+              if (is_activeParsed !== null) updatePayload.is_active = is_activeParsed;
+              updatePayload.type = 'good';
+            }
+            const { data, error } = await supabase.from('inventory_items').update(updatePayload).eq('id', existing.id).select('id').single();
+            if (error) throw error;
+            itemId = data.id;
+            changed++;
+          } else {
+            // Create new item
+            const { data, error } = await supabase.from('inventory_items').insert(baseCreatePayload).select('id').single();
+            if (error) throw error;
+            itemId = data.id;
+            created++;
+          }
+
+          // Account mapping via codes
+          const salesCode = String(getMapped(raw, 'sales_account_code') || '').trim();
+          const purchaseCode = String(getMapped(raw, 'purchase_account_code') || '').trim();
+          const inventoryCode = String(getMapped(raw, 'inventory_account_code') || '').trim();
+          const isTaxableParsed = parseBooleanString(getMapped(raw, 'is_taxable'));
+          const salesId = salesCode ? codeToId[salesCode] : null;
+          const purchaseId = purchaseCode ? codeToId[purchaseCode] : null;
+          const inventoryId = inventoryCode ? codeToId[inventoryCode] : null;
+          if (inventoryId && hasSubtypeInfo) {
+            const inv = (allAccounts || []).find(a => a.id === inventoryId);
+            if (!(inv && inv.account_type === 'Asset' && ['Stock', 'Stocks'].includes((inv as any).account_subtype))) {
+              throw new Error('inventory_account_code must be an Asset with subtype Stock/Stocks');
+            }
+          }
+          if (salesId || purchaseId || inventoryId || isTaxableParsed !== null) {
+            const mapPayload = {
+              item_id: itemId,
+              sales_account_id: salesId || null,
+              purchase_account_id: purchaseId || null,
+              inventory_account_id: inventoryId || null,
+              is_taxable: isTaxableParsed ?? false,
+            } as const;
+            try {
+              const res = await supabase.from('inventory_item_accounts').upsert(mapPayload, { onConflict: 'item_id' });
+              if (res.error) throw res.error;
+            } catch (e) {
+              const { data: existingMap } = await supabase
+                .from('inventory_item_accounts')
+                .select('item_id')
+                .eq('item_id', itemId)
+                .maybeSingle();
+              if (existingMap) {
+                const { error } = await supabase.from('inventory_item_accounts').update(mapPayload).eq('item_id', itemId);
+                if (error) throw error;
+              } else {
+                const { error } = await supabase.from('inventory_item_accounts').insert(mapPayload);
+                if (error) throw error;
+              }
+            }
+          }
+
+          // Optional opening stock
+          const openingQtyRaw = getMapped(raw, 'opening_stock_quantity');
+          const openingQty = openingQtyRaw !== undefined && String(openingQtyRaw).trim() !== '' ? Number(openingQtyRaw) : 0;
+          const openingWhName = String(getMapped(raw, 'opening_stock_warehouse_name') || '').trim().toLowerCase();
+          if (openingQty > 0 && openingWhName) {
+            const whId = whNameToId[openingWhName];
+            if (!whId) throw new Error(`Unknown warehouse: ${getMapped(raw, 'opening_stock_warehouse_name')}`);
+            await supabase.from('inventory_levels').upsert({
+              item_id: itemId,
+              warehouse_id: whId,
+              quantity: openingQty,
+            }, { onConflict: 'item_id,warehouse_id' });
+          }
+        } catch (rowErr: any) {
+          failed++;
+        }
+      }
+
+      const actionWord = importMode === 'overwrite' ? 'Overwritten' : 'Updated';
+      toast({ title: 'Import complete', description: `Created: ${created}, ${actionWord}: ${changed}, Failed: ${failed}` });
+      await handleRefresh();
+      setImportDialogOpen(false);
+      setCsvRows([]);
+      setCsvHeaders([]);
+    } catch (err: any) {
+      toast({ title: 'Import failed', description: String(err?.message || err), variant: 'destructive' });
+    } finally {
+      setImporting(false);
+    }
+  };
 
   // Currency formatter
   const { format: formatMoney } = useOrganizationCurrency();
@@ -940,132 +1188,15 @@ export default function Inventory() {
       const rows = parseResult.data || [];
       if (!rows.length) {
         toast({ title: 'No data', description: 'CSV is empty', variant: 'destructive' });
+        setImporting(false);
         return;
       }
-      // Build account code -> id map
-      let allAccounts: any[] | null = null;
-      let hasSubtypeInfo = true;
-      try {
-        const res = await supabase
-          .from('accounts')
-          .select('id, account_code, account_type, account_subtype');
-        allAccounts = (res.data as any[]) || null;
-        if (res.error) throw res.error;
-      } catch (err: any) {
-        const message = String(err?.message || '');
-        if (message.includes('account_subtype') || (message.toLowerCase().includes('column') && message.toLowerCase().includes('does not exist'))) {
-          const { data } = await supabase
-            .from('accounts')
-            .select('id, account_code, account_type');
-          allAccounts = (data as any[]) || null;
-          hasSubtypeInfo = false;
-        } else {
-          throw err;
-        }
-      }
-      const codeToId: Record<string, string> = {};
-      for (const a of allAccounts || []) {
-        if (a.account_code) codeToId[String(a.account_code).trim()] = a.id;
-      }
-      // Warehouses map
-      const { data: allWh } = await supabase.from('warehouses').select('id, name');
-      const whNameToId: Record<string, string> = {};
-      for (const w of allWh || []) whNameToId[(w.name || '').trim().toLowerCase()] = w.id;
-
-      let created = 0, updated = 0, failed = 0;
-      for (const raw of rows) {
-        try {
-          const name = String(raw.name || '').trim();
-          if (!name) throw new Error('name is required');
-          const payload = {
-            name,
-            description: (raw.description || '') || null,
-            sku: (String(raw.sku || '').trim() || null) as string | null,
-            unit: (String(raw.unit || '').trim() || null) as string | null,
-            reorder_point: Number(raw.reorder_point || 0),
-            cost_price: raw.cost_price != null && raw.cost_price !== '' ? Number(raw.cost_price) : null,
-            selling_price: raw.selling_price != null && raw.selling_price !== '' ? Number(raw.selling_price) : null,
-            is_active: String(raw.is_active || 'true').toLowerCase() !== 'false',
-            type: 'good' as const,
-          };
-          // Upsert by SKU if present else by name
-          let existing: any = null;
-          if (payload.sku) {
-            const { data } = await supabase.from('inventory_items').select('id, sku').eq('sku', payload.sku).maybeSingle();
-            existing = data || null;
-          } else {
-            const { data } = await supabase.from('inventory_items').select('id, name').eq('name', payload.name).maybeSingle();
-            existing = data || null;
-          }
-          let itemId: string;
-          if (existing) {
-            const { data, error } = await supabase.from('inventory_items').update(payload).eq('id', existing.id).select('id').single();
-            if (error) throw error;
-            itemId = data.id;
-            updated++;
-          } else {
-            const { data, error } = await supabase.from('inventory_items').insert(payload).select('id').single();
-            if (error) throw error;
-            itemId = data.id;
-            created++;
-          }
-          // Account mapping via codes
-          const salesCode = String(raw.sales_account_code || '').trim();
-          const purchaseCode = String(raw.purchase_account_code || '').trim();
-          const inventoryCode = String(raw.inventory_account_code || '').trim();
-          const isTaxable = String(raw.is_taxable || '').toLowerCase() === 'true';
-          const salesId = salesCode ? codeToId[salesCode] : null;
-          const purchaseId = purchaseCode ? codeToId[purchaseCode] : null;
-          const inventoryId = inventoryCode ? codeToId[inventoryCode] : null;
-          if (inventoryId && hasSubtypeInfo) {
-            // Validate inventory account type/subtype client-side to avoid bad mappings
-            const inv = (allAccounts || []).find(a => a.id === inventoryId);
-            if (!(inv && inv.account_type === 'Asset' && ['Stock', 'Stocks'].includes((inv as any).account_subtype))) {
-              throw new Error('inventory_account_code must be an Asset with subtype Stock/Stocks');
-            }
-          }
-          const mapPayload = {
-            item_id: itemId,
-            sales_account_id: salesId || null,
-            purchase_account_id: purchaseId || null,
-            inventory_account_id: inventoryId || null,
-            is_taxable: !!isTaxable,
-          } as const;
-          try {
-            const res = await supabase.from('inventory_item_accounts').upsert(mapPayload, { onConflict: 'item_id' });
-            if (res.error) throw res.error;
-          } catch (e) {
-            const { data: existingMap } = await supabase
-              .from('inventory_item_accounts')
-              .select('item_id')
-              .eq('item_id', itemId)
-              .maybeSingle();
-            if (existingMap) {
-              const { error } = await supabase.from('inventory_item_accounts').update(mapPayload).eq('item_id', itemId);
-              if (error) throw error;
-            } else {
-              const { error } = await supabase.from('inventory_item_accounts').insert(mapPayload);
-              if (error) throw error;
-            }
-          }
-          // Optional opening stock
-          const openingQty = Number(raw.opening_stock_quantity || 0);
-          const openingWhName = String(raw.opening_stock_warehouse_name || '').trim().toLowerCase();
-          if (openingQty > 0 && openingWhName) {
-            const whId = whNameToId[openingWhName];
-            if (!whId) throw new Error(`Unknown warehouse: ${raw.opening_stock_warehouse_name}`);
-            await supabase.from('inventory_levels').upsert({
-              item_id: itemId,
-              warehouse_id: whId,
-              quantity: openingQty,
-            }, { onConflict: 'item_id,warehouse_id' });
-          }
-        } catch (rowErr: any) {
-          failed++;
-        }
-      }
-      toast({ title: 'Import complete', description: `Created: ${created}, Updated: ${updated}, Failed: ${failed}` });
-      await handleRefresh();
+      const headers = Object.keys(rows[0] || {});
+      setCsvHeaders(headers);
+      setCsvRows(rows);
+      setFieldMapping(inferFieldMapping(headers));
+      setImportMode('update');
+      setImportDialogOpen(true);
     } catch (err: any) {
       toast({ title: 'Import failed', description: String(err?.message || err), variant: 'destructive' });
     } finally {
@@ -1243,6 +1374,52 @@ export default function Inventory() {
                   onChange={handleImportFile}
                   style={{ display: 'none' }}
                 />
+
+                <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+                  <DialogContent className="max-w-3xl">
+                    <DialogHeader>
+                      <DialogTitle>Import Products: Map Fields</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {systemFieldDefs.map((def) => (
+                          <div key={def.key} className="space-y-2">
+                            <Label>{def.label}{def.required ? ' *' : ''}</Label>
+                            <Select value={fieldMapping[def.key] || ''} onValueChange={(v) => setFieldMapping((prev) => ({ ...prev, [def.key]: v === 'none' ? '' : v }))}>
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Not mapped" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Not mapped</SelectItem>
+                                {csvHeaders.map((h) => (
+                                  <SelectItem key={`${def.key}-${h}`} value={h}>{h}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>When a product already exists</Label>
+                        <RadioGroup value={importMode} onValueChange={(v) => setImportMode(v as any)}>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem id="overwrite" value="overwrite" />
+                            <Label htmlFor="overwrite">Overwrite existing items</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem id="update" value="update" />
+                            <Label htmlFor="update">Update existing items (only non-empty values)</Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="button" variant="outline" onClick={() => setImportDialogOpen(false)}>Cancel</Button>
+                      <Button type="button" onClick={runImportWithMapping} disabled={importing}>{importing ? 'Importing…' : 'Start Import'}</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             </CardHeader>
             <CardContent>
