@@ -1,5 +1,5 @@
 
-import { Bell, Search, Settings, User, LogOut, Building2, ChevronDown, ArrowLeft } from "lucide-react";
+import { Bell, Search, Settings, User, LogOut, Building2, ChevronDown, ArrowLeft, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -71,9 +71,9 @@ export function AppTopbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center justify-between px-4">
-        {/* Search */}
-        <div className="flex items-center space-x-4 flex-1 max-w-md">
+      <div className="flex h-16 items-center justify-between px-3 sm:px-4 lg:px-6 w-full">
+        {/* Search - hidden on small screens to keep bar compact */}
+        <div className="hidden md:flex items-center space-x-4 flex-1 max-w-xl">
           <div className="relative w-full">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -84,12 +84,21 @@ export function AppTopbar() {
         </div>
 
         {/* Right side */}
-        <div className="flex items-center space-x-4">
-          {/* Organization Selector */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* POS Button */}
+          <Button
+            onClick={() => navigate('/pos')}
+            className="bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-sm h-9 px-3 sm:px-4"
+          >
+            <CreditCard className="h-4 w-4 mr-0 sm:mr-2" />
+            <span className="hidden sm:inline">POS</span>
+          </Button>
+
+          {/* Organization Selector (hide on small screens) */}
           {organizations && organizations.length > 1 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="flex items-center space-x-2">
+                <Button variant="outline" className="hidden md:inline-flex items-center space-x-2">
                   <Building2 className="h-4 w-4" />
                   <span className="max-w-32 truncate">
                     {organization?.name || 'Select Organization'}
@@ -118,8 +127,10 @@ export function AppTopbar() {
             </DropdownMenu>
           )}
 
-          {/* Subscription Status */}
-          {getSubscriptionBadge()}
+          {/* Subscription Status (hide on small screens) */}
+          <div className="hidden lg:block">
+            {getSubscriptionBadge()}
+          </div>
 
           <ThemeToggle />
 
@@ -203,7 +214,7 @@ export function SuperAdminTopbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center justify-between px-4">
+      <div className="flex h-16 items-center justify-between px-3 sm:px-4 lg:px-6 w-full">
         {/* Left side - Back to App */}
         <div className="flex items-center space-x-4">
           <Button variant="outline" onClick={handleBackToApp} className="flex items-center space-x-2">
