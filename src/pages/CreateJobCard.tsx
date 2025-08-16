@@ -53,6 +53,7 @@ import { format, addMinutes } from "date-fns";
 import { useFeatureGating } from "@/hooks/useFeatureGating";
 import { CreateButtonGate, FeatureGate } from "@/components/features/FeatureGate";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Staff {
   id: string;
@@ -1408,6 +1409,9 @@ function StepProductsMaterials({
     }
     return map;
   }, [serviceKits]);
+  const servicesWithKits = useMemo(() => selectedServices.filter(svc => (kitsByService[svc.id] || []).length > 0), [selectedServices, kitsByService]);
+  const showTabs = servicesWithKits.length > 1;
+  const defaultTab = servicesWithKits[0]?.id || selectedServices[0]?.id;
   return (
     <div className="space-y-8">
       <div className="text-center">
@@ -1426,14 +1430,17 @@ function StepProductsMaterials({
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="space-y-6">
-              {selectedServices.map((svc) => {
-                const kits = kitsByService[svc.id] || [];
-                if (kits.length === 0) return null;
-                return (
-                  <div key={svc.id} className="space-y-4">
-                    <div className="text-base font-semibold text-slate-900">{svc.name}</div>
-                    <div className="space-y-4">
+            {showTabs ? (
+              <Tabs defaultValue={defaultTab} className="space-y-6">
+                <TabsList>
+                  {servicesWithKits.map((svc) => (
+                    <TabsTrigger key={svc.id} value={svc.id}>{svc.name}</TabsTrigger>
+                  ))}
+                </TabsList>
+                {servicesWithKits.map((svc) => {
+                  const kits = kitsByService[svc.id] || [];
+                  return (
+                    <TabsContent key={svc.id} value={svc.id} className="space-y-4">
                       {kits.map((kit) => {
                         const quantity = productsUsed[kit.good_id] || kit.default_quantity || 0;
                         const totalItemCost = quantity * (kit.inventory_items.cost_price || 0);
@@ -1498,11 +1505,89 @@ function StepProductsMaterials({
                           </div>
                         );
                       })}
+                    </TabsContent>
+                  );
+                })}
+              </Tabs>
+            ) : (
+              <div className="space-y-6">
+                {selectedServices.map((svc) => {
+                  const kits = kitsByService[svc.id] || [];
+                  if (kits.length === 0) return null;
+                  return (
+                    <div key={svc.id} className="space-y-4">
+                      <div className="text-base font-semibold text-slate-900">{svc.name}</div>
+                      <div className="space-y-4">
+                        {kits.map((kit) => {
+                          const quantity = productsUsed[kit.good_id] || kit.default_quantity || 0;
+                          const totalItemCost = quantity * (kit.inventory_items.cost_price || 0);
+                          return (
+                            <div key={kit.id} className="border border-border rounded-lg p-4 bg-card">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                      <Package className="w-5 h-5 text-green-600" />
+                                    </div>
+                                    <div>
+                                      <div className="font-medium text-slate-900">{kit.inventory_items.name}</div>
+                                      <div className="text-sm text-slate-600">
+                                        {kit.inventory_items.type} • {formatMoney(kit.inventory_items.cost_price)} per {kit.inventory_items.unit || 'unit'}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="mt-4 grid grid-cols-3 gap-4">
+                                    <div>
+                                      <Label className="text-sm text-slate-600">Default Quantity</Label>
+                                      <div className="text-sm font-medium">{kit.default_quantity}</div>
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm text-slate-600">Quantity Used</Label>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <Button
+                                          variant="outline"
+                                          size="icon"
+                                          className="h-8 w-8"
+                                          onClick={() => onQuantityChange(kit.good_id, Math.max(0, quantity - 1))}
+                                        >
+                                          <Minus className="w-3 h-3" />
+                                        </Button>
+                                        <Input
+                                          type="number"
+                                          min="0"
+                                          step="0.1"
+                                          value={quantity}
+                                          onChange={(e) => onQuantityChange(kit.good_id, parseFloat(e.target.value) || 0)}
+                                          className="w-20 text-center"
+                                        />
+                                        <Button
+                                          variant="outline"
+                                          size="icon"
+                                          className="h-8 w-8"
+                                          onClick={() => onQuantityChange(kit.good_id, quantity + 1)}
+                                        >
+                                          <Plus className="w-3 h-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm text-slate-600">Total Cost</Label>
+                                      <div className="text-sm font-medium text-green-600">
+                                        {formatMoney(totalItemCost)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
             <Separator className="my-6" />
             <div className="flex justify-between items-center">
               <div className="text-lg font-semibold text-slate-900">
