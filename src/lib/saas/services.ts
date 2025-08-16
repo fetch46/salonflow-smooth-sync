@@ -18,6 +18,8 @@ import { createSaasError, sanitizeOrganizationData } from './utils'
 export class OrganizationService {
   static async getUserOrganizations(userId: string): Promise<OrganizationUser[]> {
     try {
+      console.log('Fetching organizations for user:', userId)
+      
       // Primary approach: fetch memberships with embedded organization via foreign relation
       const { data, error } = await supabase
         .from('organization_users')
@@ -29,27 +31,37 @@ export class OrganizationService {
         .eq('is_active', true)
 
       if (error) {
-        // Fallback: fetch memberships first, then fetch organizations separately
         console.warn('Relational fetch for user organizations failed; attempting fallback without join', error)
 
+        // Fallback: fetch memberships first, then fetch organizations separately
         const { data: memberships, error: membershipsError } = await supabase
           .from('organization_users')
           .select('id, organization_id, user_id, role, is_active, created_at, updated_at')
           .eq('user_id', userId)
           .eq('is_active', true)
 
-        if (membershipsError) throw membershipsError
+        if (membershipsError) {
+          console.error('Failed to fetch memberships:', membershipsError)
+          throw membershipsError
+        }
 
-        if (!memberships || memberships.length === 0) return []
+        if (!memberships || memberships.length === 0) {
+          console.log('No memberships found for user')
+          return []
+        }
 
         const orgIds = Array.from(new Set(memberships.map(m => m.organization_id)))
+        console.log('Fetching organizations for IDs:', orgIds)
 
         const { data: orgs, error: orgsError } = await supabase
           .from('organizations')
           .select('*')
           .in('id', orgIds)
 
-        if (orgsError) throw orgsError
+        if (orgsError) {
+          console.error('Failed to fetch organizations:', orgsError)
+          throw orgsError
+        }
 
         const orgIdToOrg = new Map<string, Organization>()
         ;(orgs || []).forEach(o => orgIdToOrg.set(o.id, o as Organization))
@@ -59,11 +71,14 @@ export class OrganizationService {
           organizations: orgIdToOrg.get(m.organization_id) || null,
         })) as OrganizationUser[]
 
+        console.log('Successfully fetched organizations via fallback:', result)
         return result
       }
 
+      console.log('Successfully fetched organizations:', data)
       return data || []
     } catch (error) {
+      console.error('Error in getUserOrganizations:', error)
       throw createSaasError('SERVER_ERROR', 'Failed to fetch user organizations', error)
     }
   }
@@ -141,6 +156,8 @@ export class OrganizationService {
 export class SubscriptionService {
   static async getOrganizationSubscription(organizationId: string): Promise<OrganizationSubscription | null> {
     try {
+      console.log('Fetching subscription for organization:', organizationId)
+      
       const { data, error } = await supabase
         .from('organization_subscriptions')
         .select(`
@@ -148,11 +165,20 @@ export class SubscriptionService {
           subscription_plans (*)
         `)
         .eq('organization_id', organizationId)
-        .single()
+        .order('created_at', { ascending: false })
+        .limit(1)
 
-      if (error && error.code !== 'PGRST116') throw error
-      return data
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching subscription:', error)
+        throw error
+      }
+
+      // Handle multiple subscriptions by taking the first one
+      const subscription = Array.isArray(data) ? data[0] : data
+      console.log('Fetched subscription:', subscription)
+      return subscription || null
     } catch (error) {
+      console.error('Error in getOrganizationSubscription:', error)
       throw createSaasError('SERVER_ERROR', 'Failed to fetch subscription', error)
     }
   }
@@ -465,7 +491,7 @@ export class UsageService {
     try {
       const usage: Record<string, number> = {}
 
-      // Get counts for various features
+      // Get counts for various features - handle missing tables gracefully
       const queries = [
         { feature: 'appointments', table: 'appointments' },
         { feature: 'clients', table: 'clients' },
@@ -486,10 +512,13 @@ export class UsageService {
               .select('*', { count: 'exact', head: true })
               .eq('organization_id', organizationId)
 
-            if (error) throw error
+            if (error) {
+              console.warn(`Table ${table} not accessible:`, error)
+              return { feature, count: 0 }
+            }
             return { feature, count: count || 0 }
           } catch (err) {
-            console.error(`Error fetching ${feature} count:`, err)
+            console.warn(`Error fetching ${feature} count:`, err)
             return { feature, count: 0 }
           }
         })
@@ -501,7 +530,7 @@ export class UsageService {
         }
       })
 
-      // Get monthly usage
+      // Get monthly usage - handle errors gracefully
       const now = new Date()
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
 
@@ -514,12 +543,13 @@ export class UsageService {
 
         usage.monthly_appointments = monthlyAppointments || 0
       } catch (err) {
-        console.error('Error fetching monthly appointments:', err)
+        console.warn('Error fetching monthly appointments:', err)
         usage.monthly_appointments = 0
       }
 
       return usage
     } catch (error) {
+      console.error('Error in getUsageMetrics:', error)
       throw createSaasError('SERVER_ERROR', 'Failed to fetch usage metrics', error)
     }
   }
