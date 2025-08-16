@@ -21,7 +21,6 @@ import {
   Trash2,
   Clock,
   DollarSign,
-  Tag,
   TrendingUp,
   Package,
   Star,
@@ -864,8 +863,6 @@ export default function Services() {
     const inactive = services.length - active;
     const totalRevenue = serviceMetrics.totalRevenue;
     const totalBookings = serviceMetrics.totalBookings;
-    const avgPrice = services.length > 0 ? services.reduce((sum, s) => sum + s.price, 0) / services.length : 0;
-    const avgDuration = services.length > 0 ? services.reduce((sum, s) => sum + s.duration_minutes, 0) / services.length : 0;
     const avgRating = services.length > 0 ? services.reduce((sum, s) => sum + (s.avg_rating || 0), 0) / services.length : 0;
     const bestSelling = serviceMetrics.bestSelling;
     const categoriesStats = serviceMetrics.categoriesStats;
@@ -875,8 +872,6 @@ export default function Services() {
       inactive,
       totalRevenue,
       totalBookings,
-      avgPrice,
-      avgDuration,
       avgRating,
       bestSelling,
       categoriesStats,
@@ -954,7 +949,7 @@ export default function Services() {
       </div>
 
       {/* Enhanced Statistics Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
         <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600 opacity-100" />
           <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
@@ -983,33 +978,7 @@ export default function Services() {
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-violet-600 opacity-100" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Avg Price</CardTitle>
-            <Tag className="h-4 w-4 text-white/80" />
-          </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{formatPrice(dashboard.avgPrice)}</div>
-            <p className="text-xs text-white/80">
-              Per service
-            </p>
-          </CardContent>
-        </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-500 to-amber-600 opacity-100" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Avg Duration</CardTitle>
-            <Clock className="h-4 w-4 text-white/80" />
-          </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{formatDuration(dashboard.avgDuration)}</div>
-            <p className="text-xs text-white/80">
-              Service time
-            </p>
-          </CardContent>
-        </Card>
 
         <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
           <div className="absolute inset-0 bg-gradient-to-br from-pink-500 to-pink-600 opacity-100" />
