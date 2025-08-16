@@ -33,7 +33,14 @@ export default function Journal() {
   const [posting, setPosting] = useState<boolean>(false);
   const [search, setSearch] = useState<string>("");
 
-  const baseUrl = (import.meta.env.VITE_SERVER_URL || "/api").replace(/\/$/, "");
+  // Replace server-based account loading with Supabase chart of accounts
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { useSaas } = require("@/lib/saas");
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { supabase } = require("@/integrations/supabase/client");
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { postMultiLineEntry } = require("@/utils/ledger");
+  const { organization } = useSaas();
 
   useEffect(() => {
     document.title = "Journal | SalonOS";
@@ -41,18 +48,49 @@ export default function Journal() {
 
   const loadAccounts = async (query: string = "") => {
     try {
+      if (!organization?.id) {
+        setAccounts([]);
+        return;
+      }
       setLoadingAccounts(true);
-      const params = new URLSearchParams();
-      if (query) params.set('search', query);
-      params.set('page', '1');
-      params.set('pageSize', '100');
-      const resp = await fetch(`${baseUrl}/accounts?${params.toString()}`, {
-        headers: (() => { const t = localStorage.getItem('jwt_token'); return t ? { Authorization: `Bearer ${t}` } : {}; })(),
-      });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const js = await resp.json();
-      const items = Array.isArray(js.items) ? js.items : [];
-      setAccounts(items.map((a: any) => ({ id: a.id, code: a.code, name: a.name, category: a.category })));
+      const isSearch = query.trim().length > 0;
+      let builder = supabase
+        .from("accounts")
+        .select("id, account_code, account_name, account_type, account_subtype, is_active")
+        .eq("organization_id", organization.id)
+        .eq("is_active", true)
+        .order("account_code", { ascending: true });
+      if (isSearch) {
+        builder = builder.or(
+          `account_code.ilike.%${query}%,account_name.ilike.%${query}%,account_type.ilike.%${query}%,account_subtype.ilike.%${query}%`
+        );
+      }
+      const { data, error } = await builder;
+      if (error) throw error;
+      setAccounts(
+        (data || []).map((a: any) => ({
+          id: a.id,
+          code: a.account_code,
+          name: a.account_name,
+          category: a.account_type,
+        }))
+      );
+
+      // If no accounts exist, attempt to initialize defaults
+      if (((data || []).length === 0) && organization?.id) {
+        try {
+          await supabase.rpc('setup_new_organization', { org_id: organization.id });
+          const { data: afterInit } = await supabase
+            .from("accounts")
+            .select("id, account_code, account_name, account_type")
+            .eq("organization_id", organization.id)
+            .eq("is_active", true)
+            .order("account_code", { ascending: true });
+          setAccounts((afterInit || []).map((a: any) => ({ id: a.id, code: a.account_code, name: a.account_name, category: a.account_type })));
+        } catch (initErr) {
+          console.warn('Account initialization failed', initErr);
+        }
+      }
     } catch (e: any) {
       console.error(e);
       setAccounts([]);
@@ -63,7 +101,8 @@ export default function Journal() {
 
   useEffect(() => {
     loadAccounts();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organization?.id]);
 
   const totals = useMemo(() => {
     const debit = lines.reduce((sum, l) => sum + (Number(l.debit) || 0), 0);
@@ -113,26 +152,19 @@ export default function Journal() {
         return;
       }
       setPosting(true);
-      const body = {
+      const success = await postMultiLineEntry({
         date,
-        memo: memo || null,
+        description: memo || undefined,
+        referenceType: 'manual_journal',
+        referenceId: undefined,
         lines: lines.map((l) => ({
           accountId: l.accountId,
-          description: l.description || null,
+          description: l.description || undefined,
           debit: Number(l.debit) || 0,
           credit: Number(l.credit) || 0,
         })),
-      };
-      const resp = await fetch(`${baseUrl}/journal`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(localStorage.getItem('jwt_token') ? { Authorization: `Bearer ${localStorage.getItem('jwt_token')}` } : {}),
-        },
-        body: JSON.stringify(body),
       });
-      const js = await resp.json();
-      if (!resp.ok) throw new Error(js?.error || `HTTP ${resp.status}`);
+      if (!success) throw new Error("Failed to post journal entry");
       toast.success("Journal entry posted");
       // Reset form for next entry
       setMemo("");
