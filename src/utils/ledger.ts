@@ -40,12 +40,14 @@ async function accountTransactionsSupportsLocationId(): Promise<boolean> {
 
 async function findAccountIdBySubtype(organizationId: string, subtype: string): Promise<string | null> {
   try {
-    // Prefer account_subtype match
+    // Prefer account_subtype match (allow singular/plural)
+    const acceptable = [subtype];
+    if (subtype === 'Stock') acceptable.push('Stocks');
     const { data, error } = await supabase
       .from("accounts")
       .select("id, account_code, account_name, account_subtype")
       .eq("organization_id", organizationId)
-      .eq("account_subtype", subtype)
+      .in("account_subtype", acceptable)
       .limit(1);
     if (!error && data && data.length) return data[0].id;
   } catch {}

@@ -229,7 +229,7 @@ export default function ProductView() {
         const accounts = accs || [];
         setIncomeAccounts(accounts.filter((a: any) => a.account_type === 'Income'));
         setExpenseAccounts(accounts.filter((a: any) => a.account_type === 'Expense'));
-        setAssetAccounts(accounts.filter((a: any) => a.account_type === 'Asset' && (!('account_subtype' in a) || a.account_subtype === 'Stock')));
+        setAssetAccounts(accounts.filter((a: any) => a.account_type === 'Asset' && (!('account_subtype' in a) || ['Stock','Stocks'].includes((a as any).account_subtype))));
       } catch (e) {
         // ignore
       } finally {

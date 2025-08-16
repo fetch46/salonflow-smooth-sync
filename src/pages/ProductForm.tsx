@@ -88,7 +88,7 @@ export default function ProductForm() {
         const accounts = accs || [];
         setIncomeAccounts(accounts.filter((a: any) => a.account_type === 'Income'));
         setExpenseAccounts(accounts.filter((a: any) => a.account_type === 'Expense'));
-        setAssetAccounts(accounts.filter((a: any) => a.account_type === 'Asset' && (!('account_subtype' in a) || a.account_subtype === 'Stock')));
+        setAssetAccounts(accounts.filter((a: any) => a.account_type === 'Asset' && (!('account_subtype' in a) || ['Stock','Stocks'].includes((a as any).account_subtype))));
       } catch (e) {
         console.error('Failed to load accounts', e);
       } finally {
@@ -116,12 +116,27 @@ export default function ProductForm() {
         return;
       }
 
-      const payload = {
-        ...formData,
-        reorder_point: Number(formData.reorder_point || 0),
-        cost_price: Number(formData.cost_price || 0),
-        selling_price: Number(formData.selling_price || 0),
-      };
+             const payload = {
+         ...formData,
+         reorder_point: Number(formData.reorder_point || 0),
+         cost_price: Number(formData.cost_price || 0),
+         selling_price: Number(formData.selling_price || 0),
+       };
+
+       // Enforce inventory account subtype Stock/Stocks client-side
+       try {
+         const { data: invAcc } = await supabase
+           .from('accounts')
+           .select('id, account_type, account_subtype')
+           .eq('id', formData.inventory_account_id)
+           .maybeSingle();
+         if (!invAcc || invAcc.account_type !== 'Asset' || !(['Stock','Stocks'].includes((invAcc as any).account_subtype))) {
+           throw new Error('Inventory account must be an Asset with subtype Stock');
+         }
+       } catch (err) {
+         toast({ title: 'Invalid inventory account', description: 'Select an Asset account with subtype Stock', variant: 'destructive' });
+         return;
+       }
 
       const { data: inserted, error } = await supabase
         .from("inventory_items")
