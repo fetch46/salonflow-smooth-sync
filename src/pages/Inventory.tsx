@@ -690,6 +690,39 @@ export default function Inventory() {
     }
   };
 
+  const handleDeleteItem = async (item: InventoryItem) => {
+    const confirm = window.confirm(`Are you sure you want to delete product "${item.name}"? This action cannot be undone.`);
+    if (!confirm) return;
+
+    try {
+      const { count: serviceKitCount, error: serviceKitError } = await supabase
+        .from("service_kits")
+        .select("id", { count: "exact", head: true })
+        .eq("good_id", item.id);
+
+      if (serviceKitError) {
+        throw new Error("Failed to check service kits usage.");
+      }
+
+      if (serviceKitCount && serviceKitCount > 0) {
+        toast({
+          title: "Cannot Delete",
+          description: `This product is used in ${serviceKitCount} service kit(s). Please remove it from those kits first.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { error } = await supabase.from("inventory_items").delete().eq("id", item.id);
+      if (error) throw error;
+      toast({ title: "Deleted", description: "Product deleted successfully" });
+      fetchData();
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: "Error", description: String(err?.message || "Failed to delete product"), variant: "destructive" });
+    }
+  };
+
   const allGoodsItems = items.filter(item => item.type === 'good');
   const activeGoodsItems = allGoodsItems.filter(item => item.is_active);
   const displayedGoodsItems = statusFilter === 'all' ? allGoodsItems : statusFilter === 'active' ? activeGoodsItems : allGoodsItems.filter(item => !item.is_active);
@@ -1005,24 +1038,18 @@ export default function Inventory() {
                                       Action
                                     </Button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onSelect={() => navigate(`/inventory/${item.id}`)}>
-                                      <Eye className="w-4 h-4 mr-2" /> View Product
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => handleEditItem(item)}>
-                                      <Edit className="w-4 h-4 mr-2" /> Edit
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    {item.is_active ? (
-                                      <DropdownMenuItem onSelect={() => handleDeactivateItem(item)} className="text-red-600">
-                                        <Trash2 className="w-4 h-4 mr-2" /> Deactivate
-                                      </DropdownMenuItem>
-                                    ) : (
-                                      <DropdownMenuItem onSelect={() => handleActivateItem(item)} className="text-green-600">
-                                        <CheckCircle2 className="w-4 h-4 mr-2" /> Activate
-                                      </DropdownMenuItem>
-                                    )}
-                                  </DropdownMenuContent>
+                                                                     <DropdownMenuContent align="end">
+                                     <DropdownMenuItem onSelect={() => navigate(`/inventory/${item.id}`)}>
+                                       <Eye className="w-4 h-4 mr-2" /> View Product
+                                     </DropdownMenuItem>
+                                     <DropdownMenuItem onSelect={() => handleEditItem(item)}>
+                                       <Edit className="w-4 h-4 mr-2" /> Edit
+                                     </DropdownMenuItem>
+                                     <DropdownMenuSeparator />
+                                     <DropdownMenuItem onSelect={() => handleDeleteItem(item)} className="text-red-600">
+                                       <Trash2 className="w-4 h-4 mr-2" /> Delete
+                                     </DropdownMenuItem>
+                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </TableCell>
                             </TableRow>
