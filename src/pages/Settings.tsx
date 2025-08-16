@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Building, Users, CreditCard, MessageSquare, MapPin, Plus, Edit2, Trash2, Crown, Shield, User } from "lucide-react";
+import { Building, Users, CreditCard, MessageSquare, MapPin, Plus, Edit2, Trash2, Crown, Shield, User, Lightbulb } from "lucide-react";
 import { Dialog as UIDialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { usePermissions } from "@/lib/saas/hooks";
 import { toast } from "sonner";
@@ -25,8 +25,13 @@ export default function Settings() {
   useEffect(() => {
     const tabParam = searchParams.get("tab");
     if (tabParam && tabParam !== activeTab) {
-      // Map deprecated 'users' tab to the new 'roles' tab
-      setActiveTab(tabParam === 'users' ? 'roles' : tabParam);
+      setActiveTab(
+        tabParam === 'users'
+          ? 'roles'
+          : tabParam === 'regional' || tabParam === 'organization'
+          ? 'company'
+          : tabParam
+      );
     }
   }, [searchParams]);
 
@@ -68,6 +73,14 @@ phone: "",
   type AccountOption = { id: string; account_code: string; account_name: string; account_subtype?: string | null }
   const [depositAccounts, setDepositAccounts] = useState<AccountOption[]>([])
   const [depositAccountMap, setDepositAccountMap] = useState<Record<string, string>>({})
+
+  // Accounting & Bookkeeping: Suggestions used across modules
+  type AccountingSuggestions = { memo_templates: string[]; narration_phrases: string[]; reference_prefixes: string[] }
+  const [accountingSuggestions, setAccountingSuggestions] = useState<AccountingSuggestions>({
+    memo_templates: [],
+    narration_phrases: [],
+    reference_prefixes: [],
+  })
 
   // Users & Roles State
   const [roles, setRoles] = useState([
@@ -369,6 +382,13 @@ phone: "",
       // Initialize deposit account mapping from org settings
       const map = (s.default_deposit_accounts_by_method as Record<string, string>) || {}
       setDepositAccountMap(map)
+      // Load accounting suggestions
+      const sug = (s.accounting_suggestions as any) || {}
+      setAccountingSuggestions({
+        memo_templates: Array.isArray(sug.memo_templates) ? sug.memo_templates : [],
+        narration_phrases: Array.isArray(sug.narration_phrases) ? sug.narration_phrases : [],
+        reference_prefixes: Array.isArray(sug.reference_prefixes) ? sug.reference_prefixes : [],
+      })
     }
   }, [organization])
 
@@ -573,6 +593,22 @@ phone: "",
     }
   }
 
+  const handleSaveAccountingSuggestions = async () => {
+    if (!organization) return toast.error('No organization selected');
+    try {
+      await updateOrganization(organization.id, {
+        settings: {
+          ...(organization.settings as any),
+          accounting_suggestions: accountingSuggestions,
+        },
+      } as any)
+      toast.success('Accounting suggestions updated')
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to save suggestions')
+    }
+  }
+
   const fetchStockLocations = async () => {
     if (!organization) return;
     try {
@@ -728,7 +764,7 @@ phone: "",
         <TabsList className="flex h-auto w-full flex-col items-stretch gap-2 rounded-lg border bg-background p-2 sticky top-16 z-30">
           <TabsTrigger value="company" className="justify-start gap-2 data-[state=active]:bg-muted">
             <Building className="w-4 h-4" />
-            Company
+            Organization
           </TabsTrigger>
           <TabsTrigger value="roles" className="justify-start gap-2 data-[state=active]:bg-muted">
             <Shield className="w-4 h-4" />
@@ -754,27 +790,24 @@ phone: "",
             <CreditCard className="w-4 h-4" />
             Accounting
           </TabsTrigger>
-          <TabsTrigger value="regional" className="justify-start gap-2 data-[state=active]:bg-muted">
-            <Globe className="w-4 h-4" />
-            Regional Settings
-          </TabsTrigger>
+
         </TabsList>
 
         <div className="space-y-6 min-h-[50vh]">
-          {/* Company Settings */}
-          <TabsContent value="company">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building className="h-5 w-5 text-pink-600" />
-                  Company Information
-                </CardTitle>
-                <CardDescription>
-                  Update your business details and preferences
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleCompanySubmit} className="space-y-6">
+                     {/* Organization Settings */}
+           <TabsContent value="company">
+             <Card>
+               <CardHeader>
+                 <CardTitle className="flex items-center gap-2">
+                   <Building className="h-5 w-5 text-pink-600" />
+                   Organization Information
+                 </CardTitle>
+                                 <CardDescription>
+                   Update your organization details, regional formatting, and preferences
+                 </CardDescription>
+               </CardHeader>
+               <CardContent>
+                 <form onSubmit={handleCompanySubmit} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="name">Business Name</Label>
@@ -850,115 +883,108 @@ phone: "",
                     </div>
                   </div>
 
-                  <div className="flex justify-end">
-                    <Button type="submit">Save Changes</Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                                     {/* Regional & Formatting - merged here */}
+                   <div className="pt-2 border-t mt-2">
+                     <div className="flex items-center gap-2 mb-2">
+                       <Globe className="h-4 w-4 text-pink-600" />
+                       <h4 className="font-semibold">Regional & Formatting</h4>
+                     </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div className="space-y-2">
+                         <Label>Date format</Label>
+                         <Select
+                           value={regionalSettings.date_format}
+                           onValueChange={(v) => setRegionalSettings(s => ({ ...s, date_format: v }))}
+                         >
+                           <SelectTrigger>
+                             <SelectValue placeholder="Select date format" />
+                           </SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value="MMM dd, yyyy">Jan 31, 2025</SelectItem>
+                             <SelectItem value="dd/MM/yyyy">31/01/2025</SelectItem>
+                             <SelectItem value="MM/dd/yyyy">01/31/2025</SelectItem>
+                             <SelectItem value="yyyy-MM-dd">2025-01-31</SelectItem>
+                           </SelectContent>
+                         </Select>
+                       </div>
+                       <div className="space-y-2">
+                         <Label>Time format</Label>
+                         <Select
+                           value={regionalSettings.time_format}
+                           onValueChange={(v) => setRegionalSettings(s => ({ ...s, time_format: v }))}
+                         >
+                           <SelectTrigger>
+                             <SelectValue placeholder="Select time format" />
+                           </SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value="12h">12-hour (h:mm a)</SelectItem>
+                             <SelectItem value="24h">24-hour (HH:mm)</SelectItem>
+                           </SelectContent>
+                         </Select>
+                       </div>
+                     </div>
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                       <div className="space-y-2">
+                         <Label>Thousand separator</Label>
+                         <Select
+                           value={regionalSettings.thousand_separator}
+                           onValueChange={(v) => setRegionalSettings(s => ({ ...s, thousand_separator: v }))}
+                         >
+                           <SelectTrigger>
+                             <SelectValue />
+                           </SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value=",">Comma ,</SelectItem>
+                             <SelectItem value=".">Dot .</SelectItem>
+                             <SelectItem value=" ">Space ␠</SelectItem>
+                             <SelectItem value="'">Apostrophe '</SelectItem>
+                           </SelectContent>
+                         </Select>
+                       </div>
+                       <div className="space-y-2">
+                         <Label>Decimal separator</Label>
+                         <Select
+                           value={regionalSettings.decimal_separator}
+                           onValueChange={(v) => setRegionalSettings(s => ({ ...s, decimal_separator: v }))}
+                         >
+                           <SelectTrigger>
+                             <SelectValue />
+                           </SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value=".">Dot .</SelectItem>
+                             <SelectItem value=",">Comma ,</SelectItem>
+                           </SelectContent>
+                         </Select>
+                       </div>
+                       <div className="space-y-2">
+                         <Label>Currency decimals</Label>
+                         <Select
+                           value={String(regionalSettings.currency_decimals)}
+                           onValueChange={(v) => setRegionalSettings(s => ({ ...s, currency_decimals: parseInt(v, 10) }))}
+                         >
+                           <SelectTrigger>
+                             <SelectValue />
+                           </SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value="0">0</SelectItem>
+                             <SelectItem value="2">2</SelectItem>
+                             <SelectItem value="3">3</SelectItem>
+                           </SelectContent>
+                         </Select>
+                       </div>
+                     </div>
+                   </div>
 
-          {/* Regional Settings */}
-          <TabsContent value="regional">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Globe className="h-5 w-5 text-pink-600" />
-                  Regional & Formatting
-                </CardTitle>
-                <CardDescription>Configure date/time and currency number formatting used across the app</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label>Date format</Label>
-                    <Select
-                      value={regionalSettings.date_format}
-                      onValueChange={(v) => setRegionalSettings(s => ({ ...s, date_format: v }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select date format" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="MMM dd, yyyy">Jan 31, 2025</SelectItem>
-                        <SelectItem value="dd/MM/yyyy">31/01/2025</SelectItem>
-                        <SelectItem value="MM/dd/yyyy">01/31/2025</SelectItem>
-                        <SelectItem value="yyyy-MM-dd">2025-01-31</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Time format</Label>
-                    <Select
-                      value={regionalSettings.time_format}
-                      onValueChange={(v) => setRegionalSettings(s => ({ ...s, time_format: v }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select time format" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="12h">12-hour (h:mm a)</SelectItem>
-                        <SelectItem value="24h">24-hour (HH:mm)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-                  <div className="space-y-2">
-                    <Label>Thousand separator</Label>
-                    <Select
-                      value={regionalSettings.thousand_separator}
-                      onValueChange={(v) => setRegionalSettings(s => ({ ...s, thousand_separator: v }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                                            <SelectContent>
-                        <SelectItem value=",">Comma ,</SelectItem>
-                        <SelectItem value=".">Dot .</SelectItem>
-                        <SelectItem value=" ">Space ␠</SelectItem>
-                        <SelectItem value="'">Apostrophe '</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Decimal separator</Label>
-                    <Select
-                      value={regionalSettings.decimal_separator}
-                      onValueChange={(v) => setRegionalSettings(s => ({ ...s, decimal_separator: v }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                                            <SelectContent>
-                        <SelectItem value=".">Dot .</SelectItem>
-                        <SelectItem value=",">Comma ,</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Currency decimals</Label>
-                    <Select
-                      value={String(regionalSettings.currency_decimals)}
-                      onValueChange={(v) => setRegionalSettings(s => ({ ...s, currency_decimals: parseInt(v, 10) }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">0</SelectItem>
-                        <SelectItem value="2">2</SelectItem>
-                        <SelectItem value="3">3</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="flex justify-end mt-6">
-                  <Button onClick={handleCompanySubmit}>Save Changes</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                   <div className="flex justify-end">
+                     <Button type="submit">Save Changes</Button>
+                   </div>
+                 </form>
+               </CardContent>
+             </Card>
+           </TabsContent>
+
+          
+              
 
           {/* Users & Roles - Redesigned */}
           <TabsContent value="roles" className="space-y-6">
@@ -1622,68 +1648,122 @@ phone: "",
             </UIDialog>
           </TabsContent>
 
-          {/* Accounting - Default Deposit Accounts */}
-          <TabsContent value="accounting">
-            <Card>
-              <CardHeader>
-                <CardTitle>Tax Settings</CardTitle>
-                <CardDescription>Set your default sales tax rate</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="tax_rate_percent">Tax Rate (%)</Label>
-                    <Input
-                      id="tax_rate_percent"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={taxRatePercent}
-                      onChange={(e) => setTaxRatePercent(e.target.value)}
-                      placeholder="e.g. 8.5"
-                    />
-                    <p className="text-xs text-muted-foreground">This rate will be used across POS, Invoices and Purchases.</p>
-                  </div>
-                </div>
-                <div className="flex justify-end">
-                  <Button onClick={handleSaveTaxRate}>Save</Button>
-                </div>
-              </CardContent>
-            </Card>
+                     {/* Accounting */}
+           <TabsContent value="accounting">
+             <Card>
+               <CardHeader>
+                 <CardTitle>Tax Settings</CardTitle>
+                 <CardDescription>Set your default sales tax rate</CardDescription>
+               </CardHeader>
+               <CardContent className="space-y-4">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                   <div className="space-y-2">
+                     <Label htmlFor="tax_rate_percent">Tax Rate (%)</Label>
+                     <Input
+                       id="tax_rate_percent"
+                       type="number"
+                       step="0.01"
+                       min="0"
+                       value={taxRatePercent}
+                       onChange={(e) => setTaxRatePercent(e.target.value)}
+                       placeholder="e.g. 8.5"
+                     />
+                     <p className="text-xs text-muted-foreground">This rate will be used across POS, Invoices and Purchases.</p>
+                   </div>
+                 </div>
+                 <div className="flex justify-end">
+                   <Button onClick={handleSaveTaxRate}>Save</Button>
+                 </div>
+               </CardContent>
+             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Default Deposit Accounts</CardTitle>
-                <CardDescription>Map payment methods to the accounts where funds are deposited</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {(["cash", "mpesa", "card", "bank_transfer"] as const).map((methodKey) => (
-                  <div key={methodKey} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                    <div className="md:col-span-1">
-                      <Label className="text-sm capitalize">{methodKey.replace("_", " ")}</Label>
-                      <div className="text-xs text-muted-foreground">Select the default account to deposit {methodKey.replace("_", " ")} payments</div>
-                    </div>
-                    <div className="md:col-span-2">
-                      <Select value={depositAccountMap[methodKey] === undefined || depositAccountMap[methodKey] === "" ? "__none__" : depositAccountMap[methodKey]} onValueChange={(v) => setDepositAccountMap(prev => ({ ...prev, [methodKey]: v === "__none__" ? "" : v }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Choose account" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__none__">— None (fallback to Cash/Bank) —</SelectItem>
-                          {depositAccounts.map(acc => (
-                            <SelectItem key={acc.id} value={acc.id}>{acc.account_code} · {acc.account_name}{acc.account_subtype ? ` (${acc.account_subtype})` : ""}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                ))}
-                <div className="flex justify-end">
-                  <Button onClick={handleSaveDepositAccounts}>Save</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+             <Card>
+               <CardHeader>
+                 <CardTitle>Default Deposit Accounts</CardTitle>
+                 <CardDescription>Map payment methods to the accounts where funds are deposited</CardDescription>
+               </CardHeader>
+               <CardContent className="space-y-4">
+                 {(["cash", "mpesa", "card", "bank_transfer"] as const).map((methodKey) => (
+                   <div key={methodKey} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                     <div className="md:col-span-1">
+                       <Label className="text-sm capitalize">{methodKey.replace("_", " ")}</Label>
+                       <div className="text-xs text-muted-foreground">Select the default account to deposit {methodKey.replace("_", " ")} payments</div>
+                     </div>
+                     <div className="md:col-span-2">
+                       <Select value={depositAccountMap[methodKey] === undefined || depositAccountMap[methodKey] === "" ? "__none__" : depositAccountMap[methodKey]} onValueChange={(v) => setDepositAccountMap(prev => ({ ...prev, [methodKey]: v === "__none__" ? "" : v }))}>
+                         <SelectTrigger>
+                           <SelectValue placeholder="Choose account" />
+                         </SelectTrigger>
+                         <SelectContent>
+                           <SelectItem value="__none__">— None (fallback to Cash/Bank) —</SelectItem>
+                           {depositAccounts.map(acc => (
+                             <SelectItem key={acc.id} value={acc.id}>{acc.account_code} · {acc.account_name}{acc.account_subtype ? ` (${acc.account_subtype})` : ""}</SelectItem>
+                           ))}
+                         </SelectContent>
+                       </Select>
+                     </div>
+                   </div>
+                 ))}
+                 <div className="flex justify-end">
+                   <Button onClick={handleSaveDepositAccounts}>Save</Button>
+                 </div>
+               </CardContent>
+             </Card>
+
+             <Card>
+               <CardHeader>
+                 <CardTitle className="flex items-center gap-2">
+                   <Lightbulb className="w-4 h-4 text-amber-500" />
+                   Suggestions
+                 </CardTitle>
+                 <CardDescription>These suggestions are available across Accounting and Bookkeeping modules</CardDescription>
+               </CardHeader>
+               <CardContent className="space-y-6">
+                 <div>
+                   <Label className="block mb-2">Memo templates</Label>
+                   <div className="space-y-2">
+                     {accountingSuggestions.memo_templates.map((t, i) => (
+                       <div key={`m-${i}`} className="flex gap-2">
+                         <Input value={t} onChange={(e) => setAccountingSuggestions(s => ({ ...s, memo_templates: s.memo_templates.map((x, j) => j === i ? e.target.value : x) }))} />
+                         <Button type="button" variant="outline" className="text-destructive" onClick={() => setAccountingSuggestions(s => ({ ...s, memo_templates: s.memo_templates.filter((_, j) => j !== i) }))}>Remove</Button>
+                       </div>
+                     ))}
+                     <Button type="button" variant="outline" onClick={() => setAccountingSuggestions(s => ({ ...s, memo_templates: [...s.memo_templates, ""] }))}>Add template</Button>
+                   </div>
+                 </div>
+
+                 <div>
+                   <Label className="block mb-2">Narration phrases</Label>
+                   <div className="space-y-2">
+                     {accountingSuggestions.narration_phrases.map((t, i) => (
+                       <div key={`n-${i}`} className="flex gap-2">
+                         <Input value={t} onChange={(e) => setAccountingSuggestions(s => ({ ...s, narration_phrases: s.narration_phrases.map((x, j) => j === i ? e.target.value : x) }))} />
+                         <Button type="button" variant="outline" className="text-destructive" onClick={() => setAccountingSuggestions(s => ({ ...s, narration_phrases: s.narration_phrases.filter((_, j) => j !== i) }))}>Remove</Button>
+                       </div>
+                     ))}
+                     <Button type="button" variant="outline" onClick={() => setAccountingSuggestions(s => ({ ...s, narration_phrases: [...s.narration_phrases, ""] }))}>Add phrase</Button>
+                   </div>
+                 </div>
+
+                 <div>
+                   <Label className="block mb-2">Reference prefixes</Label>
+                   <div className="space-y-2">
+                     {accountingSuggestions.reference_prefixes.map((t, i) => (
+                       <div key={`r-${i}`} className="flex gap-2">
+                         <Input value={t} onChange={(e) => setAccountingSuggestions(s => ({ ...s, reference_prefixes: s.reference_prefixes.map((x, j) => j === i ? e.target.value : x) }))} />
+                         <Button type="button" variant="outline" className="text-destructive" onClick={() => setAccountingSuggestions(s => ({ ...s, reference_prefixes: s.reference_prefixes.filter((_, j) => j !== i) }))}>Remove</Button>
+                       </div>
+                     ))}
+                     <Button type="button" variant="outline" onClick={() => setAccountingSuggestions(s => ({ ...s, reference_prefixes: [...s.reference_prefixes, ""] }))}>Add prefix</Button>
+                   </div>
+                 </div>
+
+                 <div className="flex justify-end">
+                   <Button type="button" onClick={handleSaveAccountingSuggestions}>Save Suggestions</Button>
+                 </div>
+               </CardContent>
+             </Card>
+           </TabsContent>
         </div>
       </Tabs>
     </div>
