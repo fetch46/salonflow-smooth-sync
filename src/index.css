@@ -125,7 +125,7 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
-    padding-bottom: var(--footer-height);
+    padding-bottom: calc(var(--footer-height) + env(safe-area-inset-bottom));
   }
 }
 
@@ -143,7 +143,7 @@ All colors MUST be HSL.
     @apply whitespace-nowrap sm:whitespace-normal;
   }
   .pb-footer {
-    padding-bottom: var(--footer-height);
+    padding-bottom: calc(var(--footer-height) + env(safe-area-inset-bottom));
   }
 }
 
