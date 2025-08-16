@@ -43,7 +43,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps = {
           <SuperAdminTopbar />
 
           {/* Main Content */}
-          <main id="main-content" className="flex-1 bg-slate-50 min-w-0 px-4 md:px-6 lg:px-8 pb-4 md:pb-6 lg:pb-8 pt-2 md:pt-3 lg:pt-4">
+          <main id="main-content" className="flex-1 bg-slate-50 min-w-0 px-1 md:px-1.5 lg:px-2 pb-1 md:pb-1.5 lg:pb-2 pt-0.5 md:pt-[3px] lg:pt-1">
             {children || <Outlet />}
           </main>
         </div>
