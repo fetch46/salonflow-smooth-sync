@@ -1,5 +1,5 @@
 
-import { Bell, Search, Settings, User, LogOut, Building2, ChevronDown, ArrowLeft, CreditCard } from "lucide-react";
+import { Bell, Search, Settings, User, LogOut, Building2, ChevronDown, ArrowLeft, CreditCard, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,6 +15,7 @@ import { useSaas } from "@/lib/saas";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import ThemeToggle from "@/components/ThemeToggle";
+import { useEffect, useMemo, useState } from "react";
 
 export function AppTopbar() {
   const navigate = useNavigate();
@@ -30,6 +31,38 @@ export function AppTopbar() {
     switchOrganization 
   } = useSaas();
 
+  type NotificationItem = {
+    id: string;
+    title: string;
+    description?: string | null;
+    createdAt: string;
+    read?: boolean;
+  };
+
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("app_notifications");
+      if (raw) {
+        const parsed = JSON.parse(raw) as NotificationItem[];
+        if (Array.isArray(parsed)) setNotifications(parsed);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("app_notifications", JSON.stringify(notifications));
+    } catch {}
+  }, [notifications]);
+
+  const unreadCount = useMemo(() => Math.min(99, notifications.length), [notifications]);
+
+  const handleClearAllNotifications = () => {
+    setNotifications([]);
+  };
+
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
@@ -38,26 +71,6 @@ export function AppTopbar() {
       console.error('Error signing out:', error);
       navigate('/login');
     }
-  };
-
-  const getSubscriptionBadge = () => {
-    if (isTrialing && daysLeftInTrial !== null) {
-      return (
-        <Badge variant="outline" className="text-xs">
-          Trial: {daysLeftInTrial} days left
-        </Badge>
-      );
-    }
-    
-    if (subscriptionPlan) {
-      return (
-        <Badge variant="outline" className="text-xs">
-          {subscriptionPlan.name}
-        </Badge>
-      );
-    }
-    
-    return null;
   };
 
   const getRoleColor = (role: string) => {
@@ -135,11 +148,7 @@ export function AppTopbar() {
             </DropdownMenu>
           )}
 
-          {/* Subscription Status (hide on small screens) */}
-          <div className="hidden lg:block">
-            {getSubscriptionBadge()}
-          </div>
-
+          {/* Theme toggle */}
           <ThemeToggle />
 
           {/* Notifications */}
@@ -147,31 +156,47 @@ export function AppTopbar() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="relative" aria-label="Notifications">
                 <Bell className="h-4 w-4" />
-                <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 min-w-5 rounded-full p-0 text-[10px] leading-5 text-center">
-                  3
-                </Badge>
+                {unreadCount > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full text-[10px] font-semibold inline-flex items-center justify-center"
+                  >
+                    {unreadCount}
+                  </Badge>
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80 p-0">
-              <div className="p-3 border-b">
-                <div className="text-sm font-medium">Notifications</div>
-                <div className="text-xs text-muted-foreground">Latest updates</div>
+              <div className="p-3 border-b flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium">Notifications</div>
+                  <div className="text-xs text-muted-foreground">Latest updates</div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-xs"
+                  onClick={handleClearAllNotifications}
+                  disabled={notifications.length === 0}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  Clear all
+                </Button>
               </div>
               <div className="max-h-80 overflow-auto py-1">
-                <DropdownMenuItem className="flex flex-col items-start gap-0.5 py-2">
-                  <div className="text-sm">Appointment confirmed</div>
-                  <div className="text-xs text-muted-foreground">Client John Doe for 3:30 PM</div>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="flex flex-col items-start gap-0.5 py-2">
-                  <div className="text-sm">Payment received</div>
-                  <div className="text-xs text-muted-foreground">Invoice INV-123456</div>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="flex flex-col items-start gap-0.5 py-2">
-                  <div className="text-sm">Stock low</div>
-                  <div className="text-xs text-muted-foreground">Shampoo 250ml below reorder point</div>
-                </DropdownMenuItem>
+                {notifications.length === 0 ? (
+                  <div className="py-6 text-center text-xs text-muted-foreground">No notifications</div>
+                ) : (
+                  notifications.map((n) => (
+                    <DropdownMenuItem key={n.id} className="flex flex-col items-start gap-0.5 py-2">
+                      <div className="text-sm">{n.title}</div>
+                      {n.description ? (
+                        <div className="text-xs text-muted-foreground">{n.description}</div>
+                      ) : null}
+                    </DropdownMenuItem>
+                  ))
+                )}
               </div>
-              <div className="p-2 border-t text-xs text-center text-muted-foreground">More coming soon</div>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -186,10 +211,7 @@ export function AppTopbar() {
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">
-                    {user?.user_metadata?.full_name || user?.email}
-                  </p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    {user?.email}
+                    {user?.user_metadata?.full_name || 'User'}
                   </p>
                   {organization && (
                     <div className="flex items-center justify-between">
@@ -272,10 +294,7 @@ export function SuperAdminTopbar() {
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">
-                    {user?.user_metadata?.full_name || user?.email}
-                  </p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    {user?.email}
+                    {user?.user_metadata?.full_name || 'User'}
                   </p>
                   <span className="text-xs text-red-600 font-medium">
                     Super Admin
