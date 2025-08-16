@@ -1432,9 +1432,9 @@ function StepProductsMaterials({
           <CardContent className="p-6">
             {showTabs ? (
               <Tabs defaultValue={defaultTab} className="space-y-6">
-                <TabsList>
+                <TabsList className="h-12 gap-2 p-2">
                   {servicesWithKits.map((svc) => (
-                    <TabsTrigger key={svc.id} value={svc.id}>{svc.name}</TabsTrigger>
+                    <TabsTrigger key={svc.id} value={svc.id} className="px-6 py-3 text-base md:text-lg">{svc.name}</TabsTrigger>
                   ))}
                 </TabsList>
                 {servicesWithKits.map((svc) => {
