@@ -70,7 +70,7 @@ export function AppTopbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 text-foreground backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-16 items-center justify-between px-3 sm:px-4 lg:px-6 w-full">
         {/* Search - hidden on small screens to keep bar compact */}
         <div className="hidden md:flex items-center space-x-4 flex-1 max-w-xl">
@@ -85,6 +85,12 @@ export function AppTopbar() {
 
         {/* Right side */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Current user full name (desktop) */}
+          {user?.user_metadata?.full_name && (
+            <div className="hidden md:block text-sm text-muted-foreground mr-1">
+              {user.user_metadata.full_name}
+            </div>
+          )}
           {/* POS Button */}
           <Button
             onClick={() => navigate('/pos')}
@@ -135,12 +141,37 @@ export function AppTopbar() {
           <ThemeToggle />
 
           {/* Notifications */}
-          <Button variant="ghost" size="sm" className="relative">
-            <Bell className="h-4 w-4" />
-            <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs">
-              3
-            </Badge>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="relative">
+                <Bell className="h-4 w-4" />
+                <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 min-w-5 rounded-full p-0 text-[10px] leading-5 text-center">
+                  3
+                </Badge>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80 p-0">
+              <div className="p-3 border-b">
+                <div className="text-sm font-medium">Notifications</div>
+                <div className="text-xs text-muted-foreground">Latest updates</div>
+              </div>
+              <div className="max-h-80 overflow-auto py-1">
+                <DropdownMenuItem className="flex flex-col items-start gap-0.5 py-2">
+                  <div className="text-sm">Appointment confirmed</div>
+                  <div className="text-xs text-muted-foreground">Client John Doe for 3:30 PM</div>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="flex flex-col items-start gap-0.5 py-2">
+                  <div className="text-sm">Payment received</div>
+                  <div className="text-xs text-muted-foreground">Invoice INV-123456</div>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="flex flex-col items-start gap-0.5 py-2">
+                  <div className="text-sm">Stock low</div>
+                  <div className="text-xs text-muted-foreground">Shampoo 250ml below reorder point</div>
+                </DropdownMenuItem>
+              </div>
+              <div className="p-2 border-t text-xs text-center text-muted-foreground">More coming soon</div>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* User Menu */}
           <DropdownMenu>
@@ -213,7 +244,7 @@ export function SuperAdminTopbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 text-foreground backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-16 items-center justify-between px-3 sm:px-4 lg:px-6 w-full">
         {/* Left side - Back to App */}
         <div className="flex items-center space-x-4">
