@@ -43,13 +43,6 @@ const Login = () => {
       // Clean up any existing auth state first
       cleanupAuthState();
       
-      // Test Supabase connection first
-      const { error: connectionError } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
-      if (connectionError) {
-        console.error('Supabase connection failed:', connectionError);
-        throw new Error('Unable to connect to authentication service. Please try again later.');
-      }
-      
       // Attempt to sign out any existing session
       try {
         await supabase.auth.signOut({ scope: 'global' });
