@@ -135,7 +135,7 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, warehouses }: 
         const accounts = accs || [];
         setIncomeAccounts(accounts.filter((a: any) => a.account_type === 'Income'));
         setExpenseAccounts(accounts.filter((a: any) => a.account_type === 'Expense'));
-        setAssetAccounts(accounts.filter((a: any) => a.account_type === 'Asset' && (!('account_subtype' in a) || a.account_subtype === 'Stock')));
+        setAssetAccounts(accounts.filter((a: any) => a.account_type === 'Asset' && (!('account_subtype' in a) || ['Stock','Stocks'].includes((a as any).account_subtype))));
 
         if (editingItem?.id) {
           const { data: mapping, error: mapErr } = await supabase
@@ -162,26 +162,40 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, warehouses }: 
     loadAccounts();
   }, [organization?.id, editingItem?.id]);
 
-  const handleFormSubmit = (e) => {
-    e.preventDefault();
-    const nextErrors: { sales?: string; purchase?: string; inventory?: string } = {};
-    if (!formData.sales_account_id) nextErrors.sales = "Required";
-    if (!formData.purchase_account_id) nextErrors.purchase = "Required";
-    if (!formData.inventory_account_id) nextErrors.inventory = "Required";
-    setErrors(nextErrors);
-    if (nextErrors.sales || nextErrors.purchase || nextErrors.inventory) {
-      toast({ title: "Missing accounts", description: "Please select Sales, Purchase, and Inventory accounts.", variant: "destructive" });
-      return;
-    }
-    // Ensure numeric fields are numbers
-    const payload = {
-      ...formData,
-      reorder_point: Number(formData.reorder_point || 0),
-      cost_price: Number(formData.cost_price || 0),
-      selling_price: Number(formData.selling_price || 0),
+      const handleFormSubmit = async (e) => {
+      e.preventDefault();
+      const nextErrors: { sales?: string; purchase?: string; inventory?: string } = {};
+      if (!formData.sales_account_id) nextErrors.sales = "Required";
+      if (!formData.purchase_account_id) nextErrors.purchase = "Required";
+      if (!formData.inventory_account_id) nextErrors.inventory = "Required";
+      setErrors(nextErrors);
+      if (nextErrors.sales || nextErrors.purchase || nextErrors.inventory) {
+        toast({ title: "Missing accounts", description: "Please select Sales, Purchase, and Inventory accounts.", variant: "destructive" });
+        return;
+      }
+      // Enforce inventory account subtype Stock/Stocks client-side
+      try {
+        const { data: invAcc } = await supabase
+          .from('accounts')
+          .select('id, account_type, account_subtype')
+          .eq('id', formData.inventory_account_id)
+          .maybeSingle();
+        if (!invAcc || invAcc.account_type !== 'Asset' || !(['Stock','Stocks'].includes((invAcc as any).account_subtype))) {
+          throw new Error('Inventory account must be an Asset with subtype Stock');
+        }
+      } catch (err) {
+        toast({ title: 'Invalid inventory account', description: 'Select an Asset account with subtype Stock', variant: 'destructive' });
+        return;
+      }
+      // Ensure numeric fields are numbers
+      const payload = {
+        ...formData,
+        reorder_point: Number(formData.reorder_point || 0),
+        cost_price: Number(formData.cost_price || 0),
+        selling_price: Number(formData.selling_price || 0),
+      };
+      onSubmit(payload);
     };
-    onSubmit(payload);
-  };
 
   // Helper to set cost_price from last purchase price when editing existing item
   const fillCostFromLastPurchase = async () => {

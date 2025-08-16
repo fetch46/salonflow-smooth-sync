@@ -249,12 +249,14 @@ const Reports = () => {
       const netProfit = grossProfit - expenses;
       setPl({ income, cogs, expenses, grossProfit, netProfit, breakdown: { income: incomeBreakdown, expense: expenseBreakdown } });
 
-      // Balance Sheet snapshot using ledger by type within range
+      // Balance Sheet snapshot using ledger by type within range: as of endDate
+      const asOf = endDate;
+      const withinRange = (t: any) => String(t.transaction_date) <= asOf;
       const sumByType = (type: string) => transactions
-        .filter((t: any) => t.accounts?.account_type === type)
+        .filter((t: any) => withinRange(t) && t.accounts?.account_type === type)
         .reduce((sum: number, t: any) => sum + (Number(t.debit_amount) || 0) - (Number(t.credit_amount) || 0), 0);
       const sumByTypeCreditMinusDebit = (type: string) => transactions
-        .filter((t: any) => t.accounts?.account_type === type)
+        .filter((t: any) => withinRange(t) && t.accounts?.account_type === type)
         .reduce((sum: number, t: any) => sum + (Number(t.credit_amount) || 0) - (Number(t.debit_amount) || 0), 0);
 
       const assets = sumByType('Asset');

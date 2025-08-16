@@ -91,7 +91,7 @@ router.get('/profit-and-loss', async (req, res) => {
 
 router.get('/balance-sheet', async (req, res) => {
   try {
-    const end = req.query.asOf ? new Date(String(req.query.asOf)) : new Date('2900-01-01');
+    const end = req.query.asOf ? new Date(String(req.query.asOf)) : new Date();
     const locationId = req.query.locationId ? String(req.query.locationId) : undefined;
 
     const where: any = { entry: { date: { lte: end } }, account: { category: { in: ['ASSET', 'LIABILITY', 'EQUITY'] as any } } };
