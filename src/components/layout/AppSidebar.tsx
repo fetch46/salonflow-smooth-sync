@@ -317,13 +317,13 @@ export function AppSidebar() {
   }, [location.pathname, location.search]);
 
   return (
-    <Sidebar variant="inset" collapsible="icon" className="border-r border-slate-200 max-w-[260px] md:max-w-[280px]">
-      <SidebarContent className="bg-gradient-to-b from-slate-50 to-slate-100">
+    <Sidebar variant="inset" collapsible="icon" className="border-r max-w-[260px] md:max-w-[280px]">
+      <SidebarContent>
         <SidebarHeader className="px-2 pt-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="h-7 w-7 rounded-md bg-gradient-to-br from-blue-500 to-violet-600" />
-              <span className="font-semibold group-data-[collapsible=icon]:hidden">SalonFlow</span>
+              <span className="font-semibold group-data-[collapsible=icon]:hidden text-sidebar-foreground">SalonFlow</span>
             </div>
             <SidebarTrigger className="hidden md:inline-flex" />
           </div>
