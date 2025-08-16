@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Building, Users, CreditCard, MessageSquare, MapPin, Plus, Edit2, Trash2, Crown, Shield, User, Lightbulb } from "lucide-react";
+import { Building, Users, CreditCard, MessageSquare, MapPin, Plus, Edit2, Trash2, Crown, Shield, User } from "lucide-react";
 import { Dialog as UIDialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { usePermissions } from "@/lib/saas/hooks";
 import { toast } from "sonner";
@@ -74,13 +74,7 @@ phone: "",
   const [depositAccounts, setDepositAccounts] = useState<AccountOption[]>([])
   const [depositAccountMap, setDepositAccountMap] = useState<Record<string, string>>({})
 
-  // Accounting & Bookkeeping: Suggestions used across modules
-  type AccountingSuggestions = { memo_templates: string[]; narration_phrases: string[]; reference_prefixes: string[] }
-  const [accountingSuggestions, setAccountingSuggestions] = useState<AccountingSuggestions>({
-    memo_templates: [],
-    narration_phrases: [],
-    reference_prefixes: [],
-  })
+  // Suggestions feature removed
 
   // Users & Roles State
   const [roles, setRoles] = useState([
@@ -382,13 +376,6 @@ phone: "",
       // Initialize deposit account mapping from org settings
       const map = (s.default_deposit_accounts_by_method as Record<string, string>) || {}
       setDepositAccountMap(map)
-      // Load accounting suggestions
-      const sug = (s.accounting_suggestions as any) || {}
-      setAccountingSuggestions({
-        memo_templates: Array.isArray(sug.memo_templates) ? sug.memo_templates : [],
-        narration_phrases: Array.isArray(sug.narration_phrases) ? sug.narration_phrases : [],
-        reference_prefixes: Array.isArray(sug.reference_prefixes) ? sug.reference_prefixes : [],
-      })
     }
   }, [organization])
 
@@ -593,21 +580,7 @@ phone: "",
     }
   }
 
-  const handleSaveAccountingSuggestions = async () => {
-    if (!organization) return toast.error('No organization selected');
-    try {
-      await updateOrganization(organization.id, {
-        settings: {
-          ...(organization.settings as any),
-          accounting_suggestions: accountingSuggestions,
-        },
-      } as any)
-      toast.success('Accounting suggestions updated')
-    } catch (e) {
-      console.error(e)
-      toast.error('Failed to save suggestions')
-    }
-  }
+  // Suggestions feature removed
 
   const fetchStockLocations = async () => {
     if (!organization) return;
@@ -1650,119 +1623,67 @@ phone: "",
 
                      {/* Accounting */}
            <TabsContent value="accounting">
-             <Card>
-               <CardHeader>
-                 <CardTitle>Tax Settings</CardTitle>
-                 <CardDescription>Set your default sales tax rate</CardDescription>
-               </CardHeader>
-               <CardContent className="space-y-4">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   <div className="space-y-2">
-                     <Label htmlFor="tax_rate_percent">Tax Rate (%)</Label>
-                     <Input
-                       id="tax_rate_percent"
-                       type="number"
-                       step="0.01"
-                       min="0"
-                       value={taxRatePercent}
-                       onChange={(e) => setTaxRatePercent(e.target.value)}
-                       placeholder="e.g. 8.5"
-                     />
-                     <p className="text-xs text-muted-foreground">This rate will be used across POS, Invoices and Purchases.</p>
-                   </div>
-                 </div>
-                 <div className="flex justify-end">
-                   <Button onClick={handleSaveTaxRate}>Save</Button>
-                 </div>
-               </CardContent>
-             </Card>
-
-             <Card>
-               <CardHeader>
-                 <CardTitle>Default Deposit Accounts</CardTitle>
-                 <CardDescription>Map payment methods to the accounts where funds are deposited</CardDescription>
-               </CardHeader>
-               <CardContent className="space-y-4">
-                 {(["cash", "mpesa", "card", "bank_transfer"] as const).map((methodKey) => (
-                   <div key={methodKey} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                     <div className="md:col-span-1">
-                       <Label className="text-sm capitalize">{methodKey.replace("_", " ")}</Label>
-                       <div className="text-xs text-muted-foreground">Select the default account to deposit {methodKey.replace("_", " ")} payments</div>
-                     </div>
-                     <div className="md:col-span-2">
-                       <Select value={depositAccountMap[methodKey] === undefined || depositAccountMap[methodKey] === "" ? "__none__" : depositAccountMap[methodKey]} onValueChange={(v) => setDepositAccountMap(prev => ({ ...prev, [methodKey]: v === "__none__" ? "" : v }))}>
-                         <SelectTrigger>
-                           <SelectValue placeholder="Choose account" />
-                         </SelectTrigger>
-                         <SelectContent>
-                           <SelectItem value="__none__">— None (fallback to Cash/Bank) —</SelectItem>
-                           {depositAccounts.map(acc => (
-                             <SelectItem key={acc.id} value={acc.id}>{acc.account_code} · {acc.account_name}{acc.account_subtype ? ` (${acc.account_subtype})` : ""}</SelectItem>
-                           ))}
-                         </SelectContent>
-                       </Select>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               <Card>
+                 <CardHeader>
+                   <CardTitle>Tax Settings</CardTitle>
+                   <CardDescription>Set your default sales tax rate</CardDescription>
+                 </CardHeader>
+                 <CardContent className="space-y-4">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                     <div className="space-y-2">
+                       <Label htmlFor="tax_rate_percent">Tax Rate (%)</Label>
+                       <Input
+                         id="tax_rate_percent"
+                         type="number"
+                         step="0.01"
+                         min="0"
+                         value={taxRatePercent}
+                         onChange={(e) => setTaxRatePercent(e.target.value)}
+                         placeholder="e.g. 8.5"
+                       />
+                       <p className="text-xs text-muted-foreground">This rate will be used across POS, Invoices and Purchases.</p>
                      </div>
                    </div>
-                 ))}
-                 <div className="flex justify-end">
-                   <Button onClick={handleSaveDepositAccounts}>Save</Button>
-                 </div>
-               </CardContent>
-             </Card>
-
-             <Card>
-               <CardHeader>
-                 <CardTitle className="flex items-center gap-2">
-                   <Lightbulb className="w-4 h-4 text-amber-500" />
-                   Suggestions
-                 </CardTitle>
-                 <CardDescription>These suggestions are available across Accounting and Bookkeeping modules</CardDescription>
-               </CardHeader>
-               <CardContent className="space-y-6">
-                 <div>
-                   <Label className="block mb-2">Memo templates</Label>
-                   <div className="space-y-2">
-                     {accountingSuggestions.memo_templates.map((t, i) => (
-                       <div key={`m-${i}`} className="flex gap-2">
-                         <Input value={t} onChange={(e) => setAccountingSuggestions(s => ({ ...s, memo_templates: s.memo_templates.map((x, j) => j === i ? e.target.value : x) }))} />
-                         <Button type="button" variant="outline" className="text-destructive" onClick={() => setAccountingSuggestions(s => ({ ...s, memo_templates: s.memo_templates.filter((_, j) => j !== i) }))}>Remove</Button>
-                       </div>
-                     ))}
-                     <Button type="button" variant="outline" onClick={() => setAccountingSuggestions(s => ({ ...s, memo_templates: [...s.memo_templates, ""] }))}>Add template</Button>
+                   <div className="flex justify-end">
+                     <Button onClick={handleSaveTaxRate}>Save</Button>
                    </div>
-                 </div>
+                 </CardContent>
+               </Card>
 
-                 <div>
-                   <Label className="block mb-2">Narration phrases</Label>
-                   <div className="space-y-2">
-                     {accountingSuggestions.narration_phrases.map((t, i) => (
-                       <div key={`n-${i}`} className="flex gap-2">
-                         <Input value={t} onChange={(e) => setAccountingSuggestions(s => ({ ...s, narration_phrases: s.narration_phrases.map((x, j) => j === i ? e.target.value : x) }))} />
-                         <Button type="button" variant="outline" className="text-destructive" onClick={() => setAccountingSuggestions(s => ({ ...s, narration_phrases: s.narration_phrases.filter((_, j) => j !== i) }))}>Remove</Button>
+               <Card>
+                 <CardHeader>
+                   <CardTitle>Default Deposit Accounts</CardTitle>
+                   <CardDescription>Map payment methods to the accounts where funds are deposited</CardDescription>
+                 </CardHeader>
+                 <CardContent className="space-y-4">
+                   {(["cash", "mpesa", "card", "bank_transfer"] as const).map((methodKey) => (
+                     <div key={methodKey} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                       <div className="md:col-span-1">
+                         <Label className="text-sm capitalize">{methodKey.replace("_", " ")}</Label>
+                         <div className="text-xs text-muted-foreground">Select the default account to deposit {methodKey.replace("_", " ")} payments</div>
                        </div>
-                     ))}
-                     <Button type="button" variant="outline" onClick={() => setAccountingSuggestions(s => ({ ...s, narration_phrases: [...s.narration_phrases, ""] }))}>Add phrase</Button>
-                   </div>
-                 </div>
-
-                 <div>
-                   <Label className="block mb-2">Reference prefixes</Label>
-                   <div className="space-y-2">
-                     {accountingSuggestions.reference_prefixes.map((t, i) => (
-                       <div key={`r-${i}`} className="flex gap-2">
-                         <Input value={t} onChange={(e) => setAccountingSuggestions(s => ({ ...s, reference_prefixes: s.reference_prefixes.map((x, j) => j === i ? e.target.value : x) }))} />
-                         <Button type="button" variant="outline" className="text-destructive" onClick={() => setAccountingSuggestions(s => ({ ...s, reference_prefixes: s.reference_prefixes.filter((_, j) => j !== i) }))}>Remove</Button>
+                       <div className="md:col-span-2">
+                         <Select value={depositAccountMap[methodKey] === undefined || depositAccountMap[methodKey] === "" ? "__none__" : depositAccountMap[methodKey]} onValueChange={(v) => setDepositAccountMap(prev => ({ ...prev, [methodKey]: v === "__none__" ? "" : v }))}>
+                           <SelectTrigger>
+                             <SelectValue placeholder="Choose account" />
+                           </SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value="__none__">— None (fallback to Cash/Bank) —</SelectItem>
+                             {depositAccounts.map(acc => (
+                               <SelectItem key={acc.id} value={acc.id}>{acc.account_code} · {acc.account_name}{acc.account_subtype ? ` (${acc.account_subtype})` : ""}</SelectItem>
+                             ))}
+                           </SelectContent>
+                         </Select>
                        </div>
-                     ))}
-                     <Button type="button" variant="outline" onClick={() => setAccountingSuggestions(s => ({ ...s, reference_prefixes: [...s.reference_prefixes, ""] }))}>Add prefix</Button>
+                     </div>
+                   ))}
+                   <div className="flex justify-end">
+                     <Button onClick={handleSaveDepositAccounts}>Save</Button>
                    </div>
-                 </div>
-
-                 <div className="flex justify-end">
-                   <Button type="button" onClick={handleSaveAccountingSuggestions}>Save Suggestions</Button>
-                 </div>
-               </CardContent>
-             </Card>
+                 </CardContent>
+               </Card>
+             </div>
            </TabsContent>
         </div>
       </Tabs>
