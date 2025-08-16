@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -37,14 +38,23 @@ const Login = () => {
     setError("");
 
     try {
+      console.log('Attempting login for:', email);
+      
       // Clean up any existing auth state first
       cleanupAuthState();
+      
+      // Test Supabase connection first
+      const { error: connectionError } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
+      if (connectionError) {
+        console.error('Supabase connection failed:', connectionError);
+        throw new Error('Unable to connect to authentication service. Please try again later.');
+      }
       
       // Attempt to sign out any existing session
       try {
         await supabase.auth.signOut({ scope: 'global' });
       } catch (err) {
-        // Continue even if this fails
+        console.warn('Sign out error (continuing):', err);
       }
 
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -52,17 +62,23 @@ const Login = () => {
         password,
       });
 
+      console.log('Login response:', { data: !!data, error });
+
       if (error) {
+        console.error('Login error:', error);
         setError(error.message);
         toast.error("Login failed: " + error.message);
       } else if (data.user) {
+        console.log('Login successful for user:', data.user.id);
         toast.success("Login successful!");
         // Force a page reload to ensure clean state
         window.location.href = '/';
       }
     } catch (err) {
-      setError("An unexpected error occurred");
-      toast.error("An unexpected error occurred");
+      console.error('Login exception:', err);
+      const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -70,6 +86,8 @@ const Login = () => {
 
   const handleGoogleLogin = async () => {
     try {
+      console.log('Attempting Google login');
+      
       // Clean up auth state before OAuth
       cleanupAuthState();
       
@@ -81,9 +99,11 @@ const Login = () => {
       });
       
       if (error) {
+        console.error('Google login error:', error);
         toast.error("Google login failed: " + error.message);
       }
     } catch (err) {
+      console.error('Google login exception:', err);
       toast.error("An unexpected error occurred");
     }
   };
@@ -100,11 +120,13 @@ const Login = () => {
       });
 
       if (error) {
+        console.error('Password reset error:', error);
         toast.error("Password reset failed: " + error.message);
       } else {
         toast.success("Password reset email sent!");
       }
     } catch (err) {
+      console.error('Password reset exception:', err);
       toast.error("An unexpected error occurred");
     }
   };
