@@ -521,23 +521,16 @@ export default function Inventory() {
     fetchWarehouses();
   }, [fetchData, fetchLevels, fetchWarehouses]);
 
-  // Auto-open edit dialog when navigated with ?action=edit&itemId=...
+  // Note: Editing now happens on a dedicated page at /inventory/:id/edit
   useEffect(() => {
+    // no-op retained for backward compatibility; if query params are present, redirect to new page
     const params = new URLSearchParams(window.location.search);
     const action = params.get('action');
     const itemId = params.get('itemId');
     if (action === 'edit' && itemId) {
-      const it = items.find(i => String(i.id) === String(itemId));
-      if (it) {
-        setEditingItem(it);
-        setIsItemDialogOpen(true);
-        const url = new URL(window.location.href);
-        url.searchParams.delete('action');
-        url.searchParams.delete('itemId');
-        window.history.replaceState({}, '', url.toString());
-      }
+      navigate(`/inventory/${itemId}/edit`);
     }
-  }, [items]);
+  }, [navigate]);
 
   // Persist visible columns
   useEffect(() => {
@@ -1056,7 +1049,7 @@ export default function Inventory() {
                                      <DropdownMenuItem onSelect={() => navigate(`/inventory/${item.id}`)}>
                                        <Eye className="w-4 h-4 mr-2" /> View Product
                                      </DropdownMenuItem>
-                                     <DropdownMenuItem onSelect={() => handleEditItem(item)}>
+                                     <DropdownMenuItem onSelect={() => navigate(`/inventory/${item.id}/edit`)}>
                                        <Edit className="w-4 h-4 mr-2" /> Edit
                                      </DropdownMenuItem>
                                      <DropdownMenuSeparator />
