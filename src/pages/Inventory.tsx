@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Package, Trash2, Edit, MapPin, RefreshCw, MoreHorizontal, Eye, CheckCircle2 } from "lucide-react";
+import { Plus, Package, Trash2, Edit, MapPin, RefreshCw, MoreHorizontal, Eye, CheckCircle2, Upload, Download, FileDown } from "lucide-react";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,6 +22,7 @@ import { Switch } from "@/components/ui/switch";
 import { useOrganization } from "@/lib/saas/hooks";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useRegionalNumberFormatter } from "@/lib/saas";
+import Papa from "papaparse";
 
 // --- Type Definitions ---
 type InventoryItem = {
@@ -448,6 +449,8 @@ export default function Inventory() {
       }
     }
   );
+  const [importing, setImporting] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Currency formatter
   const { format: formatMoney } = useOrganizationCurrency();
@@ -814,6 +817,262 @@ export default function Inventory() {
     </div>
   );
 
+  const downloadTemplateCsv = () => {
+    const header = [
+      'name',
+      'description',
+      'sku',
+      'unit',
+      'reorder_point',
+      'cost_price',
+      'selling_price',
+      'is_active',
+      'sales_account_code',
+      'purchase_account_code',
+      'inventory_account_code',
+      'is_taxable',
+      'opening_stock_quantity',
+      'opening_stock_warehouse_name'
+    ];
+    const csv = Papa.unparse({ fields: header, data: [] });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'products_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const exportProductsCsv = async () => {
+    try {
+      setIsLoading(true);
+      // Fetch items and mappings
+      const { data: itemsRes, error: itemsErr } = await supabase.from('inventory_items').select('*').order('name');
+      if (itemsErr) throw itemsErr;
+      const itemIds = (itemsRes || []).map((it: any) => it.id);
+      let mappings: any[] = [];
+      if (itemIds.length) {
+        const { data: mapRes } = await supabase
+          .from('inventory_item_accounts')
+          .select('item_id, sales_account_id, purchase_account_id, inventory_account_id, is_taxable')
+          .in('item_id', itemIds);
+        mappings = mapRes || [];
+      }
+      const accIds = Array.from(new Set(mappings.flatMap(m => [m.sales_account_id, m.purchase_account_id, m.inventory_account_id]).filter(Boolean)));
+      const accounts: Record<string, { account_code: string; account_name: string }> = {};
+      if (accIds.length) {
+        const { data: accRes } = await supabase
+          .from('accounts')
+          .select('id, account_code, account_name')
+          .in('id', accIds);
+        for (const a of accRes || []) accounts[a.id] = { account_code: a.account_code, account_name: a.account_name } as any;
+      }
+      const warehouseMap: Record<string, string> = {};
+      {
+        const { data: wh } = await supabase.from('warehouses').select('id, name');
+        for (const w of wh || []) warehouseMap[w.id] = w.name;
+      }
+      const levelsByItem: Record<string, number> = {};
+      {
+        const { data: levels } = await supabase
+          .from('inventory_levels')
+          .select('item_id, warehouse_id, quantity');
+        for (const lvl of levels || []) {
+          levelsByItem[lvl.item_id] = (levelsByItem[lvl.item_id] || 0) + Number(lvl.quantity || 0);
+        }
+      }
+      const rows = (itemsRes || []).map((it: any) => {
+        const map = mappings.find(m => m.item_id === it.id);
+        const sales = map?.sales_account_id ? accounts[map.sales_account_id] : null;
+        const purchase = map?.purchase_account_id ? accounts[map.purchase_account_id] : null;
+        const inventory = map?.inventory_account_id ? accounts[map.inventory_account_id] : null;
+        return {
+          name: it.name,
+          description: it.description || '',
+          sku: it.sku || '',
+          unit: it.unit || '',
+          reorder_point: it.reorder_point || 0,
+          cost_price: it.cost_price ?? '',
+          selling_price: it.selling_price ?? '',
+          is_active: it.is_active ? 'true' : 'false',
+          sales_account_code: sales?.account_code || '',
+          purchase_account_code: purchase?.account_code || '',
+          inventory_account_code: inventory?.account_code || '',
+          is_taxable: (map?.is_taxable ? 'true' : 'false') || 'false',
+          opening_stock_quantity: levelsByItem[it.id] || 0,
+          opening_stock_warehouse_name: ''
+        };
+      });
+      const csv = Papa.unparse(rows);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'products_export.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: 'Exported', description: `Exported ${rows.length} products.` });
+    } catch (err: any) {
+      toast({ title: 'Export failed', description: String(err?.message || err), variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleImportClick = () => {
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const parseResult = await new Promise<{ data: any[]; errors: any[] }>((resolve) => {
+        Papa.parse(file, { header: true, skipEmptyLines: true, complete: (res) => resolve(res as any) });
+      });
+      const rows = parseResult.data || [];
+      if (!rows.length) {
+        toast({ title: 'No data', description: 'CSV is empty', variant: 'destructive' });
+        return;
+      }
+      // Build account code -> id map
+      let allAccounts: any[] | null = null;
+      let hasSubtypeInfo = true;
+      try {
+        const res = await supabase
+          .from('accounts')
+          .select('id, account_code, account_type, account_subtype');
+        allAccounts = (res.data as any[]) || null;
+        if (res.error) throw res.error;
+      } catch (err: any) {
+        const message = String(err?.message || '');
+        if (message.includes('account_subtype') || (message.toLowerCase().includes('column') && message.toLowerCase().includes('does not exist'))) {
+          const { data } = await supabase
+            .from('accounts')
+            .select('id, account_code, account_type');
+          allAccounts = (data as any[]) || null;
+          hasSubtypeInfo = false;
+        } else {
+          throw err;
+        }
+      }
+      const codeToId: Record<string, string> = {};
+      for (const a of allAccounts || []) {
+        if (a.account_code) codeToId[String(a.account_code).trim()] = a.id;
+      }
+      // Warehouses map
+      const { data: allWh } = await supabase.from('warehouses').select('id, name');
+      const whNameToId: Record<string, string> = {};
+      for (const w of allWh || []) whNameToId[(w.name || '').trim().toLowerCase()] = w.id;
+
+      let created = 0, updated = 0, failed = 0;
+      for (const raw of rows) {
+        try {
+          const name = String(raw.name || '').trim();
+          if (!name) throw new Error('name is required');
+          const payload = {
+            name,
+            description: (raw.description || '') || null,
+            sku: (String(raw.sku || '').trim() || null) as string | null,
+            unit: (String(raw.unit || '').trim() || null) as string | null,
+            reorder_point: Number(raw.reorder_point || 0),
+            cost_price: raw.cost_price != null && raw.cost_price !== '' ? Number(raw.cost_price) : null,
+            selling_price: raw.selling_price != null && raw.selling_price !== '' ? Number(raw.selling_price) : null,
+            is_active: String(raw.is_active || 'true').toLowerCase() !== 'false',
+            type: 'good' as const,
+          };
+          // Upsert by SKU if present else by name
+          let existing: any = null;
+          if (payload.sku) {
+            const { data } = await supabase.from('inventory_items').select('id, sku').eq('sku', payload.sku).maybeSingle();
+            existing = data || null;
+          } else {
+            const { data } = await supabase.from('inventory_items').select('id, name').eq('name', payload.name).maybeSingle();
+            existing = data || null;
+          }
+          let itemId: string;
+          if (existing) {
+            const { data, error } = await supabase.from('inventory_items').update(payload).eq('id', existing.id).select('id').single();
+            if (error) throw error;
+            itemId = data.id;
+            updated++;
+          } else {
+            const { data, error } = await supabase.from('inventory_items').insert(payload).select('id').single();
+            if (error) throw error;
+            itemId = data.id;
+            created++;
+          }
+          // Account mapping via codes
+          const salesCode = String(raw.sales_account_code || '').trim();
+          const purchaseCode = String(raw.purchase_account_code || '').trim();
+          const inventoryCode = String(raw.inventory_account_code || '').trim();
+          const isTaxable = String(raw.is_taxable || '').toLowerCase() === 'true';
+          const salesId = salesCode ? codeToId[salesCode] : null;
+          const purchaseId = purchaseCode ? codeToId[purchaseCode] : null;
+          const inventoryId = inventoryCode ? codeToId[inventoryCode] : null;
+          if (inventoryId && hasSubtypeInfo) {
+            // Validate inventory account type/subtype client-side to avoid bad mappings
+            const inv = (allAccounts || []).find(a => a.id === inventoryId);
+            if (!(inv && inv.account_type === 'Asset' && ['Stock', 'Stocks'].includes((inv as any).account_subtype))) {
+              throw new Error('inventory_account_code must be an Asset with subtype Stock/Stocks');
+            }
+          }
+          const mapPayload = {
+            item_id: itemId,
+            sales_account_id: salesId || null,
+            purchase_account_id: purchaseId || null,
+            inventory_account_id: inventoryId || null,
+            is_taxable: !!isTaxable,
+          } as const;
+          try {
+            const res = await supabase.from('inventory_item_accounts').upsert(mapPayload, { onConflict: 'item_id' });
+            if (res.error) throw res.error;
+          } catch (e) {
+            const { data: existingMap } = await supabase
+              .from('inventory_item_accounts')
+              .select('item_id')
+              .eq('item_id', itemId)
+              .maybeSingle();
+            if (existingMap) {
+              const { error } = await supabase.from('inventory_item_accounts').update(mapPayload).eq('item_id', itemId);
+              if (error) throw error;
+            } else {
+              const { error } = await supabase.from('inventory_item_accounts').insert(mapPayload);
+              if (error) throw error;
+            }
+          }
+          // Optional opening stock
+          const openingQty = Number(raw.opening_stock_quantity || 0);
+          const openingWhName = String(raw.opening_stock_warehouse_name || '').trim().toLowerCase();
+          if (openingQty > 0 && openingWhName) {
+            const whId = whNameToId[openingWhName];
+            if (!whId) throw new Error(`Unknown warehouse: ${raw.opening_stock_warehouse_name}`);
+            await supabase.from('inventory_levels').upsert({
+              item_id: itemId,
+              warehouse_id: whId,
+              quantity: openingQty,
+            }, { onConflict: 'item_id,warehouse_id' });
+          }
+        } catch (rowErr: any) {
+          failed++;
+        }
+      }
+      toast({ title: 'Import complete', description: `Created: ${created}, Updated: ${updated}, Failed: ${failed}` });
+      await handleRefresh();
+    } catch (err: any) {
+      toast({ title: 'Import failed', description: String(err?.message || err), variant: 'destructive' });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 lg:space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -968,6 +1227,22 @@ export default function Inventory() {
                     </DropdownMenuCheckboxItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                <Button variant="outline" size="sm" onClick={downloadTemplateCsv} title="Download CSV Template">
+                  <FileDown className="w-4 h-4 mr-2" /> Template
+                </Button>
+                <Button variant="outline" size="sm" onClick={exportProductsCsv} disabled={isLoading} title="Export Products to CSV">
+                  <Download className="w-4 h-4 mr-2" /> Export
+                </Button>
+                <Button size="sm" onClick={handleImportClick} disabled={importing} title="Import Products from CSV">
+                  <Upload className="w-4 h-4 mr-2" /> {importing ? 'Importing...' : 'Import'}
+                </Button>
+                <input
+                  ref={fileInputRef as any}
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={handleImportFile}
+                  style={{ display: 'none' }}
+                />
               </div>
             </CardHeader>
             <CardContent>
