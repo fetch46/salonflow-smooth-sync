@@ -59,7 +59,7 @@ const AccountView = lazy(() => import("@/pages/AccountView"));
 const Journal = lazy(() => import("@/pages/Journal"));
 const Purchases = lazy(() => import("@/pages/Purchases"));
 const StockTransfers = lazy(() => import("@/pages/StockTransfers"));
-const Warehouses = lazy(() => import("@/pages/Warehouses"));
+
 
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const Landing = lazy(() => import("@/pages/Landing"));
@@ -168,7 +168,6 @@ const AppRoutes = () => {
           <Route path="inventory-adjustments" element={<InventoryAdjustments />} />
           <Route path="inventory-adjustments/:id/edit" element={<InventoryAdjustmentForm />} />
           <Route path="inventory-transfers" element={<StockTransfers />} />
-          <Route path="warehouses" element={<Warehouses />} />
           
           {/* Business Operations */}
           <Route path="pos" element={<POS />} />

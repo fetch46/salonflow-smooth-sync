@@ -167,12 +167,6 @@ const menuItems: MenuItem[] = [
         icon: ArrowLeftRight,
         feature: "inventory",
       },
-      {
-        title: "Warehouses",
-        url: "/warehouses",
-        icon: Truck,
-        feature: "inventory",
-      },
     ],
   },
         {
