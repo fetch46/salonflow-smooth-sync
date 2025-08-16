@@ -217,17 +217,9 @@ const AppRoutes = () => {
 };
 
 function App() {
-  // Derive Router basename from Vite's BASE_URL; if it's a full URL, use only the pathname.
-  const rawBase = (import.meta.env.BASE_URL as string) || '/';
-  let basePath = rawBase;
-  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(rawBase)) {
-    try { basePath = new URL(rawBase).pathname || '/'; } catch { basePath = '/'; }
-  }
-  const basename = basePath.replace(/\/+$/, '') || '/';
-
   return (
     <ErrorBoundary>
-      <Router basename={basename}>
+      <Router basename={import.meta.env.BASE_URL}>
         <AppRoutes />
         <Toaster />
         <AppFooter />

@@ -15,9 +15,6 @@ import { useSaas } from "@/lib/saas";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import ThemeToggle from "@/components/ThemeToggle";
-import { cleanupAuthState } from "@/utils/authUtils";
-import { useMemo, useState } from "react";
-import { useNotifications } from "@/hooks/useNotifications";
 
 export function AppTopbar() {
   const navigate = useNavigate();
@@ -43,7 +40,25 @@ export function AppTopbar() {
     }
   };
 
-  const { unreadNotifications, unreadCount, markAllAsRead } = useNotifications();
+  const getSubscriptionBadge = () => {
+    if (isTrialing && daysLeftInTrial !== null) {
+      return (
+        <Badge variant="outline" className="text-xs">
+          Trial: {daysLeftInTrial} days left
+        </Badge>
+      );
+    }
+    
+    if (subscriptionPlan) {
+      return (
+        <Badge variant="outline" className="text-xs">
+          {subscriptionPlan.name}
+        </Badge>
+      );
+    }
+    
+    return null;
+  };
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -120,47 +135,43 @@ export function AppTopbar() {
             </DropdownMenu>
           )}
 
-          {/* Dark mode toggle */}
+          {/* Subscription Status (hide on small screens) */}
+          <div className="hidden lg:block">
+            {getSubscriptionBadge()}
+          </div>
+
           <ThemeToggle />
 
           {/* Notifications */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="relative h-9 w-9 p-0" aria-label="Notifications">
+              <Button variant="ghost" size="sm" className="relative" aria-label="Notifications">
                 <Bell className="h-4 w-4" />
-                {unreadCount > 0 && (
-                  <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 min-w-5 rounded-full p-0 text-[10px] leading-5 text-center">
-                    {unreadCount}
-                  </Badge>
-                )}
+                <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 min-w-5 rounded-full p-0 text-[10px] leading-5 text-center">
+                  3
+                </Badge>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80 p-0">
-              <div className="p-3 border-b flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-medium">Notifications</div>
-                  <div className="text-xs text-muted-foreground">{unreadCount > 0 ? `${unreadCount} unread` : "You're all caught up"}</div>
-                </div>
-                {unreadCount > 0 && (
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={markAllAsRead} aria-label="Mark all as read">
-                    Mark all as read
-                  </Button>
-                )}
+              <div className="p-3 border-b">
+                <div className="text-sm font-medium">Notifications</div>
+                <div className="text-xs text-muted-foreground">Latest updates</div>
               </div>
-              {unreadCount === 0 ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">No new notifications</div>
-              ) : (
-                <div className="max-h-80 overflow-auto py-1">
-                  {unreadNotifications.map((n) => (
-                    <DropdownMenuItem key={n.id} className="flex flex-col items-start gap-0.5 py-2 px-3">
-                      <div className="text-sm font-medium">{n.title}</div>
-                      {n.description && (
-                        <div className="text-xs text-muted-foreground">{n.description}</div>
-                      )}
-                    </DropdownMenuItem>
-                  ))}
-                </div>
-              )}
+              <div className="max-h-80 overflow-auto py-1">
+                <DropdownMenuItem className="flex flex-col items-start gap-0.5 py-2">
+                  <div className="text-sm">Appointment confirmed</div>
+                  <div className="text-xs text-muted-foreground">Client John Doe for 3:30 PM</div>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="flex flex-col items-start gap-0.5 py-2">
+                  <div className="text-sm">Payment received</div>
+                  <div className="text-xs text-muted-foreground">Invoice INV-123456</div>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="flex flex-col items-start gap-0.5 py-2">
+                  <div className="text-sm">Stock low</div>
+                  <div className="text-xs text-muted-foreground">Shampoo 250ml below reorder point</div>
+                </DropdownMenuItem>
+              </div>
+              <div className="p-2 border-t text-xs text-center text-muted-foreground">More coming soon</div>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -220,18 +231,13 @@ export function SuperAdminTopbar() {
 
   const handleSignOut = async () => {
     try {
+      const { cleanupAuthState } = await import('@/utils/authUtils');
       cleanupAuthState();
       try {
         await supabase.auth.signOut({ scope: 'global' } as any);
       } catch (err) { /* ignore sign-out errors */ }
     } finally {
-      const rawBase = (import.meta.env.BASE_URL as string) || '/';
-      let basePath = rawBase;
-      if (/^[a-z][a-z0-9+.-]*:\/\//i.test(rawBase)) {
-        try { basePath = new URL(rawBase).pathname || '/'; } catch { basePath = '/'; }
-      }
-      const prefix = basePath.replace(/\/+$/, '') || '/';
-      window.location.href = `${prefix}/login`;
+      window.location.href = '/login';
     }
   };
 
