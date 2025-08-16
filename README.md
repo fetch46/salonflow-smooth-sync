@@ -109,3 +109,33 @@ Dev setup:
 Notes:
 - If SMTP/Twilio env vars are not set, the server logs the message payload as a fallback (no real send).
 - WhatsApp via Twilio may require pre-approved message templates and verified senders. Ensure client phone numbers are E.164 formatted (e.g., `+15551234567`).
+
+## Environment setup
+
+- Copy the example env files and fill in your Supabase details:
+
+```bash
+cp .env.example .env
+cp server/.env.example server/.env
+```
+
+- Frontend required:
+  - `VITE_SUPABASE_URL` = `https://<PROJECT_REF>.supabase.co`
+  - `VITE_SUPABASE_ANON_KEY` = your project's anon (publishable) key
+
+- Backend (optional, for notifications/jobs):
+  - `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`
+
+- Start dev:
+
+```bash
+npm i
+npm run dev
+```
+
+Troubleshooting “TypeError: Failed to fetch” when loading Locations/Warehouses:
+- Ensure `VITE_SUPABASE_URL` uses HTTPS and is correct for your project
+- Verify `VITE_SUPABASE_ANON_KEY` is valid (anon key, not service key)
+- If the app is served over HTTPS, avoid HTTP Supabase URLs (mixed-content gets blocked)
+- Check browser devtools Network tab for the failing request and response/cors details
+- Confirm your network/firewall allows requests to `*.supabase.co`
