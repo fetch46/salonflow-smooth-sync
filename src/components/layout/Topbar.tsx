@@ -17,6 +17,7 @@ import { useNavigate } from "react-router-dom";
 import ThemeToggle from "@/components/ThemeToggle";
 import { cleanupAuthState } from "@/utils/authUtils";
 import { useMemo, useState } from "react";
+import { useNotifications } from "@/hooks/useNotifications";
 
 export function AppTopbar() {
   const navigate = useNavigate();
@@ -42,20 +43,7 @@ export function AppTopbar() {
     }
   };
 
-  // Local notifications state and actions
-  type NotificationItem = { id: string; title: string; description?: string; read: boolean; createdAt: number };
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    { id: '1', title: 'Appointment confirmed', description: 'Client John Doe for 3:30 PM', read: false, createdAt: Date.now() - 1000 * 60 * 15 },
-    { id: '2', title: 'Payment received', description: 'Invoice INV-123456', read: false, createdAt: Date.now() - 1000 * 60 * 45 },
-    { id: '3', title: 'Stock low', description: 'Shampoo 250ml below reorder point', read: false, createdAt: Date.now() - 1000 * 60 * 90 },
-  ]);
-
-  const unreadNotifications = useMemo(() => notifications.filter(n => !n.read).sort((a, b) => b.createdAt - a.createdAt), [notifications]);
-  const unreadCount = unreadNotifications.length;
-
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  };
+  const { unreadNotifications, unreadCount, markAllAsRead } = useNotifications();
 
   const getRoleColor = (role: string) => {
     switch (role) {
