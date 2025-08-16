@@ -12,10 +12,9 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 
-// Use the simple dashboard component directly
-import SimpleDashboard from "@/components/dashboard/SimpleDashboard";
-
-// Main Pages - only load essential ones for now
+// Load essential pages
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const SimpleDashboard = lazy(() => import("@/components/dashboard/SimpleDashboard"));
 const Appointments = lazy(() => import("@/pages/Appointments"));
 const AppointmentForm = lazy(() => import("@/pages/AppointmentForm"));
 const Clients = lazy(() => import("@/pages/Clients"));
@@ -27,42 +26,48 @@ const StaffProfile = lazy(() => import("@/pages/StaffProfile"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const Help = lazy(() => import("@/pages/Help"));
+const Reports = lazy(() => import("@/pages/Reports"));
+const POS = lazy(() => import("@/pages/POS"));
+const Invoices = lazy(() => import("@/pages/Invoices"));
+const Expenses = lazy(() => import("@/pages/Expenses"));
+const Payments = lazy(() => import("@/pages/Payments"));
+const JobCards = lazy(() => import("@/pages/JobCards"));
+const Suppliers = lazy(() => import("@/pages/Suppliers"));
+const Banking = lazy(() => import("@/pages/Banking"));
+const Accounts = lazy(() => import("@/pages/Accounts"));
+const Journal = lazy(() => import("@/pages/Journal"));
+const Purchases = lazy(() => import("@/pages/Purchases"));
 
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const Landing = lazy(() => import("@/pages/Landing"));
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import BusinessDirectory from "@/pages/BusinessDirectory";
 
+// Admin pages
+const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
+
+// Loading component
+const LoadingFallback = () => (
+  <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+    <div className="text-center space-y-4">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto"></div>
+      <p className="text-slate-600 font-medium">Loading...</p>
+    </div>
+  </div>
+);
+
 // SAAS-specific wrapper component to handle routing logic
 const AppRoutes = () => {
-  const { user, loading, organization, organizations } = useSaas();
+  const { user, loading, organization, organizations, isSuperAdmin } = useSaas();
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto"></div>
-          <p className="text-slate-600 font-medium">Loading your workspace...</p>
-          <div className="text-sm text-slate-500">
-            <p>If this takes too long, try:</p>
-            <div className="mt-2 space-y-1">
-              <button 
-                onClick={() => window.location.reload()} 
-                className="text-violet-600 hover:underline block"
-              >
-                Reload Page
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingFallback />;
   }
 
   // Not authenticated - show auth pages
   if (!user) {
     return (
-      <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading…</div>}>
+      <Suspense fallback={<LoadingFallback />}>
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/businesses" element={<BusinessDirectory />} />
@@ -75,9 +80,22 @@ const AppRoutes = () => {
     );
   }
 
+  // Super admin routes
+  if (isSuperAdmin && window.location.pathname.startsWith('/admin')) {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/*" element={<AdminDashboard />} />
+          <Route path="*" element={<Navigate to="/admin" replace />} />
+        </Routes>
+      </Suspense>
+    );
+  }
+
   // Authenticated with organization - show main app
   return (
-    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading…</div>}>
+    <Suspense fallback={<LoadingFallback />}>
       <Routes>
         {/* Redirect auth pages if already logged in */}
         <Route path="/login" element={<Navigate to="/dashboard" replace />} />
@@ -87,7 +105,10 @@ const AppRoutes = () => {
         {/* Main application routes */}
         <Route path="/" element={<DashboardLayout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<SimpleDashboard />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="simple-dashboard" element={<SimpleDashboard />} />
+          
+          {/* Appointments */}
           <Route path="appointments" element={<Appointments />} />
           <Route path="appointments/new" element={<AppointmentForm />} />
           <Route path="appointments/:id/edit" element={<AppointmentForm />} />
@@ -103,6 +124,21 @@ const AppRoutes = () => {
           
           {/* Inventory Management */}
           <Route path="inventory" element={<Inventory />} />
+          
+          {/* Business Operations */}
+          <Route path="pos" element={<POS />} />
+          <Route path="invoices" element={<Invoices />} />
+          <Route path="expenses" element={<Expenses />} />
+          <Route path="payments" element={<Payments />} />
+          <Route path="job-cards" element={<JobCards />} />
+          <Route path="suppliers" element={<Suppliers />} />
+          <Route path="purchases" element={<Purchases />} />
+          
+          {/* Financial */}
+          <Route path="banking" element={<Banking />} />
+          <Route path="accounts" element={<Accounts />} />
+          <Route path="journal" element={<Journal />} />
+          <Route path="reports" element={<Reports />} />
           
           {/* Settings & Support */}
           <Route path="settings" element={<Settings />} />

@@ -87,7 +87,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps = {})
 
           {/* Main Content */}
           <main className="flex-1 min-w-0 p-4 md:p-6 lg:p-8 pb-footer">
-            {children || <Outlet />}
+            <React.Suspense fallback={
+              <div className="flex items-center justify-center min-h-[400px]">
+                <div className="text-center space-y-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600 mx-auto"></div>
+                  <p className="text-sm text-muted-foreground">Loading...</p>
+                </div>
+              </div>
+            }>
+              {children || <Outlet />}
+            </React.Suspense>
           </main>
         </div>
       </div>
