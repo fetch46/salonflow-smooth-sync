@@ -1,7 +1,7 @@
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useSaas } from "@/lib/saas";
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import AppFooter from "@/components/layout/AppFooter";
 
@@ -79,6 +79,19 @@ const AppRoutes = () => {
       </Suspense>
     );
   }
+
+  // Prefetch some commonly used lazy routes soon after auth/org is ready
+  useEffect(() => {
+    if (user && organization?.id) {
+      setTimeout(() => {
+        void Promise.all([
+          import('@/pages/Accounts').catch(() => {}),
+          import('@/pages/Invoices').catch(() => {}),
+          import('@/pages/Payments').catch(() => {}),
+        ]);
+      }, 0);
+    }
+  }, [user, organization?.id]);
 
   // Super admin routes
   if (isSuperAdmin && window.location.pathname.startsWith('/admin')) {
