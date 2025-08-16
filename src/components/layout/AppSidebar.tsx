@@ -15,6 +15,7 @@ import {
   ShoppingCart,
   Calculator,
   TrendingUp,
+  LayoutDashboard,
   CreditCard,
   Sliders,
   Crown,
@@ -66,7 +67,7 @@ const menuItems: MenuItem[] = [
   {
     title: "Dashboard",
     url: "/dashboard",
-    icon: TrendingUp,
+    icon: LayoutDashboard,
     feature: "reports",
   },
   {
@@ -279,6 +280,48 @@ export function AppSidebar() {
 
   const getUsageBadge = (_feature: string) => null;
 
+  const getIconColorForTitle = (title: string) => {
+    switch (title) {
+      case 'Dashboard': return 'text-blue-600';
+      case 'Appointments': return 'text-violet-600';
+      case 'Sales': return 'text-rose-600';
+      case 'Clients': return 'text-cyan-600';
+      case 'Invoices': return 'text-amber-600';
+      case 'Payments': return 'text-emerald-600';
+      case 'Job Cards': return 'text-indigo-600';
+      case 'Purchases': return 'text-orange-600';
+      case 'Suppliers': return 'text-sky-600';
+      case 'Goods Received': return 'text-lime-600';
+      case 'Expenses': return 'text-rose-600';
+      case 'Services': return 'text-pink-600';
+      case 'Inventory': return 'text-yellow-600';
+      case 'Products': return 'text-yellow-600';
+      case 'Adjustments': return 'text-purple-600';
+      case 'Transfers': return 'text-cyan-600';
+      case 'Accountant': return 'text-emerald-600';
+      case 'Chart of Accounts': return 'text-fuchsia-600';
+      case 'Journal': return 'text-indigo-600';
+      case 'Banking': return 'text-blue-600';
+      case 'Reports': return 'text-sky-600';
+      case 'Overview': return 'text-sky-600';
+      case 'Revenue': return 'text-emerald-600';
+      case 'P&L': return 'text-amber-600';
+      case 'Balance Sheet': return 'text-amber-700';
+      case 'Trial Balance': return 'text-amber-700';
+      case 'Commissions': return 'text-emerald-700';
+      case 'Product Usage': return 'text-yellow-600';
+      case 'Settings': return 'text-slate-600';
+      case 'General': return 'text-slate-600';
+      case 'Regional': return 'text-purple-600';
+      case 'Profile': return 'text-rose-600';
+      case 'Staff': return 'text-indigo-600';
+      case 'Help & Support': return 'text-cyan-600';
+      case 'Super Admin': return 'text-violet-700';
+      case 'Landing CMS': return 'text-fuchsia-600';
+      default: return 'text-slate-600';
+    }
+  };
+
   const isMenuItemAvailable = (item: MenuItem) => {
     if (item.title === 'Services') {
       return true;
@@ -352,7 +395,7 @@ export function AppSidebar() {
                         tooltip={state === 'collapsed' ? item.title : undefined}
                         size="lg"
                       >
-                        <item.icon className="w-5 h-5" />
+                        <item.icon className={`w-5 h-5 ${getIconColorForTitle(item.title)}`} />
                         <span className="flex-1">{item.title}</span>
                         <div className="flex items-center gap-1 group-data-[collapsible=icon]:hidden">
                           {!isAvailable && <Lock className="w-3 h-3 text-slate-400" />}
@@ -385,7 +428,7 @@ export function AppSidebar() {
                                     }
                                     onClick={handleNavClick}
                                   >
-                                    <subItem.icon className="w-5 h-5" />
+                                    <subItem.icon className={`w-5 h-5 ${getIconColorForTitle(subItem.title)}`} />
                                     <span className="flex-1">{subItem.title}</span>
                                     <div className="flex items-center gap-1">
                                       {!subItemAvailable && <Lock className="w-3 h-3 text-slate-400" />}
@@ -419,7 +462,7 @@ export function AppSidebar() {
                         }
                         onClick={handleNavClick}
                       >
-                        <item.icon className="w-5 h-5" />
+                        <item.icon className={`w-5 h-5 ${getIconColorForTitle(item.title)}`} />
                         <span className="flex-1">{item.title}</span>
                         <div className="flex items-center gap-1"></div>
                       </NavLink>
@@ -445,7 +488,7 @@ export function AppSidebar() {
                     size="lg"
                   >
                     <NavLink to={superAdminMenuItem.url} className={({ isActive }) => `flex items-center gap-2 ${isActive ? 'bg-accent text-accent-foreground' : ''}`} onClick={handleNavClick}>
-                      <superAdminMenuItem.icon className="h-5 w-5" />
+                      <superAdminMenuItem.icon className={`h-5 w-5 ${getIconColorForTitle(superAdminMenuItem.title)}`} />
                       <span>{superAdminMenuItem.title}</span>
                       <Badge 
                         variant="outline" 
@@ -466,7 +509,7 @@ export function AppSidebar() {
                     size="lg"
                   >
                     <NavLink to="/super-admin/cms" className={({ isActive }) => `flex items-center gap-2 ${isActive ? 'bg-accent text-accent-foreground' : ''}`} onClick={handleNavClick}>
-                      <Sparkles className="h-5 w-5" />
+                      <Sparkles className={`h-5 w-5 ${getIconColorForTitle('Landing CMS')}`} />
                       <span>Landing CMS</span>
                     </NavLink>
                   </SidebarMenuButton>
