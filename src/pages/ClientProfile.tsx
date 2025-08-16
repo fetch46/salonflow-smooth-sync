@@ -282,7 +282,7 @@ export default function ClientProfile() {
   }
 
   return (
-      <div className="flex-1 space-y-6 p-8 pt-6">
+      <div className="flex-1 space-y-6 p-8 pt-3">
         {/* Client Header */}
         <Card className="mb-6">
           <CardContent className="pt-6">
