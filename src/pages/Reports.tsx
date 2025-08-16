@@ -139,20 +139,50 @@ const Reports = () => {
     try {
       setDrillType(type);
       setDrillTitle(`${type} — ${category}`);
-      const txnsQuery = supabase
-        .from('account_transactions')
-        .select('id, account_id, transaction_date, description, debit_amount, credit_amount, reference_type, reference_id, location_id, accounts:account_id (account_type, account_code, account_name, account_subtype)')
-        .gte('transaction_date', startDate)
-        .lte('transaction_date', endDate)
-        .order('transaction_date', { ascending: true })
-        .order('id', { ascending: true });
+      const baseQuery = () =>
+        supabase
+          .from('account_transactions')
+          .select('id, account_id, transaction_date, description, debit_amount, credit_amount, reference_type, reference_id, location_id, accounts:account_id (account_type, account_code, account_name, account_subtype)')
+          .gte('transaction_date', startDate)
+          .lte('transaction_date', endDate)
+          .order('transaction_date', { ascending: true })
+          .order('id', { ascending: true });
+
+      let txnsQuery = baseQuery();
       if (locationFilter !== 'all') {
-        txnsQuery.eq('location_id', locationFilter);
+        txnsQuery = txnsQuery.eq('location_id', locationFilter);
       }
-      const { data, error } = await txnsQuery;
-      if (error) throw error;
-      const rows = (data || []) as any[];
-      const filtered = rows.filter((t: any) => t.accounts?.account_type === type && (String(t.accounts?.account_subtype || type) === category));
+      let { data, error } = await txnsQuery;
+      let rows = (data || []) as any[];
+
+      // Fallback for schemas without account_subtype
+      if (error) {
+        const msg = String(error.message || '').toLowerCase();
+        if (msg.includes('account_subtype') && msg.includes('does not exist')) {
+          let fbQuery = supabase
+            .from('account_transactions')
+            .select('id, account_id, transaction_date, description, debit_amount, credit_amount, reference_type, reference_id, location_id, accounts:account_id (account_type, account_code, account_name)')
+            .gte('transaction_date', startDate)
+            .lte('transaction_date', endDate)
+            .order('transaction_date', { ascending: true })
+            .order('id', { ascending: true });
+          if (locationFilter !== 'all') {
+            fbQuery = fbQuery.eq('location_id', locationFilter);
+          }
+          const { data: fbData, error: fbError } = await fbQuery;
+          if (fbError) throw fbError;
+          rows = (fbData || []) as any[];
+          error = null as any;
+        } else {
+          throw error;
+        }
+      }
+
+      const filtered = rows.filter((t: any) => {
+        const matchesType = t.accounts?.account_type === type;
+        const subtype = (t.accounts as any)?.account_subtype;
+        return matchesType && (subtype ? String(subtype) === category : category === type);
+      });
       setDrillRows(filtered);
       setDrillOpen(true);
     } catch (e) {
@@ -1209,6 +1239,7 @@ const Reports = () => {
                         <TableRow>
                           <TableHead>Date</TableHead>
                           <TableHead>Account</TableHead>
+                          <TableHead>Category</TableHead>
                           <TableHead>Description</TableHead>
                           <TableHead className="text-right">Debit</TableHead>
                           <TableHead className="text-right">Credit</TableHead>
@@ -1228,6 +1259,7 @@ const Reports = () => {
                               <TableRow key={r.id} onClick={() => openReferenceFromTxn(r)} className={r.reference_id ? 'cursor-pointer hover:bg-slate-50' : ''} title={r.reference_id ? `Open ${(r.reference_type || '').toString()} ${r.reference_id || ''}` : undefined}>
                                 <TableCell>{String(r.transaction_date || '').slice(0,10)}</TableCell>
                                 <TableCell>{r.accounts?.account_code ? `${r.accounts.account_code} · ${r.accounts?.account_name || ''}` : (r.accounts?.account_name || '—')}</TableCell>
+                                <TableCell>{(r as any)?.accounts?.account_subtype || (r as any)?.accounts?.account_type || '—'}</TableCell>
                                 <TableCell className="max-w-[380px] truncate" title={r.description || ''}>{r.description || '—'}</TableCell>
                                 <TableCell className="text-right">{formatMoney(debit, { decimals: 2 })}</TableCell>
                                 <TableCell className="text-right">{formatMoney(credit, { decimals: 2 })}</TableCell>
