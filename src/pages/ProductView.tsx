@@ -378,7 +378,7 @@ export default function ProductView() {
                 <Button onClick={() => setIsEditAccountsOpen(true)} variant="outline" className="w-full md:w-auto">
                   <Settings className="w-4 h-4 mr-2" /> Edit Accounts
                 </Button>
-                <Button onClick={() => navigate(`/inventory?action=edit&itemId=${id}`)} className="w-full md:w-auto">
+                <Button onClick={() => navigate(`/inventory/${id}/edit`)} className="w-full md:w-auto">
                   <Pencil className="w-4 h-4 mr-2" /> Edit Product
                 </Button>
               </div>
