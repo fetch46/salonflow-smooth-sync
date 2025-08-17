@@ -63,6 +63,7 @@ export {
   UsageService,
   AnalyticsService,
   CacheService,
+  SystemSettingsService,
 } from './services'
 
 // Utilities
@@ -102,6 +103,15 @@ export {
   sortBy,
   omit,
   pick,
+  // New safe helpers
+  delay,
+  withTimeout,
+  isNetworkError,
+  withRetry,
+  safeFetch,
+  isMissingRelationError,
+  isAuthError,
+  safeSupabaseCall,
 } from './utils'
 
 // Constants

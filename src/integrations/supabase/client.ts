@@ -1,6 +1,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from './types'
+import { withTimeout, withRetry } from '@/lib/saas/utils'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -25,15 +26,21 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   }
 })
 
-// Test connection with a simple query that should always work
-supabase.from('organizations').select('count', { count: 'exact', head: true })
-  .then(({ error }) => {
-    if (error) {
-      console.error('Supabase connection test failed:', error)
-    } else {
-      console.log('Supabase connection test successful')
+// Export a connection test that callers can trigger without blocking init
+export async function testSupabaseConnection(label = 'supabase'): Promise<{ ok: boolean; info?: string }> {
+  try {
+    const run = async () => {
+      const { error } = await supabase
+        .from('organizations' as any)
+        .select('id', { head: true, count: 'estimated' })
+        .limit(1)
+      if (error) throw error
     }
-  })
-  .catch((err) => {
-    console.error('Supabase connection error:', err)
-  })
+
+    await withTimeout(withRetry(run, { retries: 2, initialDelayMs: 200 }), 2500, `${label} connectivity`)
+    return { ok: true, info: 'connected' }
+  } catch (err: any) {
+    console.warn('Non-blocking Supabase connectivity issue:', err?.message || err)
+    return { ok: false, info: String(err?.message || err) }
+  }
+}

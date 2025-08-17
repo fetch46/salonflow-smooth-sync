@@ -648,3 +648,96 @@ export class CacheService {
     return true
   }
 }
+
+/**
+ * System Settings Service
+ */
+
+const DEFAULT_SYSTEM_SETTINGS = {
+  maintenance_mode: false,
+  support_email: 'support@example.com',
+  default_plan_slug: 'starter',
+  features: {
+    allow_signups: true,
+    allow_public_booking: true,
+  },
+  metadata: {},
+  regional_formats_enabled: false,
+}
+
+export class SystemSettingsService {
+  static getDefaults() {
+    return { ...DEFAULT_SYSTEM_SETTINGS }
+  }
+
+  static async getSystemSettings(): Promise<any> {
+    try {
+      const { data, error } = await supabase
+        .from('organizations' as any)
+        .select('id, settings')
+        .eq('slug', 'system')
+        .maybeSingle()
+
+      if (error) {
+        // Missing organizations table or no row yet: return defaults
+        console.warn('System settings fetch error. Falling back to defaults.', error)
+        return this.getDefaults()
+      }
+
+      const base = this.getDefaults()
+      const merged = { ...base, ...(data?.settings || {}) }
+      // Ensure features object exists
+      merged.features = { ...base.features, ...(merged.features || {}) }
+      return merged
+    } catch (err) {
+      console.warn('System settings unavailable. Using defaults.', err)
+      return this.getDefaults()
+    }
+  }
+
+  static async ensureSystemRow(): Promise<string | null> {
+    try {
+      const { data, error } = await supabase
+        .from('organizations' as any)
+        .select('id')
+        .eq('slug', 'system')
+        .maybeSingle()
+
+      if (error) return null
+      if (data?.id) return data.id
+
+      const { data: created, error: insertError } = await supabase
+        .from('organizations' as any)
+        .insert({ name: 'System', slug: 'system', settings: DEFAULT_SYSTEM_SETTINGS, status: 'active' })
+        .select('id')
+        .single()
+      if (insertError) return null
+      return created?.id ?? null
+    } catch {
+      return null
+    }
+  }
+
+  static async saveSystemSettings(settings: any): Promise<boolean> {
+    try {
+      const id = await this.ensureSystemRow()
+      if (!id) {
+        // If we cannot ensure the row, do not fail hard
+        console.warn('Could not ensure system row. Skipping save.')
+        return false
+      }
+      const { error } = await supabase
+        .from('organizations' as any)
+        .update({ settings })
+        .eq('id', id)
+      if (error) {
+        console.warn('Failed to save system settings:', error)
+        return false
+      }
+      return true
+    } catch (err) {
+      console.warn('Save system settings failed silently:', err)
+      return false
+    }
+  }
+}
