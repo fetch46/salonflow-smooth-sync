@@ -416,6 +416,7 @@ const ItemFormDialog = ({ isOpen, onClose, onSubmit, editingItem, warehouses }: 
 // --- Main Component ---
 export default function Inventory() {
   const navigate = useNavigate();
+  const { organization } = useOrganization();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
