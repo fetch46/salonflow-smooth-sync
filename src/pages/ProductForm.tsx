@@ -153,7 +153,15 @@ export default function ProductForm() {
         })
         .select('id')
         .single();
-      if (error) throw error;
+      if (error) {
+        const code = (error as any)?.code;
+        const message = (error as any)?.message || String(error);
+        const isUnique = code === '23505' || /duplicate key value violates unique constraint/i.test(message);
+        if (isUnique) {
+          throw new Error('A product with this SKU or name already exists in your organization');
+        }
+        throw error;
+      }
 
       const newItemId = inserted?.id as string | undefined;
       if (newItemId) {

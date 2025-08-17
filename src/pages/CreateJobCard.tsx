@@ -212,7 +212,7 @@ export default function CreateJobCard() {
       const [staffRes, clientsRes, servicesRes, appointmentsRes, locationsRes] = await Promise.all([
         supabase.from("staff").select("*").eq("is_active", true),
         supabase.from("clients").select("*"),
-        supabase.from("services").select("*").eq("is_active", true),
+        supabase.from("services").select("*").eq("is_active", true).eq('organization_id', organization?.id || ''),
         supabase.from("appointments").select("*").gte("appointment_date", format(new Date(), 'yyyy-MM-dd')),
         supabase.from('business_locations').select('id, name').order('name')
       ]);
