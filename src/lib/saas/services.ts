@@ -45,3 +45,60 @@ export const systemSettingsService = {
     }
   }
 };
+
+// Placeholder services for exports that are expected by the index file
+// These can be implemented later as needed
+export const OrganizationService = {
+  async updateSubscription(organizationId: string, planId: string) {
+    throw new Error('OrganizationService.updateSubscription is not yet implemented');
+  }
+};
+
+export const SubscriptionService = {
+  async updateSubscription(organizationId: string, planId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('organization_subscriptions')
+        .update({ subscription_plan_id: planId })
+        .eq('organization_id', organizationId)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Failed to update subscription:', error);
+      throw error;
+    }
+  }
+};
+
+export const UserService = {
+  async getCurrentUser() {
+    throw new Error('UserService.getCurrentUser is not yet implemented');
+  }
+};
+
+export const SuperAdminService = {
+  async getSystemInfo() {
+    throw new Error('SuperAdminService.getSystemInfo is not yet implemented');
+  }
+};
+
+export const UsageService = {
+  async getUsageMetrics() {
+    throw new Error('UsageService.getUsageMetrics is not yet implemented');
+  }
+};
+
+export const AnalyticsService = {
+  async trackEvent() {
+    throw new Error('AnalyticsService.trackEvent is not yet implemented');
+  }
+};
+
+export const CacheService = {
+  async get() {
+    throw new Error('CacheService.get is not yet implemented');
+  }
+};
