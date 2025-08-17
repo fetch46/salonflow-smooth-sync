@@ -91,6 +91,13 @@ export default function SuperAdmin() {
   }]);
   const [selectedOrgForUsers, setSelectedOrgForUsers] = useState<string | null>(null);
   const [orgUsers, setOrgUsers] = useState<OrganizationUser[]>([]);
+  // Super Admin — create staff user for selected organization
+  const [newStaffEmail, setNewStaffEmail] = useState("");
+  const [newStaffName, setNewStaffName] = useState("");
+  const [newStaffRole, setNewStaffRole] = useState<"owner" | "admin" | "manager" | "member" | "staff">("staff");
+  const [newStaffPassword, setNewStaffPassword] = useState("");
+  const [newStaffConfirm, setNewStaffConfirm] = useState(true);
+  const [creatingStaff, setCreatingStaff] = useState(false);
   const [isOrgUsersModalOpen, setIsOrgUsersModalOpen] = useState(false);
   const [stats, setStats] = useState({
     totalOrgs: 0,
@@ -490,6 +497,85 @@ export default function SuperAdmin() {
     } catch (error) {
       console.error('Error creating organization:', error);
       toast.error('Failed to create organization');
+    }
+  };
+
+  const handleCreateStaffUser = async () => {
+    if (!selectedOrgForUsers) { toast.error('No organization selected'); return; }
+    if (!newStaffEmail) { toast.error('Email is required'); return; }
+    try {
+      setCreatingStaff(true);
+      const { error } = await supabase.functions.invoke('create-staff-user', {
+        body: {
+          email: newStaffEmail,
+          password: newStaffPassword || undefined,
+          full_name: newStaffName || undefined,
+          organization_id: selectedOrgForUsers,
+          role: newStaffRole,
+          confirm: newStaffConfirm,
+        },
+      });
+      if (error) throw error;
+      toast.success('Staff user created');
+      setNewStaffEmail("");
+      setNewStaffName("");
+      setNewStaffPassword("");
+      setNewStaffRole("staff");
+      setNewStaffConfirm(true);
+      await fetchOrganizationUsers(selectedOrgForUsers);
+    } catch (e: any) {
+      console.error('Create staff user error', e);
+      toast.error(e?.message || 'Failed to create staff user');
+    } finally {
+      setCreatingStaff(false);
+    }
+  };
+
+  const handleSetUserPassword = async (userId: string) => {
+    try {
+      const orgId = selectedOrgForUsers;
+      const newPass = prompt('Enter new password (min 8 chars)');
+      if (!newPass || newPass.length < 8) return;
+      const { error } = await supabase.functions.invoke('set-user-password', {
+        body: { user_id: userId, new_password: newPass, organization_id: orgId || undefined },
+      });
+      if (error) throw error;
+      toast.success('Password updated');
+    } catch (e) {
+      console.error('Set password error', e);
+      toast.error('Failed to set password');
+    }
+  };
+
+  const handleConfirmUserEmail = async (userId: string) => {
+    try {
+      const { error } = await supabase.functions.invoke('confirm-user', { body: { user_id: userId } });
+      if (error) throw error;
+      toast.success('User email confirmed');
+    } catch (e) {
+      console.error('Confirm email error', e);
+      toast.error('Failed to confirm email');
+    }
+  };
+
+  const handleEditStaffMinimal = async (email: string) => {
+    try {
+      if (!selectedOrgForUsers) return;
+      const name = prompt('Enter full name for staff');
+      if (!name) return;
+      const { error } = await supabase.functions.invoke('upsert-staff', {
+        body: {
+          organization_id: selectedOrgForUsers,
+          email,
+          full_name: name,
+          is_active: true,
+        },
+      });
+      if (error) throw error;
+      toast.success('Staff details saved');
+    } catch (e) {
+      console.error('Edit staff error', e);
+      toast.error('Failed to save staff details');
     }
   };
 
@@ -1036,6 +1122,51 @@ export default function SuperAdmin() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Add Staff User</CardTitle>
+                <CardDescription>Create a user account and add to this organization</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="new-staff-email">Email</Label>
+                    <Input id="new-staff-email" value={newStaffEmail} onChange={(e) => setNewStaffEmail(e.target.value)} placeholder="staff@example.com" />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="new-staff-name">Full Name</Label>
+                    <Input id="new-staff-name" value={newStaffName} onChange={(e) => setNewStaffName(e.target.value)} placeholder="Jane Doe" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-staff-role">Role</Label>
+                    <Select value={newStaffRole} onValueChange={(v) => setNewStaffRole(v as any)}>
+                      <SelectTrigger id="new-staff-role"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="owner">Owner</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="manager">Manager</SelectItem>
+                        <SelectItem value="staff">Staff</SelectItem>
+                        <SelectItem value="member">Member</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="new-staff-password">Password (optional)</Label>
+                    <Input id="new-staff-password" type="password" value={newStaffPassword} onChange={(e) => setNewStaffPassword(e.target.value)} placeholder="Min 8 characters" />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="new-staff-confirm">Confirm Email</Label>
+                    <div className="flex items-center gap-2">
+                      <input id="new-staff-confirm" type="checkbox" checked={newStaffConfirm} onChange={(e) => setNewStaffConfirm(e.target.checked)} />
+                      <span className="text-sm text-muted-foreground">Mark as confirmed</span>
+                    </div>
+                  </div>
+                  <div className="md:col-span-1">
+                    <Button onClick={handleCreateStaffUser} disabled={creatingStaff || !newStaffEmail} className="w-full">{creatingStaff ? 'Creating...' : 'Create'}</Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
@@ -1078,6 +1209,7 @@ export default function SuperAdmin() {
                             <SelectItem value="admin">Admin</SelectItem>
                             <SelectItem value="manager">Manager</SelectItem>
                             <SelectItem value="member">Member</SelectItem>
+                            <SelectItem value="staff">Staff</SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>
@@ -1100,6 +1232,19 @@ export default function SuperAdmin() {
                           >
                             <UserX className="h-4 w-4" />
                           </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleSetUserPassword(user.user_id)} title="Set Password">
+                            {/* key icon */}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-key-round"><path d="M7.5 15a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11Z"/><path d="M21 21l-4.3-4.3"/><path d="M15.5 15.5l-2-2"/><path d="M18 18l-2-2"/></svg>
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleConfirmUserEmail(user.user_id)} title="Confirm Email">
+                            {/* check-circle icon */}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-check-circle"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                          </Button>
+                          {user.email && (
+                            <Button variant="ghost" size="sm" onClick={() => handleEditStaffMinimal(user.email!)} title="Edit Staff">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-edit-2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
