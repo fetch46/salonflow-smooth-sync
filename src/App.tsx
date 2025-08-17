@@ -82,6 +82,7 @@ const Landing = lazyWithRetry(() => import("@/pages/Landing"));
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import BusinessDirectory from "@/pages/BusinessDirectory";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import RequirePermission from "@/components/auth/RequirePermission";
 
 // Admin pages
 
@@ -178,13 +179,13 @@ const AppRoutes = () => {
           <Route path="simple-dashboard" element={<SimpleDashboard />} />
           
           {/* Appointments */}
-          <Route path="appointments" element={<Appointments />} />
-          <Route path="appointments/new" element={<AppointmentForm />} />
-          <Route path="appointments/:id/edit" element={<AppointmentForm />} />
+          <Route path="appointments" element={<RequirePermission resource="appointments" action="view"><Appointments /></RequirePermission>} />
+          <Route path="appointments/new" element={<RequirePermission resource="appointments" action="create"><AppointmentForm /></RequirePermission>} />
+          <Route path="appointments/:id/edit" element={<RequirePermission resource="appointments" action="edit"><AppointmentForm /></RequirePermission>} />
           
           {/* Client Management */}
-          <Route path="clients" element={<Clients />} />
-          <Route path="clients/:id" element={<ClientProfile />} />
+          <Route path="clients" element={<RequirePermission resource="clients" action="view"><Clients /></RequirePermission>} />
+          <Route path="clients/:id" element={<RequirePermission resource="clients" action="view"><ClientProfile /></RequirePermission>} />
           
           {/* Staff & Services */}
           <Route path="staff" element={<Staff />} />
@@ -195,46 +196,46 @@ const AppRoutes = () => {
           <Route path="services/:id/edit" element={<ServiceForm />} />
           
           {/* Inventory Management */}
-          <Route path="inventory" element={<Inventory />} />
-          <Route path="inventory/new" element={<ProductForm />} />
-          <Route path="inventory/:id" element={<ProductView />} />
-          <Route path="inventory/:id/edit" element={<ProductEdit />} />
-          <Route path="inventory-adjustments" element={<InventoryAdjustments />} />
-          <Route path="inventory-adjustments/:id/edit" element={<InventoryAdjustmentForm />} />
-          <Route path="inventory-transfers" element={<StockTransfers />} />
+          <Route path="inventory" element={<RequirePermission resource="products" action="view"><Inventory /></RequirePermission>} />
+          <Route path="inventory/new" element={<RequirePermission resource="products" action="create"><ProductForm /></RequirePermission>} />
+          <Route path="inventory/:id" element={<RequirePermission resource="products" action="view"><ProductView /></RequirePermission>} />
+          <Route path="inventory/:id/edit" element={<RequirePermission resource="products" action="edit"><ProductEdit /></RequirePermission>} />
+          <Route path="inventory-adjustments" element={<RequirePermission resource="adjustments" action="view"><InventoryAdjustments /></RequirePermission>} />
+          <Route path="inventory-adjustments/:id/edit" element={<RequirePermission resource="adjustments" action="edit"><InventoryAdjustmentForm /></RequirePermission>} />
+          <Route path="inventory-transfers" element={<RequirePermission resource="transfers" action="view"><StockTransfers /></RequirePermission>} />
           
           {/* Business Operations */}
           <Route path="pos" element={<POS />} />
-          <Route path="invoices" element={<Invoices />} />
-          <Route path="invoices/new" element={<InvoiceCreate />} />
-          <Route path="invoices/:id/edit" element={<InvoiceEdit />} />
-          <Route path="expenses" element={<Expenses />} />
-          <Route path="expenses/new" element={<ExpenseForm />} />
-          <Route path="expenses/:id/edit" element={<ExpenseForm />} />
-          <Route path="payments" element={<Payments />} />
-          <Route path="payments/received/new" element={<PaymentReceivedNew />} />
-          <Route path="job-cards" element={<JobCards />} />
+          <Route path="invoices" element={<RequirePermission resource="invoices" action="view"><Invoices /></RequirePermission>} />
+          <Route path="invoices/new" element={<RequirePermission resource="invoices" action="create"><InvoiceCreate /></RequirePermission>} />
+          <Route path="invoices/:id/edit" element={<RequirePermission resource="invoices" action="edit"><InvoiceEdit /></RequirePermission>} />
+          <Route path="expenses" element={<RequirePermission resource="expenses" action="view"><Expenses /></RequirePermission>} />
+          <Route path="expenses/new" element={<RequirePermission resource="expenses" action="create"><ExpenseForm /></RequirePermission>} />
+          <Route path="expenses/:id/edit" element={<RequirePermission resource="expenses" action="edit"><ExpenseForm /></RequirePermission>} />
+          <Route path="payments" element={<RequirePermission resource="payments" action="view"><Payments /></RequirePermission>} />
+          <Route path="payments/received/new" element={<RequirePermission resource="payments" action="create"><PaymentReceivedNew /></RequirePermission>} />
+          <Route path="job-cards" element={<RequirePermission resource="jobcards" action="view"><JobCards /></RequirePermission>} />
           <Route path="job-cards/new" element={<CreateJobCard />} />
           <Route path="job-cards/:id" element={<JobCardView />} />
           <Route path="job-cards/:id/edit" element={<EditJobCard />} />
-          <Route path="suppliers" element={<Suppliers />} />
-          <Route path="suppliers/:id" element={<SupplierProfile />} />
-          <Route path="purchases" element={<Purchases />} />
+          <Route path="suppliers" element={<RequirePermission resource="suppliers" action="view"><Suppliers /></RequirePermission>} />
+          <Route path="suppliers/:id" element={<RequirePermission resource="suppliers" action="view"><SupplierProfile /></RequirePermission>} />
+          <Route path="purchases" element={<RequirePermission resource="purchases" action="view"><Purchases /></RequirePermission>} />
           <Route path="purchases/new" element={<PurchaseForm />} />
           <Route path="purchases/:id" element={<PurchaseView />} />
           <Route path="purchases/:id/edit" element={<PurchaseForm />} />
-          <Route path="goods-received" element={<GoodsReceived />} />
-          <Route path="goods-received/new" element={<GoodsReceivedForm />} />
+          <Route path="goods-received" element={<RequirePermission resource="goods_received" action="view"><GoodsReceived /></RequirePermission>} />
+          <Route path="goods-received/new" element={<RequirePermission resource="goods_received" action="create"><GoodsReceivedForm /></RequirePermission>} />
           <Route path="goods-received/:id/edit" element={<GoodsReceivedForm />} />
           
           {/* Financial */}
-          <Route path="banking" element={<Banking />} />
-          <Route path="accounts" element={<Accounts />} />
-          <Route path="accounts/new" element={<AccountCreate />} />
-          <Route path="accounts/:id" element={<AccountView />} />
-          <Route path="accounts/:id/edit" element={<AccountEdit />} />
-          <Route path="journal" element={<Journal />} />
-          <Route path="reports" element={<Reports />} />
+          <Route path="banking" element={<RequirePermission resource="banking" action="view"><Banking /></RequirePermission>} />
+          <Route path="accounts" element={<RequirePermission resource="settings" action="view"><Accounts /></RequirePermission>} />
+          <Route path="accounts/new" element={<RequirePermission resource="settings" action="edit"><AccountCreate /></RequirePermission>} />
+          <Route path="accounts/:id" element={<RequirePermission resource="settings" action="view"><AccountView /></RequirePermission>} />
+          <Route path="accounts/:id/edit" element={<RequirePermission resource="settings" action="edit"><AccountEdit /></RequirePermission>} />
+          <Route path="journal" element={<RequirePermission resource="settings" action="edit"><Journal /></RequirePermission>} />
+          <Route path="reports" element={<RequirePermission resource="reports" action="view"><Reports /></RequirePermission>} />
           
           {/* Settings & Support */}
           <Route path="settings" element={<Settings />} />
