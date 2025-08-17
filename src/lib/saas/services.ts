@@ -20,7 +20,7 @@ export const systemSettingsService = {
 
       // Try to get settings from Supabase if available
       try {
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from('system_settings')
           .select('*')
           .limit(1)
@@ -57,12 +57,12 @@ export const OrganizationService = {
 export const SubscriptionService = {
   async updateSubscription(organizationId: string, planId: string) {
     try {
-      const { data, error } = await supabase
-        .from('organization_subscriptions')
-        .update({ subscription_plan_id: planId })
-        .eq('organization_id', organizationId)
-        .select()
-        .single();
+              const { data, error } = await supabase
+          .from('organization_subscriptions')
+          .update({ plan_id: planId })
+          .eq('organization_id', organizationId)
+          .select()
+          .single();
       
       if (error) throw error;
       return data;
