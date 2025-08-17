@@ -85,7 +85,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import RequirePermission from "@/components/auth/RequirePermission";
 
 // Admin pages
-const AdminDashboard = lazyWithRetry(() => import("@/pages/admin/AdminDashboard"));
+const AdminDashboardPage = lazyWithRetry(() => import("@/pages/admin/AdminDashboard"));
 const AdminOrganizations = lazyWithRetry(() => import("@/pages/admin/AdminOrganizations"));
 const AdminSubscriptionPlans = lazyWithRetry(() => import("@/pages/admin/AdminSubscriptionPlans"));
 const AdminUsers = lazyWithRetry(() => import("@/pages/admin/AdminUsers"));
@@ -149,8 +149,8 @@ const AppRoutes = () => {
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
           {/* canonical admin dashboard */}
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin" element={<AdminDashboardPage />} />
+          <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
           {/* admin pages */}
           <Route path="/admin/organizations" element={<AdminOrganizations />} />
           <Route path="/admin/subscription-plans" element={<AdminSubscriptionPlans />} />
