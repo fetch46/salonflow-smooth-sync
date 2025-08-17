@@ -12,7 +12,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { useSaas } from "@/lib/saas";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
-import { getInvoicesWithBalanceWithFallback } from "@/utils/mockDatabase";
+import { getInvoicesWithBalanceWithFallback, recordInvoicePaymentWithFallback } from "@/utils/mockDatabase";
 import { postInvoicePaymentWithAccount, postInvoicePaymentToLedger } from "@/utils/ledger";
 
 interface InvoiceLiteOption {
@@ -146,7 +146,6 @@ export default function PaymentReceivedNew() {
     }
     try {
       setCreating(true);
-      const { recordInvoicePaymentWithFallback } = await import("@/utils/mockDatabase");
       const ok = await recordInvoicePaymentWithFallback(supabase, {
         invoice_id: selectedInvoiceId,
         amount: amt,

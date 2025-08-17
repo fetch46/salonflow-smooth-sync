@@ -2,17 +2,10 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
-export default defineConfig(async ({ mode }) => {
-	let componentTagger: any = null;
-	if (mode === 'development') {
-		try {
-			import { componentTagger } from "lovable-tagger";
-		} catch {
-			// Optional dev-only plugin not installed; ignore
-		}
-	}
+export default defineConfig(({ mode }) => {
 
 	return {
 		base: process.env.VITE_BASE || '/',
@@ -29,7 +22,7 @@ export default defineConfig(async ({ mode }) => {
 		},
 		plugins: [
 			react(),
-			mode === 'development' && componentTagger && componentTagger(),
+			mode === 'development' ? componentTagger() : undefined,
 		].filter(Boolean) as any,
 		resolve: {
 			alias: {

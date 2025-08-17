@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSaas } from './context'
+import { supabase } from '@/integrations/supabase/client'
 import type {
   UseOrganizationResult,
   UseSubscriptionResult,
@@ -17,6 +18,7 @@ import {
   calculateFeatureAccess,
   hasMinimumRole,
   canPerformAction,
+  canPerformActionWithOverrides,
 } from './utils'
 
 /**
@@ -143,7 +145,6 @@ export const usePermissions = (): UsePermissionsResult => {
     const overrides = (organization?.settings as any)?.role_permissions
     if (overrides) {
       try {
-        const { canPerformActionWithOverrides } = require('./utils') as typeof import('./utils')
         return canPerformActionWithOverrides(organizationRole, action, resource, overrides)
       } catch (error) {
         // Fallback to default check if override helper is unavailable
@@ -408,7 +409,7 @@ export const useOrganizationCurrency = () => {
       }
       try {
         setLoading(true)
-        const { supabase } = await import('@/integrations/supabase/client')
+        // supabase is already imported in consumers; client is globally imported where needed
         const { data: cur, error: curErr } = await supabase
           .from('currencies')
           .select('id, code, symbol')

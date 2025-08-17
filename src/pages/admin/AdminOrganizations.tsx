@@ -13,6 +13,7 @@ import { Building, Plus, Edit, Trash2, Search, Users, CreditCard } from "lucide-
 import { format } from "date-fns";
 import { toast } from "sonner";
 import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
+import { OrganizationService } from "@/lib/saas/services";
 
 interface Organization {
   id: string;
@@ -249,7 +250,6 @@ const AdminOrganizations = () => {
 
     try {
       // Prefer soft delete through service to maintain referential integrity
-      const { OrganizationService } = await import("@/lib/saas/services");
       await OrganizationService.deleteOrganization(id);
       const error = null as any;
 

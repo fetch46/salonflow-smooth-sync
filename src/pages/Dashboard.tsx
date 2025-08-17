@@ -46,7 +46,7 @@ import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useSaas } from "@/lib/saas";
-import { subDays, startOfDay, endOfDay, format as formatDate } from "date-fns";
+import { subDays, startOfDay, endOfDay, format as formatDate, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import React from "react";
 
 // Utility helpers for safe percentage and averages
@@ -119,7 +119,6 @@ const Dashboard = () => {
         const yesterdayStr = formatDate(yesterday, 'yyyy-MM-dd');
 
         // Month boundaries
-        const { startOfMonth, endOfMonth, subMonths } = await import('date-fns');
         const monthStart = startOfMonth(today);
         const monthEnd = endOfMonth(today);
         const prevMonth = subMonths(today, 1);

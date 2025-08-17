@@ -10,11 +10,7 @@ import { registerGlobalChunkErrorHandlers } from '@/utils/chunkRecovery'
 if (typeof window !== 'undefined') {
 	registerGlobalChunkErrorHandlers();
 
-	// Prefetch critical auth routes to reduce chances of lazy-load failures on first navigation
-	setTimeout(() => {
-		void import('@/pages/Login').catch(() => {});
-		void import('@/pages/Register').catch(() => {});
-	}, 0);
+
 }
 
 createRoot(document.getElementById("root")!).render(

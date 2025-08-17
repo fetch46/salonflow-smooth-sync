@@ -21,6 +21,7 @@ import { useNavigate } from "react-router-dom";
 import type { DateRange } from "react-day-picker";
 import { DollarSign } from "lucide-react";
 import { useOrganizationCurrency, useOrganization } from "@/lib/saas/hooks";
+import { deleteTransactionsByReference } from "@/utils/ledger";
 
 interface InvoicePayment {
   id: string;
@@ -761,7 +762,7 @@ export default function Payments() {
                               <DropdownMenuItem className="text-red-600" onClick={async () => {
                                 if (!confirm('Delete this expense?')) return;
                                 try {
-                                  try { const { deleteTransactionsByReference } = await import('@/utils/ledger'); await deleteTransactionsByReference('expense_payment', e.id); } catch {}
+                                  try { await deleteTransactionsByReference('expense_payment', e.id); } catch {}
                                   await supabase.from('expenses').delete().eq('id', e.id);
                                   toast.success('Expense deleted');
                                   loadData();
@@ -833,7 +834,7 @@ export default function Payments() {
                               <DropdownMenuItem className="text-red-600" onClick={async () => {
                                 if (!confirm('Delete this purchase?')) return;
                                 try {
-                                  try { const { deleteTransactionsByReference } = await import('@/utils/ledger'); await deleteTransactionsByReference('purchase_payment', p.id); } catch {}
+                                  try { await deleteTransactionsByReference('purchase_payment', p.id); } catch {}
                                   await supabase.from('purchases').delete().eq('id', p.id);
                                   toast.success('Purchase deleted');
                                   loadData();
