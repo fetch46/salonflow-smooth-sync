@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useEffect, useReducer, useCallback } from 'react'
 import { User } from '@supabase/supabase-js'
-import { supabase } from '@/integrations/supabase/client'
+import { supabase, testSupabaseConnection } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 
 import type {
@@ -607,10 +607,15 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
          if (session?.user) {
            dispatch({ type: 'SET_USER', payload: session.user })
            // Defer data fetching to avoid potential deadlocks
-           setTimeout(() => {
-             loadUserOrganizations(session.user!.id, true)
-               .finally(() => dispatch({ type: 'SET_LOADING', payload: false }))
-           }, 0)
+           setTimeout(async () => {
+              const connectivity = await testSupabaseConnection('initial-org-load')
+              if (!connectivity.ok) {
+                console.warn('Supabase connectivity issue:', connectivity.info)
+                toast.error(`Failed to load organizations: ${connectivity.info}`)
+              }
+              await loadUserOrganizations(session.user!.id, true)
+                .finally(() => dispatch({ type: 'SET_LOADING', payload: false }))
+            }, 0)
          } else {
            dispatch({ type: 'SET_LOADING', payload: false })
          }
@@ -634,13 +639,18 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
        (event, session) => {
          if (!mounted) return
  
-         if (session?.user) {
-           dispatch({ type: 'SET_USER', payload: session.user })
-           // Defer supabase calls to prevent deadlocks
-           setTimeout(() => {
-             loadUserOrganizations(session.user!.id, true)
-           }, 0)
-         } else {
+                    if (session?.user) {
+             dispatch({ type: 'SET_USER', payload: session.user })
+             // Defer supabase calls to prevent deadlocks
+             setTimeout(async () => {
+               const connectivity = await testSupabaseConnection('auth-org-load')
+               if (!connectivity.ok) {
+                 console.warn('Supabase connectivity issue:', connectivity.info)
+                 toast.error(`Failed to load organizations: ${connectivity.info}`)
+               }
+               await loadUserOrganizations(session.user!.id, true)
+             }, 0)
+           } else {
            dispatch({ type: 'RESET_STATE' })
            // Clear cache on logout
            CacheService.clear()
