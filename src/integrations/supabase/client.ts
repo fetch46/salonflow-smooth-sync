@@ -25,15 +25,32 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   }
 })
 
-// Test connection with a simple query that should always work
-supabase.from('organizations').select('count', { count: 'exact', head: true })
-  .then(({ error }) => {
-    if (error) {
-      console.error('Supabase connection test failed:', error)
+// Test connection with a simple query that should always work, with better error handling
+const testConnection = async () => {
+  try {
+    // Try a simple auth check first
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError && authError.message !== 'Invalid JWT') {
+      console.warn('Supabase auth test warning:', authError.message);
     } else {
-      console.log('Supabase connection test successful')
+      console.log('Supabase auth connection successful');
     }
-  })
-  .catch((err) => {
-    console.error('Supabase connection error:', err)
-  })
+
+    // Try to access a table that should exist
+    const { error: tableError } = await supabase
+      .from('profiles')
+      .select('count', { count: 'exact', head: true });
+    
+    if (tableError) {
+      console.warn('Supabase table access test failed:', tableError.message);
+    } else {
+      console.log('Supabase database connection test successful');
+    }
+  } catch (err) {
+    console.warn('Supabase connection test failed with network error, but client is configured:', err);
+  }
+};
+
+// Run connection test with a delay to avoid blocking app initialization
+setTimeout(testConnection, 1000);

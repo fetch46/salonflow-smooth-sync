@@ -1,109 +1,60 @@
-import { Outlet } from "react-router-dom";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "./AppSidebar";
-import { AppTopbar } from "./Topbar";
-import { useSaas } from "@/lib/saas";
-import { supabase } from "@/integrations/supabase/client";
-import { Badge } from "@/components/ui/badge";
-import { Crown } from "lucide-react";
-import React from "react";
 
-interface DashboardLayoutProps {
-  children?: React.ReactNode;
-}
+import React, { useEffect } from 'react';
+import { Outlet } from 'react-router-dom';
+import { AppSidebar } from './AppSidebar';
+import { Topbar } from './Topbar';
+import { SidebarProvider } from '@/components/ui/sidebar';
+import { useSaas } from '@/lib/saas';
+import { Toaster } from '@/components/ui/sonner';
 
-export default function DashboardLayout({ children }: DashboardLayoutProps = {}) {
-  const { 
-    user, 
-    organization, 
-    organizations, 
-    organizationRole,
-    subscription,
-    subscriptionPlan,
-    isTrialing,
-    daysLeftInTrial,
-    switchOrganization 
-  } = useSaas();
+export function DashboardLayout() {
+  const { loading, systemSettings, refreshSystemSettings } = useSaas();
 
-  const handleSignOut = async () => {
-    try {
-      // Clean up auth state to avoid limbo
-      const { cleanupAuthState } = await import('@/utils/authUtils');
-      cleanupAuthState();
-      try {
-        await supabase.auth.signOut({ scope: 'global' } as any);
-      } catch (err) {
-        // ignore
-      }
-    } finally {
-      // Force full reload to ensure clean state
-      window.location.href = '/login';
+  useEffect(() => {
+    // Only refresh system settings if we're not already loading
+    if (!loading) {
+      refreshSystemSettings().catch(error => {
+        console.warn('Failed to refresh system settings in dashboard:', error);
+        // Don't show error to user, just log it
+      });
     }
-  };
+  }, [loading, refreshSystemSettings]);
 
-  const getSubscriptionBadge = () => {
-    if (isTrialing && daysLeftInTrial !== null) {
-      return (
-        <Badge variant="outline" className="text-xs">
-          Trial: {daysLeftInTrial} days left
-        </Badge>
-      );
-    }
-    
-    if (subscriptionPlan) {
-      return (
-        <Badge variant="outline" className="text-xs">
-          {subscriptionPlan.name}
-        </Badge>
-      );
-    }
-    
-    return null;
-  };
+  // Show loading state while initial data is being fetched
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-sm text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
 
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'owner': return 'text-amber-600';
-      case 'admin': return 'text-purple-600';
-      case 'manager': return 'text-blue-600';
-      default: return 'text-slate-600';
-    }
-  };
-
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case 'owner': return <Crown className="w-3 h-3" />;
-      default: return null;
-    }
-  };
+  // Check for maintenance mode
+  if (systemSettings?.maintenance_mode) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">Maintenance Mode</h1>
+          <p className="text-muted-foreground">
+            The application is currently under maintenance. Please try again later.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background overflow-x-hidden text-foreground">
+      <div className="flex h-screen bg-background">
         <AppSidebar />
-        
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Skip link for keyboard users */}
-          <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute left-2 top-2 z-[60] rounded bg-primary text-primary-foreground px-3 py-2">
-            Skip to content
-          </a>
-          <AppTopbar />
-
-          {/* Main Content */}
-          <main id="main-content" className="flex-1 min-w-0 px-1 md:px-1.5 lg:px-2 pb-1 md:pb-1.5 lg:pb-2 pt-0.5 md:pt-[3px] lg:pt-1">
-            <React.Suspense fallback={
-              <div className="flex items-center justify-center min-h-[400px]" role="status" aria-live="polite" aria-busy="true">
-                <div className="text-center space-y-4">
-                  <div className="motion-safe:animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600 mx-auto"></div>
-                  <p className="text-sm text-muted-foreground">Loading...</p>
-                </div>
-              </div>
-            }>
-              {children || <Outlet />}
-            </React.Suspense>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Topbar />
+          <main className="flex-1 overflow-auto">
+            <Outlet />
           </main>
         </div>
       </div>
+      <Toaster />
     </SidebarProvider>
   );
 }
