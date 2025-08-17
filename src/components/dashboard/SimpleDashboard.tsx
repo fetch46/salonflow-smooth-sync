@@ -3,13 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSaas } from "@/lib/saas";
 
 const SimpleDashboard = () => {
-  const { organization, user } = useSaas();
+  const { organization, user, systemSettings } = useSaas();
+  const appName = (systemSettings as any)?.app_name || 'AURA OS';
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">
-          Welcome to {organization?.name || 'AURA OS'}
+          Welcome to {organization?.name || appName}
         </h1>
         <p className="text-gray-600 mt-2">
           Hello {user?.email}, your dashboard is loading...

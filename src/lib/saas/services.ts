@@ -654,6 +654,7 @@ export class CacheService {
  */
 
 const DEFAULT_SYSTEM_SETTINGS = {
+  app_name: 'AURA OS',
   maintenance_mode: false,
   support_email: 'support@example.com',
   default_plan_slug: 'starter',

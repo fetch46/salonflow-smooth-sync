@@ -254,6 +254,8 @@ export function AppTopbar() {
 export function SuperAdminTopbar() {
   const navigate = useNavigate();
   const { user } = useSaas();
+  const { systemSettings } = useSaas();
+  const appName = (systemSettings as any)?.app_name || 'AURA OS';
 
   const handleSignOut = async () => {
     try {
@@ -280,7 +282,7 @@ export function SuperAdminTopbar() {
             <span>Back to App</span>
           </Button>
           <div>
-            <h2 className="text-lg font-semibold">Super Admin Panel</h2>
+            <h2 className="text-lg font-semibold">{appName} • Super Admin</h2>
           </div>
         </div>
 

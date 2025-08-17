@@ -38,10 +38,12 @@ export default function Journal() {
 
   // Replace server-based account loading with Supabase chart of accounts
   const { organization } = useSaas();
+  const { systemSettings } = useSaas();
+  const appName = (systemSettings as any)?.app_name || 'AURA OS';
 
   useEffect(() => {
-    document.title = "Journal | SalonOS";
-  }, []);
+    document.title = `Journal | ${appName}`;
+  }, [appName]);
 
   const loadAccounts = async (query: string = "") => {
     try {

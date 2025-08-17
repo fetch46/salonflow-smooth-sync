@@ -18,6 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { useSaas } from "@/lib/saas";
 
 const Landing = () => {
   const featuresFallback = [
@@ -166,6 +167,8 @@ const Landing = () => {
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
   const [scrolled, setScrolled] = useState<boolean>(false);
   const { formatUsdCents } = useOrganizationCurrency();
+  const { systemSettings } = useSaas();
+  const appName = (systemSettings as any)?.app_name || 'AURA OS';
 
   useEffect(() => {
     const loadPlans = async () => {
@@ -208,7 +211,7 @@ const Landing = () => {
     loadSettings();
 
     // SEO: Title and meta description
-    document.title = "AURA OS — Modern Salon Software";
+    document.title = `${appName} — Modern Salon Software`;
     const desc =
       "All‑in‑one salon software for bookings, POS, and growth. Simple to start, powerful at scale.";
     const meta = document.querySelector('meta[name="description"]');
@@ -220,7 +223,7 @@ const Landing = () => {
       m.content = desc;
       document.head.appendChild(m);
     }
-  }, []);
+  }, [appName]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -320,8 +323,8 @@ const Landing = () => {
         { question: 'Do you offer support?', answer: 'Email support on all plans and priority support on higher tiers.' },
       ];
 
-  const brandName = settings?.brand_name || 'AURA OS';
-  const footerBrand = settings?.footer_brand_name || 'SalonSync';
+  const brandName = settings?.brand_name || appName;
+  const footerBrand = settings?.footer_brand_name || appName;
 
   return (
     <div className="min-h-screen bg-background">
@@ -549,7 +552,7 @@ const Landing = () => {
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-4xl font-bold text-foreground mb-2">{settings?.featured_title || 'Featured Businesses'}</h2>
-                <p className="text-muted-foreground">{settings?.featured_subtitle || 'Explore salons using SalonSync'}</p>
+                <p className="text-muted-foreground">{settings?.featured_subtitle || `Explore salons using ${footerBrand}`}</p>
               </div>
               <Link to="/businesses">
                 <Button variant="outline">View All</Button>
@@ -602,7 +605,7 @@ const Landing = () => {
             {settings?.cta_section_title || 'Ready to Transform Your Salon?'}
           </h2>
           <p className="text-xl mb-8 opacity-90">
-            {settings?.cta_section_subtitle || 'Join thousands of salon owners who have streamlined their operations with SalonSync.'}
+            {settings?.cta_section_subtitle || `Join thousands of salon owners who have streamlined their operations with ${footerBrand}.`}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to={settings?.cta_bottom_primary_link || "/register"}>

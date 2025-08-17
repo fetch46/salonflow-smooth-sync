@@ -1,11 +1,14 @@
 import { Link } from "react-router-dom";
+import { useSaas } from "@/lib/saas";
 
 export default function AppFooter() {
+  const { systemSettings } = useSaas();
+  const appName = (systemSettings as any)?.app_name || 'AURA OS';
   return (
     <footer className="fixed bottom-0 inset-x-0 z-20 border-t bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
         <div className="flex items-center gap-3 min-w-0">
-          <span className="font-medium text-foreground truncate">AURA OS</span>
+          <span className="font-medium text-foreground truncate">{appName}</span>
           <span className="hidden sm:inline">•</span>
           <span className="hidden sm:inline truncate">Make better business decisions, faster</span>
         </div>
