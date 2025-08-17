@@ -59,6 +59,33 @@ enum PaymentType {
   OUT
 }
 
+// Permission system enums
+
+enum PermissionAction {
+  VIEW
+  CREATE
+  EDIT
+  DELETE
+}
+
+enum PermissionResource {
+  APPOINTMENTS
+  CLIENTS
+  INVOICES
+  PAYMENTS
+  JOBCARDS
+  SUPPLIERS
+  PURCHASES
+  GOODS_RECEIVED
+  EXPENSES
+  PRODUCTS
+  ADJUSTMENTS
+  TRANSFERS
+  BANKING
+  REPORTS
+  SETTINGS
+}
+
 // Core models
 
 model User {
@@ -70,6 +97,16 @@ model User {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   journalEntries JournalEntry[] @relation("UserJournalEntries")
+}
+
+model RolePermission {
+  id        String             @id @default(cuid())
+  role      Role
+  resource  PermissionResource
+  action    PermissionAction
+  createdAt DateTime           @default(now())
+
+  @@unique([role, resource, action])
 }
 
 model Account {

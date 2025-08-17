@@ -33,7 +33,7 @@ interface TransactionRow {
 }
 
 export default function Banking() {
-  const { organization } = useSaas();
+  const { organization, organizationRole } = useSaas();
   const navigate = useNavigate();
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
@@ -57,6 +57,13 @@ export default function Banking() {
   const [statementDate, setStatementDate] = useState<string>(() => new Date().toISOString().slice(0,10));
   const [endingBalance, setEndingBalance] = useState<string>("");
 
+  // Hard block access unless accountant or owner
+  useEffect(() => {
+    const role = organizationRole || '';
+    if (role !== 'accountant' && role !== 'owner') {
+      navigate('/dashboard');
+    }
+  }, [organizationRole]);
 
   const loadAccounts = useCallback(async () => {
     if (!organization?.id) {
@@ -201,23 +208,21 @@ export default function Banking() {
       );
     };
 
-    const base: Array<Omit<DisplayTxn, "runningBalance"> > = (transactions || [])
+    const rows = transactions
       .filter(matchesSearch)
       .map((t) => {
-        const debit = Number(t.debit_amount || 0);
         const credit = Number(t.credit_amount || 0);
-        // Map to bank statement presentation for this account
-        const displayCredit = debit;   // money into this account
-        const displayDebit = credit;   // money out of this account
-        return { ...t, displayDebit, displayCredit } as any;
+        const debit = Number(t.debit_amount || 0);
+        return { ...t, displayDebit: debit, displayCredit: credit, runningBalance: 0 } as DisplayTxn;
       });
 
-    // Running balance: credits increase, debits decrease
-    let bal = 0;
-    return base.map((t) => {
-      bal += (Number(t.displayCredit || 0) - Number(t.displayDebit || 0));
-      return { ...(t as any), runningBalance: bal } as DisplayTxn;
-    });
+    let running = 0;
+    for (const r of rows) {
+      running += (r.displayCredit - r.displayDebit);
+      r.runningBalance = running;
+    }
+
+    return rows;
   }, [transactions, search]);
 
   const selectedAccount = useMemo(() => accounts.find(a => a.id === selectedAccountId), [accounts, selectedAccountId]);
