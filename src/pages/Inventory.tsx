@@ -1358,15 +1358,25 @@ export default function Inventory() {
                     </DropdownMenuCheckboxItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button variant="outline" size="sm" onClick={downloadTemplateCsv} title="Download CSV Template">
-                  <FileDown className="w-4 h-4 mr-2" /> Template
-                </Button>
-                <Button variant="outline" size="sm" onClick={exportProductsCsv} disabled={isLoading} title="Export Products to CSV">
-                  <Download className="w-4 h-4 mr-2" /> Export
-                </Button>
-                <Button size="sm" onClick={handleImportClick} disabled={importing} title="Import Products from CSV">
-                  <Upload className="w-4 h-4 mr-2" /> {importing ? 'Importing...' : 'Import'}
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" title="Actions">
+                      <MoreHorizontal className="w-4 h-4 mr-2" /> Action
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleImportClick} disabled={importing} title="Import Products from CSV">
+                      <Upload className="w-4 h-4 mr-2" /> {importing ? 'Importing…' : 'Import Items'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={exportProductsCsv} disabled={isLoading} title="Export Products to CSV">
+                      <Download className="w-4 h-4 mr-2" /> Export Items
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={downloadTemplateCsv} title="Download CSV Template">
+                      <FileDown className="w-4 h-4 mr-2" /> Import Template
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <input
                   ref={fileInputRef as any}
                   type="file"
