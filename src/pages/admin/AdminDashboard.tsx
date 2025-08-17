@@ -289,20 +289,20 @@ const AdminDashboard = () => {
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Link to="/admin/organizations">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Organizations</CardTitle>
-                <Building className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-white/90">Organizations</CardTitle>
+                <Building className="h-4 w-4 text-white/80" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
                   {loading ? '...' : stats.organizations.total.toLocaleString()}
                 </div>
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-green-600">
+                  <span className="text-xs text-white/80">
                     +{stats.organizations.recent} this week
                   </span>
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs bg-white/10 text-white border-white/20">
                     {stats.organizations.active} active
                   </Badge>
                 </div>
@@ -311,20 +311,20 @@ const AdminDashboard = () => {
           </Link>
 
           <Link to="/admin/users">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Users</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-white/90">Users</CardTitle>
+                <Users className="h-4 w-4 text-white/80" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
                   {loading ? '...' : stats.users.total.toLocaleString()}
                 </div>
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-green-600">
+                  <span className="text-xs text-white/80">
                     +{stats.users.recent} this week
                   </span>
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs bg-white/10 text-white border-white/20">
                     {stats.users.confirmed} confirmed
                   </Badge>
                 </div>
@@ -333,20 +333,20 @@ const AdminDashboard = () => {
           </Link>
 
           <Link to="/admin/subscription-plans">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <Card className="bg-gradient-to-br from-violet-500 to-violet-600 text-white border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Subscriptions</CardTitle>
-                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-white/90">Subscriptions</CardTitle>
+                <CreditCard className="h-4 w-4 text-white/80" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
                   {loading ? '...' : stats.subscriptions.active.toLocaleString()}
                 </div>
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-blue-600">
+                  <span className="text-xs text-white/80">
                     {stats.subscriptions.trial} trial
                   </span>
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs bg-white/10 text-white border-white/20">
                     {formatCurrency(stats.subscriptions.revenue)}/mo
                   </Badge>
                 </div>
@@ -355,10 +355,10 @@ const AdminDashboard = () => {
           </Link>
 
           <Link to="/admin/business-data">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <Card className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Business Data</CardTitle>
-                <Database className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-white/90">Business Data</CardTitle>
+                <Database className="h-4 w-4 text-white/80" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
@@ -367,11 +367,11 @@ const AdminDashboard = () => {
                     .toLocaleString()}
                 </div>
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-green-600">
+                  <span className="text-xs text-white/80">
                     +{Object.values(stats.businessData)
                       .reduce((sum, data) => sum + data.recent, 0)} this week
                   </span>
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs bg-white/10 text-white border-white/20">
                     All records
                   </Badge>
                 </div>

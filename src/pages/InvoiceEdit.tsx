@@ -312,7 +312,7 @@ export default function InvoiceEdit() {
             <Receipt className="w-4 h-4 text-green-600" />
             Invoice Items
           </h3>
-          <Card className="bg-slate-50 border-slate-200">
+          <Card className="bg-slate-500/10 border-slate-200">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Add Item</CardTitle>
             </CardHeader>
