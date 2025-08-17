@@ -95,5 +95,37 @@ export function useRegionalDateFormatter() {
 }
 
 export function useOrganizationCurrency() {
-  throw new Error('useOrganizationCurrency is not yet implemented');
+  const context = useContext(SaasContext);
+  if (context === undefined) {
+    throw new Error('useOrganizationCurrency must be used within a SaasProvider');
+  }
+  
+  // Get currency from organization or use default
+  const currency = context.organization?.currency || { code: 'USD', symbol: '$' };
+  
+  const formatCurrency = (amount: number, options?: { 
+    showSymbol?: boolean; 
+    minimumFractionDigits?: number;
+    maximumFractionDigits?: number;
+  }) => {
+    const { 
+      showSymbol = true, 
+      minimumFractionDigits = 2,
+      maximumFractionDigits = 2 
+    } = options || {};
+    
+    const formattedAmount = new Intl.NumberFormat('en-US', {
+      minimumFractionDigits,
+      maximumFractionDigits,
+    }).format(amount);
+    
+    return showSymbol ? `${currency.symbol}${formattedAmount}` : formattedAmount;
+  };
+  
+  return {
+    currency,
+    formatCurrency,
+    currencyCode: currency.code,
+    currencySymbol: currency.symbol
+  };
 }
