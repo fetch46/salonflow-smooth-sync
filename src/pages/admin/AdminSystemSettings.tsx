@@ -21,6 +21,7 @@ interface SystemSettings {
   features: Record<string, boolean>;
   metadata: Record<string, any>;
   regional_formats_enabled?: boolean;
+  app_name?: string;
 }
 
 const DEFAULT_SETTINGS: SystemSettings = {
@@ -33,6 +34,7 @@ const DEFAULT_SETTINGS: SystemSettings = {
   },
   metadata: {},
   regional_formats_enabled: false,
+  app_name: 'AURA OS',
 };
 
 export default function AdminSystemSettings() {
@@ -302,6 +304,14 @@ useEffect(() => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>App Name</Label>
+                    <Input
+                      value={settings.app_name || ''}
+                      onChange={(e) => setSettings((s) => ({ ...s, app_name: e.target.value }))}
+                      placeholder="AURA OS"
+                    />
+                  </div>
                   <div>
                     <Label>Support Email</Label>
                     <Input

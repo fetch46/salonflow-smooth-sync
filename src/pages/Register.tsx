@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useSaas } from "@/lib/saas";
 
 interface BusinessData {
   // Personal Info
@@ -762,6 +763,9 @@ const Register = () => {
     }
   };
 
+  const { systemSettings } = useSaas();
+  const appName = (systemSettings as any)?.app_name || 'AURA OS';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-background flex items-center justify-center p-2 sm:p-4">
       <div className="w-full max-w-2xl">
@@ -773,7 +777,7 @@ const Register = () => {
               </div>
             </div>
             <CardTitle className="text-3xl font-bold text-foreground">
-              Join AURA OS
+              Join {appName}
             </CardTitle>
             <CardDescription className="text-base">
               Create your professional salon management account

@@ -19,6 +19,7 @@ import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { useOrganizationTaxRate } from "@/lib/saas/hooks";
 import { Switch } from "@/components/ui/switch";
 import { postSaleCOGSAndInventory } from "@/utils/ledger";
+import { useSaas } from "@/lib/saas";
 
 
 interface Product {
@@ -89,6 +90,8 @@ export default function POS() {
   const { format: formatMoney } = useOrganizationCurrency();
   const orgTaxRate = useOrganizationTaxRate();
   const { organization } = useOrganization();
+  const { systemSettings } = useSaas();
+  const appName = (systemSettings as any)?.app_name || 'AURA OS';
 
   const [paymentData, setPaymentData] = useState({
     payment_method: "",
@@ -927,7 +930,7 @@ export default function POS() {
           {currentSale && (
             <div className="space-y-4">
               <div className="text-center">
-                <h3 className="text-lg font-semibold">AURA OS</h3>
+                <h3 className="text-lg font-semibold">{appName}</h3>
                 <p className="text-sm text-muted-foreground">Thank you for your purchase!</p>
               </div>
               

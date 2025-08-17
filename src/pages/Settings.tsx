@@ -18,10 +18,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSearchParams } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Globe } from "lucide-react";
+import { useSaas } from "@/lib/saas";
 
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "company");
+  const { systemSettings } = useSaas();
+  const appName = (systemSettings as any)?.app_name || 'AURA OS';
   useEffect(() => {
     const tabParam = searchParams.get("tab");
     if (tabParam && tabParam !== activeTab) {
@@ -260,7 +263,7 @@ phone: "",
     appointment_reminders: true,
     promotional_emails: false,
     staff_notifications: true,
-    email_signature: "Best regards,\nAURA OS Team",
+    email_signature: `Best regards,\n${appName} Team`,
     sms_provider: "twilio",
     smtp_server: "smtp.gmail.com",
     smtp_port: "587",

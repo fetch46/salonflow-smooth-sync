@@ -33,7 +33,7 @@ interface TransactionRow {
 }
 
 export default function Banking() {
-  const { organization, organizationRole } = useSaas();
+  const { organization, organizationRole, systemSettings } = useSaas();
   const navigate = useNavigate();
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
@@ -148,8 +148,8 @@ export default function Banking() {
   }, [selectedAccountId]);
 
   useEffect(() => {
-    document.title = "Banking | SalonOS";
-  }, []);
+    document.title = `Banking | ${systemSettings?.app_name || 'AURA OS'}`;
+  }, [systemSettings?.app_name]);
 
   const loadUnreconciled = useCallback(async () => {
     if (!selectedAccountId) { setUnreconciled([]); return; }
