@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Crown } from "lucide-react";
 import React from "react";
+import { testSupabaseConnection } from "@/integrations/supabase/client";
 
 interface DashboardLayoutProps {
   children?: React.ReactNode;
@@ -24,6 +25,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps = {})
     daysLeftInTrial,
     switchOrganization 
   } = useSaas();
+
+  const [connWarn, setConnWarn] = React.useState<string | null>(null)
+  const { systemSettings } = useSaas()
+
+  React.useEffect(() => {
+    let mounted = true
+    testSupabaseConnection().then((r) => {
+      if (!mounted) return
+      if (!r.ok) setConnWarn(r.info || 'Connection issue')
+    }).catch(() => {})
+    return () => { mounted = false }
+  }, [])
 
   const handleSignOut = async () => {
     try {
@@ -88,6 +101,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps = {})
             Skip to content
           </a>
           <AppTopbar />
+
+          {systemSettings && (systemSettings as any).maintenance_mode && (
+            <div className="px-3 md:px-4 lg:px-6 py-2 bg-amber-50 text-amber-900 text-sm border-b border-amber-200">
+              The system is currently in maintenance mode. Some features may be limited.
+            </div>
+          )}
+
+          {connWarn && (
+            <div className="px-3 md:px-4 lg:px-6 py-2 bg-red-50 text-red-700 text-sm border-b border-red-200">
+              Connectivity issue detected: {connWarn}
+            </div>
+          )}
 
           {/* Main Content */}
           <main id="main-content" className="flex-1 min-w-0 px-1 md:px-1.5 lg:px-2 pb-1 md:pb-1.5 lg:pb-2 pt-0.5 md:pt-[3px] lg:pt-1">

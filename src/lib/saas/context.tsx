@@ -519,13 +519,9 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadSystemSettings = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('settings')
-        .eq('slug', 'system')
-        .maybeSingle()
-      if (error) throw error
-      dispatch({ type: 'SET_SYSTEM_SETTINGS', payload: data?.settings || null })
+      const { SystemSettingsService } = await import('./services')
+      const settings = await SystemSettingsService.getSystemSettings()
+      dispatch({ type: 'SET_SYSTEM_SETTINGS', payload: settings || null })
     } catch (e) {
       console.warn('Failed to load system settings', e)
       dispatch({ type: 'SET_SYSTEM_SETTINGS', payload: null })

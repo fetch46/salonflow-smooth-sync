@@ -67,6 +67,7 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
 const Landing = lazy(() => import("@/pages/Landing"));
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import BusinessDirectory from "@/pages/BusinessDirectory";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Admin pages
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
@@ -219,13 +220,36 @@ const AppRoutes = () => {
 };
 
 function App() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: (failureCount, error: any) => {
+          // Retry small number of times for network hiccups only
+          const msg = String(error?.message || '')
+          if (/network|fetch|timeout|ECONNRESET|ETIMEDOUT/i.test(msg)) {
+            return failureCount < 2
+          }
+          return false
+        },
+        staleTime: 30_000,
+        gcTime: 5 * 60_000,
+        refetchOnWindowFocus: false,
+      },
+      mutations: {
+        retry: 0,
+      },
+    },
+  })
+
   return (
     <ErrorBoundary>
-      <Router basename={import.meta.env.BASE_URL}>
-        <AppRoutes />
-        <Toaster />
-        <AppFooter />
-      </Router>
+      <QueryClientProvider client={queryClient}>
+        <Router basename={import.meta.env.BASE_URL}>
+          <AppRoutes />
+          <Toaster />
+          <AppFooter />
+        </Router>
+      </QueryClientProvider>
     </ErrorBoundary>
   );
 }

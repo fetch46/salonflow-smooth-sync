@@ -456,3 +456,100 @@ export function pick<T extends object, K extends keyof T>(obj: T, keys: K[]): Pi
   })
   return result
 }
+
+/**
+ * Network and Resilience Utilities
+ */
+
+export function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+export function withTimeout<T>(promise: Promise<T>, ms: number, label = 'operation'): Promise<T> {
+  const timeout = new Promise<T>((_, reject) => {
+    const id = setTimeout(() => {
+      clearTimeout(id)
+      reject(new Error(`${label} timed out after ${ms}ms`))
+    }, ms)
+  })
+  return Promise.race([promise, timeout]) as Promise<T>
+}
+
+export function isNetworkError(error: unknown): boolean {
+  if (typeof window !== 'undefined' && !navigator.onLine) return true
+  const message = typeof error === 'string' ? error : (error as any)?.message
+  if (typeof message === 'string') {
+    return /network\s?error|failed\s?to\s?fetch|load\s?failed|ERR_NETWORK/i.test(message)
+  }
+  return false
+}
+
+export interface RetryOptions {
+  retries?: number
+  initialDelayMs?: number
+  maxDelayMs?: number
+  factor?: number
+  shouldRetry?: (error: unknown, attempt: number) => boolean
+}
+
+export async function withRetry<T>(fn: () => Promise<T>, options: RetryOptions = {}): Promise<T> {
+  const {
+    retries = 3,
+    initialDelayMs = 200,
+    maxDelayMs = 2000,
+    factor = 2,
+    shouldRetry = (err) => isNetworkError(err),
+  } = options
+
+  let attempt = 0
+  let delayMs = initialDelayMs
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try {
+      return await fn()
+    } catch (error) {
+      attempt += 1
+      if (attempt > retries || !shouldRetry(error, attempt)) {
+        throw error
+      }
+      await delay(delayMs)
+      delayMs = Math.min(maxDelayMs, delayMs * factor)
+    }
+  }
+}
+
+export async function safeFetch<T = unknown>(input: RequestInfo | URL, init?: RequestInit, fallback?: T): Promise<T> {
+  try {
+    const res = await fetch(input, init)
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`)
+    }
+    // @ts-expect-error generic parse
+    return await res.json()
+  } catch (error) {
+    if (fallback !== undefined) return fallback
+    throw error
+  }
+}
+
+// Supabase error helpers
+export function isMissingRelationError(error: any): boolean {
+  const code = error?.code
+  const msg = (error?.message || error?.details || '').toString()
+  // Postgres undefined table 42P01, undefined column 42703. PostgREST not found PGRST116
+  return code === '42P01' || code === '42703' || code === 'PGRST116' || /does not exist|not found/i.test(msg)
+}
+
+export function isAuthError(error: any): boolean {
+  const code = error?.code
+  return code === 'PGRST301' || code === '401' || /jwt|auth/i.test(String(error?.message || ''))
+}
+
+export async function safeSupabaseCall<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await fn()
+  } catch (_err) {
+    return fallback
+  }
+}

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { SystemSettingsService } from "@/lib/saas";
+import { isMissingRelationError } from "@/lib/saas";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,27 +54,8 @@ useEffect(() => {
   const loadSettings = async () => {
     try {
       setLoading(true);
-      // Store system settings in a dedicated row in organizations table with slug 'system'
-      const { data, error } = await supabase
-        .from("organizations")
-        .select("id, settings")
-        .eq("slug", "system")
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (data?.settings) {
-        setSettings({ ...DEFAULT_SETTINGS, ...(data.settings as any) });
-      } else {
-        // Create a system organization row if not exists
-        const { data: created, error: insertError } = await supabase
-          .from("organizations")
-          .insert({ name: "System", slug: "system", settings: DEFAULT_SETTINGS, status: "active" })
-          .select("id, settings")
-          .single();
-        if (insertError) throw insertError;
-        setSettings(created.settings as SystemSettings);
-      }
+      const s = await SystemSettingsService.getSystemSettings();
+      setSettings({ ...DEFAULT_SETTINGS, ...(s as any) });
     } catch (err) {
       console.error("Failed to load settings", err);
       toast.error("Failed to load system settings");
@@ -84,12 +67,9 @@ useEffect(() => {
   const saveSettings = async () => {
     try {
       setSaving(true);
-      const { error } = await supabase
-        .from("organizations")
-        .update({ settings })
-        .eq("slug", "system");
-      if (error) throw error;
-      toast.success("Settings saved");
+      const ok = await SystemSettingsService.saveSystemSettings(settings);
+      if (ok) toast.success("Settings saved");
+      else toast.error("Failed to save settings");
     } catch (err) {
       console.error("Failed to save settings", err);
       toast.error("Failed to save settings");
@@ -102,14 +82,19 @@ useEffect(() => {
   const loadCurrencies = async () => {
     try {
       const { data, error } = await supabase
-        .from('currencies')
+        .from('currencies' as any)
         .select('*')
         .order('code');
       if (error) throw error;
       setCurrencies(data || []);
-    } catch (err) {
-      console.error('Failed to load currencies', err);
-      toast.error('Failed to load currencies');
+    } catch (err: any) {
+      if (isMissingRelationError(err)) {
+        console.warn('Currencies table missing; skipping.');
+        setCurrencies([]);
+      } else {
+        console.error('Failed to load currencies', err);
+        toast.error('Failed to load currencies');
+      }
     }
   };
 
@@ -126,14 +111,18 @@ useEffect(() => {
         symbol: newCurrency.symbol.trim(),
         is_active: true,
       };
-      const { error } = await supabase.from('currencies').insert([payload]);
+      const { error } = await supabase.from('currencies' as any).insert([payload]);
       if (error) throw error;
       toast.success('Currency added');
       setNewCurrency({ code: '', name: '', symbol: '' });
       loadCurrencies();
-    } catch (err) {
-      console.error('Failed to add currency', err);
-      toast.error('Failed to add currency');
+    } catch (err: any) {
+      if (isMissingRelationError(err)) {
+        toast.error('Currencies table not installed');
+      } else {
+        console.error('Failed to add currency', err);
+        toast.error('Failed to add currency');
+      }
     } finally {
       setSavingCurrency(false);
     }
@@ -142,14 +131,18 @@ useEffect(() => {
   const toggleCurrencyActive = async (id: string, value: boolean) => {
     try {
       const { error } = await supabase
-        .from('currencies')
+        .from('currencies' as any)
         .update({ is_active: value })
         .eq('id', id);
       if (error) throw error;
       loadCurrencies();
-    } catch (err) {
-      console.error('Failed to update currency', err);
-      toast.error('Failed to update currency');
+    } catch (err: any) {
+      if (isMissingRelationError(err)) {
+        toast.error('Currencies table not installed');
+      } else {
+        console.error('Failed to update currency', err);
+        toast.error('Failed to update currency');
+      }
     }
   };
 
@@ -157,29 +150,38 @@ useEffect(() => {
     if (!confirm('Delete this currency?')) return;
     try {
       const { error } = await supabase
-        .from('currencies')
+        .from('currencies' as any)
         .delete()
         .eq('id', id);
       if (error) throw error;
       toast.success('Currency deleted');
       loadCurrencies();
-    } catch (err) {
-      console.error('Failed to delete currency', err);
-      toast.error('Failed to delete currency');
+    } catch (err: any) {
+      if (isMissingRelationError(err)) {
+        toast.error('Currencies table not installed');
+      } else {
+        console.error('Failed to delete currency', err);
+        toast.error('Failed to delete currency');
+      }
     }
   };
 
   const loadCountries = async () => {
     try {
       const { data, error } = await supabase
-        .from('countries')
+        .from('countries' as any)
         .select('*')
         .order('name');
       if (error) throw error;
       setCountries(data || []);
     } catch (err) {
-      console.error('Failed to load countries', err);
-      toast.error('Failed to load countries');
+      if (isMissingRelationError(err)) {
+        console.warn('Countries table missing; skipping.');
+        setCountries([]);
+      } else {
+        console.error('Failed to load countries', err);
+        toast.error('Failed to load countries');
+      }
     }
   };
 
@@ -195,14 +197,18 @@ useEffect(() => {
         name: newCountry.name.trim(),
         is_active: true,
       };
-      const { error } = await supabase.from('countries').insert([payload]);
+      const { error } = await supabase.from('countries' as any).insert([payload]);
       if (error) throw error;
       toast.success('Country added');
       setNewCountry({ code: '', name: '' });
       loadCountries();
-    } catch (err) {
-      console.error('Failed to add country', err);
-      toast.error('Failed to add country');
+    } catch (err: any) {
+      if (isMissingRelationError(err)) {
+        toast.error('Countries table not installed');
+      } else {
+        console.error('Failed to add country', err);
+        toast.error('Failed to add country');
+      }
     } finally {
       setSavingCountry(false);
     }
@@ -211,14 +217,18 @@ useEffect(() => {
   const toggleCountryActive = async (id: string, value: boolean) => {
     try {
       const { error } = await supabase
-        .from('countries')
+        .from('countries' as any)
         .update({ is_active: value })
         .eq('id', id);
       if (error) throw error;
       loadCountries();
-    } catch (err) {
-      console.error('Failed to update country', err);
-      toast.error('Failed to update country');
+    } catch (err: any) {
+      if (isMissingRelationError(err)) {
+        toast.error('Countries table not installed');
+      } else {
+        console.error('Failed to update country', err);
+        toast.error('Failed to update country');
+      }
     }
   };
 
@@ -226,15 +236,19 @@ useEffect(() => {
     if (!confirm('Delete this country?')) return;
     try {
       const { error } = await supabase
-        .from('countries')
+        .from('countries' as any)
         .delete()
         .eq('id', id);
       if (error) throw error;
       toast.success('Country deleted');
       loadCountries();
-    } catch (err) {
-      console.error('Failed to delete country', err);
-      toast.error('Failed to delete country');
+    } catch (err: any) {
+      if (isMissingRelationError(err)) {
+        toast.error('Countries table not installed');
+      } else {
+        console.error('Failed to delete country', err);
+        toast.error('Failed to delete country');
+      }
     }
   };
 
