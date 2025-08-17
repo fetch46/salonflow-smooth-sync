@@ -84,7 +84,16 @@ import BusinessDirectory from "@/pages/BusinessDirectory";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Admin pages
-
+const AdminDashboard = lazyWithRetry(() => import("@/pages/admin/AdminDashboard"));
+const AdminOrganizations = lazyWithRetry(() => import("@/pages/admin/AdminOrganizations"));
+const AdminSubscriptionPlans = lazyWithRetry(() => import("@/pages/admin/AdminSubscriptionPlans"));
+const AdminUsers = lazyWithRetry(() => import("@/pages/admin/AdminUsers"));
+const AdminInvitations = lazyWithRetry(() => import("@/pages/admin/AdminInvitations"));
+const AdminSuperAdmins = lazyWithRetry(() => import("@/pages/admin/AdminSuperAdmins"));
+const AdminActivity = lazyWithRetry(() => import("@/pages/admin/AdminActivity"));
+const AdminSystemSettings = lazyWithRetry(() => import("@/pages/admin/AdminSystemSettings"));
+const AdminBusinessData = lazyWithRetry(() => import("@/pages/admin/AdminBusinessData"));
+const AdminLandingCMS = lazyWithRetry(() => import("@/pages/admin/AdminLandingCMS"));
 
 // Loading component
 const LoadingFallback = () => (
