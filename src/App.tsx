@@ -11,66 +11,80 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 // Auth Pages
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import { isChunkError, recoverFromChunkErrorOnce } from "@/utils/chunkRecovery";
+
+// Helper: lazy loader that retries by triggering cache bust/reload on chunk failures
+const lazyWithRetry = <T extends {}>(loader: () => Promise<{ default: React.ComponentType<T> }>) =>
+  lazy(async () => {
+    try {
+      return await loader();
+    } catch (error) {
+      if (isChunkError(error)) {
+        await recoverFromChunkErrorOnce();
+      }
+      throw error as any;
+    }
+  });
 
 // Load essential pages
-const Dashboard = lazy(() => import("@/pages/Dashboard"));
-const SimpleDashboard = lazy(() => import("@/components/dashboard/SimpleDashboard"));
-const Appointments = lazy(() => import("@/pages/Appointments"));
-const AppointmentForm = lazy(() => import("@/pages/AppointmentForm"));
-const Clients = lazy(() => import("@/pages/Clients"));
-const ClientProfile = lazy(() => import("@/pages/ClientProfile"));
-const Staff = lazy(() => import("@/pages/Staff"));
-const Services = lazy(() => import("@/pages/Services"));
-const ServiceForm = lazy(() => import("@/pages/ServiceForm"));
-const ServiceView = lazy(() => import("@/pages/ServiceView"));
-const Inventory = lazy(() => import("@/pages/Inventory"));
-const ProductView = lazy(() => import("@/pages/ProductView"));
-const ProductForm = lazy(() => import("@/pages/ProductForm"));
-const GoodsReceived = lazy(() => import("@/pages/GoodsReceived"));
-const GoodsReceivedForm = lazy(() => import("@/pages/GoodsReceivedForm"));
-const InventoryAdjustments = lazy(() => import("@/pages/InventoryAdjustments"));
-const InventoryAdjustmentForm = lazy(() => import("@/pages/InventoryAdjustmentForm"));
-const PurchaseForm = lazy(() => import("@/pages/PurchaseForm"));
-const PurchaseView = lazy(() => import("@/pages/PurchaseView"));
-const ExpenseForm = lazy(() => import("@/pages/ExpenseForm"));
-const StaffProfile = lazy(() => import("@/pages/StaffProfile"));
-const Settings = lazy(() => import("@/pages/Settings"));
-const Profile = lazy(() => import("@/pages/Profile"));
-const Help = lazy(() => import("@/pages/Help"));
-const Reports = lazy(() => import("@/pages/Reports"));
-const POS = lazy(() => import("@/pages/POS"));
-const Invoices = lazy(() => import("@/pages/Invoices"));
-const InvoiceCreate = lazy(() => import("@/pages/InvoiceCreate"));
-const InvoiceEdit = lazy(() => import("@/pages/InvoiceEdit"));
-const Expenses = lazy(() => import("@/pages/Expenses"));
-const Payments = lazy(() => import("@/pages/Payments"));
-const PaymentReceivedNew = lazy(() => import("@/pages/PaymentReceivedNew"));
-const JobCards = lazy(() => import("@/pages/JobCards"));
-const CreateJobCard = lazy(() => import("@/pages/CreateJobCard"));
-const EditJobCard = lazy(() => import("@/pages/EditJobCard"));
-const JobCardView = lazy(() => import("@/pages/JobCardView"));
-const Suppliers = lazy(() => import("@/pages/Suppliers"));
-const SupplierProfile = lazy(() => import("@/pages/SupplierProfile"));
-const Banking = lazy(() => import("@/pages/Banking"));
-const Accounts = lazy(() => import("@/pages/Accounts"));
-const AccountCreate = lazy(() => import("@/pages/AccountCreate"));
-const AccountEdit = lazy(() => import("@/pages/AccountEdit"));
-const AccountView = lazy(() => import("@/pages/AccountView"));
-const Journal = lazy(() => import("@/pages/Journal"));
-const Purchases = lazy(() => import("@/pages/Purchases"));
-const StockTransfers = lazy(() => import("@/pages/StockTransfers"));
+const Dashboard = lazyWithRetry(() => import("@/pages/Dashboard"));
+const SimpleDashboard = lazyWithRetry(() => import("@/components/dashboard/SimpleDashboard"));
+const Appointments = lazyWithRetry(() => import("@/pages/Appointments"));
+const AppointmentForm = lazyWithRetry(() => import("@/pages/AppointmentForm"));
+const Clients = lazyWithRetry(() => import("@/pages/Clients"));
+const ClientProfile = lazyWithRetry(() => import("@/pages/ClientProfile"));
+const Staff = lazyWithRetry(() => import("@/pages/Staff"));
+const Services = lazyWithRetry(() => import("@/pages/Services"));
+const ServiceForm = lazyWithRetry(() => import("@/pages/ServiceForm"));
+const ServiceView = lazyWithRetry(() => import("@/pages/ServiceView"));
+const Inventory = lazyWithRetry(() => import("@/pages/Inventory"));
+const ProductView = lazyWithRetry(() => import("@/pages/ProductView"));
+const ProductForm = lazyWithRetry(() => import("@/pages/ProductForm"));
+const GoodsReceived = lazyWithRetry(() => import("@/pages/GoodsReceived"));
+const GoodsReceivedForm = lazyWithRetry(() => import("@/pages/GoodsReceivedForm"));
+const InventoryAdjustments = lazyWithRetry(() => import("@/pages/InventoryAdjustments"));
+const InventoryAdjustmentForm = lazyWithRetry(() => import("@/pages/InventoryAdjustmentForm"));
+const PurchaseForm = lazyWithRetry(() => import("@/pages/PurchaseForm"));
+const PurchaseView = lazyWithRetry(() => import("@/pages/PurchaseView"));
+const ExpenseForm = lazyWithRetry(() => import("@/pages/ExpenseForm"));
+const StaffProfile = lazyWithRetry(() => import("@/pages/StaffProfile"));
+const Settings = lazyWithRetry(() => import("@/pages/Settings"));
+const Profile = lazyWithRetry(() => import("@/pages/Profile"));
+const Help = lazyWithRetry(() => import("@/pages/Help"));
+const Reports = lazyWithRetry(() => import("@/pages/Reports"));
+const POS = lazyWithRetry(() => import("@/pages/POS"));
+const Invoices = lazyWithRetry(() => import("@/pages/Invoices"));
+const InvoiceCreate = lazyWithRetry(() => import("@/pages/InvoiceCreate"));
+const InvoiceEdit = lazyWithRetry(() => import("@/pages/InvoiceEdit"));
+const Expenses = lazyWithRetry(() => import("@/pages/Expenses"));
+const Payments = lazyWithRetry(() => import("@/pages/Payments"));
+const PaymentReceivedNew = lazyWithRetry(() => import("@/pages/PaymentReceivedNew"));
+const JobCards = lazyWithRetry(() => import("@/pages/JobCards"));
+const CreateJobCard = lazyWithRetry(() => import("@/pages/CreateJobCard"));
+const EditJobCard = lazyWithRetry(() => import("@/pages/EditJobCard"));
+const JobCardView = lazyWithRetry(() => import("@/pages/JobCardView"));
+const Suppliers = lazyWithRetry(() => import("@/pages/Suppliers"));
+const SupplierProfile = lazyWithRetry(() => import("@/pages/SupplierProfile"));
+const Banking = lazyWithRetry(() => import("@/pages/Banking"));
+const Accounts = lazyWithRetry(() => import("@/pages/Accounts"));
+const AccountCreate = lazyWithRetry(() => import("@/pages/AccountCreate"));
+const AccountEdit = lazyWithRetry(() => import("@/pages/AccountEdit"));
+const AccountView = lazyWithRetry(() => import("@/pages/AccountView"));
+const Journal = lazyWithRetry(() => import("@/pages/Journal"));
+const Purchases = lazyWithRetry(() => import("@/pages/Purchases"));
+const StockTransfers = lazyWithRetry(() => import("@/pages/StockTransfers"));
 
-const ProductEdit = lazy(() => import("@/pages/ProductEdit"));
+const ProductEdit = lazyWithRetry(() => import("@/pages/ProductEdit"));
 
 
-const NotFound = lazy(() => import("@/pages/NotFound"));
-const Landing = lazy(() => import("@/pages/Landing"));
+const NotFound = lazyWithRetry(() => import("@/pages/NotFound"));
+const Landing = lazyWithRetry(() => import("@/pages/Landing"));
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import BusinessDirectory from "@/pages/BusinessDirectory";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Admin pages
-const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
+const AdminDashboard = lazyWithRetry(() => import("@/pages/admin/AdminDashboard"));
 
 // Loading component
 const LoadingFallback = () => (
@@ -244,11 +258,17 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <Router basename={import.meta.env.BASE_URL}>
-          <AppRoutes />
-          <Toaster />
-          <AppFooter />
-        </Router>
+        {(() => {
+          const base = import.meta.env.BASE_URL;
+          const basename = typeof base === 'string' && base.startsWith('/') ? base : undefined;
+          return (
+            <Router basename={basename}>
+              <AppRoutes />
+              <Toaster />
+              <AppFooter />
+            </Router>
+          );
+        })()}
       </QueryClientProvider>
     </ErrorBoundary>
   );

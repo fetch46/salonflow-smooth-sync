@@ -15,7 +15,7 @@ export default defineConfig(async ({ mode }) => {
 	}
 
 	return {
-		base: process.env.VITE_BASE || "/",
+		base: process.env.VITE_BASE || (mode === 'production' ? './' : '/'),
 		server: {
 			host: "::",
 			port: 8080,

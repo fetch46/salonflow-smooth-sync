@@ -10,9 +10,14 @@ export function isChunkError(reasonOrEvent: any): boolean {
       reasonOrEvent?.error ||
       reasonOrEvent
     );
-    return message.includes('Failed to fetch dynamically imported module') ||
-      message.includes('ChunkLoadError') ||
-      message.includes('Loading chunk') && message.includes('failed');
+    return (
+      message.includes('Failed to fetch dynamically imported module') ||
+      /ChunkLoadError/i.test(message) ||
+      (/Loading chunk/i.test(message) && /failed/i.test(message)) ||
+      /Importing a module script failed/i.test(message) ||
+      /Load failed for module/i.test(message) ||
+      /NetworkError.*fetch/i.test(message)
+    );
   } catch {
     return false;
   }
@@ -57,7 +62,7 @@ export async function recoverFromChunkErrorOnce(): Promise<void> {
 }
 
 export function registerGlobalChunkErrorHandlers(): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
 
   const handler = (evt: any) => {
     const payload = (evt && ('reason' in evt || 'error' in evt)) ? (evt.reason || evt.error) : evt;
@@ -68,4 +73,6 @@ export function registerGlobalChunkErrorHandlers(): void {
 
   window.addEventListener('error', handler as any, { capture: true });
   window.addEventListener('unhandledrejection', handler as any);
+  // Fired by Vite when a module preload fails (e.g., dynamic import chunk fetch failure)
+  window.addEventListener('vite:preloadError' as any, handler as any);
 }
