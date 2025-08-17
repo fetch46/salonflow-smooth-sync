@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/roles.js';
 
 const router = Router();
 const OPEN_REPORTS = process.env.REPORTS_OPEN_ACCESS === 'true' || process.env.NODE_ENV !== 'production';
@@ -8,157 +9,127 @@ if (!OPEN_REPORTS) {
   router.use(requireAuth);
 }
 
-router.get('/trial-balance', async (req, res) => {
+router.get('/trial-balance', requirePermission('REPORTS','VIEW'), async (req, res) => {
   try {
     const start = req.query.start ? new Date(String(req.query.start)) : new Date('1900-01-01');
-    const end = req.query.end ? new Date(String(req.query.end)) : new Date('2900-01-01');
-    const locationId = req.query.locationId ? String(req.query.locationId) : undefined;
-
-    const where: any = {
-      entry: { date: { gte: start, lte: end } },
-    };
-    if (locationId && locationId !== 'all') {
-      where.locationId = locationId;
-    }
+    const end = req.query.end ? new Date(String(req.query.end)) : new Date();
 
     const lines = await prisma.journalLine.findMany({
-      where,
-      include: { account: true },
+      where: { entry: { date: { gte: start, lte: end } } },
     });
 
-    const rowsMap: Record<string, { accountId: string; code: string; name: string; category: string; debit: number; credit: number; balance: number }> = {};
-    for (const l of lines) {
+    const map = new Map<string, { debit: number; credit: number }>();
+    for (const l of lines as any[]) {
       const key = l.accountId;
-      if (!rowsMap[key]) {
-        rowsMap[key] = {
-          accountId: l.accountId,
-          code: l.account.code,
-          name: l.account.name,
-          category: l.account.category as any,
-          debit: 0,
-          credit: 0,
-          balance: 0,
-        };
-      }
-      rowsMap[key].debit += Number(l.debit || 0);
-      rowsMap[key].credit += Number(l.credit || 0);
+      const cur = map.get(key) || { debit: 0, credit: 0 };
+      cur.debit += Number(l.debit || 0);
+      cur.credit += Number(l.credit || 0);
+      map.set(key, cur);
     }
-    const rows = Object.values(rowsMap)
-      .map((r) => ({ ...r, balance: r.debit - r.credit }))
-      .sort((a, b) => a.code.localeCompare(b.code));
 
-    const totals = rows.reduce((acc, r) => ({ debit: acc.debit + r.debit, credit: acc.credit + r.credit }), { debit: 0, credit: 0 });
+    const accounts = await prisma.account.findMany({ where: { id: { in: Array.from(map.keys()) } } });
 
-    res.json({ rows, totals });
+    const rows = accounts.map((a: any) => {
+      const s = map.get(a.id) || { debit: 0, credit: 0 };
+      const balance = s.debit - s.credit;
+      return { accountId: a.id, accountCode: a.code, accountName: a.name, debit: s.debit, credit: s.credit, balance };
+    });
+
+    res.json({ rows });
   } catch (e: any) {
-    res.status(500).json({ error: e?.message || 'Failed to load trial balance' });
+    res.status(400).json({ error: e.message });
   }
 });
 
-router.get('/profit-and-loss', async (req, res) => {
+router.get('/profit-and-loss', requirePermission('REPORTS','VIEW'), async (req, res) => {
   try {
     const start = req.query.start ? new Date(String(req.query.start)) : new Date('1900-01-01');
-    const end = req.query.end ? new Date(String(req.query.end)) : new Date('2900-01-01');
-    const locationId = req.query.locationId ? String(req.query.locationId) : undefined;
-
-    const where: any = { entry: { date: { gte: start, lte: end } }, account: { category: { in: ['INCOME', 'EXPENSE'] as any } } };
-    if (locationId && locationId !== 'all') {
-      where.locationId = locationId;
-    }
+    const end = req.query.end ? new Date(String(req.query.end)) : new Date();
 
     const lines = await prisma.journalLine.findMany({
-      where,
+      where: { entry: { date: { gte: start, lte: end } } },
       include: { account: true },
     });
 
-    const rows: Record<string, { name: string; category: string; debit: number; credit: number }> = {};
-    for (const l of lines) {
-      const key = l.accountId;
-      if (!rows[key]) rows[key] = { name: l.account.name, category: l.account.category as any, debit: 0, credit: 0 } as any;
-      rows[key].debit += Number(l.debit || 0);
-      rows[key].credit += Number(l.credit || 0);
+    let income = 0;
+    let cogs = 0;
+    let expense = 0;
+    for (const l of lines as any[]) {
+      const amt = Number(l.credit || 0) - Number(l.debit || 0);
+      if (l.account.category === 'INCOME') income += amt;
+      if (l.account.category === 'EXPENSE') expense += -amt;
+      // If product cogs account category is EXPENSE then COGS is included; otherwise keep simple
     }
-    const arr = Object.entries(rows).map(([accountId, r]) => ({ accountId, ...r }));
-    const income = arr.filter((r) => r.category === 'INCOME').reduce((acc, r) => acc + (r.credit - r.debit), 0);
-    const expenses = arr.filter((r) => r.category === 'EXPENSE').reduce((acc, r) => acc + (r.debit - r.credit), 0);
-    const netIncome = income - expenses;
 
-    res.json({ rows: arr, income, expenses, netIncome });
+    const grossProfit = income - cogs;
+    const netProfit = grossProfit - expense;
+
+    res.json({ income, cogs, expense, grossProfit, netProfit });
   } catch (e: any) {
-    res.status(500).json({ error: e?.message || 'Failed to load profit and loss' });
+    res.status(400).json({ error: e.message });
   }
 });
 
-router.get('/balance-sheet', async (req, res) => {
+router.get('/balance-sheet', requirePermission('REPORTS','VIEW'), async (req, res) => {
   try {
     const end = req.query.asOf ? new Date(String(req.query.asOf)) : new Date();
-    const locationId = req.query.locationId ? String(req.query.locationId) : undefined;
-
-    const where: any = { entry: { date: { lte: end } }, account: { category: { in: ['ASSET', 'LIABILITY', 'EQUITY'] as any } } };
-    if (locationId && locationId !== 'all') {
-      where.locationId = locationId;
-    }
 
     const lines = await prisma.journalLine.findMany({
-      where,
+      where: { entry: { date: { lte: end } } },
       include: { account: true },
     });
 
-    const rows: Record<string, { name: string; category: string; balance: number }> = {};
-    for (const l of lines) {
-      const key = l.accountId;
-      if (!rows[key]) rows[key] = { name: l.account.name, category: l.account.category as any, balance: 0 } as any;
-      const debit = Number(l.debit || 0);
-      const credit = Number(l.credit || 0);
-      let delta = 0;
-      if (l.account.category === 'ASSET' || l.account.category === 'EXPENSE') delta = debit - credit; else delta = credit - debit;
-      rows[key].balance += delta;
+    const balances = new Map<string, number>();
+    for (const l of lines as any[]) {
+      const prev = balances.get(l.accountId) || 0;
+      const next = prev + Number(l.debit || 0) - Number(l.credit || 0);
+      balances.set(l.accountId, next);
     }
-    const arr = Object.entries(rows).map(([accountId, r]) => ({ accountId, ...r }));
-    const assets = arr.filter((r) => r.category === 'ASSET').reduce((acc, r) => acc + r.balance, 0);
-    const liabilities = arr.filter((r) => r.category === 'LIABILITY').reduce((acc, r) => acc + r.balance, 0);
-    const equity = arr.filter((r) => r.category === 'EQUITY').reduce((acc, r) => acc + r.balance, 0);
 
-    res.json({ rows: arr, assets, liabilities, equity, assetsEqualsLiabilitiesPlusEquity: Math.abs(assets - (liabilities + equity)) < 0.01 });
+    const accounts = await prisma.account.findMany({});
+
+    let assets = 0;
+    let liabilities = 0;
+    let equity = 0;
+
+    for (const a of accounts as any[]) {
+      const bal = balances.get(a.id) || 0;
+      if (a.category === 'ASSET') assets += bal;
+      if (a.category === 'LIABILITY') liabilities += -bal;
+      if (a.category === 'EQUITY') equity += -bal;
+    }
+
+    res.json({ assets, liabilities, equity, balanced: Math.abs(assets - liabilities - equity) < 1e-6 });
   } catch (e: any) {
-    res.status(500).json({ error: e?.message || 'Failed to load balance sheet' });
+    res.status(400).json({ error: e.message });
   }
 });
 
 // Revenue by location (based on INCOME accounts within period)
-router.get('/revenue-by-location', async (req, res) => {
+router.get('/revenue-by-location', requirePermission('REPORTS','VIEW'), async (req, res) => {
   try {
     const start = req.query.start ? new Date(String(req.query.start)) : new Date('1900-01-01');
-    const end = req.query.end ? new Date(String(req.query.end)) : new Date('2900-01-01');
-    const locationId = req.query.locationId ? String(req.query.locationId) : undefined;
-
-    const where: any = {
-      entry: { date: { gte: start, lte: end } },
-      account: { category: 'INCOME' as any },
-    };
-    if (locationId && locationId !== 'all') {
-      where.locationId = locationId;
-    }
+    const end = req.query.end ? new Date(String(req.query.end)) : new Date();
 
     const lines = await prisma.journalLine.findMany({
-      where,
-      include: { location: true },
+      where: { entry: { date: { gte: start, lte: end } } },
+      include: { account: true, product: true },
     });
 
-    const map = new Map<string, { locationId: string | null; locationName: string; revenue: number }>();
-    for (const l of lines) {
-      const key = l.locationId || 'unassigned';
-      const current = map.get(key) || { locationId: l.locationId || null, locationName: l.location?.name || 'Unassigned', revenue: 0 };
-      // For income accounts, revenue increases with credit - debit
-      current.revenue += (Number(l.credit || 0) - Number(l.debit || 0));
-      map.set(key, current);
+    const byLocation = new Map<string, number>();
+    for (const l of lines as any[]) {
+      if (l.account.category === 'INCOME' && l.locationId) {
+        const amount = Number(l.credit || 0) - Number(l.debit || 0);
+        byLocation.set(l.locationId, (byLocation.get(l.locationId) || 0) + amount);
+      }
     }
 
-    const rows = Array.from(map.values()).sort((a, b) => b.revenue - a.revenue);
-    const total = rows.reduce((sum, r) => sum + r.revenue, 0);
-    res.json({ rows, total });
+    const locations = await prisma.stockLocation.findMany({ where: { id: { in: Array.from(byLocation.keys()) } } });
+
+    const rows = locations.map((loc: any) => ({ locationId: loc.id, locationName: loc.name, amount: byLocation.get(loc.id) || 0 }));
+    res.json({ rows });
   } catch (e: any) {
-    res.status(500).json({ error: e?.message || 'Failed to load revenue by location' });
+    res.status(400).json({ error: e.message });
   }
 });
 
