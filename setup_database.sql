@@ -123,7 +123,8 @@ DECLARE
         'account_transactions', 'sales', 'sale_items', 'invoices', 
         'invoice_items', 'inventory_adjustments', 'inventory_adjustment_items', 'staff_commissions',
         'organizations', 'organization_users', 'organization_subscriptions',
-        'subscription_plans', 'user_invitations', 'super_admins'
+        'subscription_plans', 'user_invitations', 'super_admins',
+        'service_categories'
     ];
     table_name TEXT;
     table_exists BOOLEAN;

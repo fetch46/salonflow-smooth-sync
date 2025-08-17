@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { toast } from "sonner";
 import { Info, ShoppingCart, Scissors, ArrowLeft } from "lucide-react";
 import { useOrganization, useOrganizationCurrency } from "@/lib/saas/hooks";
+import ServiceCategoriesManager from "@/components/services/ServiceCategoriesManager";
 
 interface ServiceFormState {
   name: string;
@@ -51,16 +52,6 @@ const DURATION_OPTIONS = [
   { label: "3 hours", value: 180 },
 ];
 
-const CATEGORY_SUGGESTIONS = [
-  "Hair Services",
-  "Nail Services",
-  "Facial Treatments",
-  "Body Treatments",
-  "Massage Therapy",
-  "Makeup Services",
-  "Special Treatments",
-];
-
 export default function ServiceForm() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -84,12 +75,30 @@ export default function ServiceForm() {
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [locations, setLocations] = useState<{ id: string; name: string; is_default?: boolean }[]>([]);
   const [serviceOrgId, setServiceOrgId] = useState<string | null>(null);
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
+  const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
 
-  const categoryOptions = useMemo(() => {
-    const base = [...CATEGORY_SUGGESTIONS];
-    if (formData.category && !base.includes(formData.category)) base.unshift(formData.category);
-    return base;
-  }, [formData.category]);
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        if (!organization?.id) { setCategoryOptions([]); return; }
+        const { data, error } = await supabase
+          .from('service_categories' as any)
+          .select('name')
+          .eq('organization_id', organization.id)
+          .order('name');
+        if (error) throw error;
+        const names = (data || []).map((r: any) => r.name as string);
+        // Ensure currently selected category is present in list
+        const merged = Array.from(new Set([...(formData.category ? [formData.category] : []), ...names]));
+        setCategoryOptions(merged);
+      } catch (e) {
+        // fallback to existing category if any
+        setCategoryOptions(formData.category ? [formData.category] : []);
+      }
+    };
+    loadCategories();
+  }, [organization?.id, formData.category]);
 
   const fetchAvailableProducts = useCallback(async () => {
     try {
@@ -469,16 +478,19 @@ export default function ServiceForm() {
                 </div>
                 <div>
                   <Label htmlFor="category">Category</Label>
-                  <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categoryOptions.map((c) => (
-                        <SelectItem key={c} value={c}>{c}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2">
+                    <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categoryOptions.map((c) => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button type="button" variant="outline" onClick={() => setManageCategoriesOpen(true)}>Manage</Button>
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="location_id">Location *</Label>
@@ -625,6 +637,26 @@ export default function ServiceForm() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Categories Manager */}
+      {organization?.id && (
+        <ServiceCategoriesManager
+          open={manageCategoriesOpen}
+          onOpenChange={setManageCategoriesOpen}
+          organizationId={organization.id}
+          onChanged={async () => {
+            // refresh list
+            const { data } = await supabase
+              .from('service_categories' as any)
+              .select('name')
+              .eq('organization_id', organization.id)
+              .order('name');
+            const names = (data || []).map((r: any) => r.name as string);
+            const merged = Array.from(new Set([...(formData.category ? [formData.category] : []), ...names]));
+            setCategoryOptions(merged);
+          }}
+        />
+      )}
     </div>
   );
 }

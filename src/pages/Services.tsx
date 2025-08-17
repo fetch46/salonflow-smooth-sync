@@ -58,6 +58,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import ServicesTable from "@/components/services/ServicesTable";
+import ServiceCategoriesManager from "@/components/services/ServiceCategoriesManager";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { useOrganization } from "@/lib/saas/hooks";
 import { useNavigate } from "react-router-dom";
@@ -104,7 +105,7 @@ interface BookingService {
 
 // Removed mock bookings; best sellers now computed from invoice_items
 
-const SERVICE_CATEGORIES = [
+const DEFAULT_SERVICE_CATEGORIES = [
   { name: "Hair Services", icon: Scissors, color: "from-pink-500 to-rose-500" },
   { name: "Nail Services", icon: Sparkles, color: "from-purple-500 to-violet-500" },
   { name: "Facial Treatments", icon: Heart, color: "from-emerald-500 to-teal-500" },
@@ -141,6 +142,8 @@ export default function Services() {
   const [viewMode, setViewMode] = useState<"cards" | "table">("table");
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [locations, setLocations] = useState<{ id: string; name: string; is_default?: boolean }[]>([]);
+  const [serviceCategories, setServiceCategories] = useState<{ name: string }[]>([]);
+  const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
  
   const { format: formatCurrency } = useOrganizationCurrency();
   const { organization } = useOrganization();
@@ -440,6 +443,25 @@ export default function Services() {
     }
   }, [isModalOpen, editingService, locations, formData.location_id]);
 
+  const fetchServiceCategories = useCallback(async () => {
+    try {
+      if (!organization?.id) { setServiceCategories([]); return; }
+      const { data, error } = await supabase
+        .from('service_categories' as any)
+        .select('name')
+        .eq('organization_id', organization.id)
+        .order('name');
+      if (error) throw error;
+      const names = (data || []) as any[];
+      setServiceCategories(names);
+    } catch (e) {
+      // Fallback: empty if table missing
+      setServiceCategories([]);
+    }
+  }, [organization?.id]);
+
+  useEffect(() => { fetchServiceCategories(); }, [fetchServiceCategories]);
+
   const fetchServiceMetrics = useCallback(async () => {
     try {
       // Get service metrics from job_card_services instead of invoice_items
@@ -491,12 +513,18 @@ export default function Services() {
         .sort((a, b) => b.total_bookings - a.total_bookings)
         .slice(0, 3);
 
-      const categoriesStats = SERVICE_CATEGORIES.map((cat) => {
+      const categoriesList = (serviceCategories.length > 0
+        ? serviceCategories.map(c => ({ name: c.name }))
+        : DEFAULT_SERVICE_CATEGORIES.map(c => ({ name: c.name })));
+
+      const categoriesStats = categoriesList.map((cat) => {
         const count = services.filter((s) => s.category === cat.name).length;
         const revenue = Object.values(byService)
           .filter((v) => v.category === cat.name)
           .reduce((sum, v) => sum + v.revenue, 0);
-        return { name: cat.name, count, revenue, icon: cat.icon, color: cat.color };
+        // Default icon/color mapping for known defaults; fallback to gray
+        const fallback = DEFAULT_SERVICE_CATEGORIES.find(d => d.name === cat.name);
+        return { name: cat.name, count, revenue, icon: (fallback?.icon || Package), color: (fallback?.color || 'from-gray-500 to-gray-600') };
       }).filter((c) => c.count > 0);
 
       // Utilization: distinct services with activity in last 30 days / active services
@@ -531,7 +559,7 @@ export default function Services() {
       console.error("Error fetching service metrics:", err);
       setServiceMetrics({ totalRevenue: 0, totalBookings: 0, bestSelling: [], categoriesStats: [], utilizationPct: 0, revenueGrowthPct: 0, bookingGrowthPct: 0 });
     }
-  }, [services]);
+  }, [services, serviceCategories]);
 
   useEffect(() => {
     fetchServiceMetrics();
@@ -810,12 +838,12 @@ export default function Services() {
   };
 
   const getCategoryIcon = (categoryName: string) => {
-    const category = SERVICE_CATEGORIES.find(cat => cat.name === categoryName);
+    const category = DEFAULT_SERVICE_CATEGORIES.find(cat => cat.name === categoryName);
     return category ? category.icon : Package;
   };
 
   const getCategoryColor = (categoryName: string) => {
-    const category = SERVICE_CATEGORIES.find(cat => cat.name === categoryName);
+    const category = DEFAULT_SERVICE_CATEGORIES.find(cat => cat.name === categoryName);
     return category ? category.color : "from-gray-500 to-gray-600";
   };
 
@@ -1182,21 +1210,23 @@ export default function Services() {
               </div>
               
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-52">
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  {SERVICE_CATEGORIES.map((category) => (
+                  {(serviceCategories.length > 0 ? serviceCategories : DEFAULT_SERVICE_CATEGORIES).map((category: any) => (
                     <SelectItem key={category.name} value={category.name}>
                       <div className="flex items-center gap-2">
-                        <category.icon className="w-4 h-4" />
+                        {(() => { const def = DEFAULT_SERVICE_CATEGORIES.find(d => d.name === category.name); const Icon = def?.icon || Package; return <Icon className="w-4 h-4" />; })()}
                         {category.name}
                       </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              
+              <Button variant="outline" onClick={() => setManageCategoriesOpen(true)}>Manage Categories</Button>
               
               <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger className="w-32">
@@ -1390,6 +1420,12 @@ export default function Services() {
           )}
         </CardContent>
       </Card>
+      <ServiceCategoriesManager
+        open={manageCategoriesOpen}
+        onOpenChange={setManageCategoriesOpen}
+        organizationId={organization?.id || ''}
+        onChanged={() => { fetchServiceCategories(); fetchServices(); fetchServiceMetrics(); }}
+      />
     </div>
   );
 }
