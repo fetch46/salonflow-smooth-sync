@@ -11,6 +11,7 @@ import { postAccountTransfer } from "@/utils/ledger";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useNavigate } from "react-router-dom";
+import Papa from "papaparse";
 
 
 interface AccountRow {
@@ -30,6 +31,14 @@ interface TransactionRow {
   credit_amount: number | null;
   reference_type?: string | null;
   reference_id?: string | null;
+}
+
+interface StatementRow {
+  date: string;
+  description: string;
+  reference?: string;
+  amount: number;
+  type: 'IN' | 'OUT';
 }
 
 export default function Banking() {
@@ -56,6 +65,9 @@ export default function Banking() {
   const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[]>([]);
   const [statementDate, setStatementDate] = useState<string>(() => new Date().toISOString().slice(0,10));
   const [endingBalance, setEndingBalance] = useState<string>("");
+  const [statementRows, setStatementRows] = useState<StatementRow[]>([]);
+  const [dateToleranceDays, setDateToleranceDays] = useState<number>(3);
+  const [matchSummary, setMatchSummary] = useState<{ matched: number; total: number }>({ matched: 0, total: 0 });
 
   // Hard block access unless accountant or owner
   useEffect(() => {
@@ -248,6 +260,8 @@ export default function Banking() {
 
   const openReconcile = () => {
     setSelectedPaymentIds([]);
+    setStatementRows([]);
+    setMatchSummary({ matched: 0, total: 0 });
     setStatementDate(new Date().toISOString().slice(0,10));
     setEndingBalance("");
     setReconOpen(true);
@@ -326,6 +340,126 @@ export default function Banking() {
     } finally {
       setTransferLoading(false);
     }
+  };
+
+  const isWithinDays = (a: string | Date, b: string | Date, days: number) => {
+    try {
+      const da = new Date(a);
+      const db = new Date(b);
+      const diffMs = Math.abs(da.getTime() - db.getTime());
+      const diffDays = diffMs / (1000 * 60 * 60 * 24);
+      return diffDays <= days + 1e-9;
+    } catch {
+      return false;
+    }
+  };
+
+  const normalize = (s?: any) => String(s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  const handleStatementFileChange = (file?: File | null) => {
+    if (!file) { setStatementRows([]); setMatchSummary({ matched: 0, total: 0 }); return; }
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (h: string) => h.trim(),
+      complete: (results) => {
+        try {
+          const rows: StatementRow[] = (results.data as any[]).map((r) => {
+            const rawDate = r.Date ?? r.date ?? r.DATE ?? "";
+            const date = String(rawDate).slice(0, 10);
+            const description = String(r.Description ?? r.description ?? "");
+            const reference = String(r.Reference ?? r.reference ?? "");
+            const hasAmount = r.Amount ?? r.amount;
+            const hasCredit = r.Credit ?? r.credit;
+            const hasDebit = r.Debit ?? r.debit;
+            let amount = 0;
+            let type: 'IN' | 'OUT' = 'IN';
+            if (hasAmount !== undefined && hasAmount !== null && String(hasAmount).trim() !== "") {
+              const num = Number(String(hasAmount).replace(/[,\s]/g, ""));
+              amount = Math.abs(isFinite(num) ? num : 0);
+              const t = String(r.Type ?? r.type ?? (num >= 0 ? 'IN' : 'OUT')).toUpperCase();
+              type = t === 'OUT' ? 'OUT' : 'IN';
+            } else if ((hasCredit ?? "") !== "" || (hasDebit ?? "") !== "") {
+              const creditNum = Number(String(hasCredit ?? "0").replace(/[,\s]/g, ""));
+              const debitNum = Number(String(hasDebit ?? "0").replace(/[,\s]/g, ""));
+              if (creditNum > 0 && debitNum <= 0) { amount = creditNum; type = 'IN'; }
+              else if (debitNum > 0 && creditNum <= 0) { amount = debitNum; type = 'OUT'; }
+            }
+            return { date, description, reference, amount: Number(amount || 0), type } as StatementRow;
+          }).filter((r) => r.amount > 0 && r.date);
+          setStatementRows(rows);
+          setMatchSummary({ matched: 0, total: rows.length });
+        } catch (e) {
+          console.warn('Failed to parse statement CSV', e);
+          setStatementRows([]);
+          setMatchSummary({ matched: 0, total: 0 });
+        }
+      },
+      error: () => {
+        setStatementRows([]);
+        setMatchSummary({ matched: 0, total: 0 });
+      }
+    });
+  };
+
+  const autoMatchFromStatement = () => {
+    if (!statementRows.length || !(unreconciled || []).length) { setMatchSummary({ matched: 0, total: statementRows.length }); return; }
+    const used = new Set<string>();
+    const prevSelected = new Set<string>(selectedPaymentIds);
+    for (const pid of prevSelected) used.add(pid);
+
+    const bestMatches: string[] = [];
+
+    const tol = Math.max(0, Number(dateToleranceDays || 0));
+
+    for (const s of statementRows) {
+      const sRef = normalize(s.reference);
+
+      let candidates: any[] = [];
+
+      // Phase 1: Try to match by reference + date tolerance (ignore amount)
+      if (sRef) {
+        const refCandidates = (unreconciled || []).filter((p: any) => {
+          if (used.has(p.id)) return false;
+          if (!s.date || !p.date) return false;
+          if (!isWithinDays(String(p.date).slice(0,10), String(s.date).slice(0,10), tol)) return false;
+          const pRef = normalize(p.referenceId);
+          const pRefCombo = normalize(`${p.referenceType || ''}${p.referenceId || ''}`);
+          return sRef === pRef || sRef.includes(pRef) || sRef === pRefCombo || sRef.includes(pRefCombo);
+        });
+        candidates = refCandidates;
+      }
+
+      // Phase 2: If no reference match, try amount + type + date tolerance
+      if (candidates.length === 0) {
+        const amtCandidates = (unreconciled || []).filter((p: any) => {
+          if (used.has(p.id)) return false;
+          if (!s.date || !p.date) return false;
+          const typeMatch = String(p.type || '').toUpperCase() === s.type;
+          if (!typeMatch) return false;
+          const amountMatch = Math.abs(Number(p.amount || 0) - Number(s.amount || 0)) < 0.005;
+          if (!amountMatch) return false;
+          return isWithinDays(String(p.date).slice(0,10), String(s.date).slice(0,10), tol);
+        });
+        candidates = amtCandidates;
+      }
+
+      if (candidates.length > 0) {
+        // Choose the candidate with closest date difference
+        let best: any = candidates[0];
+        let bestDiff = Number.MAX_SAFE_INTEGER;
+        for (const c of candidates) {
+          const d = Math.abs(new Date(String(c.date).slice(0,10)).getTime() - new Date(String(s.date).slice(0,10)).getTime());
+          if (d < bestDiff) { bestDiff = d; best = c; }
+        }
+        used.add(best.id);
+        bestMatches.push(best.id);
+      }
+    }
+
+    const nextSelected = Array.from(new Set<string>([...selectedPaymentIds, ...bestMatches]));
+    setSelectedPaymentIds(nextSelected);
+    setMatchSummary({ matched: bestMatches.length, total: statementRows.length });
   };
 
   return (
@@ -481,6 +615,40 @@ export default function Banking() {
                 <Input type="number" step="0.01" value={endingBalance} onChange={(e) => setEndingBalance(e.target.value)} />
               </div>
             </div>
+
+            <div className="space-y-3 p-3 border rounded">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={(e) => handleStatementFileChange(e.target.files?.[0] || null)}
+                  />
+                </div>
+                <a
+                  href="/bank-statement-template.csv"
+                  download
+                  className="inline-flex items-center text-sm text-blue-600 hover:underline"
+                  title="Download CSV template"
+                >
+                  <FileDown className="w-4 h-4 mr-2" />
+                  Download CSV template
+                </a>
+              </div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div>
+                  <div className="text-sm text-slate-600 mb-1">Date tolerance (days)</div>
+                  <Input type="number" min={0} value={dateToleranceDays} onChange={(e) => setDateToleranceDays(Number(e.target.value || 0))} className="w-28" />
+                </div>
+                <Button type="button" onClick={autoMatchFromStatement} disabled={reconLoading || statementRows.length === 0}>
+                  Auto-match
+                </Button>
+                <div className="text-sm text-slate-600">
+                  {statementRows.length > 0 ? `Matched ${matchSummary.matched} of ${matchSummary.total} statement lines` : 'No statement uploaded'}
+                </div>
+              </div>
+            </div>
+
             <div className="text-sm text-slate-600">Select payments to reconcile</div>
             <div className="border rounded max-h-80 overflow-auto">
               <Table className="min-w-[700px]">
