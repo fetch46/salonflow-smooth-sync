@@ -495,12 +495,32 @@ phone: "",
 
   const handleSaveLocation = async () => {
     if (!organization) return toast.error('No organization selected');
+    const name = (locationForm.name || '').trim();
+    if (!name) return toast.error('Location name is required');
+
+    // Pre-check uniqueness per organization for friendlier UX
+    try {
+      const { data: existing } = await supabase
+        .from('business_locations')
+        .select('id')
+        .eq('organization_id', organization.id)
+        .ilike('name', name)
+        .limit(1);
+
+      const exists = Array.isArray(existing) && existing.length > 0 && (!editingLocation || existing[0].id !== editingLocation.id);
+      if (exists) {
+        return toast.error('A location with this name already exists in your organization');
+      }
+    } catch (e) {
+      // ignore pre-check errors; DB constraint will still enforce
+    }
+
     if (editingLocation) {
       try {
         await supabase
           .from('business_locations')
           .update({
-            name: locationForm.name,
+            name,
             address: locationForm.description,
             is_active: locationForm.is_active,
             default_warehouse_id: locationForm.default_warehouse_id || null,
@@ -510,8 +530,9 @@ phone: "",
         setIsLocationDialogOpen(false);
         fetchStockLocations();
       } catch (e: any) {
-        console.error(e);
-        toast.error(`Failed to update location${e?.message ? `: ${e.message}` : ''}`);
+        const msg = String(e?.message || '');
+        const unique = /unique|duplicate key|already exists/i.test(msg);
+        toast.error(unique ? 'A location with this name already exists in your organization' : `Failed to update location${e?.message ? `: ${e.message}` : ''}`);
       }
     } else {
       try {
@@ -519,7 +540,7 @@ phone: "",
           .from('business_locations')
           .insert({
             organization_id: organization.id,
-            name: locationForm.name,
+            name,
             address: locationForm.description,
             is_active: locationForm.is_active,
             default_warehouse_id: locationForm.default_warehouse_id || null,
@@ -528,8 +549,9 @@ phone: "",
         setIsLocationDialogOpen(false);
         fetchStockLocations();
       } catch (e: any) {
-        console.error(e);
-        toast.error(`Failed to create location${e?.message ? `: ${e.message}` : ''}`);
+        const msg = String(e?.message || '');
+        const unique = /unique|duplicate key|already exists/i.test(msg);
+        toast.error(unique ? 'A location with this name already exists in your organization' : `Failed to create location${e?.message ? `: ${e.message}` : ''}`);
       }
     }
   };
@@ -545,8 +567,9 @@ phone: "",
         toast.success('Location deleted successfully');
         fetchStockLocations();
       } catch (e: any) {
-        console.error(e);
-        toast.error(`Failed to delete location${e?.message ? `: ${e.message}` : ''}`);
+        const msg = String(e?.message || '');
+        const fk = /foreign key|violates foreign key constraint|constraint/i.test(msg) || (e?.code === '23503');
+        toast.error(fk ? 'Cannot delete this location because it is in use (referenced by other records)' : `Failed to delete location${e?.message ? `: ${e.message}` : ''}`);
       }
     }
   };
