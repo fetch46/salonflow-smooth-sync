@@ -2535,6 +2535,7 @@ export type Database = {
           is_active: boolean | null
           updated_at: string
           user_id: string
+          permissions: Json | null
         }
         Insert: {
           created_at?: string
@@ -2544,6 +2545,7 @@ export type Database = {
           is_active?: boolean | null
           updated_at?: string
           user_id: string
+          permissions?: Json | null
         }
         Update: {
           created_at?: string
@@ -2553,6 +2555,7 @@ export type Database = {
           is_active?: boolean | null
           updated_at?: string
           user_id?: string
+          permissions?: Json | null
         }
         Relationships: []
       }
