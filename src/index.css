@@ -164,3 +164,105 @@ html, body, #root {
     transform: translateX(-50%) translateY(-50%);
   }
 }
+
+@layer base {
+  /* Dark mode cleanup: remove bright light backgrounds and gradients */
+  .dark [class*="bg-gradient-to-"][class*="from-slate-50"],
+  .dark [class*="bg-gradient-to-"][class*="from-gray-50"],
+  .dark [class*="bg-gradient-to-"][class*="from-stone-50"],
+  .dark [class*="bg-gradient-to-"][class*="from-zinc-50"],
+  .dark [class*="bg-gradient-to-"][class*="from-neutral-50"],
+  .dark [class*="bg-gradient-to-"][class*="from-pink-50"],
+  .dark [class*="bg-gradient-to-"][class*="from-purple-50"],
+  .dark [class*="bg-gradient-to-"][class*="from-blue-50"],
+  .dark [class*="bg-gradient-to-"][class*="from-sky-50"],
+  .dark [class*="bg-gradient-to-"][class*="from-green-50"],
+  .dark [class*="bg-gradient-to-"][class*="from-emerald-50"],
+  .dark [class*="bg-gradient-to-"][class*="from-yellow-50"],
+  .dark [class*="bg-gradient-to-"][class*="from-amber-50"],
+  .dark [class*="bg-gradient-to-"][class*="from-orange-50"],
+  .dark [class*="bg-gradient-to-"][class*="from-red-50"],
+  .dark [class*="bg-gradient-to-"][class*="from-rose-50"],
+  .dark [class*="bg-gradient-to-"][class*="from-violet-50"],
+  .dark [class*="bg-gradient-to-"][class*="from-cyan-50"],
+  .dark [class*="bg-gradient-to-"][class*="from-white"],
+  .dark [class*="bg-gradient-to-"][class*="to-slate-100"],
+  .dark [class*="bg-gradient-to-"][class*="to-gray-100"],
+  .dark [class*="bg-gradient-to-"][class*="to-stone-100"],
+  .dark [class*="bg-gradient-to-"][class*="to-zinc-100"],
+  .dark [class*="bg-gradient-to-"][class*="to-neutral-100"],
+  .dark [class*="bg-gradient-to-"][class*="to-emerald-50"],
+  .dark [class*="bg-gradient-to-"][class*="to-sky-50"],
+  .dark [class*="bg-gradient-to-"][class*="to-pink-50"],
+  .dark [class*="bg-gradient-to-"][class*="to-purple-50"],
+  .dark [class*="bg-gradient-to-"][class*="to-blue-50"],
+  .dark [class*="bg-gradient-to-"][class*="to-yellow-50"],
+  .dark [class*="bg-gradient-to-"][class*="to-amber-50"],
+  .dark [class*="bg-gradient-to-"][class*="to-orange-50"],
+  .dark [class*="bg-gradient-to-"][class*="to-red-50"],
+  .dark [class*="bg-gradient-to-"][class*="to-rose-50"],
+  .dark [class*="bg-gradient-to-"][class*="to-violet-50"],
+  .dark [class*="bg-gradient-to-"][class*="to-cyan-50"] {
+    background-image: none !important;
+    background-color: hsl(var(--card)) !important;
+  }
+
+  /* Panels using light solid backgrounds */
+  .dark .bg-slate-50\/30,
+  .dark .bg-slate-50,
+  .dark .bg-slate-100,
+  .dark .bg-gray-50,
+  .dark .bg-gray-100,
+  .dark .bg-white,
+  .dark .bg-amber-50,
+  .dark .bg-blue-50,
+  .dark .bg-emerald-50,
+  .dark .bg-green-50,
+  .dark .bg-yellow-50,
+  .dark .bg-orange-50,
+  .dark .bg-red-50,
+  .dark .bg-pink-50,
+  .dark .bg-purple-50,
+  .dark .bg-sky-50,
+  .dark .bg-rose-50,
+  .dark .bg-violet-50,
+  .dark .bg-cyan-50,
+  .dark .bg-neutral-50,
+  .dark .bg-stone-50,
+  .dark .bg-zinc-50 {
+    background-color: hsl(var(--card)) !important;
+  }
+
+  /* Soften bright borders in dark */
+  .dark [class*="border-"][class*="-200"],
+  .dark [class*="border-"][class*="-100"] {
+    border-color: hsl(var(--border)) !important;
+  }
+
+  /* Normalize text contrast in dark */
+  .dark .text-slate-900,
+  .dark .text-gray-900 {
+    color: hsl(var(--foreground)) !important;
+  }
+  .dark .text-slate-600,
+  .dark .text-slate-500,
+  .dark .text-gray-600,
+  .dark .text-gray-500 {
+    color: hsl(var(--muted-foreground)) !important;
+  }
+  /* Disable gradient text in dark for better contrast */
+  .dark [class*="bg-clip-text"].text-transparent {
+    background-image: none !important;
+    -webkit-text-fill-color: hsl(var(--foreground));
+    color: hsl(var(--foreground));
+  }
+  /* Dim bright white rings/borders in dark */
+  .dark .ring-white { --tw-ring-color: hsl(var(--border)) !important; }
+  .dark .border-white { border-color: hsl(var(--border)) !important; }
+  /* Remove light radial gradient overlays in dark */
+  .dark [class*="bg-\[radial-gradient"][class*="primary\/0.12"],
+  .dark [class*="bg-\[radial-gradient"][class*="white"],
+  .dark [class*="bg-\[linear-gradient"][class*="white"] {
+    background-image: none !important;
+  }
+}
