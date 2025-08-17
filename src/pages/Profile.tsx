@@ -99,10 +99,10 @@ const Profile = () => {
         email: profileData.email,
         phone: profileData.phone,
       };
-      // Upsert based on user_id
+      // Upsert profile ensuring id matches auth.uid() for RLS
       const { error } = await supabase
         .from('profiles')
-        .upsert({ user_id: user?.id as string, ...payload }, { onConflict: 'user_id' } as any);
+        .upsert({ id: user?.id as string, user_id: user?.id as string, ...payload }, { onConflict: 'id' } as any);
       if (error) throw error;
       toast.success('Profile updated successfully');
       setIsEditing(false);
