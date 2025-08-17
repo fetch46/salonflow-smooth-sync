@@ -16,12 +16,44 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 interface LandingSettings {
   id: string;
+  brand_name: string | null;
+  brand_logo_url: string | null;
+  nav_links: { label: string; href: string }[] | null;
+  hero_badge_text: string | null;
   hero_title: string | null;
   hero_subtitle: string | null;
+  hero_image_url: string | null;
   highlights: string[] | null;
+  partner_logos: { name?: string | null; logo_url?: string | null }[] | null;
+  features_title: string | null;
+  features_subtitle: string | null;
+  features: { icon?: string | null; title: string; description?: string | null }[] | null;
+  extra_features: { icon?: string | null; title: string; description?: string | null }[] | null;
+  pricing_title: string | null;
   pricing_copy: string | null;
+  billing_monthly_label: string | null;
+  billing_yearly_label: string | null;
+  plan_cta_label: string | null;
+  most_popular_badge_text: string | null;
+  featured_enabled: boolean | null;
+  featured_title: string | null;
+  featured_subtitle: string | null;
   cta_primary_text: string | null;
+  cta_primary_link: string | null;
   cta_secondary_text: string | null;
+  cta_secondary_link: string | null;
+  cta_section_title: string | null;
+  cta_section_subtitle: string | null;
+  cta_bottom_primary_text: string | null;
+  cta_bottom_primary_link: string | null;
+  cta_bottom_secondary_text: string | null;
+  cta_bottom_secondary_link: string | null;
+  faq_title: string | null;
+  faq_subtitle: string | null;
+  faqs: { question: string; answer: string }[] | null;
+  footer_brand_name: string | null;
+  footer_description: string | null;
+  footer_columns: { title: string; links: { label: string; href: string }[] }[] | null;
 }
 
 interface BusinessListing {
@@ -75,18 +107,50 @@ export default function AdminLandingCMS() {
     if (!settings) return;
     setSavingSettings(true);
     const payload = {
+      brand_name: settings.brand_name ?? null,
+      brand_logo_url: settings.brand_logo_url ?? null,
+      nav_links: (settings.nav_links ?? []) as any,
+      hero_badge_text: settings.hero_badge_text ?? null,
       hero_title: settings.hero_title ?? null,
       hero_subtitle: settings.hero_subtitle ?? null,
+      hero_image_url: settings.hero_image_url ?? null,
       highlights: (settings.highlights ?? []) as any,
+      partner_logos: (settings.partner_logos ?? []) as any,
+      features_title: settings.features_title ?? null,
+      features_subtitle: settings.features_subtitle ?? null,
+      features: (settings.features ?? []) as any,
+      extra_features: (settings.extra_features ?? []) as any,
+      pricing_title: settings.pricing_title ?? null,
       pricing_copy: settings.pricing_copy ?? null,
+      billing_monthly_label: settings.billing_monthly_label ?? null,
+      billing_yearly_label: settings.billing_yearly_label ?? null,
+      plan_cta_label: settings.plan_cta_label ?? null,
+      most_popular_badge_text: settings.most_popular_badge_text ?? null,
+      featured_enabled: settings.featured_enabled ?? true,
+      featured_title: settings.featured_title ?? null,
+      featured_subtitle: settings.featured_subtitle ?? null,
       cta_primary_text: settings.cta_primary_text ?? null,
+      cta_primary_link: settings.cta_primary_link ?? null,
       cta_secondary_text: settings.cta_secondary_text ?? null,
+      cta_secondary_link: settings.cta_secondary_link ?? null,
+      cta_section_title: settings.cta_section_title ?? null,
+      cta_section_subtitle: settings.cta_section_subtitle ?? null,
+      cta_bottom_primary_text: settings.cta_bottom_primary_text ?? null,
+      cta_bottom_primary_link: settings.cta_bottom_primary_link ?? null,
+      cta_bottom_secondary_text: settings.cta_bottom_secondary_text ?? null,
+      cta_bottom_secondary_link: settings.cta_bottom_secondary_link ?? null,
+      faq_title: settings.faq_title ?? null,
+      faq_subtitle: settings.faq_subtitle ?? null,
+      faqs: (settings.faqs ?? []) as any,
+      footer_brand_name: settings.footer_brand_name ?? null,
+      footer_description: settings.footer_description ?? null,
+      footer_columns: (settings.footer_columns ?? []) as any,
       updated_by: user?.id ?? null,
-    };
+    } as any;
 
     let res;
-    if (settings.id) {
-      res = await supabase.from('landing_settings').update(payload).eq('id', settings.id).select().single();
+    if ((settings as any).id) {
+      res = await supabase.from('landing_settings').update(payload).eq('id', (settings as any).id).select().single();
     } else {
       res = await supabase.from('landing_settings').insert(payload).select().single();
     }
@@ -191,10 +255,38 @@ export default function AdminLandingCMS() {
               <Card className="lg:col-span-1">
                 <CardHeader>
                   <CardTitle>Landing Content</CardTitle>
-                  <CardDescription>Update hero text, highlights, and CTAs</CardDescription>
+                  <CardDescription>Update branding, hero, features, pricing, FAQs, and CTAs</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid gap-4">
+                    <div>
+                      <Label>Brand Name</Label>
+                      <Input value={settings?.brand_name ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), brand_name: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Brand Logo URL</Label>
+                      <Input value={settings?.brand_logo_url ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), brand_logo_url: e.target.value }))} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Nav Links (JSON array)</Label>
+                    <Textarea
+                      value={JSON.stringify(settings?.nav_links ?? [], null, 2)}
+                      onChange={(e) => {
+                        try {
+                          const val = JSON.parse(e.target.value);
+                          setSettings((s) => ({ ...(s || ({} as any)), nav_links: val }));
+                        } catch {}
+                      }}
+                    />
+                  </div>
+
+                  <div className="grid gap-4">
+                    <div>
+                      <Label>Hero Badge Text</Label>
+                      <Input value={settings?.hero_badge_text ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), hero_badge_text: e.target.value }))} />
+                    </div>
                     <div>
                       <Label>Hero Title</Label>
                       <Input value={settings?.hero_title ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), hero_title: e.target.value }))} />
@@ -203,25 +295,213 @@ export default function AdminLandingCMS() {
                       <Label>Hero Subtitle</Label>
                       <Input value={settings?.hero_subtitle ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), hero_subtitle: e.target.value }))} />
                     </div>
+                    <div>
+                      <Label>Hero Image URL</Label>
+                      <Input value={settings?.hero_image_url ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), hero_image_url: e.target.value }))} />
+                    </div>
                   </div>
+
                   <div>
                     <Label>Highlights (comma separated)</Label>
                     <Input value={(settings?.highlights ?? []).join(', ')} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), highlights: e.target.value.split(',').map(v => v.trim()).filter(Boolean) }))} />
                   </div>
+
+                  <div>
+                    <Label>Partner Logos (JSON array)</Label>
+                    <Textarea
+                      value={JSON.stringify(settings?.partner_logos ?? [], null, 2)}
+                      onChange={(e) => {
+                        try {
+                          const val = JSON.parse(e.target.value);
+                          setSettings((s) => ({ ...(s || ({} as any)), partner_logos: val }));
+                        } catch {}
+                      }}
+                    />
+                  </div>
+
                   <div className="grid gap-4">
                     <div>
-                      <Label>Primary CTA Text</Label>
+                      <Label>Features Title</Label>
+                      <Input value={settings?.features_title ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), features_title: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Features Subtitle</Label>
+                      <Input value={settings?.features_subtitle ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), features_subtitle: e.target.value }))} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Features (JSON array; icon slugs like calendar, users, credit-card)</Label>
+                    <Textarea
+                      value={JSON.stringify(settings?.features ?? [], null, 2)}
+                      onChange={(e) => {
+                        try {
+                          const val = JSON.parse(e.target.value);
+                          setSettings((s) => ({ ...(s || ({} as any)), features: val }));
+                        } catch {}
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Extra Features (JSON array)</Label>
+                    <Textarea
+                      value={JSON.stringify(settings?.extra_features ?? [], null, 2)}
+                      onChange={(e) => {
+                        try {
+                          const val = JSON.parse(e.target.value);
+                          setSettings((s) => ({ ...(s || ({} as any)), extra_features: val }));
+                        } catch {}
+                      }}
+                    />
+                  </div>
+
+                  <div className="grid gap-4">
+                    <div>
+                      <Label>Pricing Title</Label>
+                      <Input value={settings?.pricing_title ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), pricing_title: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Pricing Copy</Label>
+                      <Textarea value={settings?.pricing_copy ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), pricing_copy: e.target.value }))} />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <Label>Billing Monthly Label</Label>
+                      <Input value={settings?.billing_monthly_label ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), billing_monthly_label: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Billing Yearly Label</Label>
+                      <Input value={settings?.billing_yearly_label ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), billing_yearly_label: e.target.value }))} />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <Label>Plan CTA Label</Label>
+                      <Input value={settings?.plan_cta_label ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), plan_cta_label: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Most Popular Badge</Label>
+                      <Input value={settings?.most_popular_badge_text ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), most_popular_badge_text: e.target.value }))} />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <Label>Featured Section Title</Label>
+                      <Input value={settings?.featured_title ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), featured_title: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Featured Subtitle</Label>
+                      <Input value={settings?.featured_subtitle ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), featured_subtitle: e.target.value }))} />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 items-center">
+                    <div>
+                      <Label>Featured Enabled</Label>
+                    </div>
+                    <Switch checked={settings?.featured_enabled ?? true} onCheckedChange={(v) => setSettings((s) => ({ ...(s || ({} as any)), featured_enabled: v }))} />
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <Label>Hero Primary CTA Text</Label>
                       <Input value={settings?.cta_primary_text ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), cta_primary_text: e.target.value }))} />
                     </div>
                     <div>
-                      <Label>Secondary CTA Text</Label>
+                      <Label>Hero Primary CTA Link</Label>
+                      <Input value={settings?.cta_primary_link ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), cta_primary_link: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Hero Secondary CTA Text</Label>
                       <Input value={settings?.cta_secondary_text ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), cta_secondary_text: e.target.value }))} />
                     </div>
+                    <div>
+                      <Label>Hero Secondary CTA Link</Label>
+                      <Input value={settings?.cta_secondary_link ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), cta_secondary_link: e.target.value }))} />
+                    </div>
                   </div>
-                  <div>
-                    <Label>Pricing Copy</Label>
-                    <Textarea value={settings?.pricing_copy ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), pricing_copy: e.target.value }))} />
+
+                  <div className="grid gap-4">
+                    <div>
+                      <Label>CTA Section Title</Label>
+                      <Input value={settings?.cta_section_title ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), cta_section_title: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>CTA Section Subtitle</Label>
+                      <Input value={settings?.cta_section_subtitle ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), cta_section_subtitle: e.target.value }))} />
+                    </div>
                   </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <Label>Bottom Primary CTA Text</Label>
+                      <Input value={settings?.cta_bottom_primary_text ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), cta_bottom_primary_text: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Bottom Primary CTA Link</Label>
+                      <Input value={settings?.cta_bottom_primary_link ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), cta_bottom_primary_link: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Bottom Secondary CTA Text</Label>
+                      <Input value={settings?.cta_bottom_secondary_text ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), cta_bottom_secondary_text: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Bottom Secondary CTA Link</Label>
+                      <Input value={settings?.cta_bottom_secondary_link ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), cta_bottom_secondary_link: e.target.value }))} />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4">
+                    <div>
+                      <Label>FAQ Title</Label>
+                      <Input value={settings?.faq_title ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), faq_title: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>FAQ Subtitle</Label>
+                      <Input value={settings?.faq_subtitle ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), faq_subtitle: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>FAQs (JSON array)</Label>
+                      <Textarea
+                        value={JSON.stringify(settings?.faqs ?? [], null, 2)}
+                        onChange={(e) => {
+                          try {
+                            const val = JSON.parse(e.target.value);
+                            setSettings((s) => ({ ...(s || ({} as any)), faqs: val }));
+                          } catch {}
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4">
+                    <div>
+                      <Label>Footer Brand Name</Label>
+                      <Input value={settings?.footer_brand_name ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), footer_brand_name: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Footer Description</Label>
+                      <Textarea value={settings?.footer_description ?? ''} onChange={(e) => setSettings((s) => ({ ...(s || ({} as any)), footer_description: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Footer Columns (JSON array)</Label>
+                      <Textarea
+                        value={JSON.stringify(settings?.footer_columns ?? [], null, 2)}
+                        onChange={(e) => {
+                          try {
+                            const val = JSON.parse(e.target.value);
+                            setSettings((s) => ({ ...(s || ({} as any)), footer_columns: val }));
+                          } catch {}
+                        }}
+                      />
+                    </div>
+                  </div>
+
                   <div className="flex justify-end">
                     <Button onClick={saveSettings} disabled={savingSettings}>{savingSettings ? 'Saving...' : 'Save Settings'}</Button>
                   </div>
