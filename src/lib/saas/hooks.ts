@@ -116,35 +116,6 @@ export function useOrganizationCurrency() {
   if (context === undefined) {
     throw new Error('useOrganizationCurrency must be used within a SaasProvider');
   }
-
-  const [currency, setCurrency] = useState<{ code: string; symbol: string }>({ code: 'USD', symbol: '$' });
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const orgId = context.organization?.id;
-        if (!orgId) return;
-        const { data: org } = await supabase
-          .from('organizations')
-          .select('currency_id')
-          .eq('id', orgId)
-          .maybeSingle();
-        const currencyId = (org as any)?.currency_id as string | null;
-        if (currencyId) {
-          const { data: cur } = await supabase
-            .from('currencies')
-            .select('code, symbol')
-            .eq('id', currencyId)
-            .maybeSingle();
-          if (cur?.code && cur?.symbol) {
-            setCurrency({ code: cur.code as string, symbol: cur.symbol as string });
-          }
-        }
-      } catch (err) {
-        // Fallback to default USD
-      }
-    })();
-  }, [context.organization?.id]);
   
   const formatCurrency = (amount: number, options?: { 
     showSymbol?: boolean; 
@@ -164,13 +135,6 @@ export function useOrganizationCurrency() {
     
     return showSymbol ? `${currency.symbol}${formattedAmount}` : formattedAmount;
   };
-
-  const format = formatCurrency;
-
-  const formatUsdCents = (cents: number) => {
-    const amount = (cents || 0) / 100;
-    return new Intl.NumberFormat(context.locale || 'en-US', { style: 'currency', currency: currency.code || 'USD' }).format(amount);
-  };
   
   return {
     currency,
@@ -179,6 +143,6 @@ export function useOrganizationCurrency() {
     formatUsdCents,
     currencyCode: currency.code,
     currencySymbol: currency.symbol,
-    symbol: currency.symbol,
+
   };
 }
