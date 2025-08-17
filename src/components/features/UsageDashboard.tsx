@@ -184,9 +184,9 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({
             <Card 
               key={feature} 
               className={`border-l-4 ${
-                status.status === 'disabled' ? 'border-l-slate-400 bg-slate-50' :
-                status.status === 'full' ? 'border-l-red-500 bg-red-50' :
-                status.status === 'warning' ? 'border-l-amber-500 bg-amber-50' :
+                status.status === 'disabled' ? 'border-l-slate-400 bg-slate-500/10' :
+                status.status === 'full' ? 'border-l-red-500 bg-red-500/10' :
+                status.status === 'warning' ? 'border-l-amber-500 bg-amber-500/10' :
                 'border-l-emerald-500'
               }`}
             >
@@ -266,7 +266,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({
         <CardContent className="space-y-4">
           {isTrialing && daysLeftInTrial !== null && (
             <div className={`p-4 rounded-lg border ${
-              daysLeftInTrial <= 3 ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'
+              daysLeftInTrial <= 3 ? 'bg-red-500/10 border-red-300' : 'bg-amber-500/10 border-amber-300'
             }`}>
               <div className="flex items-center justify-between">
                 <div>
@@ -295,7 +295,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({
           )}
 
           {featuresNeedingAttention.length > 0 && (
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="p-4 bg-amber-500/10 border border-amber-300 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
                 <AlertTriangle className="w-4 h-4 text-amber-600" />
                 <h4 className="font-medium text-amber-800">Attention Required</h4>
@@ -316,7 +316,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({
           )}
 
           {disabledFeatures.length > 0 && showUpgrade && (
-            <div className="p-4 bg-violet-50 border border-violet-200 rounded-lg">
+            <div className="p-4 bg-violet-500/10 border border-violet-300 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
                 <Zap className="w-4 h-4 text-violet-600" />
                 <h4 className="font-medium text-violet-800">Unlock More Features</h4>

@@ -940,7 +940,7 @@ export default function Invoices() {
             <div className="space-y-6">
               {/* Invoice Header */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="bg-blue-50 border-blue-200">
+                <Card className="bg-blue-500/10 border-blue-300">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm text-blue-700 flex items-center gap-2">
                       <Users className="w-4 h-4" />
@@ -964,7 +964,7 @@ export default function Invoices() {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-violet-50 border-violet-200">
+                <Card className="bg-violet-500/10 border-violet-300">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm text-violet-700 flex items-center gap-2">
                       <Receipt className="w-4 h-4" />
@@ -1055,7 +1055,7 @@ export default function Invoices() {
               </Card>
 
               {/* Invoice Totals */}
-              <Card className="bg-slate-50">
+              <Card className="bg-slate-500/10">
                 <CardContent className="p-4">
                   <div className="flex justify-end">
                     <div className="w-64 space-y-2">

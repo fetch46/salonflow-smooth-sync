@@ -77,10 +77,10 @@ All colors MUST be HSL.
     --foreground: 210 40% 98%;
     color-scheme: dark;
 
-    --card: 220 39% 11%;
+    --card: 220 25% 14%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 220 39% 11%;
+    --popover: 220 25% 14%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 211 100% 50%;
