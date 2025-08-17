@@ -73,40 +73,40 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 220 39% 11%;
-    --foreground: 210 40% 98%;
+    --background: 220 24% 10%;
+    --foreground: 210 33% 96%;
     color-scheme: dark;
 
-    --card: 220 25% 14%;
-    --card-foreground: 210 40% 98%;
+    --card: 220 22% 15%;
+    --card-foreground: 210 33% 96%;
 
-    --popover: 220 25% 14%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 220 22% 15%;
+    --popover-foreground: 210 33% 96%;
 
-    --primary: 211 100% 50%;
+    --primary: 211 100% 58%;
     --primary-foreground: 0 0% 100%;
-    --primary-light: 211 100% 25%;
+    --primary-light: 211 100% 80%;
 
-    --secondary: 217 32% 18%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 220 16% 22%;
+    --secondary-foreground: 210 33% 96%;
 
-    --muted: 217 32% 18%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 220 16% 22%;
+    --muted-foreground: 210 10% 75%;
 
-    --accent: 217 32% 18%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 220 16% 22%;
+    --accent-foreground: 210 33% 96%;
 
-    --success: 142 76% 36%;
+    --success: 142 70% 45%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
+    --warning: 38 95% 55%;
     --warning-foreground: 0 0% 100%;
 
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 63% 42%;
+    --destructive-foreground: 210 33% 96%;
 
-    --border: 217 32% 18%;
-    --input: 217 32% 18%;
-    --ring: 211 100% 50%;
+    --border: 220 15% 28%;
+    --input: 220 15% 28%;
+    --ring: 211 100% 60%;
     --sidebar-background: var(--background);
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -126,6 +126,17 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
     padding-bottom: calc(var(--footer-height) + env(safe-area-inset-bottom));
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: hsl(var(--primary) / 0.35);
+    color: hsl(var(--foreground));
   }
 }
 
