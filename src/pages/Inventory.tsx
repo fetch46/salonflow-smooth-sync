@@ -509,6 +509,10 @@ export default function Inventory() {
 
   const runImportWithMapping = async () => {
     if (!csvRows.length) { setImportDialogOpen(false); return; }
+    if (!organization?.id) {
+      toast({ title: 'No organization', description: 'Please select an organization before importing.', variant: 'destructive' });
+      return;
+    }
     // Validate required mapping
     const nameMapped = fieldMapping['name'];
     if (!nameMapped) {
@@ -523,7 +527,8 @@ export default function Inventory() {
       try {
         const res = await supabase
           .from('accounts')
-          .select('id, account_code, account_type, account_subtype');
+          .select('id, account_code, account_type, account_subtype')
+          .eq('organization_id', organization.id);
         allAccounts = (res.data as any[]) || null;
         if (res.error) throw res.error;
       } catch (err: any) {
@@ -531,7 +536,8 @@ export default function Inventory() {
         if (message.includes('account_subtype') || (message.toLowerCase().includes('column') && message.toLowerCase().includes('does not exist'))) {
           const { data } = await supabase
             .from('accounts')
-            .select('id, account_code, account_type');
+            .select('id, account_code, account_type')
+            .eq('organization_id', organization.id);
           allAccounts = (data as any[]) || null;
           hasSubtypeInfo = false;
         } else {
@@ -543,7 +549,10 @@ export default function Inventory() {
         if (a.account_code) codeToId[String(a.account_code).trim()] = a.id;
       }
       // Warehouses map
-      const { data: allWh } = await supabase.from('warehouses').select('id, name');
+      const { data: allWh } = await supabase
+        .from('warehouses')
+        .select('id, name, organization_id')
+        .eq('organization_id', organization.id);
       const whNameToId: Record<string, string> = {};
       for (const w of allWh || []) whNameToId[(w.name || '').trim().toLowerCase()] = w.id;
 
@@ -584,13 +593,23 @@ export default function Inventory() {
 
           // Find existing by SKU if mapped and present, else by name
           let existing: any = null;
-          if (sku) {
-            const { data } = await supabase.from('inventory_items').select('id, sku').eq('organization_id', organization?.id || '').eq('sku', sku).maybeSingle();
-            existing = data || null;
-          } else {
-            const { data } = await supabase.from('inventory_items').select('id, name').eq('organization_id', organization?.id || '').eq('name', name).maybeSingle();
-            existing = data || null;
-          }
+                     if (sku) {
+             const { data } = await supabase
+               .from('inventory_items')
+               .select('id, sku')
+               .eq('organization_id', organization.id)
+               .eq('sku', sku)
+               .maybeSingle();
+             existing = data || null;
+           } else {
+             const { data } = await supabase
+               .from('inventory_items')
+               .select('id, name')
+               .eq('organization_id', organization.id)
+               .eq('name', name)
+               .maybeSingle();
+             existing = data || null;
+           }
 
           let itemId: string;
           if (existing) {
@@ -708,18 +727,25 @@ export default function Inventory() {
   const formatRegionalNumber = useRegionalNumberFormatter();
 
   const fetchData = useCallback(async () => {
+    if (!organization?.id) return;
     setIsLoading(true);
     try {
-      const { data: itemsRes } = await supabase.from("inventory_items").select("*").eq("organization_id", organization?.id || "").order("name");
+      const { data: itemsRes, error } = await supabase
+        .from("inventory_items")
+        .select("*")
+        .eq("organization_id", organization.id)
+        .order("name");
+      if (error) throw error;
       setItems((itemsRes || []) as InventoryItem[]);
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to fetch inventory data", variant: "destructive" });
+    } catch (error: any) {
+      toast({ title: "Error", description: String(error?.message || "Failed to fetch inventory data"), variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [organization?.id]);
 
   const fetchLevels = useCallback(async () => {
+    if (!organization?.id) return;
     setLevelsLoading(true);
     try {
       const { data, error } = await supabase
@@ -729,36 +755,39 @@ export default function Inventory() {
           item_id,
           warehouse_id,
           quantity,
-          inventory_items ( name, sku, cost_price, selling_price ),
-          warehouses ( name )
+          inventory_items ( id, organization_id, name, sku, cost_price, selling_price ),
+          warehouses ( id, organization_id, name )
         `)
         .order("warehouse_id")
         .order("item_id");
       if (error) throw error;
-      setLevels(data || []);
+      const filtered = (data || []).filter((row: any) => row.inventory_items?.organization_id === organization.id || row.warehouses?.organization_id === organization.id);
+      setLevels(filtered);
     } catch (err) {
       console.error(err);
     } finally {
       setLevelsLoading(false);
     }
-  }, []);
+  }, [organization?.id]);
 
   // New: fetch warehouses
   const fetchWarehouses = useCallback(async () => {
+    if (!organization?.id) return;
     setWarehousesLoading(true);
     try {
       const { data, error } = await supabase
         .from("warehouses")
-        .select("id, name")
+        .select("id, name, organization_id")
+        .eq("organization_id", organization.id)
         .order("name");
       if (error) throw error;
-      setWarehouses((data || []) as { id: string; name: string }[]);
+      setWarehouses(((data || []) as any[]).map(w => ({ id: w.id, name: w.name })));
     } catch (err) {
       console.error(err);
     } finally {
       setWarehousesLoading(false);
     }
-  }, []);
+  }, [organization?.id]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -770,10 +799,11 @@ export default function Inventory() {
   }, [fetchData, fetchLevels, fetchWarehouses]);
 
   useEffect(() => {
+    if (!organization?.id) return;
     fetchData();
     fetchLevels();
     fetchWarehouses();
-  }, [fetchData, fetchLevels, fetchWarehouses]);
+  }, [organization?.id, fetchData, fetchLevels, fetchWarehouses]);
 
   // Note: Editing now happens on a dedicated page at /inventory/:id/edit
   useEffect(() => {
@@ -1124,7 +1154,10 @@ export default function Inventory() {
       }
       const warehouseMap: Record<string, string> = {};
       {
-        const { data: wh } = await supabase.from('warehouses').select('id, name');
+        const { data: wh } = await supabase
+          .from('warehouses')
+          .select('id, name, organization_id')
+          .eq('organization_id', organization?.id || '');
         for (const w of wh || []) warehouseMap[w.id] = w.name;
       }
       const levelsByItem: Record<string, number> = {};
