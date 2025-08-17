@@ -135,6 +135,7 @@ const AppRoutes = () => {
     if (user && organization?.id) {
       setTimeout(() => {
         void Promise.all([
+          import('@/pages/Dashboard').catch(() => {}),
           import('@/pages/Accounts').catch(() => {}),
           import('@/pages/Invoices').catch(() => {}),
           import('@/pages/Payments').catch(() => {}),
