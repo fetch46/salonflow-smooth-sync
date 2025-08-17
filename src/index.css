@@ -266,3 +266,9 @@ html, body, #root {
     background-image: none !important;
   }
 }
+
+@layer base {
+  .dark .bg-card:not([class*="bg-gradient-to-"]) {
+    background-image: linear-gradient(135deg, hsl(var(--primary) / 0.12), hsl(var(--primary) / 0.03));
+  }
+}
