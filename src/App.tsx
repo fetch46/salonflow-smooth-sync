@@ -71,6 +71,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Admin pages
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
+const AdminOrganizations = lazy(() => import("@/pages/admin/AdminOrganizations"));
+const AdminUsers = lazy(() => import("@/pages/admin/AdminUsers"));
+const AdminInvitations = lazy(() => import("@/pages/admin/AdminInvitations"));
+const AdminSubscriptionPlans = lazy(() => import("@/pages/admin/AdminSubscriptionPlans"));
+const AdminSystemSettings = lazy(() => import("@/pages/admin/AdminSystemSettings"));
+const AdminBusinessData = lazy(() => import("@/pages/admin/AdminBusinessData"));
+const AdminActivity = lazy(() => import("@/pages/admin/AdminActivity"));
+const AdminLandingCMS = lazy(() => import("@/pages/admin/AdminLandingCMS"));
+const AdminSuperAdmins = lazy(() => import("@/pages/admin/AdminSuperAdmins"));
 
 // Loading component
 const LoadingFallback = () => (
@@ -120,12 +129,28 @@ const AppRoutes = () => {
   }, [user, organization?.id]);
 
   // Super admin routes
-  if (isSuperAdmin && window.location.pathname.startsWith('/admin')) {
+  if (isSuperAdmin && (window.location.pathname.startsWith('/admin') || window.location.pathname.startsWith('/super-admin'))) {
     return (
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
+          {/* canonical admin dashboard */}
           <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/*" element={<AdminDashboard />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          {/* admin pages */}
+          <Route path="/admin/organizations" element={<AdminOrganizations />} />
+          <Route path="/admin/subscription-plans" element={<AdminSubscriptionPlans />} />
+          <Route path="/admin/users" element={<AdminUsers />} />
+          <Route path="/admin/invitations" element={<AdminInvitations />} />
+          <Route path="/admin/super-admins" element={<AdminSuperAdmins />} />
+          <Route path="/admin/activity" element={<AdminActivity />} />
+          <Route path="/admin/system-settings" element={<AdminSystemSettings />} />
+          <Route path="/admin/business-data" element={<AdminBusinessData />} />
+          <Route path="/admin/cms" element={<AdminLandingCMS />} />
+          {/* legacy path redirects */}
+          <Route path="/super-admin" element={<Navigate to="/admin" replace />} />
+          <Route path="/super-admin/*" element={<Navigate to="/admin" replace />} />
+          {/* fallback */}
+          <Route path="/admin/*" element={<Navigate to="/admin" replace />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </Suspense>
