@@ -253,7 +253,7 @@ const menuItems: MenuItem[] = [
 // Super Admin menu item (separate from main menu since it's system-wide)
 const superAdminMenuItem: MenuItem = {
   title: "Super Admin",
-  url: "/super-admin",
+  url: "/admin",
   icon: Crown,
   feature: "system", // This will always be false for regular features, we'll handle it separately
 };
@@ -512,12 +512,12 @@ export function AppSidebar() {
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
-                    isActive={location.pathname === '/super-admin/cms'}
+                    isActive={location.pathname === '/admin/cms'}
                     className="hover:bg-violet-50 data-[active=true]:bg-violet-100 data-[active=true]:text-violet-900 text-base"
                     tooltip={state === 'collapsed' ? 'Landing CMS' : undefined}
                     size="lg"
                   >
-                    <NavLink to="/super-admin/cms" className={({ isActive }) => `flex items-center gap-2 ${isActive ? 'bg-accent text-accent-foreground' : ''}`} onClick={handleNavClick}>
+                    <NavLink to="/admin/cms" className={({ isActive }) => `flex items-center gap-2 ${isActive ? 'bg-accent text-accent-foreground' : ''}`} onClick={handleNavClick}>
                       <Sparkles className={`h-5 w-5 ${getIconColorForTitle('Landing CMS')}`} />
                       <span>Landing CMS</span>
                     </NavLink>

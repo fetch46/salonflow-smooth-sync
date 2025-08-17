@@ -45,7 +45,7 @@ interface SuperAdminMenuItem {
 const superAdminMenuItems: SuperAdminMenuItem[] = [
   {
     title: "Overview",
-    url: "/super-admin",
+    url: "/admin",
     icon: BarChart3,
   },
   {
@@ -85,7 +85,7 @@ const superAdminMenuItems: SuperAdminMenuItem[] = [
       },
       {
         title: "Super Admins",
-        url: "/admin/users",
+        url: "/admin/super-admins",
         icon: Shield,
       },
     ],
@@ -96,7 +96,7 @@ const superAdminMenuItems: SuperAdminMenuItem[] = [
     subItems: [
       {
         title: "Landing CMS",
-        url: "/super-admin/cms",
+        url: "/admin/cms",
         icon: FileText,
       },
     ],
@@ -112,7 +112,7 @@ const superAdminMenuItems: SuperAdminMenuItem[] = [
       },
       {
         title: "Activity Logs",
-        url: "/super-admin/activity",
+        url: "/admin/activity",
         icon: Activity,
       },
     ],
@@ -123,7 +123,7 @@ const superAdminMenuItems: SuperAdminMenuItem[] = [
     subItems: [
       {
         title: "System Settings",
-        url: "/super-admin/settings",
+        url: "/admin/system-settings",
         icon: Settings,
       },
     ],
@@ -271,19 +271,19 @@ export function SuperAdminSidebar() {
           <SidebarGroupContent>
             <div className="px-2 py-3 space-y-2">
               <NavLink
-                to="/super-admin"
+                to="/admin"
                 className="block w-full text-left p-2 rounded-md bg-purple-100 hover:bg-purple-200 text-purple-800 text-sm font-medium transition-colors"
               >
                 Create Organization
               </NavLink>
               <NavLink
-                to="/super-admin"
+                to="/admin"
                 className="block w-full text-left p-2 rounded-md bg-purple-100 hover:bg-purple-200 text-purple-800 text-sm font-medium transition-colors"
               >
                 Grant Super Admin
               </NavLink>
               <NavLink
-                to="/super-admin/activity"
+                to="/admin/activity"
                 className="block w-full text-left p-2 rounded-md bg-purple-100 hover:bg-purple-200 text-purple-800 text-sm font-medium transition-colors"
               >
                 View Activity Log
