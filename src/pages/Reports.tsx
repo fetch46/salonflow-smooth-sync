@@ -37,7 +37,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 
 const Reports = () => {
   const navigate = useNavigate();
-  const { organization, subscriptionPlan } = useSaas();
+  const { organization, subscriptionPlan, organizationRole } = useSaas();
   const { organization: org } = useOrganization();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'overview';
@@ -68,6 +68,14 @@ const Reports = () => {
   const [drillTitle, setDrillTitle] = useState('');
   const [drillType, setDrillType] = useState<'Income' | 'Expense' | null>(null);
   const [drillRows, setDrillRows] = useState<Array<any>>([]);
+
+  // Hard block access unless accountant or owner
+  useEffect(() => {
+    const role = organizationRole || '';
+    if (role !== 'accountant' && role !== 'owner') {
+      navigate('/dashboard');
+    }
+  }, [organizationRole]);
 
   const { symbol, format: formatMoney } = useOrganizationCurrency();
 

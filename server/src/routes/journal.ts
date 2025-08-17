@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/roles.js';
 import { Prisma } from '@prisma/client';
 
 const router = Router();
@@ -21,7 +22,7 @@ const journalSchema = z.object({
 
 router.use(requireAuth);
 
-router.post('/', async (req, res) => {
+router.post('/', requirePermission('SETTINGS','EDIT'), async (req, res) => {
 	const parsed = journalSchema.safeParse(req.body);
 	if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 	const data = parsed.data;
@@ -71,7 +72,7 @@ router.post('/', async (req, res) => {
 	}
 });
 
-router.get('/trial-balance', async (_req, res) => {
+router.get('/trial-balance', requirePermission('REPORTS','VIEW'), async (_req, res) => {
 	const lines = await prisma.journalLine.groupBy({
 		by: ['accountId'],
 		_sum: { debit: true, credit: true },

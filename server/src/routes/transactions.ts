@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/roles.js';
 import { Prisma } from '@prisma/client';
 
 const router = Router();
@@ -242,7 +243,7 @@ async function calculateIssueCost(
   }
 }
 
-router.post('/sales-invoices', async (req, res) => {
+router.post('/sales-invoices', requirePermission('INVOICES','CREATE'), async (req, res) => {
   const parsed = salesInvoiceSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   const data = parsed.data;
@@ -333,7 +334,7 @@ const salesInvoiceUpdateSchema = z.object({
   post: z.boolean().optional(),
 });
 
-router.put('/sales-invoices/:id', async (req, res) => {
+router.put('/sales-invoices/:id', requirePermission('INVOICES','EDIT'), async (req, res) => {
   const parsed = salesInvoiceUpdateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   const data = parsed.data as z.infer<typeof salesInvoiceUpdateSchema>;
@@ -502,7 +503,7 @@ router.put('/sales-invoices/:id', async (req, res) => {
   }
 });
 
-router.post('/purchase-bills', async (req, res) => {
+router.post('/purchase-bills', requirePermission('PURCHASES','CREATE'), async (req, res) => {
   const parsed = purchaseBillSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   const data = parsed.data;
@@ -572,7 +573,7 @@ router.post('/purchase-bills', async (req, res) => {
   }
 });
 
-router.post('/payments', async (req, res) => {
+router.post('/payments', requirePermission('PAYMENTS','CREATE'), async (req, res) => {
   const parsed = paymentSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   const data = parsed.data;
@@ -632,7 +633,7 @@ router.post('/payments', async (req, res) => {
 });
 
 // New: Delete a payment and reverse its accounting impact
-router.delete('/payments/:id', async (req, res) => {
+router.delete('/payments/:id', requirePermission('PAYMENTS','DELETE'), async (req, res) => {
   const id = req.params.id;
   try {
     const deleted = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {

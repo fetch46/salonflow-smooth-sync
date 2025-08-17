@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/roles.js';
 
 const router = Router();
 
@@ -21,7 +22,7 @@ const productSchema = z.object({
 
 router.use(requireAuth);
 
-router.get('/', async (req, res) => {
+router.get('/', requirePermission('PRODUCTS','VIEW'), async (req, res) => {
   const page = Number(req.query.page || 1);
   const pageSize = Math.min(Number(req.query.pageSize || 20), 100);
   const search = String(req.query.search || '').trim();
@@ -38,7 +39,7 @@ router.get('/', async (req, res) => {
   res.json({ items, total, page, pageSize });
 });
 
-router.post('/', async (req, res) => {
+router.post('/', requirePermission('PRODUCTS','CREATE'), async (req, res) => {
   const parsed = productSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
@@ -49,13 +50,13 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', requirePermission('PRODUCTS','VIEW'), async (req, res) => {
   const product = await prisma.product.findUnique({ where: { id: req.params.id } });
   if (!product) return res.status(404).json({ error: 'Not found' });
   res.json(product);
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', requirePermission('PRODUCTS','EDIT'), async (req, res) => {
   const parsed = productSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
@@ -66,7 +67,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requirePermission('PRODUCTS','DELETE'), async (req, res) => {
   try {
     await prisma.product.delete({ where: { id: req.params.id } });
     res.status(204).send();
