@@ -101,7 +101,7 @@ export function useOrganizationCurrency() {
   }
   
   // Get currency from organization or use default
-  const currency = context.organization?.currency || { code: 'USD', symbol: '$' };
+  const currency = ((context.organization as any)?.currency) || { code: 'USD', symbol: '$' };
   
   const formatCurrency = (amount: number, options?: { 
     showSymbol?: boolean; 
@@ -121,11 +121,20 @@ export function useOrganizationCurrency() {
     
     return showSymbol ? `${currency.symbol}${formattedAmount}` : formattedAmount;
   };
+
+  // Backward-compat helpers
+  const format = formatCurrency;
+  const symbol = currency.symbol;
+  const formatUsdCents = (cents: number) => formatCurrency((cents || 0) / 100);
   
   return {
     currency,
     formatCurrency,
     currencyCode: currency.code,
-    currencySymbol: currency.symbol
+    currencySymbol: currency.symbol,
+    // Backward-compat fields expected by existing code
+    format,
+    symbol,
+    formatUsdCents,
   };
 }
