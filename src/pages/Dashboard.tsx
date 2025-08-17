@@ -68,7 +68,7 @@ const Dashboard = () => {
   const [error, setError] = useState<string | null>(null);
   
   const { user, organization, subscriptionPlan } = useSaas();
-  const { symbol, format } = useOrganizationCurrency();
+  const { formatCurrency } = useOrganizationCurrency();
 
   // Load today's appointments and staff to show real data on dashboard
   type DashboardAppointment = {
@@ -311,7 +311,7 @@ const Dashboard = () => {
   const todayStats = [
     {
       title: "Today's Revenue",
-      value: format(metrics.revenueToday) as string,
+      value: formatCurrency(metrics.revenueToday) as string,
       previousValue: metrics.revenueYesterday,
       change: safePercent(metrics.revenueToday, metrics.revenueYesterday),
       icon: DollarSign,
@@ -598,7 +598,7 @@ const Dashboard = () => {
                     Today's Schedule
                   </CardTitle>
                   <CardDescription>
-                    {todayAppointments.length} appointments • {format(todayAppointments.reduce((sum, apt) => sum + (apt.price || 0), 0), { decimals: 0 })} revenue
+                    {todayAppointments.length} appointments • {formatCurrency(todayAppointments.reduce((sum, apt) => sum + (apt.price || 0), 0))} revenue
                   </CardDescription>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => navigate('/appointments')}>
@@ -649,7 +649,7 @@ const Dashboard = () => {
                             </div>
                             {typeof appointment.price === 'number' && (
                               <div className="text-sm font-semibold text-slate-900">
-                                {format(Number(appointment.price))}
+                                {formatCurrency(Number(appointment.price))}
                               </div>
                             )}
                           </div>
@@ -704,7 +704,7 @@ const Dashboard = () => {
                           )}
                         </div>
                         <div className="flex items-center justify-between text-xs text-slate-500">
-                          <span>{format(staff.revenue)}</span>
+                          <span>{formatCurrency(staff.revenue)}</span>
                           <span>{staff.appointments} apts</span>
                           <span>{staff.completionRate}%</span>
                         </div>
