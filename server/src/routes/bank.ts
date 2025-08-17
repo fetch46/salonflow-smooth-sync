@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.js';
-import { requireRole, requirePermission } from '../middleware/roles.js';
+import { requireRole } from '../middleware/roles.js';
 import { Prisma } from '@prisma/client';
 
 const router = Router();
@@ -17,7 +17,7 @@ const reconcileSchema = z.object({
 
 router.use(requireAuth);
 
-router.post('/reconcile', requirePermission('BANKING','EDIT'), async (req, res) => {
+router.post('/reconcile', requireRole(['ADMIN', 'ACCOUNTANT']), async (req, res) => {
   const parsed = reconcileSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   const data = parsed.data;
@@ -43,7 +43,7 @@ router.post('/reconcile', requirePermission('BANKING','EDIT'), async (req, res) 
   }
 });
 
-router.get('/unreconciled', requirePermission('BANKING','VIEW'), async (req, res) => {
+router.get('/unreconciled', async (req, res) => {
   const bankAccountId = String(req.query.bankAccountId || '');
   const where: any = { reconciled: false };
   if (bankAccountId) where.bankAccountId = bankAccountId;

@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.js';
-import { requirePermission } from '../middleware/roles.js';
 
 const router = Router();
 
@@ -14,7 +13,7 @@ const locationSchema = z.object({
 
 router.use(requireAuth);
 
-router.get('/', requirePermission('SETTINGS','VIEW'), async (req, res) => {
+router.get('/', async (req, res) => {
   const page = Number(req.query.page || 1);
   const pageSize = Math.min(Number(req.query.pageSize || 20), 100);
   const search = String(req.query.search || '').trim();
@@ -31,7 +30,7 @@ router.get('/', requirePermission('SETTINGS','VIEW'), async (req, res) => {
   res.json({ items, total, page, pageSize });
 });
 
-router.post('/', requirePermission('SETTINGS','EDIT'), async (req, res) => {
+router.post('/', async (req, res) => {
   const parsed = locationSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
@@ -42,13 +41,13 @@ router.post('/', requirePermission('SETTINGS','EDIT'), async (req, res) => {
   }
 });
 
-router.get('/:id', requirePermission('SETTINGS','VIEW'), async (req, res) => {
+router.get('/:id', async (req, res) => {
   const item = await prisma.stockLocation.findUnique({ where: { id: req.params.id } });
   if (!item) return res.status(404).json({ error: 'Not found' });
   res.json(item);
 });
 
-router.put('/:id', requirePermission('SETTINGS','EDIT'), async (req, res) => {
+router.put('/:id', async (req, res) => {
   const parsed = locationSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
@@ -59,7 +58,7 @@ router.put('/:id', requirePermission('SETTINGS','EDIT'), async (req, res) => {
   }
 });
 
-router.delete('/:id', requirePermission('SETTINGS','EDIT'), async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     await prisma.stockLocation.delete({ where: { id: req.params.id } });
     res.status(204).send();

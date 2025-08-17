@@ -3,7 +3,7 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 // User Role System
-export type UserRole = 'owner' | 'admin' | 'manager' | 'staff' | 'viewer' | 'member' | 'accountant'
+export type UserRole = 'owner' | 'admin' | 'manager' | 'staff' | 'viewer' | 'member'
 
 export type SubscriptionStatus = 'trial' | 'active' | 'past_due' | 'canceled' | 'incomplete' | 'unpaid'
 

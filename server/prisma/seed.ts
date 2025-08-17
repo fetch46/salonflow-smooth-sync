@@ -1,87 +1,8 @@
 import 'dotenv/config';
-import { PrismaClient, AccountCategory, Role, PermissionAction, PermissionResource } from '@prisma/client';
+import { PrismaClient, AccountCategory, Role } from '@prisma/client';
 import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
-
-async function seedRolePermissions() {
-  const matrices: Array<{ role: Role; resource: PermissionResource; actions: PermissionAction[] }> = [];
-
-  const all = (acts: PermissionAction[]) => acts;
-  const A = PermissionAction;
-  const R = PermissionResource;
-
-  // Admin: full access except BANKING/REPORTS which we allow too (but server enforces accountant/owner only if needed)
-  const adminResources: PermissionResource[] = [
-    R.APPOINTMENTS,
-    R.CLIENTS,
-    R.INVOICES,
-    R.PAYMENTS,
-    R.JOBCARDS,
-    R.SUPPLIERS,
-    R.PURCHASES,
-    R.GOODS_RECEIVED,
-    R.EXPENSES,
-    R.PRODUCTS,
-    R.ADJUSTMENTS,
-    R.TRANSFERS,
-    R.BANKING,
-    R.REPORTS,
-    R.SETTINGS,
-  ];
-  for (const res of adminResources) {
-    matrices.push({ role: Role.ADMIN, resource: res, actions: all([A.VIEW, A.CREATE, A.EDIT, A.DELETE]) });
-  }
-
-  // Accountant: broad access, plus BANKING/REPORTS
-  const accountantResources: PermissionResource[] = [
-    R.APPOINTMENTS,
-    R.CLIENTS,
-    R.INVOICES,
-    R.PAYMENTS,
-    R.JOBCARDS,
-    R.SUPPLIERS,
-    R.PURCHASES,
-    R.GOODS_RECEIVED,
-    R.EXPENSES,
-    R.PRODUCTS,
-    R.ADJUSTMENTS,
-    R.TRANSFERS,
-    R.BANKING,
-    R.REPORTS,
-    R.SETTINGS,
-  ];
-  for (const res of accountantResources) {
-    matrices.push({ role: Role.ACCOUNTANT, resource: res, actions: all([A.VIEW, A.CREATE, A.EDIT, A.DELETE]) });
-  }
-
-  // Inventory: inventory modules only
-  const inventoryResources: PermissionResource[] = [
-    R.PRODUCTS,
-    R.ADJUSTMENTS,
-    R.TRANSFERS,
-  ];
-  for (const res of inventoryResources) {
-    matrices.push({ role: Role.INVENTORY, resource: res, actions: all([A.VIEW, A.CREATE, A.EDIT, A.DELETE]) });
-  }
-
-  // Owner: seed full matrix; middleware already grants full access regardless of table entries
-  const ownerResources: PermissionResource[] = Object.values(PermissionResource) as PermissionResource[];
-  for (const res of ownerResources) {
-    matrices.push({ role: Role.OWNER, resource: res, actions: all([A.VIEW, A.CREATE, A.EDIT, A.DELETE]) });
-  }
-
-  // Upsert all
-  for (const m of matrices) {
-    for (const act of m.actions) {
-      await prisma.rolePermission.upsert({
-        where: { role_resource_action: { role: m.role, resource: m.resource, action: act } as any },
-        update: {},
-        create: { role: m.role, resource: m.resource, action: act },
-      } as any);
-    }
-  }
-}
 
 async function main() {
   const passwordHash = await bcrypt.hash('admin123', 10);
@@ -154,8 +75,6 @@ async function main() {
       revenueAccountId: sales.id,
     },
   });
-
-  await seedRolePermissions();
 
   console.log('Seed complete. Admin login: admin@example.com / admin123');
   console.log('Seed complete. Owner login: owner@example.com / owner123');

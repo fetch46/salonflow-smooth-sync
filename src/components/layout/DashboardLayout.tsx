@@ -2,7 +2,7 @@
 import React, { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { AppSidebar } from './AppSidebar';
-import { AppTopbar } from './Topbar';
+import { Topbar } from './Topbar';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { useSaas } from '@/lib/saas';
 import { Toaster } from '@/components/ui/sonner';
@@ -48,7 +48,7 @@ export function DashboardLayout() {
       <div className="flex h-screen bg-background">
         <AppSidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <AppTopbar />
+          <Topbar />
           <main className="flex-1 overflow-auto">
             <Outlet />
           </main>

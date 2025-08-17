@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,7 +49,16 @@ import { useSaas } from "@/lib/saas";
 import { subDays, startOfDay, endOfDay, format as formatDate } from "date-fns";
 import React from "react";
 
-// ... keep existing code (utility helpers)
+// Utility helpers for safe percentage and averages
+const safePercent = (current: number, previous: number) => {
+  if (!previous || previous === 0) return current > 0 ? 100 : 0;
+  return ((current - previous) / previous) * 100;
+};
+
+const average = (values: number[]) => {
+  if (!values.length) return 0;
+  return values.reduce((a, b) => a + b, 0) / values.length;
+};
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -60,16 +68,250 @@ const Dashboard = () => {
   const [error, setError] = useState<string | null>(null);
   
   const { user, organization, subscriptionPlan } = useSaas();
-  const { formatCurrency } = useOrganizationCurrency();
+  const { symbol, format } = useOrganizationCurrency();
 
-  // ... keep existing code (all state definitions and types)
+  // Load today's appointments and staff to show real data on dashboard
+  type DashboardAppointment = {
+    id: string;
+    customer_name: string;
+    service_name: string;
+    staff_id: string | null;
+    appointment_date: string;
+    appointment_time: string;
+    duration_minutes: number | null;
+    status: string;
+    price: number | null;
+  };
 
-  // ... keep existing code (all useEffect and data loading logic)
+  const [todayAppointments, setTodayAppointments] = useState<DashboardAppointment[]>([]);
+  const [yesterdayAppointments, setYesterdayAppointments] = useState<DashboardAppointment[]>([]);
+  const [staffMap, setStaffMap] = useState<Record<string, string>>({});
+  // Derived counts will be computed from fetched arrays; no separate state for counts
+  // const [activeStaffCount, setActiveStaffCount] = useState<number>(0);
+
+  // Metrics state (no sample data)
+  const [metrics, setMetrics] = useState({
+    revenueToday: 0,
+    revenueYesterday: 0,
+    appointmentsToday: 0,
+    appointmentsYesterday: 0,
+    newClientsToday: 0,
+    newClientsYesterday: 0,
+    staffUtilizationToday: 0,
+    staffUtilizationYesterday: 0,
+    completionRateToday: 0,
+    completionRateYesterday: 0,
+    avgServiceTimeToday: 0,
+    avgServiceTimeYesterday: 0,
+    revenueThisMonth: 0,
+    revenueLastMonth: 0,
+    appointmentsThisMonth: 0,
+    appointmentsLastMonth: 0,
+  });
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const today = new Date();
+        const yesterday = subDays(today, 1);
+        const todayStr = formatDate(today, 'yyyy-MM-dd');
+        const yesterdayStr = formatDate(yesterday, 'yyyy-MM-dd');
+
+        // Month boundaries
+        const { startOfMonth, endOfMonth, subMonths } = await import('date-fns');
+        const monthStart = startOfMonth(today);
+        const monthEnd = endOfMonth(today);
+        const prevMonth = subMonths(today, 1);
+        const prevMonthStart = startOfMonth(prevMonth);
+        const prevMonthEnd = endOfMonth(prevMonth);
+
+        const appointmentsQuery = supabase
+          .from('appointments')
+          .select('id, customer_name, service_name, staff_id, appointment_date, appointment_time, duration_minutes, status, price')
+          .eq('appointment_date', todayStr)
+          .order('appointment_time', { ascending: true });
+
+        const appointmentsYesterdayQuery = supabase
+          .from('appointments')
+          .select('id, customer_name, service_name, staff_id, appointment_date, appointment_time, duration_minutes, status, price')
+          .eq('appointment_date', yesterdayStr)
+          .order('appointment_time', { ascending: true });
+
+        const staffQuery = supabase
+          .from('staff')
+          .select('id, full_name')
+          .eq('is_active', true);
+
+        // New clients counts
+        const clientsTodayQuery = supabase
+          .from('clients')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', startOfDay(today).toISOString())
+          .lte('created_at', endOfDay(today).toISOString());
+
+        const clientsYesterdayQuery = supabase
+          .from('clients')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', startOfDay(yesterday).toISOString())
+          .lte('created_at', endOfDay(yesterday).toISOString());
+
+        // Monthly appointments counts
+        const apptsThisMonthQuery = supabase
+          .from('appointments')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', monthStart.toISOString())
+          .lte('created_at', monthEnd.toISOString());
+        const apptsLastMonthQuery = supabase
+          .from('appointments')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', prevMonthStart.toISOString())
+          .lte('created_at', prevMonthEnd.toISOString());
+
+        const [
+          { data: appts, error: apptErr },
+          { data: apptsY, error: apptYesterdayErr },
+          { data: staff, error: staffErr },
+          clientsToday,
+          clientsYesterday,
+          apptsThisMonth,
+          apptsLastMonth,
+        ] = await Promise.all([
+          appointmentsQuery,
+          appointmentsYesterdayQuery,
+          staffQuery,
+          clientsTodayQuery,
+          clientsYesterdayQuery,
+          apptsThisMonthQuery,
+          apptsLastMonthQuery,
+        ]);
+
+        if (apptErr) throw apptErr;
+        if (apptYesterdayErr) throw apptYesterdayErr;
+        if (staffErr) throw staffErr;
+
+        setTodayAppointments((appts || []) as DashboardAppointment[]);
+        setYesterdayAppointments((apptsY || []) as DashboardAppointment[]);
+        const map: Record<string, string> = {};
+        (staff || []).forEach((s: any) => {
+          if (s?.id) map[s.id] = s.full_name;
+        });
+        setStaffMap(map);
+        const staffCount = (staff || []).length;
+
+        // Compute appointment-based metrics
+        const apptsToday = (appts || []) as DashboardAppointment[];
+        const apptsYesterday = (apptsY || []) as DashboardAppointment[];
+        const completionTodayNumerator = apptsToday.filter(a => (a.status || '').toLowerCase() === 'completed').length;
+        const completionYesterdayNumerator = apptsYesterday.filter(a => (a.status || '').toLowerCase() === 'completed').length;
+        const completionRateToday = apptsToday.length ? Math.round((completionTodayNumerator / apptsToday.length) * 100) : 0;
+        const completionRateYesterday = apptsYesterday.length ? Math.round((completionYesterdayNumerator / apptsYesterday.length) * 100) : 0;
+        const avgServiceTimeToday = Math.round(average(apptsToday.map(a => a.duration_minutes || 0).filter(v => v > 0)));
+        const avgServiceTimeYesterday = Math.round(average(apptsYesterday.map(a => a.duration_minutes || 0).filter(v => v > 0)));
+        const utilizedStaffToday = new Set(apptsToday.map(a => a.staff_id).filter(Boolean)).size;
+        const utilizedStaffYesterday = new Set(apptsYesterday.map(a => a.staff_id).filter(Boolean)).size;
+        const staffUtilizationToday = staffCount > 0 ? Math.round((utilizedStaffToday / (staffCount || 1)) * 100) : 0;
+        const staffUtilizationYesterday = staffCount > 0 ? Math.round((utilizedStaffYesterday / (staffCount || 1)) * 100) : 0;
+
+        // Revenue from receipts (prefer receipt_date if exists, else created_at range)
+        let revenueToday = 0;
+        let revenueYesterday = 0;
+        let revenueThisMonth = 0;
+        let revenueLastMonth = 0;
+        try {
+          const { data: receiptsToday, error: receiptsTodayErr } = await supabase
+            .from('invoices')
+            .select('total_amount')
+            .eq('created_at', todayStr);
+          if (receiptsTodayErr) throw receiptsTodayErr;
+          revenueToday = (receiptsToday || []).reduce((sum: number, r: any) => sum + (Number(r.total_amount) || 0), 0);
+        } catch (_) {
+          const { data: receiptsToday, error: receiptsTodayErr } = await supabase
+            .from('invoices')
+            .select('total_amount, created_at')
+            .gte('created_at', startOfDay(today).toISOString())
+            .lte('created_at', endOfDay(today).toISOString());
+          if (!receiptsTodayErr) {
+            revenueToday = (receiptsToday || []).reduce((sum: number, r: any) => sum + (Number(r.total_amount) || 0), 0);
+          }
+        }
+
+        try {
+          const { data: receiptsYesterday, error: receiptsYesterdayErr } = await supabase
+            .from('invoices')
+            .select('total_amount')
+            .gte('created_at', startOfDay(yesterday).toISOString())
+            .lte('created_at', endOfDay(yesterday).toISOString());
+          if (receiptsYesterdayErr) throw receiptsYesterdayErr;
+          revenueYesterday = (receiptsYesterday || []).reduce((sum: number, r: any) => sum + (Number(r.total_amount) || 0), 0);
+        } catch (_) {
+          const { data: receiptsYesterday, error: receiptsYesterdayErr } = await supabase
+            .from('invoices')
+            .select('total_amount, created_at')
+            .gte('created_at', startOfDay(yesterday).toISOString())
+            .lte('created_at', endOfDay(yesterday).toISOString());
+          if (!receiptsYesterdayErr) {
+            revenueYesterday = (receiptsYesterday || []).reduce((sum: number, r: any) => sum + (Number(r.total_amount) || 0), 0);
+          }
+        }
+
+        // Monthly revenue
+        try {
+          const { data: recMonth, error: recMonthErr } = await supabase
+            .from('invoices')
+            .select('total_amount, created_at')
+            .gte('created_at', monthStart.toISOString())
+            .lte('created_at', monthEnd.toISOString());
+          if (recMonthErr) throw recMonthErr;
+          revenueThisMonth = (recMonth || []).reduce((sum: number, r: any) => sum + (Number(r.total_amount) || 0), 0);
+        } catch (e) {
+          // best-effort; keep zero on failure
+        }
+        try {
+          const { data: recPrev, error: recPrevErr } = await supabase
+            .from('invoices')
+            .select('total_amount, created_at')
+            .gte('created_at', prevMonthStart.toISOString())
+            .lte('created_at', prevMonthEnd.toISOString());
+          if (recPrevErr) throw recPrevErr;
+          revenueLastMonth = (recPrev || []).reduce((sum: number, r: any) => sum + (Number(r.total_amount) || 0), 0);
+        } catch (e) {
+          // best-effort; keep zero on failure
+        }
+
+        setMetrics({
+          revenueToday,
+          revenueYesterday,
+          appointmentsToday: apptsToday.length,
+          appointmentsYesterday: apptsYesterday.length,
+          newClientsToday: clientsToday.count || 0,
+          newClientsYesterday: clientsYesterday.count || 0,
+          staffUtilizationToday,
+          staffUtilizationYesterday,
+          completionRateToday,
+          completionRateYesterday,
+          avgServiceTimeToday,
+          avgServiceTimeYesterday,
+          revenueThisMonth,
+          revenueLastMonth,
+          appointmentsThisMonth: apptsThisMonth.count || 0,
+          appointmentsLastMonth: apptsLastMonth.count || 0,
+        });
+      } catch (e: any) {
+        console.error('Failed to load dashboard data', e);
+        setError(e?.message || 'Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   const todayStats = [
     {
       title: "Today's Revenue",
-      value: formatCurrency(metrics.revenueToday) as string,
+      value: format(metrics.revenueToday) as string,
       previousValue: metrics.revenueYesterday,
       change: safePercent(metrics.revenueToday, metrics.revenueYesterday),
       icon: DollarSign,
@@ -123,9 +365,68 @@ const Dashboard = () => {
     }
   ];
 
-  // ... keep existing code (topPerformers computation)
+  // Compute top performers from today's appointments
+  const topPerformers = useMemo(() => {
+    const byStaff: Record<string, { name: string; revenue: number; appointments: number; completionRate: number }> = {};
+    const totalByStaff: Record<string, { completed: number; total: number }> = {};
+    for (const a of todayAppointments) {
+      if (!a.staff_id) continue;
+      const key = a.staff_id;
+      const price = Number(a.price) || 0;
+      if (!byStaff[key]) {
+        byStaff[key] = { name: staffMap[key] || 'Unassigned', revenue: 0, appointments: 0, completionRate: 0 };
+        totalByStaff[key] = { completed: 0, total: 0 };
+      }
+      byStaff[key].revenue += price;
+      byStaff[key].appointments += 1;
+      totalByStaff[key].total += 1;
+      if ((a.status || '').toLowerCase() === 'completed') totalByStaff[key].completed += 1;
+    }
+    const list = Object.entries(byStaff).map(([key, val]) => ({
+      name: val.name,
+      revenue: Math.round(val.revenue),
+      appointments: val.appointments,
+      rating: 0,
+      specialties: [] as string[],
+      completionRate: totalByStaff[key].total ? Math.round((totalByStaff[key].completed / totalByStaff[key].total) * 100) : 0,
+      avatar: (val.name || 'NA').split(' ').filter(Boolean).slice(0, 2).map(s => s[0]?.toUpperCase()).join('') || '—',
+    }));
+    return list.sort((a, b) => b.revenue - a.revenue).slice(0, 4);
+  }, [todayAppointments, staffMap]);
 
-  // ... keep existing code (recentActivities state and useEffect)
+  // Recent activities from real data (appointments recently created/updated)
+  const [recentActivities, setRecentActivities] = useState<{
+    type: string;
+    message: string;
+    time: string;
+    icon: any;
+    color: string;
+  }[]>([]);
+
+  useEffect(() => {
+    const loadRecent = async () => {
+      try {
+        const since = subDays(new Date(), 1);
+        const { data: recentAppts } = await supabase
+          .from('appointments')
+          .select('customer_name, status, created_at, updated_at, appointment_time')
+          .gte('created_at', since.toISOString())
+          .order('created_at', { ascending: false })
+          .limit(10);
+        const items = (recentAppts || []).map((a: any) => ({
+          type: 'appointment',
+          message: `${(a.status || '').toLowerCase() === 'completed' ? 'Completed' : 'Booked'} appointment for ${a.customer_name || 'Client'}`,
+          time: new Date(a.created_at || a.updated_at || Date.now()).toLocaleString(),
+          icon: Calendar,
+          color: 'text-blue-600',
+        }));
+        setRecentActivities(items);
+      } catch (e) {
+        // swallow errors; keep empty
+      }
+    };
+    loadRecent();
+  }, []);
 
   const quickActions = [
     {
@@ -158,9 +459,34 @@ const Dashboard = () => {
     }
   ];
 
-  // ... keep existing code (roleQuickActions computation)
+  // Role-tailor quick actions
+  const { organizationRole } = useSaas();
+  const roleQuickActions = React.useMemo(() => {
+    const role = (organizationRole || '').toLowerCase();
+    if (role === 'owner' || role === 'admin' || role === 'manager') return quickActions;
+    if (role === 'staff') {
+      return quickActions.filter(a => a.title === 'New Appointment' || a.title === 'Process Payment');
+    }
+    // viewer/member: minimal
+    return quickActions.filter(a => a.title === 'View Reports');
+  }, [organizationRole]);
 
-  // ... keep existing code (getStatusColor function)
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "confirmed":
+        return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      case "pending":
+        return "bg-amber-50 text-amber-700 border-amber-200";
+      case "completed":
+        return "bg-blue-50 text-blue-700 border-blue-200";
+      case "cancelled":
+        return "bg-red-50 text-red-700 border-red-200";
+      case "scheduled":
+        return "bg-slate-50 text-slate-700 border-slate-200";
+      default:
+        return "bg-slate-50 text-slate-700 border-slate-200";
+    }
+  };
 
   const refreshData = async () => {
     setLoading(true);
@@ -169,7 +495,19 @@ const Dashboard = () => {
     setLoading(false);
   };
 
-  // ... keep existing code (error boundary)
+  // Error boundary
+  if (error) {
+          return (
+        <div className="flex-1 space-y-6 p-4 sm:p-6 pb-24 sm:pb-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen overflow-x-hidden">
+          <div className="text-center space-y-4">
+          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto" />
+          <h2 className="text-xl font-semibold text-red-700">Dashboard Error</h2>
+          <p className="text-red-600">{error}</p>
+          <Button onClick={() => setError(null)}>Try Again</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 space-y-6 p-4 sm:p-6 pb-24 sm:pb-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen overflow-x-hidden">
@@ -260,7 +598,7 @@ const Dashboard = () => {
                     Today's Schedule
                   </CardTitle>
                   <CardDescription>
-                    {todayAppointments.length} appointments • {formatCurrency(todayAppointments.reduce((sum, apt) => sum + (apt.price || 0), 0))} revenue
+                    {todayAppointments.length} appointments • {format(todayAppointments.reduce((sum, apt) => sum + (apt.price || 0), 0), { decimals: 0 })} revenue
                   </CardDescription>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => navigate('/appointments')}>
@@ -311,7 +649,7 @@ const Dashboard = () => {
                             </div>
                             {typeof appointment.price === 'number' && (
                               <div className="text-sm font-semibold text-slate-900">
-                                {formatCurrency(Number(appointment.price))}
+                                {format(Number(appointment.price))}
                               </div>
                             )}
                           </div>
@@ -366,7 +704,7 @@ const Dashboard = () => {
                           )}
                         </div>
                         <div className="flex items-center justify-between text-xs text-slate-500">
-                          <span>{formatCurrency(staff.revenue)}</span>
+                          <span>{format(staff.revenue)}</span>
                           <span>{staff.appointments} apts</span>
                           <span>{staff.completionRate}%</span>
                         </div>

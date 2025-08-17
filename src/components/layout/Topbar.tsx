@@ -28,8 +28,7 @@ export function AppTopbar() {
     subscriptionPlan,
     isTrialing,
     daysLeftInTrial,
-    switchOrganization,
-    userRoles,
+    switchOrganization 
   } = useSaas();
 
   type NotificationItem = {
@@ -138,9 +137,9 @@ export function AppTopbar() {
                     className={organization?.id === org.id ? 'bg-accent' : ''}
                   >
                     <div className="flex flex-col">
-                      <span>{org.name || 'Unknown'}</span>
-                      <span className={`text-xs ${getRoleColor(userRoles?.[org.id] || '')}`}>
-                        {userRoles?.[org.id] || ''}
+                      <span>{org.organizations?.name || 'Unknown'}</span>
+                      <span className={`text-xs ${getRoleColor(org.role)}`}>
+                        {org.role}
                       </span>
                     </div>
                   </DropdownMenuItem>

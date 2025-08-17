@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { prisma } from '../utils/prisma';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth';
-import { requirePermission } from '../middleware/roles';
 
 const router = Router();
 
@@ -19,7 +18,7 @@ const movementSchema = z.object({
 
 router.use(requireAuth);
 
-router.post('/movements', requirePermission('ADJUSTMENTS','CREATE'), async (req, res) => {
+router.post('/movements', async (req, res) => {
   const parsed = movementSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   const data = parsed.data;
@@ -31,7 +30,7 @@ router.post('/movements', requirePermission('ADJUSTMENTS','CREATE'), async (req,
   }
 });
 
-router.get('/valuation', requirePermission('PRODUCTS','VIEW'), async (_req, res) => {
+router.get('/valuation', async (_req, res) => {
   const movements = await prisma.stockMovement.findMany();
   const map = new Map<string, { qty: number; value: number }>();
   for (const m of movements) {
@@ -60,7 +59,7 @@ router.get('/valuation', requirePermission('PRODUCTS','VIEW'), async (_req, res)
   res.json({ rows });
 });
 
-router.get('/movement-history', requirePermission('PRODUCTS','VIEW'), async (req, res) => {
+router.get('/movement-history', async (req, res) => {
   const productId = String(req.query.productId || '');
   const locationId = String(req.query.locationId || '');
   const where: any = {};

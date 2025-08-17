@@ -173,7 +173,7 @@ const menuItems: MenuItem[] = [
         {
         title: "Accountant",
         icon: DollarSign,
-        feature: "expenses", // section header only; individual items gated below
+        feature: "expenses",
         subItems: [
           {
             title: "Chart of Accounts",
@@ -198,7 +198,7 @@ const menuItems: MenuItem[] = [
   {
     title: "Reports",
     icon: TrendingUp,
-    feature: "reports", // Visibility will be additionally gated by role (accountant/owner)
+    feature: "reports",
     subItems: [
       { title: "Overview", url: "/reports?tab=overview", icon: TrendingUp, feature: "reports" },
       { title: "Revenue", url: "/reports?tab=revenue", icon: DollarSign, feature: "reports" },
@@ -325,15 +325,6 @@ export function AppSidebar() {
   const isMenuItemAvailable = (item: MenuItem) => {
     if (item.title === 'Services') {
       return true;
-    }
-    if (item.title === 'Reports') {
-      // Only Accountant or Owner can view
-      const role = (useSaas() as any).organizationRole;
-      if (role !== 'accountant' && role !== 'owner') return false;
-    }
-    if (item.title === 'Accountant') {
-      const role = (useSaas() as any).organizationRole;
-      if (role !== 'accountant' && role !== 'owner') return false;
     }
     if (item.subItems) {
       return item.subItems.some(subItem => hasFeature(subItem.feature));

@@ -72,7 +72,7 @@ interface ServiceKit {
 
 export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCardFormProps) {
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm();
-  const { symbol } = useOrganizationCurrency(); // symbol provided by updated hook
+  const { symbol } = useOrganizationCurrency();
   const [staff, setStaff] = useState<Staff[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -256,16 +256,6 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
         const defaultPosWarehouseId = ((organization?.settings as any) || {})?.pos_default_warehouse_id as string | undefined;
         // Prefer appointment location inventory if schema is location-based, else fallback to POS default warehouse when levels are warehouse-based
         const effectiveLocationId = appointmentLocationId || null;
-        // Resolve warehouse's location id once if we will use warehouse-based fallback
-        let warehouseLocationId: string | null = null;
-        if (!effectiveLocationId && defaultPosWarehouseId) {
-          const { data: wh } = await supabase
-            .from('warehouses')
-            .select('location_id')
-            .eq('id', defaultPosWarehouseId)
-            .maybeSingle();
-          warehouseLocationId = (wh as any)?.location_id || null;
-        }
         for (const kit of serviceKits) {
           const quantityUsed = productQuantities[kit.good_id] || kit.default_quantity || 1;
           if (effectiveLocationId) {
@@ -300,9 +290,7 @@ export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCar
               const newQuantity = Math.max(0, Number(existing.quantity || 0) - Number(quantityUsed || 0));
               await supabase.from("inventory_levels").update({ quantity: newQuantity }).eq("id", existing.id);
             } else {
-              if (warehouseLocationId) {
-                await supabase.from("inventory_levels").insert([{ item_id: kit.good_id, location_id: warehouseLocationId as string, warehouse_id: defaultPosWarehouseId, quantity: 0 }]);
-              }
+              await supabase.from("inventory_levels").insert([{ item_id: kit.good_id, warehouse_id: defaultPosWarehouseId, quantity: 0 }]);
             }
           }
         }

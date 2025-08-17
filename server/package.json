@@ -7,7 +7,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "node --loader ts-node/esm prisma/seed.ts",
+    "prisma:seed": "ts-node --esm prisma/seed.ts",
     "postinstall": "prisma generate"
   },
   "keywords": [],
