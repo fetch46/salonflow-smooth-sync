@@ -180,7 +180,7 @@ export default function AppointmentForm() {
         let items: AppointmentServiceItem[] = [];
         const hasApptServices = await tableExists(supabase, 'appointment_services');
         if (hasApptServices) {
-          const { data: apptServices, error } = await supabase
+          const { data: apptServices, error } = await (supabase as any)
             .from("appointment_services")
             .select("*")
             .eq("appointment_id", id);
@@ -433,7 +433,7 @@ export default function AppointmentForm() {
 
         const hasApptServices = await tableExists(supabase, 'appointment_services');
         if (hasApptServices) {
-          const { error: delError } = await supabase
+          const { error: delError } = await (supabase as any)
             .from("appointment_services")
             .delete()
             .eq("appointment_id", id);
@@ -450,7 +450,7 @@ export default function AppointmentForm() {
             commission_percentage: typeof it.commission_percentage === 'number' ? it.commission_percentage : null,
           }));
           if (rows.length) {
-            const { error: insError } = await supabase.from("appointment_services").insert(rows);
+            const { error: insError } = await (supabase as any).from("appointment_services").insert(rows);
             if (insError) throw insError;
           }
         }
@@ -498,7 +498,7 @@ export default function AppointmentForm() {
             commission_percentage: typeof it.commission_percentage === 'number' ? it.commission_percentage : null,
           }));
           if (rows.length) {
-            const { error: insError } = await supabase.from("appointment_services").insert(rows);
+            const { error: insError } = await (supabase as any).from("appointment_services").insert(rows);
             if (insError) throw insError;
           }
         }

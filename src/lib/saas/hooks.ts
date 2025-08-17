@@ -1,6 +1,7 @@
 
-import { useContext } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { SaasContext } from './context';
+import { supabase } from '@/integrations/supabase/client';
 
 // Import feature gating hooks from the correct location
 export {
@@ -87,11 +88,27 @@ export function useFeatureGuard() {
 }
 
 export function useRegionalNumberFormatter() {
-  throw new Error('useRegionalNumberFormatter is not yet implemented');
+  // Basic numeric formatter; could be enhanced with locale from context
+  const context = useContext(SaasContext);
+  if (context === undefined) {
+    throw new Error('useRegionalNumberFormatter must be used within a SaasProvider');
+  }
+  const locale = context.locale || 'en-US';
+  return useMemo(() => {
+    return (value: number, options?: Intl.NumberFormatOptions) => new Intl.NumberFormat(locale, options).format(value);
+  }, [locale]);
 }
 
 export function useRegionalDateFormatter() {
-  throw new Error('useRegionalDateFormatter is not yet implemented');
+  // Basic date formatter; could be enhanced with locale from context
+  const context = useContext(SaasContext);
+  if (context === undefined) {
+    throw new Error('useRegionalDateFormatter must be used within a SaasProvider');
+  }
+  const locale = context.locale || 'en-US';
+  return useMemo(() => {
+    return (value: string | Date, options?: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(locale, options || { year: 'numeric', month: 'short', day: '2-digit' }).format(new Date(value));
+  }, [locale]);
 }
 
 export function useOrganizationCurrency() {
@@ -99,9 +116,35 @@ export function useOrganizationCurrency() {
   if (context === undefined) {
     throw new Error('useOrganizationCurrency must be used within a SaasProvider');
   }
-  
-  // Get currency from organization or use default
-  const currency = context.organization?.currency || { code: 'USD', symbol: '$' };
+
+  const [currency, setCurrency] = useState<{ code: string; symbol: string }>({ code: 'USD', symbol: '$' });
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const orgId = context.organization?.id;
+        if (!orgId) return;
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('currency_id')
+          .eq('id', orgId)
+          .maybeSingle();
+        const currencyId = (org as any)?.currency_id as string | null;
+        if (currencyId) {
+          const { data: cur } = await supabase
+            .from('currencies')
+            .select('code, symbol')
+            .eq('id', currencyId)
+            .maybeSingle();
+          if (cur?.code && cur?.symbol) {
+            setCurrency({ code: cur.code as string, symbol: cur.symbol as string });
+          }
+        }
+      } catch (err) {
+        // Fallback to default USD
+      }
+    })();
+  }, [context.organization?.id]);
   
   const formatCurrency = (amount: number, options?: { 
     showSymbol?: boolean; 
@@ -114,18 +157,28 @@ export function useOrganizationCurrency() {
       maximumFractionDigits = 2 
     } = options || {};
     
-    const formattedAmount = new Intl.NumberFormat('en-US', {
+    const formattedAmount = new Intl.NumberFormat(context.locale || 'en-US', {
       minimumFractionDigits,
       maximumFractionDigits,
     }).format(amount);
     
     return showSymbol ? `${currency.symbol}${formattedAmount}` : formattedAmount;
   };
+
+  const format = formatCurrency;
+
+  const formatUsdCents = (cents: number) => {
+    const amount = (cents || 0) / 100;
+    return new Intl.NumberFormat(context.locale || 'en-US', { style: 'currency', currency: currency.code || 'USD' }).format(amount);
+  };
   
   return {
     currency,
     formatCurrency,
+    format,
+    formatUsdCents,
     currencyCode: currency.code,
-    currencySymbol: currency.symbol
+    currencySymbol: currency.symbol,
+    symbol: currency.symbol,
   };
 }
