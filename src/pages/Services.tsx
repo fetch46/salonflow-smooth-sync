@@ -665,6 +665,7 @@ export default function Services() {
           const message = (error as any)?.message || String(error)
           const isMissingOrgId = code === '42703' || /column\s+("?[\w\.]*organization_id"?)\s+does not exist/i.test(message)
           const isMissingLocationId = code === '42703' || /column\s+("?[\w\.]*location_id"?)\s+does not exist/i.test(message)
+          const isUniqueName = code === '23505' || /duplicate key value violates unique constraint/i.test(message)
           if (isMissingOrgId || isMissingLocationId) {
             const { data: retryData, error: retryError } = await supabase
               .from("services")
@@ -680,6 +681,8 @@ export default function Services() {
               .maybeSingle()
             if (retryError) throw retryError
             data = retryData
+          } else if (isUniqueName) {
+            throw new Error('A service with this name already exists in your organization')
           } else {
             throw error
           }

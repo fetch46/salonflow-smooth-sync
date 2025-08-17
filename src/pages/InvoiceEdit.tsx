@@ -84,7 +84,7 @@ export default function InvoiceEdit() {
       try {
         const [{ data: cust }, { data: svc }] = await Promise.all([
           supabase.from("clients").select("id, full_name, email, phone").eq("is_active", true).order("full_name"),
-          supabase.from("services").select("id, name, price").eq("is_active", true).order("name"),
+          supabase.from("services").select("id, name, price").eq("is_active", true).eq('organization_id', organization?.id || '').order("name"),
         ]);
         setCustomers(cust || []);
         setServices(svc || []);

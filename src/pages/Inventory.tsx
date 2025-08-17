@@ -562,12 +562,15 @@ export default function Inventory() {
           const sellingPriceRaw = getMapped(raw, 'selling_price');
           const isActiveRaw = getMapped(raw, 'is_active');
 
+          if (!organization?.id) throw new Error('No active organization selected');
+
           const reorder_point = reorderPointRaw !== undefined && String(reorderPointRaw).trim() !== '' ? parseInt(String(reorderPointRaw)) || 0 : undefined;
           const cost_price = costPriceRaw !== undefined && String(costPriceRaw).trim() !== '' ? Number(costPriceRaw) : undefined;
           const selling_price = sellingPriceRaw !== undefined && String(sellingPriceRaw).trim() !== '' ? Number(sellingPriceRaw) : undefined;
           const is_activeParsed = parseBooleanString(isActiveRaw);
 
           const baseCreatePayload: any = {
+            organization_id: organization!.id,
             name,
             description: description || null,
             sku: sku ? sku : null,
@@ -582,10 +585,10 @@ export default function Inventory() {
           // Find existing by SKU if mapped and present, else by name
           let existing: any = null;
           if (sku) {
-            const { data } = await supabase.from('inventory_items').select('id, sku').eq('sku', sku).maybeSingle();
+            const { data } = await supabase.from('inventory_items').select('id, sku').eq('organization_id', organization?.id || '').eq('sku', sku).maybeSingle();
             existing = data || null;
           } else {
-            const { data } = await supabase.from('inventory_items').select('id, name').eq('name', name).maybeSingle();
+            const { data } = await supabase.from('inventory_items').select('id, name').eq('organization_id', organization?.id || '').eq('name', name).maybeSingle();
             existing = data || null;
           }
 
@@ -707,7 +710,7 @@ export default function Inventory() {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { data: itemsRes } = await supabase.from("inventory_items").select("*").order("name");
+      const { data: itemsRes } = await supabase.from("inventory_items").select("*").eq("organization_id", organization?.id || "").order("name");
       setItems((itemsRes || []) as InventoryItem[]);
     } catch (error) {
       toast({ title: "Error", description: "Failed to fetch inventory data", variant: "destructive" });
@@ -844,6 +847,7 @@ export default function Inventory() {
         const { data: inserted, error } = await supabase
           .from("inventory_items")
           .insert({
+            organization_id: organization?.id || '',
             name: (payload.name || '').trim(),
             description: payload.description,
             sku: (payload.sku || '').trim() ? (payload.sku || '').trim() : null,
