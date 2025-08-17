@@ -133,14 +133,7 @@ const AppRoutes = () => {
   // Prefetch some commonly used lazy routes soon after auth/org is ready
   useEffect(() => {
     if (user && organization?.id) {
-      setTimeout(() => {
-        void Promise.all([
-          import('@/pages/Dashboard').catch(() => {}),
-          import('@/pages/Accounts').catch(() => {}),
-          import('@/pages/Invoices').catch(() => {}),
-          import('@/pages/Payments').catch(() => {}),
-        ]);
-      }, 0);
+      // Dynamic prefetch removed to avoid chunk fetch failures; rely on on-demand loading
     }
   }, [user, organization?.id]);
 

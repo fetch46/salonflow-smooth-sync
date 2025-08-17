@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSaas, useOrganizationCurrency } from "@/lib/saas";
 import { postExpensePaymentToLedger } from "@/utils/ledger";
 import { useNavigate } from "react-router-dom";
+import { deleteTransactionsByReference } from "@/utils/ledger";
 
 
 interface Expense {
@@ -379,7 +380,6 @@ export default function Expenses() {
       try {
         // Best-effort: remove any ledger entries related to this expense payment
         try {
-          const { deleteTransactionsByReference } = await import("@/utils/ledger");
           await deleteTransactionsByReference("expense_payment", id);
         } catch {}
 

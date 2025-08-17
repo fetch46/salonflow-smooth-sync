@@ -26,6 +26,7 @@ import {
    UsageService,
    AnalyticsService,
    CacheService,
+   SystemSettingsService,
 } from './services'
 
  import {
@@ -38,6 +39,7 @@ import {
    getErrorMessage,
    createCacheKey,
    createSlugFromName,
+   canPerformActionWithOverrides,
  } from './utils'
 
 import { PLAN_FEATURES } from '@/lib/features'
@@ -519,7 +521,6 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadSystemSettings = useCallback(async () => {
     try {
-      const { SystemSettingsService } = await import('./services')
       const settings = await SystemSettingsService.getSystemSettings()
       dispatch({ type: 'SET_SYSTEM_SETTINGS', payload: settings || null })
     } catch (e) {
@@ -584,7 +585,6 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (overrides) {
       // Lazy import to avoid circular issues if any
       try {
-        const { canPerformActionWithOverrides } = require('./utils') as typeof import('./utils')
         return canPerformActionWithOverrides(state.organizationRole, action, resource, overrides)
       } catch {
         return canPerformAction(state.organizationRole, action, resource)

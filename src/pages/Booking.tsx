@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSaas } from "@/lib/saas";
 import { postBookingPrepaymentToUnearnedRevenue } from "@/utils/ledger";
+import { recordPrepaymentWithFallback } from "@/utils/mockDatabase";
 
 const Booking = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -82,7 +83,6 @@ const Booking = () => {
       if (collectReservationFee) {
         // Persist prepayment
         try {
-          const { recordPrepaymentWithFallback } = await import("@/utils/mockDatabase");
           await recordPrepaymentWithFallback(supabase, {
             client_id: null,
             amount: Number(reservationAmount),

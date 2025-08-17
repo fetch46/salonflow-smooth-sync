@@ -19,6 +19,8 @@ import {
     Package,
   FileText,
  } from "lucide-react";
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
 
 interface JobCardRecord {
   id: string;
@@ -155,8 +157,7 @@ export default function JobCardView() {
     try {
       const element = pdfRef.current;
       if (!element) return;
-      const html2canvas = (await import("html2canvas")).default;
-      const { jsPDF } = await import("jspdf");
+      
 
       const canvas = await html2canvas(element, {
         scale: 2,

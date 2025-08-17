@@ -22,6 +22,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { MoreHorizontal, Edit3, Truck as TruckIcon, Trash2, CreditCard, RefreshCw } from "lucide-react";
 import { postDoubleEntry, findAccountIdByCode } from "@/utils/ledger";
 import { postPurchaseInventoryCapitalization } from "@/utils/ledger";
+import { deleteTransactionsByReference } from "@/utils/ledger";
 
 interface AccountOption { id: string; account_code: string; account_name: string; account_type: string; account_subtype: string | null; balance?: number | null }
 
@@ -396,7 +397,6 @@ export default function Purchases() {
 
         // Best-effort: remove any ledger entries related to this purchase payment
         try {
-          const { deleteTransactionsByReference } = await import("@/utils/ledger");
           await deleteTransactionsByReference("purchase_payment", id);
         } catch {}
 

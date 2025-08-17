@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Crown } from "lucide-react";
 import React from "react";
+import { cleanupAuthState } from "@/utils/authUtils";
 
 interface DashboardLayoutProps {
   children?: React.ReactNode;
@@ -30,7 +31,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps = {})
   const handleSignOut = async () => {
     try {
       // Clean up auth state to avoid limbo
-      const { cleanupAuthState } = await import('@/utils/authUtils');
       cleanupAuthState();
       try {
         await supabase.auth.signOut({ scope: 'global' } as any);

@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useEffect, useMemo, useState } from "react";
+import { cleanupAuthState } from "@/utils/authUtils";
 
 export function AppTopbar() {
   const navigate = useNavigate();
@@ -65,10 +66,13 @@ export function AppTopbar() {
 
   const handleSignOut = async () => {
     try {
-      await supabase.auth.signOut();
-      navigate('/login');
-    } catch (error) {
-      console.error('Error signing out:', error);
+      cleanupAuthState();
+      try {
+        await supabase.auth.signOut();
+      } catch (error) {
+        console.error('Error signing out:', error);
+      }
+    } finally {
       navigate('/login');
     }
   };
@@ -253,7 +257,6 @@ export function SuperAdminTopbar() {
 
   const handleSignOut = async () => {
     try {
-      const { cleanupAuthState } = await import('@/utils/authUtils');
       cleanupAuthState();
       try {
         await supabase.auth.signOut({ scope: 'global' } as any);
