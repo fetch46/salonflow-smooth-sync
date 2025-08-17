@@ -25,8 +25,7 @@ async function seedRolePermissions() {
     R.PRODUCTS,
     R.ADJUSTMENTS,
     R.TRANSFERS,
-    R.BANKING,
-    R.REPORTS,
+    // Removed R.BANKING and R.REPORTS to reflect Accountant/Owner-only access
     R.SETTINGS,
   ];
   for (const res of adminResources) {

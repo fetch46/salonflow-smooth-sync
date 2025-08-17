@@ -29,8 +29,9 @@ export function requirePermission(resource: 'APPOINTMENTS' | 'CLIENTS' | 'INVOIC
     // Owners have full access
     if (userRole === 'OWNER') return next();
 
+    const accountantOwnerOnly = new Set(['BANKING', 'REPORTS']);
     // Accountant/Owner-only override
-    if ((resource === 'BANKING' || resource === 'REPORTS') && userRole !== 'ACCOUNTANT') {
+    if (accountantOwnerOnly.has(resource) && userRole !== 'ACCOUNTANT') {
       return res.status(403).json({ error: 'Forbidden' });
     }
 

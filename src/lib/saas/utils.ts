@@ -31,6 +31,21 @@ export function canPerformAction(
   conditions?: Record<string, any>
 ): boolean {
   if (!userRole) return false
+
+  // Normalize inputs to match constant casing
+  const normalizedAction = action.charAt(0).toUpperCase() + action.slice(1).toLowerCase()
+  const normalizedResource = resource
+    .replace(/[._-]+/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map(s => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase())
+    .join(' ')
+
+  // Accountant/Owner-only hard barrier
+  const restricted = normalizedResource === 'Banking' || normalizedResource === 'Reports'
+  if (restricted && userRole !== 'accountant' && userRole !== 'owner') {
+    return false
+  }
   
   const permissions = ROLE_PERMISSIONS[userRole] || []
   
@@ -40,13 +55,13 @@ export function canPerformAction(
   }
   
   // Check for resource-specific wildcard
-  if (permissions.some(p => p.action === '*' && p.resource === resource)) {
+  if (permissions.some(p => p.action === '*' && p.resource === normalizedResource)) {
     return true
   }
   
   // Check for exact action and resource match
   const exactMatch = permissions.find(p => 
-    p.action === action && p.resource === resource
+    p.action === normalizedAction && p.resource === normalizedResource
   )
   
   if (!exactMatch) return false
@@ -92,13 +107,27 @@ export function canPerformActionWithOverrides(
   conditions?: Record<string, any>
 ): boolean {
   if (!userRole) return false
+
+  const normalizedAction = action.charAt(0).toUpperCase() + action.slice(1).toLowerCase()
+  const normalizedResource = resource
+    .replace(/[._-]+/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map(s => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase())
+    .join(' ')
+
+  // Accountant/Owner-only hard barrier (overrides cannot bypass)
+  const restricted = normalizedResource === 'Banking' || normalizedResource === 'Reports'
+  if (restricted && userRole !== 'accountant' && userRole !== 'owner') {
+    return false
+  }
   const effective = buildEffectivePermissions(ROLE_PERMISSIONS, overrides)
   const permissions = effective[userRole] || []
 
   if (permissions.some(p => p.action === '*' && p.resource === '*')) return true
-  if (permissions.some(p => p.action === '*' && p.resource === resource)) return true
+  if (permissions.some(p => p.action === '*' && p.resource === normalizedResource)) return true
 
-  const exactMatch = permissions.find(p => p.action === action && p.resource === resource)
+  const exactMatch = permissions.find(p => p.action === normalizedAction && p.resource === normalizedResource)
   if (!exactMatch) return false
 
   if (exactMatch.conditions && conditions) {
