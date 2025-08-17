@@ -1005,12 +1005,63 @@ export default function Inventory() {
         return;
       }
 
+      // Additional usage checks in related tables that block deletion via FK constraints
+      const [salesRes, purchaseRes, jobCardRes, invoiceRes] = await Promise.all([
+        supabase.from("sale_items").select("id", { count: "exact", head: true }).eq("product_id", item.id),
+        supabase.from("purchase_items").select("id", { count: "exact", head: true }).eq("item_id", item.id),
+        supabase.from("job_card_products").select("id", { count: "exact", head: true }).eq("inventory_item_id", item.id),
+        supabase.from("invoice_items").select("id", { count: "exact", head: true }).eq("product_id", item.id),
+      ]);
+
+      const usedBy: string[] = [];
+      if (!salesRes.error && (salesRes.count || 0) > 0) usedBy.push("Sales");
+      if (!purchaseRes.error && (purchaseRes.count || 0) > 0) usedBy.push("Purchases");
+      if (!jobCardRes.error && (jobCardRes.count || 0) > 0) usedBy.push("Job Cards");
+      if (!invoiceRes.error && (invoiceRes.count || 0) > 0) usedBy.push("Invoices");
+
+      if (usedBy.length > 0) {
+        const proceedInactive = window.confirm(
+          `This product is used in ${usedBy.join(", ")}. It cannot be deleted while referenced.\n\nWould you like to mark it as inactive instead?`
+        );
+        if (proceedInactive) {
+          const { error } = await supabase
+            .from("inventory_items")
+            .update({ is_active: false })
+            .eq("id", item.id);
+          if (error) throw error;
+          toast({ title: "Updated", description: "Product marked as inactive" });
+          fetchData();
+        }
+        return;
+      }
+
       const { error } = await supabase.from("inventory_items").delete().eq("id", item.id);
       if (error) throw error;
       toast({ title: "Deleted", description: "Product deleted successfully" });
       fetchData();
     } catch (err: any) {
       console.error(err);
+      const message = String(err?.message || "");
+      // Fallback: if FK violation occurs, offer to mark inactive
+      if (/foreign key|violates foreign key constraint|constraint/i.test(message)) {
+        const proceedInactive = window.confirm(
+          `This product is referenced by other records and cannot be deleted.\n\nWould you like to mark it as inactive instead?`
+        );
+        if (proceedInactive) {
+          try {
+            const { error } = await supabase
+              .from("inventory_items")
+              .update({ is_active: false })
+              .eq("id", item.id);
+            if (error) throw error;
+            toast({ title: "Updated", description: "Product marked as inactive" });
+            fetchData();
+            return;
+          } catch (e: any) {
+            console.error(e);
+          }
+        }
+      }
       toast({ title: "Error", description: String(err?.message || "Failed to delete product"), variant: "destructive" });
     }
   };
