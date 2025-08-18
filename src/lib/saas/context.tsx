@@ -1,3 +1,4 @@
+
 import React, {
   createContext,
   useState,
@@ -5,7 +6,7 @@ import React, {
   useContext,
   useCallback,
 } from 'react'
-import { useUser, useSupabaseClient } from '@supabase/auth-helpers-react'
+import { supabase } from '@/integrations/supabase/client'
 import {
   OrganizationService,
   SubscriptionService,
@@ -33,6 +34,7 @@ interface SaasContextType {
   updateUserRole: (userId: string, role: string) => Promise<void>
   isSuperAdmin: boolean
   systemSettings: any
+  user: any
 }
 
 const SaasContext = createContext<SaasContextType | undefined>(undefined)
@@ -60,13 +62,34 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
   )
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false)
   const [systemSettings, setSystemSettings] = useState<any>(null)
-
-  const supabaseClient = useSupabaseClient()
-  const user = useUser()
+  const [user, setUser] = useState<any>(null)
 
   const isSubscriptionActive = !!(
     subscriptionPlan && subscriptionPlan.status === 'active'
   )
+
+  // Get current user
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        setUser(user)
+      } catch (error) {
+        console.error('Failed to get current user:', error)
+      }
+    }
+
+    getCurrentUser()
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setUser(session?.user || null)
+      }
+    )
+
+    return () => subscription.unsubscribe()
+  }, [])
 
   const loadUserOrganizations = useCallback(async () => {
     if (!user) return
@@ -240,7 +263,7 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
       loadUserOrganizations()
       checkSuperAdminStatus()
     } else {
-      setUserOrganizations([])
+      setOrganizations([])
       setCurrentOrganization(null)
       setIsSuperAdmin(false)
     }
@@ -260,6 +283,7 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
     updateUserRole,
     isSuperAdmin,
     systemSettings,
+    user,
   }
 
   return <SaasContext.Provider value={value}>{children}</SaasContext.Provider>
