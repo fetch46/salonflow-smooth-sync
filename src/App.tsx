@@ -1,5 +1,5 @@
 
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useSaas } from "./lib/saas";
 import React, { Suspense, lazy, useEffect } from "react";
 import { Toaster } from "./components/ui/sonner";
@@ -109,6 +109,7 @@ const LoadingFallback = () => (
 // SAAS-specific wrapper component to handle routing logic
 const AppRoutes = () => {
   const { user, loading, organization, organizations, isSuperAdmin } = useSaas();
+  const location = useLocation();
 
   if (loading) {
     return <LoadingFallback />;
@@ -137,8 +138,13 @@ const AppRoutes = () => {
     }
   }, [user, organization?.id]);
 
+  // Redirect super admins to Admin dashboard on initial landings
+  if (isSuperAdmin && (location.pathname === '/' || location.pathname === '/dashboard')) {
+    return <Navigate to="/admin" replace />;
+  }
+
   // Super admin routes - now with protected routes
-  if (isSuperAdmin && (window.location.pathname.startsWith('/admin') || window.location.pathname.startsWith('/super-admin'))) {
+  if (isSuperAdmin && (location.pathname.startsWith('/admin') || location.pathname.startsWith('/super-admin'))) {
     return (
       <Suspense fallback={<LoadingFallback />}>
         <Routes>

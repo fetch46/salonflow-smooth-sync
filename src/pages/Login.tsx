@@ -11,6 +11,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cleanupAuthState } from "@/utils/authUtils";
+import { SuperAdminService } from "@/lib/saas";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -71,8 +72,17 @@ const Login = () => {
       } else if (data.user) {
         console.log('Login successful for user:', data.user.id);
         toast.success("Login successful!");
-        // Force a page reload to ensure clean state
-        window.location.href = '/';
+
+        // Determine destination without a full page reload
+        let isAdmin = false;
+        try {
+          isAdmin = await SuperAdminService.checkSuperAdminStatus(data.user.id);
+        } catch (checkErr) {
+          console.warn('Super admin status check failed, defaulting to dashboard:', checkErr);
+        }
+
+        const destination = isAdmin ? '/admin' : '/dashboard';
+        navigate(destination, { replace: true });
       }
     } catch (err) {
       console.error('Login exception:', err);
