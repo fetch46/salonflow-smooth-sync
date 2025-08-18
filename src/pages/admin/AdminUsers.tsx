@@ -208,14 +208,13 @@ const AdminUsers = () => {
 
   const createOrganizationUser = async () => {
     try {
-      const { error } = await supabase
-        .from('organization_users')
-        .insert([{
+      const { error } = await supabase.functions.invoke('add-org-user', {
+        body: {
           organization_id: newOrgUser.organization_id,
           user_id: newOrgUser.user_id,
           role: newOrgUser.role,
-          is_active: newOrgUser.is_active
-        }]);
+        },
+      });
 
       if (error) throw error;
 
@@ -233,13 +232,14 @@ const AdminUsers = () => {
     if (!selectedOrgUser) return;
 
     try {
-      const { error } = await supabase
-        .from('organization_users')
-        .update({
+      const { error } = await supabase.functions.invoke('update-org-user-role', {
+        body: {
+          organization_id: selectedOrgUser.organization_id,
+          user_id: selectedOrgUser.user_id,
           role: newOrgUser.role,
-          is_active: newOrgUser.is_active
-        })
-        .eq('id', selectedOrgUser.id);
+          is_active: newOrgUser.is_active,
+        },
+      });
 
       if (error) throw error;
 
