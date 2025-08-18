@@ -44,14 +44,9 @@ interface SuperAdminMenuItem {
 
 const superAdminMenuItems: SuperAdminMenuItem[] = [
   {
-    title: "Overview",
+    title: "Dashboard",
     url: "/admin",
     icon: BarChart3,
-  },
-  {
-    title: "Admin Dashboard",
-    url: "/admin/dashboard",
-    icon: Activity,
   },
   {
     title: "Organizations",
@@ -271,13 +266,13 @@ export function SuperAdminSidebar() {
           <SidebarGroupContent>
             <div className="px-2 py-3 space-y-2">
               <NavLink
-                to="/admin"
+                to="/admin/organizations"
                 className="block w-full text-left p-2 rounded-md bg-purple-100 hover:bg-purple-200 text-purple-800 text-sm font-medium transition-colors"
               >
                 Create Organization
               </NavLink>
               <NavLink
-                to="/admin"
+                to="/admin/super-admins"
                 className="block w-full text-left p-2 rounded-md bg-purple-100 hover:bg-purple-200 text-purple-800 text-sm font-medium transition-colors"
               >
                 Grant Super Admin
