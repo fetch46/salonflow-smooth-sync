@@ -12,11 +12,9 @@ import {
   SystemSettings 
 } from './types';
 import { 
-  fetchUserOrganizations, 
-  fetchOrganizationById, 
-  fetchOrganizationSubscription, 
-  fetchSystemSettings,
-  switchUserOrganization 
+  OrganizationService,
+  SubscriptionService,
+  SystemSettingsService
 } from './services';
 
 interface SaasContextType {
@@ -108,7 +106,12 @@ export function SaasProvider({ children }: { children: ReactNode }) {
   // Load organizations with retry logic
   const loadOrganizations = async (userId: string) => {
     try {
-      const orgs = await retryWithBackoff(() => fetchUserOrganizations(userId));
+      const orgUsers = await retryWithBackoff(() => OrganizationService.getUserOrganizations(userId));
+      const orgs = orgUsers
+        .filter(ou => ou.organizations)
+        .map(ou => ou.organizations!)
+        .filter(Boolean);
+      
       setOrganizations(orgs);
       
       if (orgs.length > 0) {
@@ -129,18 +132,21 @@ export function SaasProvider({ children }: { children: ReactNode }) {
   // Load organization details with retry logic
   const loadOrganization = async (organizationId: string) => {
     try {
-      const org = await retryWithBackoff(() => fetchOrganizationById(organizationId));
-      setOrganization(org);
-      localStorage.setItem('currentOrganizationId', organizationId);
-      
-      // Find user's role in this organization
-      const userOrg = organizations.find(o => o.id === organizationId);
-      if (userOrg) {
-        // Assuming the role is stored in the organization object
-        setOrganizationRole('admin' as UserRole); // This should come from the actual data
+      // Find the organization from loaded organizations
+      const org = organizations.find(o => o.id === organizationId);
+      if (org) {
+        setOrganization(org);
+        localStorage.setItem('currentOrganizationId', organizationId);
+        
+        // Find user's role in this organization from loaded org users
+        const orgUsers = await OrganizationService.getUserOrganizations(user!.id);
+        const userOrg = orgUsers.find(ou => ou.organization_id === organizationId);
+        if (userOrg) {
+          setOrganizationRole(userOrg.role);
+        }
+        
+        await loadSubscription(organizationId);
       }
-      
-      await loadSubscription(organizationId);
     } catch (error) {
       const errorMessage = handleServiceError(error, 'loading organization');
       setError(errorMessage);
@@ -151,7 +157,7 @@ export function SaasProvider({ children }: { children: ReactNode }) {
   // Load subscription with retry logic
   const loadSubscription = async (organizationId: string) => {
     try {
-      const sub = await retryWithBackoff(() => fetchOrganizationSubscription(organizationId));
+      const sub = await retryWithBackoff(() => SubscriptionService.getOrganizationSubscription(organizationId));
       setSubscription(sub);
       setSubscriptionPlan(sub?.subscription_plans || null);
       
@@ -177,7 +183,7 @@ export function SaasProvider({ children }: { children: ReactNode }) {
   // Load system settings with retry logic
   const loadSystemSettings = async () => {
     try {
-      const settings = await retryWithBackoff(() => fetchSystemSettings());
+      const settings = await retryWithBackoff(() => SystemSettingsService.getSystemSettings());
       setSystemSettings(settings);
     } catch (error) {
       const errorMessage = handleServiceError(error, 'loading system settings');
@@ -188,7 +194,6 @@ export function SaasProvider({ children }: { children: ReactNode }) {
   // Switch organization
   const switchOrganization = async (organizationId: string) => {
     try {
-      await retryWithBackoff(() => switchUserOrganization(organizationId));
       await loadOrganization(organizationId);
       toast.success('Organization switched successfully');
     } catch (error) {
