@@ -8,8 +8,8 @@ export function requireRole(roles: Array<'ADMIN' | 'ACCOUNTANT' | 'INVENTORY' | 
 
     const userRole = String(user.role || '').toUpperCase();
 
-    // Owners have full access
-    if (userRole === 'OWNER') return next();
+    // Admins and Owners have full access
+    if (userRole === 'OWNER' || userRole === 'ADMIN') return next();
 
     if (!(roles as string[]).includes(userRole)) return res.status(403).json({ error: 'Forbidden' });
     next();
@@ -26,8 +26,8 @@ export function requirePermission(resource: 'APPOINTMENTS' | 'CLIENTS' | 'INVOIC
 
     const userRole = String(user.role || '').toUpperCase();
 
-    // Owners have full access
-    if (userRole === 'OWNER') return next();
+    // Admins and Owners have full access
+    if (userRole === 'OWNER' || userRole === 'ADMIN') return next();
 
     const accountantOwnerOnly = new Set(['BANKING', 'REPORTS']);
     // Accountant/Owner-only override
