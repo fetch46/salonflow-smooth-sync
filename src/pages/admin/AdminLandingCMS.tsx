@@ -73,7 +73,7 @@ interface BusinessListing {
 }
 
 export default function AdminLandingCMS() {
-  const { isSuperAdmin, user } = useSaas();
+  const { isSuperAdmin, user, systemSettings } = useSaas();
   const [settings, setSettings] = useState<LandingSettings | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
 
@@ -160,6 +160,100 @@ export default function AdminLandingCMS() {
     } else {
       setSettings(res.data as any);
       toast.success('Settings saved');
+    }
+    setSavingSettings(false);
+  };
+
+  const importDefaults = async () => {
+    setSavingSettings(true);
+    const appName = (systemSettings as any)?.app_name || 'AURA OS';
+    const defaultNavLinks = [
+      { label: 'Features', href: '#features' },
+      { label: 'Pricing', href: '#pricing' },
+      { label: 'FAQ', href: '#faq' },
+      { label: 'Businesses', href: '/businesses' },
+    ];
+    const defaultFeatures = [
+      { icon: 'calendar', title: 'Online Booking', description: '24/7 online booking system with real-time availability' },
+      { icon: 'users', title: 'Client Management', description: 'Complete customer profiles and appointment history' },
+      { icon: 'credit-card', title: 'POS System', description: 'Integrated point-of-sale for seamless transactions' },
+      { icon: 'bar-chart-3', title: 'Analytics & Reports', description: "Detailed insights into your salon's performance" },
+    ];
+    const defaultExtraFeatures = [
+      { icon: 'smartphone', title: 'Mobile Optimized', description: 'Access your salon tools from any device. Responsive and fast on tablets and phones.' },
+      { icon: 'shield', title: 'Secure & Reliable', description: 'Enterprise‑grade security and 99.9% uptime. Your data is protected.' },
+      { icon: 'bar-chart-3', title: 'Grow Your Business', description: 'Make data‑driven decisions with powerful analytics and reporting.' },
+    ];
+    const defaultFaqs = [
+      { question: 'Is there a free trial?', answer: 'Yes, all plans include a 14‑day free trial. No credit card required.' },
+      { question: 'Can I switch plans later?', answer: 'Absolutely. Upgrade or downgrade anytime from billing settings.' },
+      { question: 'Do you offer support?', answer: 'Email support on all plans and priority support on higher tiers.' },
+    ];
+    const defaultFooterColumns = [
+      { title: 'Product', links: [{ label: 'Features', href: '#' }, { label: 'Pricing', href: '#' }, { label: 'Integrations', href: '#' }] },
+      { title: 'Support', links: [{ label: 'Help Center', href: '#' }, { label: 'Contact Us', href: '#' }, { label: 'System Status', href: '#' }] },
+      { title: 'Company', links: [{ label: 'About', href: '#' }, { label: 'Blog', href: '#' }, { label: 'Careers', href: '#' }] },
+    ];
+
+    const payload: any = {
+      brand_name: appName,
+      brand_logo_url: null,
+      nav_links: defaultNavLinks,
+      hero_badge_text: 'Trusted by 10,000+ salons worldwide',
+      hero_title: 'Streamline Your Salon Management',
+      hero_subtitle: 'The all-in-one platform for bookings, staff, inventory, and payments.',
+      hero_image_url: null,
+      highlights: [],
+      partner_logos: [
+        { name: 'GlowBar', logo_url: null },
+        { name: 'UrbanCuts', logo_url: null },
+        { name: 'StyleHub', logo_url: null },
+        { name: 'Bellezza', logo_url: null },
+      ],
+      features_title: 'Everything Your Salon Needs',
+      features_subtitle: "From online booking to inventory management, we've got you covered with professional tools designed for salon success.",
+      features: defaultFeatures,
+      extra_features: defaultExtraFeatures,
+      pricing_title: 'Simple, Transparent Pricing',
+      pricing_copy: "Choose the plan that fits your salon's needs. All plans include our core features.",
+      billing_monthly_label: 'Monthly',
+      billing_yearly_label: 'Yearly',
+      plan_cta_label: 'Start Free Trial',
+      most_popular_badge_text: 'Most Popular',
+      featured_enabled: true,
+      featured_title: 'Featured Businesses',
+      featured_subtitle: `Explore salons using ${appName}`,
+      cta_primary_text: 'Get Started Free',
+      cta_primary_link: '/register',
+      cta_secondary_text: 'Book a Demo',
+      cta_secondary_link: '/register',
+      cta_section_title: 'Ready to Transform Your Salon?',
+      cta_section_subtitle: `Join thousands of salon owners who have streamlined their operations with ${appName}.`,
+      cta_bottom_primary_text: 'Start Your Free Trial',
+      cta_bottom_primary_link: '/register',
+      cta_bottom_secondary_text: 'Schedule Demo',
+      cta_bottom_secondary_link: '/register',
+      faq_title: 'Frequently Asked Questions',
+      faq_subtitle: 'Everything you need to know about getting started.',
+      faqs: defaultFaqs,
+      footer_brand_name: appName,
+      footer_description: 'The complete salon management solution for modern businesses.',
+      footer_columns: defaultFooterColumns,
+      updated_by: user?.id ?? null,
+    };
+
+    let res;
+    if ((settings as any)?.id) {
+      res = await supabase.from('landing_settings').update(payload).eq('id', (settings as any).id).select().single();
+    } else {
+      res = await supabase.from('landing_settings').insert(payload).select().single();
+    }
+
+    if (res.error) {
+      toast.error('Failed to import defaults');
+    } else {
+      setSettings(res.data as any);
+      toast.success('Defaults imported');
     }
     setSavingSettings(false);
   };
@@ -258,6 +352,10 @@ export default function AdminLandingCMS() {
                   <CardDescription>Update branding, hero, features, pricing, FAQs, and CTAs</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <div className="flex justify-between">
+                    <Button variant="outline" onClick={importDefaults} disabled={savingSettings}>Import Default Content</Button>
+                    <Button onClick={saveSettings} disabled={savingSettings}>{savingSettings ? 'Saving...' : 'Save Settings'}</Button>
+                  </div>
                   <div className="grid gap-4">
                     <div>
                       <Label>Brand Name</Label>
@@ -502,9 +600,7 @@ export default function AdminLandingCMS() {
                     </div>
                   </div>
 
-                  <div className="flex justify-end">
-                    <Button onClick={saveSettings} disabled={savingSettings}>{savingSettings ? 'Saving...' : 'Save Settings'}</Button>
-                  </div>
+                  <div className="flex justify-end"></div>
                 </CardContent>
               </Card>
 
