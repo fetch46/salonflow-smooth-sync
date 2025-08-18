@@ -265,5 +265,8 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
 // Export as AppTopbar for backward compatibility
 export const AppTopbar = Topbar;
 
+// Export as SuperAdminTopbar for SuperAdminLayout
+export const SuperAdminTopbar = Topbar;
+
 // Default export
 export default Topbar;
