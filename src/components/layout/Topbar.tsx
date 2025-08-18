@@ -1,6 +1,8 @@
 
-import { Bell, Search, Settings, User, LogOut, Building2, ChevronDown, ArrowLeft, CreditCard, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import React, { useState, useEffect } from 'react';
+import { Bell, User, Search, Menu, ChevronDown, Settings, LogOut, Plus, Building2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,313 +10,250 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { useSaas } from "@/lib/saas";
-import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
-import ThemeToggle from "@/components/ThemeToggle";
-import { useEffect, useMemo, useState } from "react";
-import { cleanupAuthState } from "@/utils/authUtils";
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { useSaas } from '@/lib/saas';
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
-export function AppTopbar() {
+interface TopbarProps {
+  onMenuClick: () => void;
+}
+
+export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
   const navigate = useNavigate();
   const { 
     user, 
     organization, 
     organizations, 
     organizationRole,
-    subscription,
-    subscriptionPlan,
-    isTrialing,
-    daysLeftInTrial,
-    switchOrganization 
+    switchOrganization, 
+    isOrganizationOwner, 
+    isOrganizationAdmin 
   } = useSaas();
-
-  type NotificationItem = {
-    id: string;
-    title: string;
-    description?: string | null;
-    createdAt: string;
-    read?: boolean;
-  };
-
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("app_notifications");
-      if (raw) {
-        const parsed = JSON.parse(raw) as NotificationItem[];
-        if (Array.isArray(parsed)) setNotifications(parsed);
-      }
-    } catch {}
+    fetchNotifications();
   }, []);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem("app_notifications", JSON.stringify(notifications));
-    } catch {}
-  }, [notifications]);
-
-  const unreadCount = useMemo(() => Math.min(99, notifications.length), [notifications]);
-
-  const handleClearAllNotifications = () => {
-    setNotifications([]);
+  const fetchNotifications = async () => {
+    // This would typically fetch from a notifications table
+    // For now, using mock data
+    setNotifications([
+      {
+        id: 1,
+        title: 'New appointment booked',
+        message: 'John Doe has booked an appointment for tomorrow',
+        timestamp: new Date(),
+        read: false,
+      },
+      {
+        id: 2,
+        title: 'Payment received',
+        message: 'Payment of $150 received from Jane Smith',
+        timestamp: new Date(),
+        read: true,
+      },
+    ]);
   };
 
-  const handleSignOut = async () => {
+  const handleLogout = async () => {
     try {
-      cleanupAuthState();
-      try {
-        await supabase.auth.signOut();
-      } catch (error) {
-        console.error('Error signing out:', error);
-      }
-    } finally {
+      await supabase.auth.signOut();
       navigate('/login');
+      toast.success('Logged out successfully');
+    } catch (error) {
+      console.error('Error logging out:', error);
+      toast.error('Failed to log out');
     }
   };
 
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'owner': return 'text-amber-600';
-      case 'admin': return 'text-purple-600';
-      case 'manager': return 'text-blue-600';
-      default: return 'text-slate-600';
+  const handleSwitchOrganization = async (orgId: string) => {
+    try {
+      await switchOrganization(orgId);
+      toast.success('Organization switched successfully');
+    } catch (error) {
+      console.error('Error switching organization:', error);
+      toast.error('Failed to switch organization');
     }
   };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const getUserRole = (orgId: string) => {
+    const orgUser = organizations.find(org => org.id === orgId);
+    return organizationRole || 'member';
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 text-foreground backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-16 items-center justify-between px-3 sm:px-4 lg:px-6 w-full">
-        {/* Search - hidden on small screens to keep bar compact */}
-        <div className="hidden md:flex items-center space-x-4 flex-1 max-w-xl">
-          <div className="relative w-full">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+    <header className="bg-background border-b border-border px-6 py-4">
+      <div className="flex items-center justify-between">
+        {/* Left side */}
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={onMenuClick} className="lg:hidden">
+            <Menu className="h-5 w-5" />
+          </Button>
+          
+          <div className="hidden md:flex items-center gap-2 max-w-md">
+            <Search className="h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search..."
-              className="pl-8"
-              aria-label="Search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="border-0 shadow-none focus-visible:ring-0"
             />
           </div>
         </div>
 
         {/* Right side */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Current user full name (desktop) */}
-          {user?.user_metadata?.full_name && (
-            <div className="hidden md:block text-sm text-muted-foreground mr-1">
-              {user.user_metadata.full_name}
-            </div>
-          )}
-          {/* POS Button */}
-          <Button
-            onClick={() => navigate('/pos')}
-            aria-label="Open POS"
-            className="bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-sm h-9 px-3 sm:px-4"
-          >
-            <CreditCard className="h-4 w-4 mr-0 sm:mr-2" />
-            <span className="hidden sm:inline">POS</span>
-          </Button>
-
-          {/* Organization Selector (hide on small screens) */}
-          {organizations && organizations.length > 1 && (
+        <div className="flex items-center gap-4">
+          {/* Organization Switcher */}
+          {organizations.length > 1 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="hidden md:inline-flex items-center space-x-2" aria-label="Select organization">
+                <Button variant="outline" className="flex items-center gap-2">
                   <Building2 className="h-4 w-4" />
-                  <span className="max-w-32 truncate">
+                  <span className="hidden sm:inline-block max-w-32 truncate">
                     {organization?.name || 'Select Organization'}
                   </span>
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="end" className="w-64">
                 <DropdownMenuLabel>Switch Organization</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {organizations.map((org) => (
                   <DropdownMenuItem
                     key={org.id}
-                    onClick={() => switchOrganization(org.id)}
-                    className={organization?.id === org.id ? 'bg-accent' : ''}
+                    onClick={() => handleSwitchOrganization(org.id)}
+                    className="flex items-center justify-between"
                   >
                     <div className="flex flex-col">
-                      <span>{org.organizations?.name || 'Unknown'}</span>
-                      <span className={`text-xs ${getRoleColor(org.role)}`}>
-                        {org.role}
+                      <span className="font-medium">{org.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        Role: {getUserRole(org.id)}
                       </span>
                     </div>
+                    {organization?.id === org.id && (
+                      <Badge variant="secondary" className="text-xs">
+                        Current
+                      </Badge>
+                    )}
                   </DropdownMenuItem>
                 ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate('/settings?tab=organizations')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Organization
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
 
-          {/* Theme toggle */}
-          <ThemeToggle />
-
           {/* Notifications */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="relative" aria-label="Notifications">
-                <Bell className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="relative">
+                <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full text-[10px] font-semibold inline-flex items-center justify-center"
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
                   >
                     {unreadCount}
                   </Badge>
                 )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80 p-0">
-              <div className="p-3 border-b flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-medium">Notifications</div>
-                  <div className="text-xs text-muted-foreground">Latest updates</div>
+            <DropdownMenuContent align="end" className="w-80">
+              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {notifications.length === 0 ? (
+                <div className="p-4 text-sm text-muted-foreground text-center">
+                  No notifications
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-2 text-xs"
-                  onClick={handleClearAllNotifications}
-                  disabled={notifications.length === 0}
-                >
-                  <Trash2 className="h-3.5 w-3.5 mr-1" />
-                  Clear all
-                </Button>
-              </div>
-              <div className="max-h-80 overflow-auto py-1">
-                {notifications.length === 0 ? (
-                  <div className="py-6 text-center text-xs text-muted-foreground">No notifications</div>
-                ) : (
-                  notifications.map((n) => (
-                    <DropdownMenuItem key={n.id} className="flex flex-col items-start gap-0.5 py-2">
-                      <div className="text-sm">{n.title}</div>
-                      {n.description ? (
-                        <div className="text-xs text-muted-foreground">{n.description}</div>
-                      ) : null}
+              ) : (
+                <>
+                  {notifications.slice(0, 5).map((notification) => (
+                    <DropdownMenuItem key={notification.id} className="flex flex-col items-start p-3">
+                      <div className="flex items-center gap-2 w-full">
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{notification.title}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {notification.message}
+                          </p>
+                        </div>
+                        {!notification.read && (
+                          <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground mt-2">
+                        {notification.timestamp.toLocaleDateString()}
+                      </span>
                     </DropdownMenuItem>
-                  ))
-                )}
-              </div>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-center w-full">
+                    View all notifications
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-8 w-8 rounded-full" aria-label="User menu">
-                <User className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">
-                    {user?.user_metadata?.full_name || 'User'}
-                  </p>
-                  {organization && (
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">
-                        {organization.name}
-                      </p>
-                      <span className={`text-xs ${getRoleColor(organizationRole || '')}`}>
-                        {organizationRole}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/profile')}>
-                <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/settings')}>
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-export function SuperAdminTopbar() {
-  const navigate = useNavigate();
-  const { user } = useSaas();
-  const { systemSettings } = useSaas();
-  const appName = (systemSettings as any)?.app_name || 'AURA OS';
-
-  const handleSignOut = async () => {
-    try {
-      cleanupAuthState();
-      try {
-        await supabase.auth.signOut({ scope: 'global' } as any);
-      } catch (err) { /* ignore sign-out errors */ }
-    } finally {
-      window.location.href = '/login';
-    }
-  };
-
-  const handleBackToApp = () => {
-    navigate('/dashboard');
-  };
-
-  return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 text-foreground backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-16 items-center justify-between px-3 sm:px-4 lg:px-6 w-full">
-        {/* Left side - Back to App */}
-        <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={handleBackToApp} className="flex items-center space-x-2">
-            <ArrowLeft className="h-4 w-4" />
-            <span>Back to App</span>
-          </Button>
-          <div>
-            <h2 className="text-lg font-semibold">{appName} • Super Admin</h2>
-          </div>
-        </div>
-
-        {/* Right side - User menu */}
-        <div className="flex items-center space-x-4">
-          <ThemeToggle />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                <User className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">
-                    {user?.user_metadata?.full_name || 'User'}
-                  </p>
-                  <span className="text-xs text-red-600 font-medium">
-                    Super Admin
+              <Button variant="ghost" className="flex items-center gap-2 px-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user?.user_metadata?.avatar_url} />
+                  <AvatarFallback>
+                    {user?.user_metadata?.full_name 
+                      ? getInitials(user.user_metadata.full_name)
+                      : user?.email?.charAt(0).toUpperCase() || 'U'
+                    }
+                  </AvatarFallback>
+                </Avatar>
+                <div className="hidden sm:flex flex-col items-start">
+                  <span className="text-sm font-medium">
+                    {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {organizationRole || 'Member'}
                   </span>
                 </div>
-              </DropdownMenuLabel>
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleBackToApp}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                <span>Back to App</span>
+              <DropdownMenuItem onClick={() => navigate('/profile')}>
+                <User className="h-4 w-4 mr-2" />
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Log out
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -322,4 +261,4 @@ export function SuperAdminTopbar() {
       </div>
     </header>
   );
-}
+};

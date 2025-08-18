@@ -85,7 +85,6 @@ export const useFeatureGating = (): UseFeatureGatingResult => {
 
   const hasFeature = useCallback((feature: string): boolean => {
     if (!subscriptionPlan || !isSubscriptionActive(subscriptionStatus)) {
-      // During trial or if no subscription, allow basic features
       if (isSubscriptionTrialing(subscriptionStatus)) {
         const trialFeatures = ['appointments', 'clients', 'staff', 'services', 'reports', 'invoices']
         return trialFeatures.includes(feature)
@@ -147,7 +146,6 @@ export const usePermissions = (): UsePermissionsResult => {
       try {
         return canPerformActionWithOverrides(organizationRole, action, resource, overrides)
       } catch (error) {
-        // Fallback to default check if override helper is unavailable
         return canPerformAction(organizationRole, action, resource)
       }
     }
@@ -254,8 +252,6 @@ export const useSubscriptionPlans = () => {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    // This would typically fetch from an API
-    // For now, using the static PLAN_FEATURES
     setPlans(Object.entries(PLAN_FEATURES).map(([slug, features]) => ({
       slug,
       features,
@@ -388,51 +384,35 @@ export const useFeatureGuard = (feature: string) => {
   return hasFeature(feature)
 }
 
+// Simplified organization currency hook without currency_rates table
 export const useOrganizationCurrency = () => {
   const { organization } = useSaas()
   const { locale } = useSaas()
-  // Pull regional settings from org
   const regional = (organization?.settings as any)?.regional_settings || null
   const [currency, setCurrency] = useState<{ id: string; code: string; symbol: string } | null>(null)
   const [loading, setLoading] = useState(false)
-  const [rate, setRate] = useState<number>(1)
 
   useEffect(() => {
     let isMounted = true
     ;(async () => {
       if (!organization || !(organization as any).currency_id) {
         if (isMounted) {
-          setCurrency(null)
-          setRate(1)
+          setCurrency({ id: 'usd', code: 'USD', symbol: '$' }) // Default currency
         }
         return
       }
       try {
         setLoading(true)
-        // supabase is already imported in consumers; client is globally imported where needed
         const { data: cur, error: curErr } = await supabase
           .from('currencies')
           .select('id, code, symbol')
           .eq('id', (organization as any).currency_id)
           .maybeSingle()
         if (curErr) throw curErr
-        if (isMounted) setCurrency(cur as any)
-
-        // Fetch FX rate relative to USD (plans are stored/priced in USD cents)
-        if (cur?.code) {
-          const { data: rateRow } = await supabase
-            .from('currency_rates')
-            .select('rate')
-            .eq('code', cur.code)
-            .maybeSingle()
-          if (isMounted) setRate(rateRow?.rate ? Number(rateRow.rate) : 1)
-        } else if (isMounted) {
-          setRate(1)
-        }
+        if (isMounted) setCurrency(cur as any || { id: 'usd', code: 'USD', symbol: '$' })
       } catch (_) {
         if (isMounted) {
-          setCurrency(null)
-          setRate(1)
+          setCurrency({ id: 'usd', code: 'USD', symbol: '$' }) // Fallback to USD
         }
       } finally {
         if (isMounted) setLoading(false)
@@ -448,7 +428,6 @@ export const useOrganizationCurrency = () => {
       const n = typeof amount === 'number' ? amount : 0
       const decimals = opts?.decimals ?? (regional?.currency_decimals ?? 2)
       const sym = currency?.symbol ?? '$'
-      // Build a formatter respecting custom separators if provided
       const parts = new Intl.NumberFormat(locale || 'en-US', {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
@@ -465,21 +444,18 @@ export const useOrganizationCurrency = () => {
     [currency, locale, regional]
   )
 
-  // Convert a USD amount expressed in cents to the organization currency (major units)
+  // Simple conversion assuming 1:1 rate for now since currency_rates table doesn't exist
   const convertUsdCentsToOrgMajor = useCallback(
     (usdCents: number | null | undefined): number => {
       const cents = typeof usdCents === 'number' ? usdCents : 0
-      const usdMajor = cents / 100
-      return usdMajor * (Number.isFinite(rate) && rate > 0 ? rate : 1)
+      return cents / 100 // Simple conversion to major units
     },
-    [rate]
+    []
   )
 
-  // Format a USD amount (in cents) into the organization currency string
   const formatUsdCents = useCallback(
     (usdCents: number | null | undefined) => {
       const code = currency?.code ?? 'USD'
-      // Default decimals: 0 for truly zero-decimal currencies only
       const zeroDecimalCodes = new Set(['JPY', 'KRW'])
       const decimals = zeroDecimalCodes.has(code) ? 0 : (regional?.currency_decimals ?? 2)
       const major = convertUsdCentsToOrgMajor(usdCents)
@@ -492,7 +468,7 @@ export const useOrganizationCurrency = () => {
     currency, 
     symbol: currency?.symbol ?? '$', 
     code: currency?.code ?? 'USD', 
-    rate, 
+    rate: 1, // Default rate
     loading, 
     format, 
     convertUsdCentsToOrgMajor, 

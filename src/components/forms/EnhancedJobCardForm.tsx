@@ -1,595 +1,630 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useForm } from "react-hook-form";
-import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, User, Phone, Mail, Package } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { useOrganizationCurrency } from "@/lib/saas/hooks";
-import { useSaas } from "@/lib/saas";
+import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Button } from '@/components/ui/button';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { X, Plus, Calculator } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { JobCardCommissionCalculator } from '@/components/JobCardCommissionCalculator';
+
+const formSchema = z.object({
+  client_id: z.string().min(1, 'Client is required'),
+  appointment_id: z.string().optional(),
+  staff_id: z.string().optional(),
+  notes: z.string().optional(),
+  services: z.array(z.object({
+    service_id: z.string(),
+    staff_id: z.string().optional(),
+    quantity: z.number().min(1),
+    unit_price: z.number().min(0),
+    commission_percentage: z.number().min(0).max(100).optional(),
+    duration_minutes: z.number().optional(),
+    notes: z.string().optional(),
+  })).min(1, 'At least one service is required'),
+  products: z.array(z.object({
+    inventory_item_id: z.string(),
+    quantity_used: z.number().min(0.01),
+    unit_cost: z.number().min(0),
+  })).optional(),
+});
 
 interface EnhancedJobCardFormProps {
-  appointmentId?: string;
-  onSuccess?: () => void;
+  onSubmit: (data: any) => void;
+  initialData?: any;
+  isEditing?: boolean;
 }
 
-interface Staff {
-  id: string;
-  full_name: string;
-}
-
-interface Client {
-  id: string;
-  full_name: string;
-  phone?: string;
-  email?: string;
-}
-
-interface Appointment {
-  id: string;
-  client_id?: string;
-  service_id?: string;
-  appointment_date: string;
-  appointment_time: string;
-  customer_name: string;
-  service_name: string;
-  staff_id?: string;
-  total_amount?: number;
-}
-
-interface Service {
-  id: string;
-  name: string;
-  category?: string;
-  price?: number;
-  duration_minutes?: number;
-  commission_percentage?: number | null;
-}
-
-interface InventoryItem {
-  id: string;
-  name: string;
-  type: string;
-  unit?: string;
-  cost_price: number;
-}
-
-interface ServiceKit {
-  id: string;
-  service_id: string;
-  good_id: string;
-  default_quantity: number;
-  inventory_items: InventoryItem;
-}
-
-export function EnhancedJobCardForm({ appointmentId, onSuccess }: EnhancedJobCardFormProps) {
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm();
-  const { symbol } = useOrganizationCurrency();
-  const [staff, setStaff] = useState<Staff[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
-  const [appointment, setAppointment] = useState<Appointment | null>(null);
-  const [serviceKits, setServiceKits] = useState<ServiceKit[]>([]);
-  const [productQuantities, setProductQuantities] = useState<{[key: string]: number}>({});
+export const EnhancedJobCardForm: React.FC<EnhancedJobCardFormProps> = ({
+  onSubmit,
+  initialData,
+  isEditing = false,
+}) => {
+  const [clients, setClients] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [selectedServices, setSelectedServices] = useState<any[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
+  const [showCommissionCalc, setShowCommissionCalc] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
-  const { organization } = useSaas();
-  
-  const technicianType = watch("technicianType");
-  const selectedServices = watch("services") || [];
+  const [defaultLocation, setDefaultLocation] = useState<string>('');
 
-  const fetchInitialData = useCallback(async () => {
-    try {
-      const [staffRes, clientsRes, servicesRes] = await Promise.all([
-        supabase.from("staff").select("id, full_name").eq("is_active", true),
-        supabase.from("clients").select("id, full_name, phone, email").eq("is_active", true),
-        supabase.from("services").select("id, name, category, price, duration_minutes, commission_percentage").eq("is_active", true)
-      ]);
-
-      if (staffRes.data) setStaff(staffRes.data);
-      if (clientsRes.data) setClients(clientsRes.data);
-      if (servicesRes.data) setServices(servicesRes.data as any);
-    } catch (error) {
-      console.error("Error fetching initial data:", error);
-    }
-  }, []);
-
-  const fetchServiceKits = useCallback(async (serviceId: string) => {
-    try {
-      const { data: kitsData, error } = await supabase
-        .from("service_kits")
-        .select(`
-          *,
-          inventory_items!service_kits_good_id_fkey (
-            id, name, type, unit, cost_price
-          )
-        `)
-        .eq("service_id", serviceId);
-
-      if (error) throw error;
-      if (kitsData) {
-        setServiceKits(kitsData);
-        // Initialize product quantities with default values
-        const initialQuantities: {[key: string]: number} = {};
-        kitsData.forEach(kit => {
-          initialQuantities[kit.good_id] = kit.default_quantity || 1;
-        });
-        setProductQuantities(initialQuantities);
-      }
-    } catch (error) {
-      console.error("Error fetching service kits:", error);
-    }
-  }, []);
-
-  const fetchAppointmentData = useCallback(async () => {
-    try {
-      const { data: appointmentData, error } = await supabase
-        .from("appointments")
-        .select("*")
-        .eq("id", appointmentId)
-        .single();
-
-      if (error) throw error;
-      if (appointmentData) {
-        setAppointment(appointmentData);
-        // Auto-populate form with appointment data
-        setValue("date", appointmentData.appointment_date);
-        setValue("time", appointmentData.appointment_time);
-        setValue("clientName", appointmentData.customer_name);
-        setValue("staffId", appointmentData.staff_id);
-        
-        // Determine technician type from service name
-        const serviceName = appointmentData.service_name.toLowerCase();
-        if (serviceName.includes("lash")) {
-          setValue("technicianType", "lash");
-          setValue("preferredStyle", appointmentData.service_name);
-        } else if (serviceName.includes("brow")) {
-          setValue("technicianType", "brow");
-          setValue("preferredStyle", appointmentData.service_name);
-        }
-
-        // Fetch service kits if service is selected
-        if (appointmentData.service_id) {
-          fetchServiceKits(appointmentData.service_id);
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching appointment:", error);
-    }
-  }, [appointmentId, setValue, fetchServiceKits]);
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      client_id: '',
+      appointment_id: '',
+      staff_id: '',
+      notes: '',
+      services: [],
+      products: [],
+    },
+  });
 
   useEffect(() => {
-    fetchInitialData();
-    if (appointmentId) {
-      fetchAppointmentData();
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      // Fetch clients
+      const { data: clientsData } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('is_active', true);
+      setClients(clientsData || []);
+
+      // Fetch staff
+      const { data: staffData } = await supabase
+        .from('staff')
+        .select('*')
+        .eq('is_active', true);
+      setStaff(staffData || []);
+
+      // Fetch services
+      const { data: servicesData } = await supabase
+        .from('services')
+        .select('*')
+        .eq('is_active', true);
+      setServices(servicesData || []);
+
+      // Fetch inventory items
+      const { data: inventoryData } = await supabase
+        .from('inventory_items')
+        .select('*')
+        .eq('is_active', true);
+      setInventoryItems(inventoryData || []);
+
+      // Fetch appointments
+      const { data: appointmentsData } = await supabase
+        .from('appointments')
+        .select('*')
+        .order('appointment_date', { ascending: false });
+      setAppointments(appointmentsData || []);
+
+      // Get default location
+      const { data: locationData } = await supabase
+        .from('business_locations')
+        .select('id')
+        .eq('is_default', true)
+        .single();
+      
+      if (locationData) {
+        setDefaultLocation(locationData.id);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
     }
-  }, [appointmentId, fetchAppointmentData, fetchInitialData]);
-
-
-  const updateProductQuantity = (itemId: string, quantity: number) => {
-    setProductQuantities(prev => ({
-      ...prev,
-      [itemId]: quantity
-    }));
   };
 
-  const onSubmit = async (data: Record<string, unknown>) => {
+  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
     setLoading(true);
     try {
-      // Create job card with auto-generated job number
       const jobCardData = {
-        client_id: (appointment?.client_id || data.client_id) as string,
-        staff_id: data.staffId as string,
-        appointment_id: appointmentId || '',
-        start_time: new Date(`${data.date}T${data.time}`).toISOString(),
-        end_time: data.endTime ? new Date(`${data.date}T${data.endTime}`).toISOString() : null,
-        status: 'completed',
-        total_amount: parseFloat(data.serviceCharge as string) || appointment?.total_amount || 0,
-        notes: JSON.stringify({
-          technicianType: data.technicianType,
-          services: data.services,
-          allergies: data.allergies,
-          preferredStyle: data.preferredStyle,
-          specialConcerns: data.specialConcerns,
-          technicianNotes: data.technicianNotes,
-          clientFeedback: data.clientFeedback,
-          paymentMethod: data.paymentMethod,
-          receiptIssued: data.receiptIssued,
-          nextAppointment: data.nextAppointment
-        })
+        client_id: values.client_id,
+        appointment_id: values.appointment_id || null,
+        staff_id: values.staff_id || null,
+        notes: values.notes,
+        total_amount: calculateTotal(),
+        status: 'in_progress',
       };
 
       const { data: jobCard, error: jobCardError } = await supabase
-        .from("job_cards")
+        .from('job_cards')
         .insert(jobCardData)
         .select()
         .single();
-      
+
       if (jobCardError) throw jobCardError;
 
-      // Persist selected services into job_card_services using actual service records
-      const selectedNames = Array.isArray(data.services) ? (data.services as string[]) : [];
-      if (selectedNames.length > 0) {
-        // Map selected names to DB services by name
-        const matched = services.filter((s) => selectedNames.includes(s.name));
-        if (matched.length > 0) {
-          const rows = matched.map((svc) => ({
-            job_card_id: (jobCard as any).id,
-            service_id: svc.id,
-            staff_id: (data.staffId as string) || null,
-            quantity: 1,
-            unit_price: Number(svc.price || 0),
-            duration_minutes: svc.duration_minutes || null,
-            commission_percentage: (svc as any).commission_percentage ?? null,
-          }));
-          const { error: jcsError } = await supabase.from("job_card_services").insert(rows as any);
-          if (jcsError) throw jcsError;
-        }
-      }
-
-      // Insert product usage records
-      if (serviceKits.length > 0) {
-        const productUsage = serviceKits.map(kit => ({
+      // Insert services
+      if (selectedServices.length > 0) {
+        const serviceData = selectedServices.map(service => ({
           job_card_id: jobCard.id,
-          inventory_item_id: kit.good_id,
-          quantity_used: productQuantities[kit.good_id] || kit.default_quantity || 1,
-          unit_cost: kit.inventory_items.cost_price,
-          total_cost: (productQuantities[kit.good_id] || kit.default_quantity || 1) * kit.inventory_items.cost_price
+          service_id: service.service_id,
+          staff_id: service.staff_id || null,
+          quantity: service.quantity,
+          unit_price: service.unit_price,
+          commission_percentage: service.commission_percentage || 0,
+          duration_minutes: service.duration_minutes || null,
+          notes: service.notes || null,
         }));
 
-        const { error: productError } = await supabase
-          .from("job_card_products")
-          .insert(productUsage);
+        const { error: servicesError } = await supabase
+          .from('job_card_services')
+          .insert(serviceData);
 
-        if (productError) throw productError;
+        if (servicesError) throw servicesError;
+      }
 
-        // Update inventory levels (reduce stock) at appointment location or default POS location
-        const appointmentLocationId = (appointment as any)?.location_id || ((await supabase.from('appointments').select('location_id').eq('id', appointmentId).maybeSingle()).data?.location_id);
-        const defaultPosWarehouseId = ((organization?.settings as any) || {})?.pos_default_warehouse_id as string | undefined;
-        // Prefer appointment location inventory if schema is location-based, else fallback to POS default warehouse when levels are warehouse-based
-        const effectiveLocationId = appointmentLocationId || null;
-        for (const kit of serviceKits) {
-          const quantityUsed = productQuantities[kit.good_id] || kit.default_quantity || 1;
-          if (effectiveLocationId) {
-            // Location-based decrement path
-            const { data: currentLevelRows, error: levelsError } = await supabase
-              .from("inventory_levels")
-              .select("id, quantity")
-              .eq("item_id", kit.good_id)
-              .eq("location_id", effectiveLocationId)
-              .limit(1);
-            if (levelsError) throw levelsError;
-            const existing = (currentLevelRows || [])[0] as { id: string; quantity: number } | undefined;
-            if (existing) {
-              const newQuantity = Math.max(0, Number(existing.quantity || 0) - Number(quantityUsed || 0));
-              await supabase.from("inventory_levels").update({ quantity: newQuantity }).eq("id", existing.id);
-            } else {
-              await supabase.from("inventory_levels").insert([{ item_id: kit.good_id, location_id: effectiveLocationId, quantity: 0 }]);
-            }
-            continue;
-          }
-          if (defaultPosWarehouseId) {
-            // Warehouse-based fallback path
-            const { data: currentLevelRows, error: levelsError } = await supabase
-              .from("inventory_levels")
-              .select("id, quantity")
-              .eq("item_id", kit.good_id)
-              .eq("warehouse_id", defaultPosWarehouseId)
-              .limit(1);
-            if (levelsError) throw levelsError;
-            const existing = (currentLevelRows || [])[0] as { id: string; quantity: number } | undefined;
-            if (existing) {
-              const newQuantity = Math.max(0, Number(existing.quantity || 0) - Number(quantityUsed || 0));
-              await supabase.from("inventory_levels").update({ quantity: newQuantity }).eq("id", existing.id);
-            } else {
-              await supabase.from("inventory_levels").insert([{ item_id: kit.good_id, warehouse_id: defaultPosWarehouseId, quantity: 0 }]);
-            }
+      // Insert products and update inventory
+      if (selectedProducts.length > 0) {
+        const productData = selectedProducts.map(product => ({
+          job_card_id: jobCard.id,
+          inventory_item_id: product.inventory_item_id,
+          quantity_used: product.quantity_used,
+          unit_cost: product.unit_cost,
+          total_cost: product.quantity_used * product.unit_cost,
+        }));
+
+        const { error: productsError } = await supabase
+          .from('job_card_products')
+          .insert(productData);
+
+        if (productsError) throw productsError;
+
+        // Update inventory levels - now including location_id
+        const inventoryUpdates = selectedProducts.map(product => ({
+          item_id: product.inventory_item_id,
+          location_id: defaultLocation, // Add the missing location_id
+          warehouse_id: defaultLocation, // If using warehouse_id as well
+          quantity: -product.quantity_used, // Negative because it's being used
+        }));
+
+        for (const update of inventoryUpdates) {
+          // Check if inventory level exists
+          const { data: existing } = await supabase
+            .from('inventory_levels')
+            .select('*')
+            .eq('item_id', update.item_id)
+            .eq('location_id', update.location_id)
+            .single();
+
+          if (existing) {
+            // Update existing
+            await supabase
+              .from('inventory_levels')
+              .update({ quantity: existing.quantity + update.quantity })
+              .eq('id', existing.id);
+          } else {
+            // Create new with initial quantity
+            await supabase
+              .from('inventory_levels')
+              .insert({
+                item_id: update.item_id,
+                location_id: update.location_id,
+                quantity: Math.abs(update.quantity), // Start with positive quantity
+              });
           }
         }
       }
-      
-      toast({
-        title: "Success",
-        description: "Job card created successfully"
-      });
-      
-      onSuccess?.();
-    } catch (error) {
-      console.error("Error creating job card:", error);
-      toast({
-        title: "Error",
-        description: "Failed to create job card",
-        variant: "destructive"
-      });
+
+      toast.success('Job card created successfully');
+      onSubmit(jobCard);
+    } catch (error: any) {
+      console.error('Error creating job card:', error);
+      toast.error('Failed to create job card: ' + error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const lashServices = [
-    "Lash Removal", "Classic lash extensions", "Classic infill",
-    "Hybrid lash extensions", "Hybrid infill", "Wispy Hybrid lash extensions",
-    "Wispy Hybrid infill", "Volume lash extensions", "Volume infill",
-    "Wispy Volume lash extensions", "Wispy Volume infill", "Lash lift",
-    "Lash tint", "Lash lift & Tint", "Lash Removal (normal lashes / cluster lashes)", "Redo"
-  ];
+  const addService = () => {
+    setSelectedServices([...selectedServices, {
+      id: Date.now().toString(),
+      service_id: '',
+      staff_id: '',
+      quantity: 1,
+      unit_price: 0,
+      commission_percentage: 0,
+      duration_minutes: null,
+      notes: '',
+    }]);
+  };
 
-  const browServices = [
-    "Nano brows", "Ombre brows", "Nano combo brows", "Brow lamination",
-    "Brow tint", "Brow lamination & tint", "Touch-up (5–6 weeks)",
-    "Retouch (5 months–12 months)", "Retouch (1–2 years)", "Retouch from 3 years"
-  ];
+  const updateService = (index: number, field: string, value: any) => {
+    const updated = [...selectedServices];
+    updated[index] = { ...updated[index], [field]: value };
 
-  const servicesList = technicianType === "lash" ? lashServices : browServices;
+    if (field === 'service_id') {
+      const service = services.find(s => s.id === value);
+      if (service) {
+        updated[index].unit_price = service.price || 0;
+        updated[index].duration_minutes = service.duration_minutes || null;
+      }
+    }
+
+    setSelectedServices(updated);
+  };
+
+  const removeService = (index: number) => {
+    setSelectedServices(selectedServices.filter((_, i) => i !== index));
+  };
+
+  const addProduct = () => {
+    setSelectedProducts([...selectedProducts, {
+      id: Date.now().toString(),
+      inventory_item_id: '',
+      quantity_used: 1,
+      unit_cost: 0,
+    }]);
+  };
+
+  const updateProduct = (index: number, field: string, value: any) => {
+    const updated = [...selectedProducts];
+    updated[index] = { ...updated[index], [field]: value };
+
+    if (field === 'inventory_item_id') {
+      const item = inventoryItems.find(i => i.id === value);
+      if (item) {
+        updated[index].unit_cost = item.cost_price || 0;
+      }
+    }
+
+    setSelectedProducts(updated);
+  };
+
+  const removeProduct = (index: number) => {
+    setSelectedProducts(selectedProducts.filter((_, i) => i !== index));
+  };
+
+  const calculateTotal = () => {
+    const servicesTotal = selectedServices.reduce((sum, service) => 
+      sum + (service.quantity * service.unit_price), 0);
+    const productsTotal = selectedProducts.reduce((sum, product) => 
+      sum + (product.quantity_used * product.unit_cost), 0);
+    return servicesTotal + productsTotal;
+  };
 
   return (
-    <div className="w-full p-6 space-y-8">
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-          Enhanced Job Card
-        </h1>
-        <p className="text-muted-foreground">Complete service documentation with inventory tracking</p>
-        {appointment && (
-          <Badge variant="outline" className="text-sm">
-            Booking: {appointment.customer_name} - {appointment.service_name}
-          </Badge>
-        )}
-      </div>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            {isEditing ? 'Edit Job Card' : 'Create New Job Card'}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCommissionCalc(true)}
+            >
+              <Calculator className="w-4 h-4 mr-2" />
+              Commission Calculator
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+              {/* Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="client_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Client</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a client" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {clients.map((client) => (
+                            <SelectItem key={client.id} value={client.id}>
+                              {client.full_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-        {/* Technician Type Selection */}
-        <Card className="border-2 border-primary/20">
-          <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10">
-            <CardTitle>Technician Type</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <Select onValueChange={(value) => setValue("technicianType", value)} defaultValue={technicianType}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select technician type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="lash">Lash Technician</SelectItem>
-                <SelectItem value="brow">Brow Technician</SelectItem>
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
+                <FormField
+                  control={form.control}
+                  name="appointment_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Appointment (Optional)</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Link to appointment" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {appointments.map((appointment) => (
+                            <SelectItem key={appointment.id} value={appointment.id}>
+                              {appointment.customer_name} - {appointment.appointment_date}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-        {/* Customer Details */}
-        <Card>
-          <CardHeader className="bg-gradient-to-r from-accent/50 to-accent/30">
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Customer Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label>Date</Label>
-                <Input type="date" {...register("date", { required: true })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Appointment Time</Label>
-                <Input type="time" {...register("time", { required: true })} />
-              </div>
-              <div className="space-y-2">
-                <Label>End Time</Label>
-                <Input type="time" {...register("endTime")} />
-              </div>
-              <div className="space-y-2">
-                <Label>Technician</Label>
-                <Select onValueChange={(value) => setValue("staffId", value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select technician" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {staff.map((member) => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.full_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Client Name</Label>
-                <Input {...register("clientName")} readOnly={!!appointment} />
-              </div>
-              <div className="space-y-2">
-                <Label>Preferred Style</Label>
-                <Input {...register("preferredStyle")} />
-              </div>
-            </div>
+              <FormField
+                control={form.control}
+                name="staff_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Primary Staff Member</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select staff member" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {staff.map((member) => (
+                          <SelectItem key={member.id} value={member.id}>
+                            {member.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <div className="space-y-2">
-              <Label>Allergies/Sensitivities</Label>
-              <Textarea {...register("allergies")} className="min-h-[80px]" />
-            </div>
-
-            {technicianType === "brow" && (
-              <div className="space-y-2">
-                <Label>Special Concerns</Label>
-                <Textarea {...register("specialConcerns")} className="min-h-[80px]" />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Service Selection */}
-        {technicianType && (
-          <Card>
-            <CardHeader>
-              <CardTitle>{technicianType === "lash" ? "Lash" : "Brow"} Services</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                {servicesList.map((service) => (
-                  <div key={service} className="flex items-center space-x-2">
-                    <Checkbox
-                      checked={Array.isArray(selectedServices) ? selectedServices.includes(service) : false}
-                      onCheckedChange={(checked) => {
-                        const current = Array.isArray(selectedServices) ? selectedServices : [];
-                        if (checked) {
-                          setValue("services", [...current, service]);
-                        } else {
-                          setValue("services", current.filter((s: string) => s !== service));
-                        }
-                      }}
-                    />
-                    <Label className="text-sm">{service}</Label>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Products & Materials Used */}
-        {serviceKits.length > 0 && (
-          <Card>
-            <CardHeader className="bg-gradient-to-r from-warning/10 to-warning/5">
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                Products & Materials Used
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Unit</TableHead>
-                    <TableHead>Default Qty</TableHead>
-                    <TableHead>Quantity Used</TableHead>
-                    <TableHead>Unit Cost</TableHead>
-                    <TableHead>Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {serviceKits.map((kit) => (
-                    <TableRow key={kit.id}>
-                      <TableCell className="font-medium">{kit.inventory_items.name}</TableCell>
-                      <TableCell>{kit.inventory_items.type}</TableCell>
-                      <TableCell>{kit.inventory_items.unit || "Each"}</TableCell>
-                      <TableCell>{kit.default_quantity}</TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.1"
-                          value={productQuantities[kit.good_id] || kit.default_quantity || 1}
-                          onChange={(e) => updateProductQuantity(kit.good_id, parseFloat(e.target.value) || 0)}
-                          className="w-20"
+              {/* Services Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    Services
+                    <Button type="button" onClick={addService} size="sm">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Service
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {selectedServices.map((service, index) => (
+                    <div key={service.id} className="border rounded-lg p-4 mb-4">
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="font-medium">Service {index + 1}</h4>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeService(index)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Service</label>
+                          <Select
+                            value={service.service_id}
+                            onValueChange={(value) => updateService(index, 'service_id', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select service" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {services.map((s) => (
+                                <SelectItem key={s.id} value={s.id}>
+                                  {s.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Staff Member</label>
+                          <Select
+                            value={service.staff_id}
+                            onValueChange={(value) => updateService(index, 'staff_id', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select staff" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {staff.map((member) => (
+                                <SelectItem key={member.id} value={member.id}>
+                                  {member.full_name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Quantity</label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={service.quantity}
+                            onChange={(e) => updateService(index, 'quantity', Number(e.target.value))}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Unit Price</label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={service.unit_price}
+                            onChange={(e) => updateService(index, 'unit_price', Number(e.target.value))}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Commission %</label>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                            value={service.commission_percentage}
+                            onChange={(e) => updateService(index, 'commission_percentage', Number(e.target.value))}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Duration (min)</label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={service.duration_minutes || ''}
+                            onChange={(e) => updateService(index, 'duration_minutes', Number(e.target.value) || null)}
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium mb-2">Notes</label>
+                        <Textarea
+                          value={service.notes}
+                          onChange={(e) => updateService(index, 'notes', e.target.value)}
+                          placeholder="Service-specific notes..."
                         />
-                      </TableCell>
-                      <TableCell>{symbol}{kit.inventory_items.cost_price?.toFixed(2) || "0.00"}</TableCell>
-                      <TableCell>
-                        {symbol}{((productQuantities[kit.good_id] || kit.default_quantity || 1) * (kit.inventory_items.cost_price || 0)).toFixed(2)}
-                      </TableCell>
-                    </TableRow>
+                      </div>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        )}
+                </CardContent>
+              </Card>
 
-        {/* Technician Notes */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Technician Notes & Observations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Textarea {...register("technicianNotes")} className="min-h-[120px]" />
-          </CardContent>
-        </Card>
+              {/* Products Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    Products Used
+                    <Button type="button" onClick={addProduct} size="sm">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Product
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {selectedProducts.map((product, index) => (
+                    <div key={product.id} className="border rounded-lg p-4 mb-4">
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="font-medium">Product {index + 1}</h4>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeProduct(index)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Product</label>
+                          <Select
+                            value={product.inventory_item_id}
+                            onValueChange={(value) => updateProduct(index, 'inventory_item_id', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select product" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {inventoryItems.map((item) => (
+                                <SelectItem key={item.id} value={item.id}>
+                                  {item.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Quantity Used</label>
+                          <Input
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            value={product.quantity_used}
+                            onChange={(e) => updateProduct(index, 'quantity_used', Number(e.target.value))}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Unit Cost</label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={product.unit_cost}
+                            onChange={(e) => updateProduct(index, 'unit_cost', Number(e.target.value))}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
 
-        {/* Client Satisfaction */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Client Satisfaction & Sign-Off</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <Label className="text-base font-medium">Client Feedback</Label>
-              <RadioGroup onValueChange={(value) => setValue("clientFeedback", value)}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="extremely-satisfied" />
-                  <Label>Extremely satisfied</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="satisfied" />
-                  <Label>Satisfied</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="neutral" />
-                  <Label>Neutral</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="unsatisfied" />
-                  <Label>Unsatisfied</Label>
-                </div>
-              </RadioGroup>
-            </div>
-          </CardContent>
-        </Card>
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Job Notes</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Any additional notes for this job card..."
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        {/* Receptionist Completion */}
-        <Card className="border-2 border-success/20">
-          <CardHeader className="bg-gradient-to-r from-success/10 to-success/5">
-            <CardTitle>Receptionist Completion</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <Label>Service Charge ({symbol})</Label>
-                <Input type="number" step="0.01" {...register("serviceCharge")} />
+              {/* Summary */}
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex justify-between items-center text-lg font-semibold">
+                    <span>Total Amount:</span>
+                    <Badge variant="secondary" className="text-lg px-3 py-1">
+                      ${calculateTotal().toFixed(2)}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="flex gap-4">
+                <Button type="submit" disabled={loading}>
+                  {loading ? 'Creating...' : (isEditing ? 'Update Job Card' : 'Create Job Card')}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => form.reset()}>
+                  Reset Form
+                </Button>
               </div>
-              <div className="space-y-2">
-                <Label>Payment Method</Label>
-                <Select onValueChange={(value) => setValue("paymentMethod", value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select payment method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="mpesa">MPESA</SelectItem>
-                    <SelectItem value="card">Card</SelectItem>
-                    <SelectItem value="cash">Cash</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center space-x-2 pt-8">
-                <Checkbox {...register("receiptIssued")} />
-                <Label>Receipt Issued</Label>
-              </div>
-            </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox {...register("nextAppointment")} />
-              <Label>Next Appointment Scheduled</Label>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="flex justify-end space-x-4">
-          <Button type="button" variant="outline" onClick={() => window.history.back()}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={loading}>
-            {loading ? "Creating..." : "Complete Job Card"}
-          </Button>
-        </div>
-      </form>
+      {showCommissionCalc && (
+        <JobCardCommissionCalculator
+          services={selectedServices}
+          onClose={() => setShowCommissionCalc(false)}
+        />
+      )}
     </div>
   );
-}
+};
