@@ -11,6 +11,7 @@ import DashboardLayout from "./components/layout/DashboardLayout";
 // Auth Pages
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { isChunkError, recoverFromChunkErrorOnce } from "./utils/chunkRecovery";
 
 // Helper: lazy loader that retries by triggering cache bust/reload on chunk failures
@@ -76,7 +77,6 @@ const StockTransfers = lazyWithRetry(() => import("./pages/StockTransfers"));
 
 const ProductEdit = lazyWithRetry(() => import("./pages/ProductEdit"));
 
-
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const Landing = lazyWithRetry(() => import("./pages/Landing"));
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -137,24 +137,68 @@ const AppRoutes = () => {
     }
   }, [user, organization?.id]);
 
-  // Super admin routes
+  // Super admin routes - now with protected routes
   if (isSuperAdmin && (window.location.pathname.startsWith('/admin') || window.location.pathname.startsWith('/super-admin'))) {
     return (
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
           {/* canonical admin dashboard */}
-          <Route path="/admin" element={<AdminDashboardPage />} />
-          <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-          {/* admin pages */}
-          <Route path="/admin/organizations" element={<AdminOrganizations />} />
-          <Route path="/admin/subscription-plans" element={<AdminSubscriptionPlans />} />
-          <Route path="/admin/users" element={<AdminUsers />} />
-          <Route path="/admin/invitations" element={<AdminInvitations />} />
-          <Route path="/admin/super-admins" element={<AdminSuperAdmins />} />
-          <Route path="/admin/activity" element={<AdminActivity />} />
-          <Route path="/admin/system-settings" element={<AdminSystemSettings />} />
-          <Route path="/admin/business-data" element={<AdminBusinessData />} />
-          <Route path="/admin/cms" element={<AdminLandingCMS />} />
+          <Route path="/admin" element={
+            <ProtectedRoute>
+              <AdminDashboardPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/dashboard" element={
+            <ProtectedRoute>
+              <AdminDashboardPage />
+            </ProtectedRoute>
+          } />
+          {/* admin pages - now protected */}
+          <Route path="/admin/organizations" element={
+            <ProtectedRoute>
+              <AdminOrganizations />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/subscription-plans" element={
+            <ProtectedRoute>
+              <AdminSubscriptionPlans />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/users" element={
+            <ProtectedRoute>
+              <AdminUsers />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/invitations" element={
+            <ProtectedRoute>
+              <AdminInvitations />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/super-admins" element={
+            <ProtectedRoute>
+              <AdminSuperAdmins />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/activity" element={
+            <ProtectedRoute>
+              <AdminActivity />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/system-settings" element={
+            <ProtectedRoute>
+              <AdminSystemSettings />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/business-data" element={
+            <ProtectedRoute>
+              <AdminBusinessData />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/cms" element={
+            <ProtectedRoute>
+              <AdminLandingCMS />
+            </ProtectedRoute>
+          } />
           {/* legacy path redirects */}
           <Route path="/super-admin" element={<Navigate to="/admin" replace />} />
           <Route path="/super-admin/*" element={<Navigate to="/admin" replace />} />

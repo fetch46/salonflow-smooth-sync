@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,7 +47,6 @@ const AdminBusinessData = () => {
     { name: 'appointments', label: 'Appointments', icon: Calendar, description: 'Booking records' },
     { name: 'inventory_items', label: 'Inventory', icon: Package, description: 'Product catalog' },
     { name: 'sales', label: 'Sales', icon: ShoppingCart, description: 'Sales transactions' },
-
     { name: 'purchases', label: 'Purchases', icon: Truck, description: 'Purchase orders' },
     { name: 'expenses', label: 'Expenses', icon: DollarSign, description: 'Expense tracking' },
     { name: 'accounts', label: 'Accounts', icon: Calculator, description: 'Chart of accounts' },
@@ -54,9 +54,12 @@ const AdminBusinessData = () => {
     { name: 'job_cards', label: 'Job Cards', icon: FileText, description: 'Service records' }
   ], []);
 
- 
   const fetchTableStats = useCallback(async () => {
     try {
+      // Check session first
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return; // ProtectedRoute will handle redirect
+
       setLoading(true);
       const stats: TableStats[] = [];
 
@@ -116,6 +119,10 @@ const AdminBusinessData = () => {
 
   const fetchOrganizations = useCallback(async () => {
     try {
+      // Check session first
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return; // ProtectedRoute will handle redirect
+
       const { data, error } = await supabase
         .from('organizations')
         .select('id, name, slug')
@@ -126,11 +133,16 @@ const AdminBusinessData = () => {
       setOrganizations(data || []);
     } catch (error) {
       console.error('Error fetching organizations:', error);
+      toast.error('Could not load organizations');
     }
   }, []);
 
   const fetchTableData = useCallback(async (tableName: string) => {
     try {
+      // Check session first
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return; // ProtectedRoute will handle redirect
+
       setDataLoading(true);
       
       let query = supabase
@@ -165,8 +177,23 @@ const AdminBusinessData = () => {
   }, [selectedOrganization]);
 
   useEffect(() => {
-    fetchTableStats();
-    fetchOrganizations();
+    const loadData = async () => {
+      // Check session before making any requests
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return; // ProtectedRoute will handle redirect
+
+      try {
+        await Promise.all([
+          fetchTableStats(),
+          fetchOrganizations()
+        ]);
+      } catch (error) {
+        console.error('Failed to load initial data:', error);
+        toast.error('Failed to load data');
+      }
+    };
+
+    loadData();
   }, [fetchTableStats, fetchOrganizations]);
 
   useEffect(() => {
