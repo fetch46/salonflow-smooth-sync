@@ -89,7 +89,7 @@ async function quickSuperAdminSetup() {
     // Step 5: Test super admin function
     console.log('\n📋 Step 5: Testing super admin function...');
     const { data: isAdmin, error: testError } = await supabase.rpc('is_super_admin', {
-      user_uuid: user.id
+      uid: user.id
     });
 
     if (testError) {
