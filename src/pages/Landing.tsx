@@ -330,7 +330,7 @@ const Landing = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className={`sticky top-0 z-50 border-b transition-all ${scrolled ? 'bg-card/70 backdrop-blur supports-[backdrop-filter]:backdrop-blur-md' : 'bg-transparent'}`}>
-        <div className="container mx-auto px-6 md:px-8 py-4 flex items-center justify-between max-w-7xl">
+        <div className="w-full px-6 md:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             {settings?.brand_logo_url ? (
               <img src={settings.brand_logo_url} alt={brandName} className="w-8 h-8 rounded-lg object-cover" />
@@ -362,7 +362,7 @@ const Landing = () => {
       {/* Hero Section */}
       <section className="relative overflow-hidden py-20 px-6 md:px-8">
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(1400px_700px_at_50%_-500px,hsl(var(--primary)/0.12),transparent)]" />
-        <div className="container mx-auto max-w-7xl grid lg:grid-cols-2 gap-16 items-center">
+        <div className="grid lg:grid-cols-2 gap-16 items-center">
           <div className="text-center lg:text-left">
             <Badge variant="secondary" className="mb-4">
               <Star className="w-3 h-3 mr-1" />
@@ -417,7 +417,7 @@ const Landing = () => {
           </div>
         </div>
 
-        <div className="container mx-auto max-w-7xl mt-14">
+        <div className="w-full mt-14">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 opacity-70 items-center">
             {partnerLogos.map((p, i) => (
               <div key={i} className="flex items-center justify-center">
@@ -434,7 +434,7 @@ const Landing = () => {
 
       {/* Features Section */}
       <section id="features" className="py-20 px-6 md:px-8">
-        <div className="container mx-auto max-w-7xl">
+        <div className="w-full">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-foreground mb-4">
               {settings?.features_title || 'Everything Your Salon Needs'}
@@ -477,7 +477,7 @@ const Landing = () => {
 
       {/* Pricing Section */}
       <section id="pricing" className="py-20 px-6 md:px-8 bg-muted/30">
-        <div className="container mx-auto max-w-7xl">
+        <div className="w-full">
           <div className="text-center mb-10">
             <h2 className="text-4xl font-bold text-foreground mb-3">
               {settings?.pricing_title || 'Simple, Transparent Pricing'}
@@ -548,7 +548,7 @@ const Landing = () => {
       {/* Featured Businesses Section */}
       {(settings?.featured_enabled ?? true) && featured.length > 0 && (
         <section className="py-20 px-6 md:px-8 bg-muted/30">
-          <div className="container mx-auto max-w-7xl">
+          <div className="w-full">
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-4xl font-bold text-foreground mb-2">{settings?.featured_title || 'Featured Businesses'}</h2>
@@ -600,7 +600,7 @@ const Landing = () => {
 
       {/* CTA Section */}
       <section className="py-20 px-6 md:px-8 bg-primary text-primary-foreground">
-        <div className="container mx-auto max-w-5xl text-center">
+        <div className="w-full text-center">
           <h2 className="text-4xl font-bold mb-4">
             {settings?.cta_section_title || 'Ready to Transform Your Salon?'}
           </h2>
@@ -624,7 +624,7 @@ const Landing = () => {
 
       {/* FAQ Section */}
       <section id="faq" className="py-20 px-6 md:px-8">
-        <div className="container mx-auto max-w-3xl">
+        <div className="w-full">
           <div className="text-center mb-10">
             <h2 className="text-3xl font-bold">{settings?.faq_title || 'Frequently Asked Questions'}</h2>
             <p className="text-muted-foreground">{settings?.faq_subtitle || 'Everything you need to know about getting started.'}</p>
@@ -644,7 +644,7 @@ const Landing = () => {
 
       {/* Footer */}
       <footer className="bg-card border-t py-12 px-6 md:px-8">
-        <div className="container mx-auto max-w-7xl">
+        <div className="w-full">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center space-x-2 mb-4">
