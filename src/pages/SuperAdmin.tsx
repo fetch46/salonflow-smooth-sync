@@ -321,55 +321,34 @@ export default function SuperAdmin() {
 
   const fetchOrganizationUsers = async (organizationId: string) => {
     try {
-      const { data, error } = await supabase
+      // Query memberships without attempting an embedded join to profiles
+      const { data: memberships, error: membershipsError } = await supabase
         .from('organization_users')
-        .select(`
-          *,
-          profiles (
-            email,
-            full_name
-          )
-        `)
+        .select('id, organization_id, user_id, role, is_active, created_at, updated_at')
         .eq('organization_id', organizationId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
 
-      if (error) {
-        console.warn('Relational fetch for super admin organization users failed; attempting fallback without join', error)
-        const { data: memberships, error: membershipsError } = await supabase
-          .from('organization_users')
-          .select('id, organization_id, user_id, role, is_active, created_at, updated_at')
-          .eq('organization_id', organizationId)
-          .order('created_at', { ascending: false })
-        if (membershipsError) throw membershipsError
+      if (membershipsError) throw membershipsError
 
-        const userIds = Array.from(new Set((memberships || []).map((m: any) => m.user_id).filter(Boolean)))
-        let profilesByUserId: Record<string, any> = {}
-        if (userIds.length > 0) {
-          const { data: profiles, error: profilesError } = await supabase
-            .from('profiles')
-            .select('user_id, email, full_name')
-            .in('user_id', userIds)
-          if (profilesError) throw profilesError
-          profilesByUserId = Object.fromEntries((profiles || []).map((p: any) => [p.user_id, p]))
-        }
-
-        const formattedUsers = (memberships || []).map((user: any) => ({
-          ...user,
-          email: profilesByUserId[user.user_id]?.email || 'No email',
-          full_name: profilesByUserId[user.user_id]?.full_name || ''
-        }))
-
-        setOrgUsers(formattedUsers)
-        return
+      // Fetch related profiles in a separate query
+      const userIds = Array.from(new Set((memberships || []).map((m: any) => m.user_id).filter(Boolean)))
+      let profilesByUserId: Record<string, any> = {}
+      if (userIds.length > 0) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('user_id, email, full_name')
+          .in('user_id', userIds)
+        if (profilesError) throw profilesError
+        profilesByUserId = Object.fromEntries((profiles || []).map((p: any) => [p.user_id, p]))
       }
 
-      const formattedUsers = data?.map(user => ({
+      const formattedUsers = (memberships || []).map((user: any) => ({
         ...user,
-        email: (user as any).profiles?.email || 'No email',
-        full_name: (user as any).profiles?.full_name || ''
-      })) || [];
+        email: profilesByUserId[user.user_id]?.email || 'No email',
+        full_name: profilesByUserId[user.user_id]?.full_name || ''
+      }))
 
-      setOrgUsers(formattedUsers);
+      setOrgUsers(formattedUsers)
     } catch (error) {
       console.error('Error fetching organization users:', error);
       toast.error('Failed to fetch organization users');
