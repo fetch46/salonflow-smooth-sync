@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { useSaas } from '@/lib/saas';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -120,6 +121,7 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
 
         {/* Right side */}
         <div className="flex items-center gap-4">
+          <ThemeToggle />
           {/* Organization Switcher */}
           {organizations.length > 1 && (
             <DropdownMenu>
