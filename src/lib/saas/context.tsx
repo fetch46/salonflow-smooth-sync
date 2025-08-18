@@ -142,14 +142,28 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [state, dispatch] = useReducer(saasReducer, initialState)
   const lastOrgSwitchRef = React.useRef<{ orgId: string; ts: number } | null>(null)
 
-  // Error handling
+  // Enhanced error handling to prevent "Failed to fetch" issues
   const handleError = useCallback((error: unknown, context?: string) => {
     const message = getErrorMessage(error)
     console.error(`SaaS Context Error${context ? ` (${context})` : ''}:`, error)
+    
+    // Check if it's a network error
+    const isNetworkError = error instanceof Error && (
+      error.message.includes('Failed to fetch') ||
+      error.message.includes('NetworkError') ||
+      error.message.includes('fetch')
+    )
+    
+    if (isNetworkError) {
+      console.warn('Network error detected, implementing retry logic')
+      dispatch({ type: 'SET_ERROR', payload: 'Network connection issue. Please check your internet connection.' })
+      return
+    }
+    
     dispatch({ type: 'SET_ERROR', payload: message })
     
     // Show user-friendly error message
-    if (context) {
+    if (context && !isNetworkError) {
       toast.error(`${context}: ${message}`)
     }
   }, [])
@@ -158,7 +172,42 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch({ type: 'CLEAR_ERROR' })
   }, [])
 
-  // Set active organization
+  // Enhanced network request wrapper with retry logic
+  const withRetry = useCallback(async <T>(
+    operation: () => Promise<T>,
+    maxRetries = 3,
+    delay = 1000
+  ): Promise<T> => {
+    let lastError: Error
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation()
+      } catch (error) {
+        lastError = error as Error
+        
+        // Don't retry on auth errors or client errors
+        if (error instanceof Error && (
+          error.message.includes('401') ||
+          error.message.includes('403') ||
+          error.message.includes('400')
+        )) {
+          throw error
+        }
+        
+        if (attempt === maxRetries) {
+          throw lastError
+        }
+        
+        // Wait before retry with exponential backoff
+        await new Promise(resolve => setTimeout(resolve, delay * attempt))
+      }
+    }
+    
+    throw lastError!
+  }, [])
+
+  // Set active organization with enhanced error handling
   async function setActiveOrganization(
     organization: Organization,
     role: UserRole,
@@ -169,9 +218,11 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
       dispatch({ type: 'SET_ORGANIZATION_ROLE', payload: role })
       localStorage.setItem(STORAGE_KEYS.ACTIVE_ORGANIZATION, organization.id)
 
-      // Load subscription data
+      // Load subscription data with retry logic
       try {
-        const subscription = await SubscriptionService.getOrganizationSubscription(organization.id)
+        const subscription = await withRetry(() => 
+          SubscriptionService.getOrganizationSubscription(organization.id)
+        )
         dispatch({ type: 'SET_SUBSCRIPTION', payload: subscription })
         
         if (subscription?.subscription_plans) {
@@ -184,10 +235,12 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dispatch({ type: 'SET_SUBSCRIPTION_PLAN', payload: null })
       }
 
-      // Load usage metrics
+      // Load usage metrics with error handling
       if (!silent) {
         try {
-          const metrics = await UsageService.getUsageMetrics(organization.id)
+          const metrics = await withRetry(() => 
+            UsageService.getUsageMetrics(organization.id)
+          )
           dispatch({ type: 'SET_USAGE_METRICS', payload: metrics })
         } catch (error) {
           console.error('Error loading usage metrics:', error)
@@ -198,18 +251,22 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const now = Date.now();
       const last = lastOrgSwitchRef.current;
       if (!last || last.orgId !== organization.id || now - last.ts > 2000) {
-        AnalyticsService.trackEvent(organization.id, 'organization_switched', {
-          organization_name: organization.name,
-          user_role: role,
-        })
-        lastOrgSwitchRef.current = { orgId: organization.id, ts: now };
+        try {
+          AnalyticsService.trackEvent(organization.id, 'organization_switched', {
+            organization_name: organization.name,
+            user_role: role,
+          })
+          lastOrgSwitchRef.current = { orgId: organization.id, ts: now };
+        } catch (error) {
+          console.warn('Analytics tracking failed:', error)
+        }
       }
     } catch (error) {
       handleError(error, 'Failed to switch organization')
     }
   }
 
-  // Load user organizations
+  // Load user organizations with enhanced error handling
   const loadUserOrganizations = useCallback(async (userId: string, silent = false) => {
     try {
       if (!silent) {
@@ -235,16 +292,20 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return
       }
 
-      // Check super admin status
+      // Check super admin status with retry
       try {
-        const isSuperAdmin = await SuperAdminService.checkSuperAdminStatus(userId)
+        const isSuperAdmin = await withRetry(() => 
+          SuperAdminService.checkSuperAdminStatus(userId)
+        )
         dispatch({ type: 'SET_SUPER_ADMIN', payload: isSuperAdmin })
       } catch (error) {
         console.error('Error checking super admin status:', error)
       }
 
-      // Get user organizations
-      const orgUsers = await OrganizationService.getUserOrganizations(userId)
+      // Get user organizations with retry
+      const orgUsers = await withRetry(() => 
+        OrganizationService.getUserOrganizations(userId)
+      )
       
       // Cache the result
       CacheService.set(cacheKey, orgUsers)
@@ -336,8 +397,8 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dispatch({ type: 'SET_LOADING', payload: false })
       }
     }
-        }, [handleError, setActiveOrganization])
-  
+  }, [handleError, setActiveOrganization, withRetry])
+
   // Organization actions
   const switchOrganization = useCallback(async (organizationId: string) => {
     const targetOrg = state.organizations.find(org => org.id === organizationId)
@@ -521,13 +582,15 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadSystemSettings = useCallback(async () => {
     try {
-      const settings = await SystemSettingsService.getSystemSettings()
+      const settings = await withRetry(() => 
+        SystemSettingsService.getSystemSettings()
+      )
       dispatch({ type: 'SET_SYSTEM_SETTINGS', payload: settings || null })
     } catch (e) {
       console.warn('Failed to load system settings', e)
       dispatch({ type: 'SET_SYSTEM_SETTINGS', payload: null })
     }
-  }, [])
+  }, [withRetry])
 
   const refreshUsage = useCallback(async (): Promise<void> => {
     try {
@@ -593,14 +656,17 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return canPerformAction(state.organizationRole, action, resource)
   }, [state.organizationRole, state.organization])
 
-  // Set up auth listener
+  // Set up auth listener with enhanced error handling
   useEffect(() => {
     let mounted = true
+    let retryTimeout: NodeJS.Timeout
 
      const initializeAuth = async () => {
        try {
-         // Get initial session
-         const { data: { session } } = await supabase.auth.getSession()
+         // Get initial session with retry
+         const { data: { session } } = await withRetry(() => 
+           supabase.auth.getSession()
+         )
          
          if (!mounted) return
  
@@ -623,6 +689,16 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
          if (mounted) {
            handleError(error, 'Failed to initialize authentication')
            dispatch({ type: 'SET_LOADING', payload: false })
+           
+           // Retry initialization after 5 seconds if it's a network error
+           if (error instanceof Error && error.message.includes('Failed to fetch')) {
+             retryTimeout = setTimeout(() => {
+               if (mounted) {
+                 console.log('Retrying authentication initialization...')
+                 initializeAuth()
+               }
+             }, 5000)
+           }
          }
        }
      }
@@ -655,14 +731,15 @@ export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('Auth initialization timeout reached')
         dispatch({ type: 'SET_LOADING', payload: false })
       }
-    }, 10000) // 10 second timeout
+    }, 15000) // Increased timeout to 15 seconds
 
     return () => {
       mounted = false
       authSubscription.unsubscribe()
       clearTimeout(timeoutId)
+      if (retryTimeout) clearTimeout(retryTimeout)
     }
-  }, [loadUserOrganizations, handleError, state.loading, loadSystemSettings])
+  }, [loadUserOrganizations, handleError, state.loading, loadSystemSettings, withRetry])
 
   // Computed properties
   const isOrganizationOwner = state.organizationRole === 'owner'

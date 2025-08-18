@@ -19,7 +19,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 interface TopbarProps {
-  onMenuClick: () => void;
+  onMenuClick?: () => void;
 }
 
 export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
@@ -262,3 +262,9 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
     </header>
   );
 };
+
+// Export as AppTopbar for backward compatibility
+export const AppTopbar: React.FC<TopbarProps> = (props) => <Topbar {...props} />;
+
+// Default export
+export default Topbar;
