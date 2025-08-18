@@ -18,12 +18,19 @@ import type {
   Organization,
   OrganizationUser,
   SubscriptionPlan,
+  UserRole,
 } from './types'
 
 interface SaasContextType {
   organizations: OrganizationUser[]
   currentOrganization: Organization | null
   setCurrentOrganization: (org: Organization | null) => void
+  // Expose selected organization using common key expected by consumers
+  organization: Organization | null
+  // Current user's role within the selected organization
+  organizationRole: UserRole | null
+  // Simple organization switcher by id
+  switchOrganization: (organizationId: string) => Promise<void>
   subscriptionPlan: SubscriptionPlan | null
   isSubscriptionActive: boolean
   updateSubscription: (planId: string) => Promise<void>
@@ -63,6 +70,7 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false)
   const [systemSettings, setSystemSettings] = useState<any>(null)
   const [user, setUser] = useState<any>(null)
+  const [organizationRole, setOrganizationRole] = useState<UserRole | null>(null)
 
   const isSubscriptionActive = !!(
     subscriptionPlan && subscriptionPlan.status === 'active'
@@ -105,6 +113,18 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
       console.error('Failed to load organizations:', error)
     }
   }, [user, currentOrganization])
+
+  // Keep organizationRole in sync with the selected organization
+  useEffect(() => {
+    if (!currentOrganization || organizations.length === 0) {
+      setOrganizationRole(null)
+      return
+    }
+    const membership = organizations.find(
+      (ou) => ou.organization_id === currentOrganization.id
+    )
+    setOrganizationRole((membership?.role as UserRole) || null)
+  }, [currentOrganization, organizations])
 
   const loadSubscription = useCallback(async () => {
     if (!currentOrganization) return
@@ -200,6 +220,15 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
     }
   }
 
+  const switchOrganization = async (organizationId: string) => {
+    try {
+      const target = organizations.find((ou) => ou.organization_id === organizationId)
+      setCurrentOrganization(target?.organizations || null)
+    } catch (error) {
+      console.error('Failed to switch organization:', error)
+    }
+  }
+
   const checkSuperAdminStatus = useCallback(async () => {
     if (!user) return
 
@@ -273,6 +302,9 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
     organizations,
     currentOrganization,
     setCurrentOrganization,
+    organization: currentOrganization,
+    organizationRole,
+    switchOrganization,
     subscriptionPlan: subscriptionPlan || null,
     isSubscriptionActive,
     updateSubscription,
