@@ -11,6 +11,7 @@ import type {
   UserInvitation,
   UsageMetrics
 } from './types'
+import { withRetry, withTimeout } from './utils'
 
 // Network error handler
 const handleNetworkError = (error: unknown): never => {
@@ -20,53 +21,21 @@ const handleNetworkError = (error: unknown): never => {
   throw error
 }
 
-// Retry wrapper for database operations
-const withRetry = async <T>(
-  operation: () => Promise<T>,
-  maxRetries = 3,
-  delay = 1000
-): Promise<T> => {
-  let lastError: Error
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await operation()
-    } catch (error) {
-      lastError = error as Error
-      
-      // Don't retry on auth errors or client errors
-      if (error instanceof Error && (
-        error.message.includes('401') ||
-        error.message.includes('403') ||
-        error.message.includes('400')
-      )) {
-        handleNetworkError(error)
-      }
-      
-      if (attempt === maxRetries) {
-        handleNetworkError(lastError)
-      }
-      
-      // Wait before retry with exponential backoff
-      await new Promise(resolve => setTimeout(resolve, delay * attempt))
-    }
-  }
-  
-  throw lastError!
-}
-
 export class OrganizationService {
   static async getUserOrganizations(userId: string): Promise<OrganizationUser[]> {
     try {
-      const { data, error } = await withRetry(() =>
-        supabase
-          .from('organization_users')
-          .select(`
-            *,
-            organizations (*)
-          `)
-          .eq('user_id', userId)
-          .eq('is_active', true)
+      const { data, error } = await withTimeout(
+        withRetry(() =>
+          supabase
+            .from('organization_users')
+            .select(`
+              *,
+              organizations (*)
+            `)
+            .eq('user_id', userId)
+            .eq('is_active', true)
+        ),
+        5000
       )
 
       if (error) throw error
@@ -88,16 +57,19 @@ export class OrganizationService {
 
   static async createOrganization(data: CreateOrganizationData, userId: string): Promise<Organization> {
     try {
-      const { data: orgData, error } = await withRetry(() =>
-        supabase
-          .from('organizations')
-          .insert({
-            name: data.name,
-            slug: data.slug,
-            settings: data.settings || {}
-          })
-          .select()
-          .single()
+      const { data: orgData, error } = await withTimeout(
+        withRetry(() =>
+          supabase
+            .from('organizations')
+            .insert({
+              name: data.name,
+              slug: data.slug,
+              settings: data.settings || {}
+            })
+            .select()
+            .single()
+        ),
+        5000
       )
 
       if (error) throw error
@@ -115,13 +87,16 @@ export class OrganizationService {
 
   static async updateOrganization(id: string, data: Partial<Organization>): Promise<Organization> {
     try {
-      const { data: orgData, error } = await withRetry(() =>
-        supabase
-          .from('organizations')
-          .update(data)
-          .eq('id', id)
-          .select()
-          .single()
+      const { data: orgData, error } = await withTimeout(
+        withRetry(() =>
+          supabase
+            .from('organizations')
+            .update(data)
+            .eq('id', id)
+            .select()
+            .single()
+        ),
+        5000
       )
 
       if (error) throw error
@@ -141,15 +116,18 @@ export class OrganizationService {
 export class SubscriptionService {
   static async getOrganizationSubscription(organizationId: string): Promise<OrganizationSubscription | null> {
     try {
-      const { data, error } = await withRetry(() =>
-        supabase
-          .from('organization_subscriptions')
-          .select(`
-            *,
-            subscription_plans (*)
-          `)
-          .eq('organization_id', organizationId)
-          .single()
+      const { data, error } = await withTimeout(
+        withRetry(() =>
+          supabase
+            .from('organization_subscriptions')
+            .select(`
+              *,
+              subscription_plans (*)
+            `)
+            .eq('organization_id', organizationId)
+            .single()
+        ),
+        5000
       )
 
       if (error) {
@@ -169,16 +147,19 @@ export class SubscriptionService {
 
   static async updateSubscription(organizationId: string, planId: string): Promise<OrganizationSubscription> {
     try {
-      const { data, error } = await withRetry(() =>
-        supabase
-          .from('organization_subscriptions')
-          .update({ plan_id: planId })
-          .eq('organization_id', organizationId)
-          .select(`
-            *,
-            subscription_plans (*)
-          `)
-          .single()
+      const { data, error } = await withTimeout(
+        withRetry(() =>
+          supabase
+            .from('organization_subscriptions')
+            .update({ plan_id: planId })
+            .eq('organization_id', organizationId)
+            .select(`
+              *,
+              subscription_plans (*)
+            `)
+            .single()
+        ),
+        5000
       )
 
       if (error) throw error
@@ -196,11 +177,14 @@ export class SubscriptionService {
 
   static async cancelSubscription(organizationId: string): Promise<void> {
     try {
-      const { error } = await withRetry(() =>
-        supabase
-          .from('organization_subscriptions')
-          .update({ status: 'canceled' })
-          .eq('organization_id', organizationId)
+      const { error } = await withTimeout(
+        withRetry(() =>
+          supabase
+            .from('organization_subscriptions')
+            .update({ status: 'canceled' })
+            .eq('organization_id', organizationId)
+        ),
+        5000
       )
 
       if (error) throw error
@@ -214,15 +198,18 @@ export class SubscriptionService {
 export class UserService {
   static async getOrganizationUsers(organizationId: string): Promise<OrganizationUser[]> {
     try {
-      const { data, error } = await withRetry(() =>
-        supabase
-          .from('organization_users')
-          .select(`
-            *,
-            profiles (*)
-          `)
-          .eq('organization_id', organizationId)
-          .eq('is_active', true)
+      const { data, error } = await withTimeout(
+        withRetry(() =>
+          supabase
+            .from('organization_users')
+            .select(`
+              *,
+              profiles (*)
+            `)
+            .eq('organization_id', organizationId)
+            .eq('is_active', true)
+        ),
+        5000
       )
 
       if (error) throw error
@@ -240,17 +227,20 @@ export class UserService {
 
   static async inviteUser(organizationId: string, email: string, role: UserRole, invitedBy: string): Promise<UserInvitation> {
     try {
-      const { data, error } = await withRetry(() =>
-        supabase
-          .from('user_invitations')
-          .insert({
-            organization_id: organizationId,
-            email,
-            role,
-            invited_by: invitedBy
-          })
-          .select()
-          .single()
+      const { data, error } = await withTimeout(
+        withRetry(() =>
+          supabase
+            .from('user_invitations')
+            .insert({
+              organization_id: organizationId,
+              email,
+              role,
+              invited_by: invitedBy
+            })
+            .select()
+            .single()
+        ),
+        5000
       )
 
       if (error) throw error
@@ -268,12 +258,15 @@ export class UserService {
 
   static async removeUser(organizationId: string, userId: string): Promise<void> {
     try {
-      const { error } = await withRetry(() =>
-        supabase
-          .from('organization_users')
-          .update({ is_active: false })
-          .eq('organization_id', organizationId)
-          .eq('user_id', userId)
+      const { error } = await withTimeout(
+        withRetry(() =>
+          supabase
+            .from('organization_users')
+            .update({ is_active: false })
+            .eq('organization_id', organizationId)
+            .eq('user_id', userId)
+        ),
+        5000
       )
 
       if (error) throw error
@@ -285,12 +278,15 @@ export class UserService {
 
   static async updateUserRole(organizationId: string, userId: string, role: UserRole): Promise<void> {
     try {
-      const { error } = await withRetry(() =>
-        supabase
-          .from('organization_users')
-          .update({ role })
-          .eq('organization_id', organizationId)
-          .eq('user_id', userId)
+      const { error } = await withTimeout(
+        withRetry(() =>
+          supabase
+            .from('organization_users')
+            .update({ role })
+            .eq('organization_id', organizationId)
+            .eq('user_id', userId)
+        ),
+        5000
       )
 
       if (error) throw error
@@ -304,13 +300,16 @@ export class UserService {
 export class SuperAdminService {
   static async checkSuperAdminStatus(userId: string): Promise<boolean> {
     try {
-      const { data, error } = await withRetry(() =>
-        supabase
-          .from('super_admins')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('is_active', true)
-          .single()
+      const { data, error } = await withTimeout(
+        withRetry(() =>
+          supabase
+            .from('super_admins')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('is_active', true)
+            .single()
+        ),
+        5000
       )
 
       if (error) {
@@ -412,11 +411,14 @@ export class CacheService {
 export class SystemSettingsService {
   static async getSystemSettings(): Promise<any | null> {
     try {
-      const { data, error } = await withRetry(() =>
-        supabase
-          .from('system_settings')
-          .select('*')
-          .single()
+      const { data, error } = await withTimeout(
+        withRetry(() =>
+          supabase
+            .from('system_settings')
+            .select('*')
+            .single()
+        ),
+        5000
       )
 
       if (error) {
@@ -427,6 +429,46 @@ export class SystemSettingsService {
       return data
     } catch (error) {
       console.error('Error fetching system settings:', error)
+      handleNetworkError(error)
+    }
+  }
+
+  static async saveSystemSettings(settings: any): Promise<boolean> {
+    try {
+      // First try to get existing settings
+      const { data: existing } = await supabase
+        .from('system_settings')
+        .select('id')
+        .single()
+
+      let result
+      if (existing) {
+        // Update existing settings
+        result = await withTimeout(
+          withRetry(() =>
+            supabase
+              .from('system_settings')
+              .update(settings)
+              .eq('id', existing.id)
+          ),
+          5000
+        )
+      } else {
+        // Insert new settings
+        result = await withTimeout(
+          withRetry(() =>
+            supabase
+              .from('system_settings')
+              .insert([settings])
+          ),
+          5000
+        )
+      }
+
+      if (result.error) throw result.error
+      return true
+    } catch (error) {
+      console.error('Error saving system settings:', error)
       handleNetworkError(error)
     }
   }

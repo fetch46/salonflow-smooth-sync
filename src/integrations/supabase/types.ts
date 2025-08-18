@@ -561,6 +561,63 @@ export type Database = {
           },
         ]
       }
+      business_listings: {
+        Row: {
+          category: string | null
+          city: string | null
+          country: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_featured: boolean
+          logo_url: string | null
+          name: string
+          rating: number | null
+          review_count: number | null
+          slug: string | null
+          updated_at: string
+          updated_by: string | null
+          website_url: string | null
+        }
+        Insert: {
+          category?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_featured?: boolean
+          logo_url?: string | null
+          name: string
+          rating?: number | null
+          review_count?: number | null
+          slug?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          category?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_featured?: boolean
+          logo_url?: string | null
+          name?: string
+          rating?: number | null
+          review_count?: number | null
+          slug?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          website_url?: string | null
+        }
+        Relationships: []
+      }
       business_locations: {
         Row: {
           address: string | null
@@ -1113,6 +1170,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_inventory_item_accounts_account"
+            columns: ["inventory_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "inventory_item_accounts_inventory_account_id_fkey"
             columns: ["inventory_account_id"]
             isOneToOne: false
@@ -1660,6 +1724,141 @@ export type Database = {
           },
         ]
       }
+      landing_settings: {
+        Row: {
+          billing_monthly_label: string | null
+          billing_yearly_label: string | null
+          brand_logo_url: string | null
+          brand_name: string | null
+          created_at: string
+          cta_bottom_primary_link: string | null
+          cta_bottom_primary_text: string | null
+          cta_bottom_secondary_link: string | null
+          cta_bottom_secondary_text: string | null
+          cta_primary_link: string | null
+          cta_primary_text: string | null
+          cta_secondary_link: string | null
+          cta_secondary_text: string | null
+          cta_section_subtitle: string | null
+          cta_section_title: string | null
+          extra_features: Json | null
+          faq_subtitle: string | null
+          faq_title: string | null
+          faqs: Json | null
+          featured_enabled: boolean | null
+          featured_subtitle: string | null
+          featured_title: string | null
+          features: Json | null
+          features_subtitle: string | null
+          features_title: string | null
+          footer_brand_name: string | null
+          footer_columns: Json | null
+          footer_description: string | null
+          hero_badge_text: string | null
+          hero_image_url: string | null
+          hero_subtitle: string | null
+          hero_title: string | null
+          highlights: string[] | null
+          id: string
+          most_popular_badge_text: string | null
+          nav_links: Json | null
+          partner_logos: Json | null
+          plan_cta_label: string | null
+          pricing_copy: string | null
+          pricing_title: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          billing_monthly_label?: string | null
+          billing_yearly_label?: string | null
+          brand_logo_url?: string | null
+          brand_name?: string | null
+          created_at?: string
+          cta_bottom_primary_link?: string | null
+          cta_bottom_primary_text?: string | null
+          cta_bottom_secondary_link?: string | null
+          cta_bottom_secondary_text?: string | null
+          cta_primary_link?: string | null
+          cta_primary_text?: string | null
+          cta_secondary_link?: string | null
+          cta_secondary_text?: string | null
+          cta_section_subtitle?: string | null
+          cta_section_title?: string | null
+          extra_features?: Json | null
+          faq_subtitle?: string | null
+          faq_title?: string | null
+          faqs?: Json | null
+          featured_enabled?: boolean | null
+          featured_subtitle?: string | null
+          featured_title?: string | null
+          features?: Json | null
+          features_subtitle?: string | null
+          features_title?: string | null
+          footer_brand_name?: string | null
+          footer_columns?: Json | null
+          footer_description?: string | null
+          hero_badge_text?: string | null
+          hero_image_url?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          highlights?: string[] | null
+          id?: string
+          most_popular_badge_text?: string | null
+          nav_links?: Json | null
+          partner_logos?: Json | null
+          plan_cta_label?: string | null
+          pricing_copy?: string | null
+          pricing_title?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          billing_monthly_label?: string | null
+          billing_yearly_label?: string | null
+          brand_logo_url?: string | null
+          brand_name?: string | null
+          created_at?: string
+          cta_bottom_primary_link?: string | null
+          cta_bottom_primary_text?: string | null
+          cta_bottom_secondary_link?: string | null
+          cta_bottom_secondary_text?: string | null
+          cta_primary_link?: string | null
+          cta_primary_text?: string | null
+          cta_secondary_link?: string | null
+          cta_secondary_text?: string | null
+          cta_section_subtitle?: string | null
+          cta_section_title?: string | null
+          extra_features?: Json | null
+          faq_subtitle?: string | null
+          faq_title?: string | null
+          faqs?: Json | null
+          featured_enabled?: boolean | null
+          featured_subtitle?: string | null
+          featured_title?: string | null
+          features?: Json | null
+          features_subtitle?: string | null
+          features_title?: string | null
+          footer_brand_name?: string | null
+          footer_columns?: Json | null
+          footer_description?: string | null
+          hero_badge_text?: string | null
+          hero_image_url?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          highlights?: string[] | null
+          id?: string
+          most_popular_badge_text?: string | null
+          nav_links?: Json | null
+          partner_logos?: Json | null
+          plan_cta_label?: string | null
+          pricing_copy?: string | null
+          pricing_title?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       organization_subscriptions: {
         Row: {
           created_at: string | null
@@ -2164,6 +2363,44 @@ export type Database = {
           },
         ]
       }
+      service_categories: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          organization_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          organization_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          organization_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_categories_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_kits: {
         Row: {
           created_at: string
@@ -2535,7 +2772,6 @@ export type Database = {
           is_active: boolean | null
           updated_at: string
           user_id: string
-          permissions: Json | null
         }
         Insert: {
           created_at?: string
@@ -2545,7 +2781,6 @@ export type Database = {
           is_active?: boolean | null
           updated_at?: string
           user_id: string
-          permissions?: Json | null
         }
         Update: {
           created_at?: string
@@ -2555,7 +2790,6 @@ export type Database = {
           is_active?: boolean | null
           updated_at?: string
           user_id?: string
-          permissions?: Json | null
         }
         Relationships: []
       }
@@ -2629,6 +2863,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      system_settings: {
+        Row: {
+          app_name: string | null
+          created_at: string
+          default_plan_slug: string
+          features: Json
+          id: string
+          maintenance_mode: boolean
+          metadata: Json
+          regional_formats_enabled: boolean
+          support_email: string
+          updated_at: string
+        }
+        Insert: {
+          app_name?: string | null
+          created_at?: string
+          default_plan_slug?: string
+          features?: Json
+          id?: string
+          maintenance_mode?: boolean
+          metadata?: Json
+          regional_formats_enabled?: boolean
+          support_email?: string
+          updated_at?: string
+        }
+        Update: {
+          app_name?: string | null
+          created_at?: string
+          default_plan_slug?: string
+          features?: Json
+          id?: string
+          maintenance_mode?: boolean
+          metadata?: Json
+          regional_formats_enabled?: boolean
+          support_email?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_invitations: {
         Row: {
@@ -2835,8 +3108,16 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: boolean
       }
+      is_admin_of_organization: {
+        Args: { org_id: string }
+        Returns: boolean
+      }
       is_date_locked: {
         Args: { p_date: string; p_org: string }
+        Returns: boolean
+      }
+      is_member_of_organization: {
+        Args: { org_id: string }
         Returns: boolean
       }
       is_super_admin: {
