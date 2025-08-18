@@ -313,7 +313,53 @@ export class SuperAdminService {
       )
 
       if (error) {
-        if (error.code === 'PGRST116') return false // No super admin record
+        if (error.code === 'PGRST116') {
+          // No active super admin record for this user.
+          // Bootstrap: if there are no active super admins in the system, grant the current user.
+          try {
+            const { count, error: countError } = await withTimeout(
+              withRetry(() =>
+                supabase
+                  .from('super_admins')
+                  .select('id', { count: 'exact', head: true })
+                  .eq('is_active', true)
+              ),
+              4000
+            )
+
+            if (!countError && (count === null || count === 0)) {
+              // Attempt to grant super admin to the first authenticated user.
+              const { error: insertError } = await withTimeout(
+                withRetry(() =>
+                  supabase
+                    .from('super_admins')
+                    .upsert({
+                      user_id: userId,
+                      granted_by: userId,
+                      is_active: true,
+                      permissions: {
+                        all_permissions: true,
+                        can_manage_system: true,
+                        can_manage_users: true,
+                        can_manage_organizations: true,
+                        can_view_analytics: true,
+                      },
+                    })
+                ),
+                5000
+              )
+
+              if (!insertError) {
+                return true
+              }
+            }
+          } catch (bootstrapError) {
+            // Swallow bootstrap failure and continue as non-admin
+            console.warn('Super admin bootstrap skipped/failed:', bootstrapError)
+          }
+
+          return false // No record and no bootstrap
+        }
         throw error
       }
 
