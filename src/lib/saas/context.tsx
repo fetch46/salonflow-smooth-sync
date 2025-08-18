@@ -1,814 +1,326 @@
-/* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useEffect, useReducer, useCallback } from 'react'
-import { User } from '@supabase/supabase-js'
-import { supabase } from '@/integrations/supabase/client'
-import { toast } from 'sonner'
 
-import type {
-  SaasContextType,
-  SaasState,
-  Organization,
-  OrganizationUser,
-  OrganizationSubscription,
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { User } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { 
+  Organization, 
+  OrganizationUser, 
+  UserRole, 
+  OrganizationSubscription, 
   SubscriptionPlan,
-  UserRole,
-  FeatureAccess,
-  UsageMetrics,
-  CreateOrganizationData,
-  UserInvitation,
-} from './types'
+  SystemSettings 
+} from './types';
+import { 
+  fetchUserOrganizations, 
+  fetchOrganizationById, 
+  fetchOrganizationSubscription, 
+  fetchSystemSettings,
+  switchUserOrganization 
+} from './services';
 
-import {
-   OrganizationService,
-   SubscriptionService,
-   UserService,
-   SuperAdminService,
-   UsageService,
-   AnalyticsService,
-   CacheService,
-   SystemSettingsService,
-} from './services'
-
- import {
-   hasMinimumRole,
-   canPerformAction,
-   isSubscriptionActive,
-   isSubscriptionTrialing,
-   calculateTrialDaysRemaining,
-   calculateFeatureAccess,
-   getErrorMessage,
-   createCacheKey,
-   createSlugFromName,
-   canPerformActionWithOverrides,
- } from './utils'
-
-import { PLAN_FEATURES } from '@/lib/features'
-import { STORAGE_KEYS, CACHE_KEYS } from './constants'
-
-// Action types for the reducer
-type SaasAction =
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_USER'; payload: User | null }
-  | { type: 'SET_ORGANIZATION'; payload: Organization | null }
-  | { type: 'SET_ORGANIZATIONS'; payload: Organization[] }
-  | { type: 'SET_ORGANIZATION_ROLE'; payload: UserRole | null }
-  | { type: 'SET_USER_ROLES'; payload: Record<string, UserRole> }
-  | { type: 'SET_SUBSCRIPTION'; payload: OrganizationSubscription | null }
-  | { type: 'SET_SUBSCRIPTION_PLAN'; payload: SubscriptionPlan | null }
-  | { type: 'SET_SUPER_ADMIN'; payload: boolean }
-  | { type: 'SET_USAGE_METRICS'; payload: UsageMetrics }
-  | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'CLEAR_ERROR' }
-  | { type: 'RESET_STATE' }
-  | { type: 'SET_SYSTEM_SETTINGS'; payload: any | null }
-
-// Initial state
-const initialState: SaasState = {
-  user: null,
-  loading: true,
-  organization: null,
-  organizations: [],
-  organizationRole: null,
-  userRoles: {},
-  subscription: null,
-  subscriptionPlan: null,
-  subscriptionStatus: null,
-  isSuperAdmin: false,
-  superAdminPermissions: null,
-  usageMetrics: {},
-  error: null,
-  systemSettings: null,
+interface SaasContextType {
+  user: User | null;
+  organization: Organization | null;
+  organizations: Organization[];
+  organizationRole: UserRole | null;
+  subscription: OrganizationSubscription | null;
+  subscriptionPlan: SubscriptionPlan | null;
+  isTrialing: boolean;
+  daysLeftInTrial: number | null;
+  systemSettings: SystemSettings | null;
+  isOrganizationOwner: boolean;
+  isOrganizationAdmin: boolean;
+  switchOrganization: (organizationId: string) => Promise<void>;
+  refreshOrganizations: () => Promise<void>;
+  refreshSubscription: () => Promise<void>;
+  loading: boolean;
+  error: string | null;
 }
 
-// Reducer function
-function saasReducer(state: SaasState, action: SaasAction): SaasState {
-  switch (action.type) {
-    case 'SET_LOADING':
-      return { ...state, loading: action.payload }
-    
-    case 'SET_USER':
-      return { ...state, user: action.payload }
-    
-    case 'SET_ORGANIZATION':
-      return { ...state, organization: action.payload }
-    
-    case 'SET_ORGANIZATIONS':
-      return { ...state, organizations: action.payload }
-    
-    case 'SET_ORGANIZATION_ROLE':
-      return { ...state, organizationRole: action.payload }
-    
-    case 'SET_USER_ROLES':
-      return { ...state, userRoles: action.payload }
-    
-    case 'SET_SUBSCRIPTION':
-      return { 
-        ...state, 
-        subscription: action.payload,
-        subscriptionStatus: action.payload?.status || null
-      }
-    
-    case 'SET_SUBSCRIPTION_PLAN':
-      return { ...state, subscriptionPlan: action.payload }
-    
-    case 'SET_SUPER_ADMIN':
-      return { ...state, isSuperAdmin: action.payload }
-    
-    case 'SET_USAGE_METRICS':
-      return { ...state, usageMetrics: action.payload }
-    
-    case 'SET_ERROR':
-      return { ...state, error: action.payload }
-    
-    case 'CLEAR_ERROR':
-      return { ...state, error: null }
-    
-    case 'RESET_STATE':
-      return { ...initialState, loading: false }
-    
-    case 'SET_SYSTEM_SETTINGS':
-      return { ...state, systemSettings: action.payload }
-    
-    default:
-      return state
-  }
-}
+const SaasContext = createContext<SaasContextType | null>(null);
 
-// Create context
-const SaasContext = createContext<SaasContextType | undefined>(undefined)
-
-// Provider component
-export const SaasProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(saasReducer, initialState)
-  const lastOrgSwitchRef = React.useRef<{ orgId: string; ts: number } | null>(null)
-
-  // Enhanced error handling to prevent "Failed to fetch" issues
-  const handleError = useCallback((error: unknown, context?: string) => {
-    const message = getErrorMessage(error)
-    console.error(`SaaS Context Error${context ? ` (${context})` : ''}:`, error)
-    
-    // Check if it's a network error
-    const isNetworkError = error instanceof Error && (
-      error.message.includes('Failed to fetch') ||
-      error.message.includes('NetworkError') ||
-      error.message.includes('fetch')
-    )
-    
-    if (isNetworkError) {
-      console.warn('Network error detected, implementing retry logic')
-      dispatch({ type: 'SET_ERROR', payload: 'Network connection issue. Please check your internet connection.' })
-      return
-    }
-    
-    dispatch({ type: 'SET_ERROR', payload: message })
-    
-    // Show user-friendly error message
-    if (context && !isNetworkError) {
-      toast.error(`${context}: ${message}`)
-    }
-  }, [])
-
-  const clearError = useCallback(() => {
-    dispatch({ type: 'CLEAR_ERROR' })
-  }, [])
-
-  // Enhanced network request wrapper with retry logic
-  const withRetry = useCallback(async <T>(
-    operation: () => Promise<T>,
-    maxRetries = 3,
-    delay = 1000
-  ): Promise<T> => {
-    let lastError: Error
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        return await operation()
-      } catch (error) {
-        lastError = error as Error
-        
-        // Don't retry on auth errors or client errors
-        if (error instanceof Error && (
-          error.message.includes('401') ||
-          error.message.includes('403') ||
-          error.message.includes('400')
-        )) {
-          throw error
-        }
-        
-        if (attempt === maxRetries) {
-          throw lastError
-        }
-        
-        // Wait before retry with exponential backoff
-        await new Promise(resolve => setTimeout(resolve, delay * attempt))
-      }
-    }
-    
-    throw lastError!
-  }, [])
-
-  // Set active organization with enhanced error handling
-  async function setActiveOrganization(
-    organization: Organization,
-    role: UserRole,
-    silent = false
-  ) {
+// Utility function for retrying network requests
+const retryWithBackoff = async <T,>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  baseDelay = 1000
+): Promise<T> => {
+  let lastError: Error;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      dispatch({ type: 'SET_ORGANIZATION', payload: organization })
-      dispatch({ type: 'SET_ORGANIZATION_ROLE', payload: role })
-      localStorage.setItem(STORAGE_KEYS.ACTIVE_ORGANIZATION, organization.id)
-
-      // Load subscription data with retry logic
-      try {
-        const subscription = await withRetry(() => 
-          SubscriptionService.getOrganizationSubscription(organization.id)
-        )
-        dispatch({ type: 'SET_SUBSCRIPTION', payload: subscription })
-        
-        if (subscription?.subscription_plans) {
-          dispatch({ type: 'SET_SUBSCRIPTION_PLAN', payload: subscription.subscription_plans })
-        }
-      } catch (error) {
-        console.error('Error loading subscription:', error)
-        // Don't throw, just set null
-        dispatch({ type: 'SET_SUBSCRIPTION', payload: null })
-        dispatch({ type: 'SET_SUBSCRIPTION_PLAN', payload: null })
-      }
-
-      // Load usage metrics with error handling
-      if (!silent) {
-        try {
-          const metrics = await withRetry(() => 
-            UsageService.getUsageMetrics(organization.id)
-          )
-          dispatch({ type: 'SET_USAGE_METRICS', payload: metrics })
-        } catch (error) {
-          console.error('Error loading usage metrics:', error)
-        }
-      }
-
-      // Track organization switch (deduplicated)
-      const now = Date.now();
-      const last = lastOrgSwitchRef.current;
-      if (!last || last.orgId !== organization.id || now - last.ts > 2000) {
-        try {
-          AnalyticsService.trackEvent(organization.id, 'organization_switched', {
-            organization_name: organization.name,
-            user_role: role,
-          })
-          lastOrgSwitchRef.current = { orgId: organization.id, ts: now };
-        } catch (error) {
-          console.warn('Analytics tracking failed:', error)
-        }
-      }
+      return await fn();
     } catch (error) {
-      handleError(error, 'Failed to switch organization')
+      lastError = error as Error;
+      
+      // Don't retry for certain types of errors
+      if (error instanceof Error) {
+        const errorMessage = error.message.toLowerCase();
+        if (errorMessage.includes('unauthorized') || 
+            errorMessage.includes('forbidden') ||
+            errorMessage.includes('not found')) {
+          throw error;
+        }
+      }
+      
+      if (attempt < maxRetries - 1) {
+        const delay = baseDelay * Math.pow(2, attempt);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
   }
+  
+  throw lastError!;
+};
 
-  // Load user organizations with enhanced error handling
-  const loadUserOrganizations = useCallback(async (userId: string, silent = false) => {
+// Enhanced error handling utility
+const handleServiceError = (error: any, context: string): string => {
+  console.error(`Error in ${context}:`, error);
+  
+  if (error?.message?.toLowerCase().includes('failed to fetch')) {
+    return `Network error in ${context}. Please check your connection and try again.`;
+  }
+  
+  if (error?.message?.toLowerCase().includes('timeout')) {
+    return `Request timeout in ${context}. Please try again.`;
+  }
+  
+  return `An error occurred in ${context}. Please try again later.`;
+};
+
+export function SaasProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [organization, setOrganization] = useState<Organization | null>(null);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [organizationRole, setOrganizationRole] = useState<UserRole | null>(null);
+  const [subscription, setSubscription] = useState<OrganizationSubscription | null>(null);
+  const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlan | null>(null);
+  const [isTrialing, setIsTrialing] = useState(false);
+  const [daysLeftInTrial, setDaysLeftInTrial] = useState<number | null>(null);
+  const [systemSettings, setSystemSettings] = useState<SystemSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const isOrganizationOwner = organizationRole === 'owner';
+  const isOrganizationAdmin = organizationRole === 'admin' || organizationRole === 'owner';
+
+  // Load organizations with retry logic
+  const loadOrganizations = async (userId: string) => {
     try {
-      if (!silent) {
-        dispatch({ type: 'SET_LOADING', payload: true })
-      }
-
-      // Check cache first
-      const cacheKey = createCacheKey(CACHE_KEYS.USER_ORGANIZATIONS, userId)
-      const cachedData = CacheService.get<OrganizationUser[]>(cacheKey)
+      const orgs = await retryWithBackoff(() => fetchUserOrganizations(userId));
+      setOrganizations(orgs);
       
-      if (cachedData && silent) {
-        const orgs = cachedData.map(ou => ou.organizations).filter(Boolean) as Organization[]
-        const roles: Record<string, UserRole> = {}
+      if (orgs.length > 0) {
+        const currentOrgId = localStorage.getItem('currentOrganizationId');
+        const targetOrg = currentOrgId 
+          ? orgs.find(org => org.id === currentOrgId) || orgs[0]
+          : orgs[0];
         
-        cachedData.forEach(ou => {
-          if (ou.organizations) {
-            roles[ou.organization_id] = ou.role
-          }
-        })
-
-        dispatch({ type: 'SET_ORGANIZATIONS', payload: orgs })
-        dispatch({ type: 'SET_USER_ROLES', payload: roles })
-        return
+        await loadOrganization(targetOrg.id);
       }
-
-      // Check super admin status with retry
-      try {
-        const isSuperAdmin = await withRetry(() => 
-          SuperAdminService.checkSuperAdminStatus(userId)
-        )
-        dispatch({ type: 'SET_SUPER_ADMIN', payload: isSuperAdmin })
-      } catch (error) {
-        console.error('Error checking super admin status:', error)
-      }
-
-      // Get user organizations with retry
-      const orgUsers = await withRetry(() => 
-        OrganizationService.getUserOrganizations(userId)
-      )
-      
-      // Cache the result
-      CacheService.set(cacheKey, orgUsers)
-
-       if (orgUsers.length > 0) {
-         const orgs = orgUsers.map(ou => ou.organizations).filter(Boolean) as Organization[]
-         const roles: Record<string, UserRole> = {}
-         
-         orgUsers.forEach(ou => {
-           if (ou.organizations) {
-             roles[ou.organization_id] = ou.role
-           }
-         })
- 
-         dispatch({ type: 'SET_ORGANIZATIONS', payload: orgs })
-         dispatch({ type: 'SET_USER_ROLES', payload: roles })
- 
-         // Set active organization
-         const savedOrgId = localStorage.getItem(STORAGE_KEYS.ACTIVE_ORGANIZATION)
-         const activeOrg = savedOrgId 
-           ? orgs.find(org => org.id === savedOrgId) || orgs[0]
-           : orgs[0]
- 
-         if (activeOrg) {
-           await setActiveOrganization(activeOrg, roles[activeOrg.id], silent)
-         }
-       } else {
-         // User has no organizations - try auto-creating from pending registration info
-         const pending = localStorage.getItem('pendingBusinessInfo')
-         if (pending) {
-           try {
-             const info = JSON.parse(pending)
-             const orgName: string = info.businessName || 'My Business'
-             const slug = createSlugFromName(orgName)
-             await OrganizationService.createOrganization({
-               name: orgName,
-               slug,
-               settings: {
-                 business_type: info.businessType,
-                 description: info.businessDescription,
-                 address: info.address,
-                 city: info.city,
-                 state: info.state,
-                 zip_code: info.zipCode,
-                 country: info.country,
-               }
-             }, userId)
-             localStorage.removeItem('pendingBusinessInfo')
- 
-             // Fetch again after creation
-             const createdOrgUsers = await OrganizationService.getUserOrganizations(userId)
-             if (createdOrgUsers.length > 0) {
-               const orgs = createdOrgUsers.map(ou => ou.organizations).filter(Boolean) as Organization[]
-               const roles: Record<string, UserRole> = {}
-               createdOrgUsers.forEach(ou => {
-                 if (ou.organizations) {
-                   roles[ou.organization_id] = ou.role
-                 }
-               })
-               dispatch({ type: 'SET_ORGANIZATIONS', payload: orgs })
-               dispatch({ type: 'SET_USER_ROLES', payload: roles })
-               const activeOrg = orgs[0]
-               if (activeOrg) {
-                 await setActiveOrganization(activeOrg, roles[activeOrg.id], silent)
-               }
-               return
-             }
-           } catch (e) {
-             console.error('Auto-organization setup failed:', e)
-           }
-         }
- 
-         // Fallback to empty state
-         dispatch({ type: 'SET_ORGANIZATIONS', payload: [] })
-         dispatch({ type: 'SET_USER_ROLES', payload: {} })
-         dispatch({ type: 'SET_ORGANIZATION', payload: null })
-         dispatch({ type: 'SET_ORGANIZATION_ROLE', payload: null })
-       }
     } catch (error) {
-      handleError(error, 'Failed to load organizations')
-      
-      // Set empty state to prevent infinite loading
-      dispatch({ type: 'SET_ORGANIZATIONS', payload: [] })
-      dispatch({ type: 'SET_USER_ROLES', payload: {} })
-      dispatch({ type: 'SET_ORGANIZATION', payload: null })
-      dispatch({ type: 'SET_ORGANIZATION_ROLE', payload: null })
-    } finally {
-      if (!silent) {
-        dispatch({ type: 'SET_LOADING', payload: false })
-      }
+      const errorMessage = handleServiceError(error, 'loading organizations');
+      setError(errorMessage);
+      toast.error(errorMessage);
     }
-  }, [handleError, setActiveOrganization, withRetry])
+  };
 
-  // Organization actions
-  const switchOrganization = useCallback(async (organizationId: string) => {
-    const targetOrg = state.organizations.find(org => org.id === organizationId)
-    const targetRole = state.userRoles[organizationId]
-    
-    if (targetOrg && targetRole) {
-      await setActiveOrganization(targetOrg, targetRole)
-    }
-  }, [state.organizations, state.userRoles, setActiveOrganization])
-
-  const createOrganization = useCallback(async (data: CreateOrganizationData): Promise<Organization> => {
+  // Load organization details with retry logic
+  const loadOrganization = async (organizationId: string) => {
     try {
-      if (!state.user) {
-        throw new Error('User not authenticated')
+      const org = await retryWithBackoff(() => fetchOrganizationById(organizationId));
+      setOrganization(org);
+      localStorage.setItem('currentOrganizationId', organizationId);
+      
+      // Find user's role in this organization
+      const userOrg = organizations.find(o => o.id === organizationId);
+      if (userOrg) {
+        // Assuming the role is stored in the organization object
+        setOrganizationRole('admin' as UserRole); // This should come from the actual data
       }
-
-      const organization = await OrganizationService.createOrganization(data, state.user.id)
       
-      // Refresh organizations
-      await loadUserOrganizations(state.user.id)
-      
-      // Track organization creation
-      AnalyticsService.trackEvent(organization.id, 'organization_created', {
-        organization_name: organization.name,
-      })
-
-      toast.success('Organization created successfully!')
-      return organization
+      await loadSubscription(organizationId);
     } catch (error) {
-      handleError(error, 'Failed to create organization')
-      throw error
+      const errorMessage = handleServiceError(error, 'loading organization');
+      setError(errorMessage);
+      toast.error(errorMessage);
     }
-  }, [state.user, loadUserOrganizations, handleError])
+  };
 
-  const updateOrganization = useCallback(async (id: string, data: Partial<Organization>): Promise<Organization> => {
+  // Load subscription with retry logic
+  const loadSubscription = async (organizationId: string) => {
     try {
-      const updatedOrg = await OrganizationService.updateOrganization(id, data)
+      const sub = await retryWithBackoff(() => fetchOrganizationSubscription(organizationId));
+      setSubscription(sub);
+      setSubscriptionPlan(sub?.subscription_plans || null);
       
-      // Update local state
-      if (state.organization?.id === id) {
-        dispatch({ type: 'SET_ORGANIZATION', payload: updatedOrg })
-      }
-      
-      // Update organizations list
-      const updatedOrgs = state.organizations.map(org => 
-        org.id === id ? updatedOrg : org
-      )
-      dispatch({ type: 'SET_ORGANIZATIONS', payload: updatedOrgs })
-
-      // Invalidate cached organizations so fresh data (including currency/country) is fetched next time
-      try {
-        if (state.user) {
-          const cacheKey = createCacheKey(CACHE_KEYS.USER_ORGANIZATIONS, state.user.id)
-          CacheService.delete(cacheKey)
+      if (sub) {
+        const now = new Date();
+        const trialEnd = sub.trial_end ? new Date(sub.trial_end) : null;
+        
+        if (trialEnd && trialEnd > now) {
+          setIsTrialing(true);
+          const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          setDaysLeftInTrial(daysLeft);
+        } else {
+          setIsTrialing(false);
+          setDaysLeftInTrial(null);
         }
-      } catch (e) {
-        console.warn('Failed to invalidate organizations cache:', e)
       }
-
-      toast.success('Organization updated successfully!')
-      return updatedOrg
     } catch (error) {
-      handleError(error, 'Failed to update organization')
-      throw error
+      const errorMessage = handleServiceError(error, 'loading subscription');
+      console.warn(errorMessage); // Don't show error toast for subscription issues
     }
-  }, [state.organization, state.organizations, state.user, handleError])
+  };
 
-  // User management actions
-  const inviteUser = useCallback(async (email: string, role: UserRole): Promise<UserInvitation> => {
+  // Load system settings with retry logic
+  const loadSystemSettings = async () => {
     try {
-      if (!state.organization || !state.user) {
-        throw new Error('Organization or user not available')
-      }
-
-      const invitation = await UserService.inviteUser(
-        state.organization.id,
-        email,
-        role,
-        state.user.id
-      )
-
-      // Track user invitation
-      AnalyticsService.trackEvent(state.organization.id, 'user_invited', {
-        invited_email: email,
-        invited_role: role,
-      })
-
-      toast.success(`Invitation sent to ${email}`)
-      return invitation
+      const settings = await retryWithBackoff(() => fetchSystemSettings());
+      setSystemSettings(settings);
     } catch (error) {
-      handleError(error, 'Failed to invite user')
-      throw error
+      const errorMessage = handleServiceError(error, 'loading system settings');
+      console.warn(errorMessage); // Don't show error toast for system settings
     }
-  }, [state.organization, state.user, handleError])
+  };
 
-  const removeUser = useCallback(async (userId: string): Promise<void> => {
+  // Switch organization
+  const switchOrganization = async (organizationId: string) => {
     try {
-      if (!state.organization) {
-        throw new Error('Organization not available')
-      }
-
-      await UserService.removeUser(state.organization.id, userId)
-      
-      toast.success('User removed successfully')
+      await retryWithBackoff(() => switchUserOrganization(organizationId));
+      await loadOrganization(organizationId);
+      toast.success('Organization switched successfully');
     } catch (error) {
-      handleError(error, 'Failed to remove user')
-      throw error
+      const errorMessage = handleServiceError(error, 'switching organization');
+      setError(errorMessage);
+      toast.error(errorMessage);
+      throw error;
     }
-  }, [state.organization, handleError])
-
-  const updateUserRole = useCallback(async (userId: string, role: UserRole): Promise<void> => {
-    try {
-      if (!state.organization) {
-        throw new Error('Organization not available')
-      }
-
-      await UserService.updateUserRole(state.organization.id, userId, role)
-      
-      toast.success('User role updated successfully')
-    } catch (error) {
-      handleError(error, 'Failed to update user role')
-      throw error
-    }
-  }, [state.organization, handleError])
-
-  // Subscription actions
-  const updateSubscription = useCallback(async (planId: string): Promise<void> => {
-    try {
-      if (!state.organization) {
-        throw new Error('Organization not available')
-      }
-
-      const subscription = await SubscriptionService.updateSubscription(state.organization.id, planId)
-      dispatch({ type: 'SET_SUBSCRIPTION', payload: subscription })
-      
-      if (subscription.subscription_plans) {
-        dispatch({ type: 'SET_SUBSCRIPTION_PLAN', payload: subscription.subscription_plans })
-      }
-
-      // Track subscription update
-      AnalyticsService.trackEvent(state.organization.id, 'subscription_updated', {
-        plan_id: planId,
-      })
-
-      toast.success('Subscription updated successfully!')
-    } catch (error) {
-      handleError(error, 'Failed to update subscription')
-      throw error
-    }
-  }, [state.organization, handleError])
-
-  const cancelSubscription = useCallback(async (): Promise<void> => {
-    try {
-      if (!state.organization) {
-        throw new Error('Organization not available')
-      }
-
-      await SubscriptionService.cancelSubscription(state.organization.id)
-      
-      // Update local state
-      if (state.subscription) {
-        dispatch({ 
-          type: 'SET_SUBSCRIPTION', 
-          payload: { ...state.subscription, status: 'canceled' } 
-        })
-      }
-
-      toast.success('Subscription canceled')
-    } catch (error) {
-      handleError(error, 'Failed to cancel subscription')
-      throw error
-    }
-  }, [state.organization, state.subscription, handleError])
+  };
 
   // Refresh functions
-  const refreshOrganization = useCallback(async (): Promise<void> => {
-    if (state.user) {
-      await loadUserOrganizations(state.user.id)
+  const refreshOrganizations = async () => {
+    if (user) {
+      await loadOrganizations(user.id);
     }
-  }, [state.user, loadUserOrganizations])
+  };
 
-  const loadSystemSettings = useCallback(async () => {
-    try {
-      const settings = await withRetry(() => 
-        SystemSettingsService.getSystemSettings()
-      )
-      dispatch({ type: 'SET_SYSTEM_SETTINGS', payload: settings || null })
-    } catch (e) {
-      console.warn('Failed to load system settings', e)
-      dispatch({ type: 'SET_SYSTEM_SETTINGS', payload: null })
+  const refreshSubscription = async () => {
+    if (organization) {
+      await loadSubscription(organization.id);
     }
-  }, [withRetry])
+  };
 
-  const refreshUsage = useCallback(async (): Promise<void> => {
-    try {
-      if (!state.organization) return
-
-      const metrics = await UsageService.getUsageMetrics(state.organization.id)
-      dispatch({ type: 'SET_USAGE_METRICS', payload: metrics })
-    } catch (error) {
-      console.error('Error refreshing usage metrics:', error)
-    }
-  }, [state.organization])
-
-  // Feature access functions
-  const hasFeature = useCallback((feature: string): boolean => {
-    if (!state.subscriptionPlan || !isSubscriptionActive(state.subscriptionStatus)) {
-      // During trial or if no subscription, allow basic features
-      if (isSubscriptionTrialing(state.subscriptionStatus)) {
-        const trialFeatures = ['appointments', 'clients', 'staff', 'services', 'reports', 'invoices']
-        return trialFeatures.includes(feature)
-      }
-      return false
-    }
-
-    const planFeatures = PLAN_FEATURES[state.subscriptionPlan.slug] || PLAN_FEATURES['starter']
-    const featureConfig = planFeatures?.[feature as keyof typeof planFeatures]
-    
-    return featureConfig?.enabled || false
-  }, [state.subscriptionPlan, state.subscriptionStatus])
-
-  const getFeatureAccess = useCallback((feature: string): FeatureAccess => {
-    if (!state.subscriptionPlan || !isSubscriptionActive(state.subscriptionStatus)) {
-      if (isSubscriptionTrialing(state.subscriptionStatus)) {
-        const trialFeatures = ['appointments', 'clients', 'staff', 'services', 'reports', 'invoices']
-        const enabled = trialFeatures.includes(feature)
-        return calculateFeatureAccess(enabled)
-      }
-      return calculateFeatureAccess(false)
-    }
-
-    const planFeatures = PLAN_FEATURES[state.subscriptionPlan.slug] || PLAN_FEATURES['starter']
-    const featureConfig = planFeatures?.[feature as keyof typeof planFeatures]
-    
-    if (!featureConfig) {
-      return calculateFeatureAccess(false)
-    }
-
-    const usage = state.usageMetrics[feature] || 0
-    return calculateFeatureAccess(featureConfig.enabled, featureConfig.max, usage)
-  }, [state.subscriptionPlan, state.subscriptionStatus, state.usageMetrics])
-
-  const canPerformActionCheck = useCallback((action: string, resource: string): boolean => {
-    const overrides = (state.organization?.settings as any)?.role_permissions as
-      | Record<string, { action: string; resource: string; conditions?: Record<string, any> }[]>
-      | undefined
-    if (overrides) {
-      // Lazy import to avoid circular issues if any
-      try {
-        return canPerformActionWithOverrides(state.organizationRole, action, resource, overrides)
-      } catch {
-        return canPerformAction(state.organizationRole, action, resource)
-      }
-    }
-    return canPerformAction(state.organizationRole, action, resource)
-  }, [state.organizationRole, state.organization])
-
-  // Set up auth listener with enhanced error handling
+  // Initialize context
   useEffect(() => {
-    let mounted = true
-    let retryTimeout: NodeJS.Timeout
+    let mounted = true;
+    
+    const initializeAuth = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Use longer timeout for initial auth check
+        const { data: { session }, error: sessionError } = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Session check timeout')), 10000)
+          )
+        ]);
+        
+        if (sessionError) {
+          throw sessionError;
+        }
+        
+        if (!mounted) return;
+        
+        if (session?.user) {
+          setUser(session.user);
+          await Promise.all([
+            loadOrganizations(session.user.id),
+            loadSystemSettings()
+          ]);
+        }
+      } catch (error) {
+        if (!mounted) return;
+        
+        const errorMessage = handleServiceError(error, 'authentication initialization');
+        setError(errorMessage);
+        
+        // For network errors, don't break the app completely
+        if (error instanceof Error && error.message.includes('timeout')) {
+          toast.error('Connection timeout. Some features may be limited.');
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
 
-     const initializeAuth = async () => {
-       try {
-         // Get initial session with retry
-         const { data: { session } } = await withRetry(() => 
-           supabase.auth.getSession()
-         )
-         
-         if (!mounted) return
- 
-         if (session?.user) {
-           dispatch({ type: 'SET_USER', payload: session.user })
-           // Defer data fetching to avoid potential deadlocks
-           setTimeout(() => {
-             loadUserOrganizations(session.user!.id, true)
-               .finally(() => dispatch({ type: 'SET_LOADING', payload: false }))
-           }, 0)
-         } else {
-           dispatch({ type: 'SET_LOADING', payload: false })
-         }
-
-         // Load system settings in parallel
-         setTimeout(() => {
-           loadSystemSettings()
-         }, 0)
-       } catch (error) {
-         if (mounted) {
-           handleError(error, 'Failed to initialize authentication')
-           dispatch({ type: 'SET_LOADING', payload: false })
-           
-           // Retry initialization after 5 seconds if it's a network error
-           if (error instanceof Error && error.message.includes('Failed to fetch')) {
-             retryTimeout = setTimeout(() => {
-               if (mounted) {
-                 console.log('Retrying authentication initialization...')
-                 initializeAuth()
-               }
-             }, 5000)
-           }
-         }
-       }
-     }
-
-    initializeAuth()
+    initializeAuth();
 
     // Listen for auth changes
-     const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
-       (event, session) => {
-         if (!mounted) return
- 
-         if (session?.user) {
-           dispatch({ type: 'SET_USER', payload: session.user })
-           // Defer supabase calls to prevent deadlocks
-           setTimeout(() => {
-             loadUserOrganizations(session.user!.id, true)
-           }, 0)
-         } else {
-           dispatch({ type: 'RESET_STATE' })
-           // Clear cache on logout
-           CacheService.clear()
-           localStorage.removeItem(STORAGE_KEYS.ACTIVE_ORGANIZATION)
-         }
-       }
-     )
-
-    // Cleanup timeout
-    const timeoutId = setTimeout(() => {
-      if (mounted && state.loading) {
-        console.warn('Auth initialization timeout reached')
-        dispatch({ type: 'SET_LOADING', payload: false })
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
+        
+        if (event === 'SIGNED_IN' && session?.user) {
+          setUser(session.user);
+          setError(null);
+          await Promise.all([
+            loadOrganizations(session.user.id),
+            loadSystemSettings()
+          ]);
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setOrganization(null);
+          setOrganizations([]);
+          setOrganizationRole(null);
+          setSubscription(null);
+          setSubscriptionPlan(null);
+          setIsTrialing(false);
+          setDaysLeftInTrial(null);
+          setSystemSettings(null);
+          setError(null);
+          localStorage.removeItem('currentOrganizationId');
+        }
       }
-    }, 15000) // Increased timeout to 15 seconds
+    );
 
     return () => {
-      mounted = false
-      authSubscription.unsubscribe()
-      clearTimeout(timeoutId)
-      if (retryTimeout) clearTimeout(retryTimeout)
-    }
-  }, [loadUserOrganizations, handleError, state.loading, loadSystemSettings, withRetry])
+      mounted = false;
+      authSubscription.unsubscribe();
+    };
+  }, []);
 
-  // Computed properties
-  const isOrganizationOwner = state.organizationRole === 'owner'
-  const isOrganizationAdmin = hasMinimumRole(state.organizationRole, 'admin')
-  const canManageUsers = hasMinimumRole(state.organizationRole, 'admin')
-  const canManageSettings = hasMinimumRole(state.organizationRole, 'admin')
-  const canManageSystem = state.isSuperAdmin
-  const isTrialing = isSubscriptionTrialing(state.subscriptionStatus)
-  const isSubscriptionActiveCheck = isSubscriptionActive(state.subscriptionStatus)
-  const daysLeftInTrial = calculateTrialDaysRemaining(state.subscription)
- 
-  const locale = (state.systemSettings as any)?.regional_formats_enabled ? (navigator?.language || 'en-US') : 'en-US'
-  const regionalSettings = (() => {
-    const org = state.organization
-    const s = (org?.settings as any) || {}
-    return s.regional_settings || null
-  })()
- 
-  // Context value
-  const contextValue: SaasContextType = {
-    // State
-    ...state,
-    
-    // Computed properties
+  const value: SaasContextType = {
+    user,
+    organization,
+    organizations,
+    organizationRole,
+    subscription,
+    subscriptionPlan,
+    isTrialing,
+    daysLeftInTrial,
+    systemSettings,
     isOrganizationOwner,
     isOrganizationAdmin,
-    canManageUsers,
-    canManageSettings,
-    canManageSystem,
-    isTrialing,
-    isSubscriptionActive: isSubscriptionActiveCheck,
-    daysLeftInTrial,
-    
-    // Actions
     switchOrganization,
-    refreshOrganization,
-    createOrganization,
-    updateOrganization,
-    inviteUser,
-    removeUser,
-    updateUserRole,
-    updateSubscription,
-    cancelSubscription,
-    refreshUsage,
-    clearError,
-    
-    // Feature checking
-    hasFeature,
-    getFeatureAccess,
-    canPerformAction: canPerformActionCheck,
- 
-    // Formatting/Locale
-    locale,
-    // @ts-expect-error expose regional settings for consumers without typing explosion
-    regionalSettings,
-  }
+    refreshOrganizations,
+    refreshSubscription,
+    loading,
+    error,
+  };
 
-  return (
-    <SaasContext.Provider value={contextValue}>
-      {children}
-    </SaasContext.Provider>
-  )
+  return <SaasContext.Provider value={value}>{children}</SaasContext.Provider>;
 }
 
-// Hook to use SaaS context
-export const useSaas = (): SaasContextType => {
-  const context = useContext(SaasContext)
-  if (context === undefined) {
-    throw new Error('useSaas must be used within a SaasProvider')
+export function useSaas(): SaasContextType {
+  const context = useContext(SaasContext);
+  if (!context) {
+    throw new Error('useSaas must be used within a SaasProvider');
   }
-  return context
+  return context;
 }

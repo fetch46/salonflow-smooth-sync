@@ -93,7 +93,6 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
   };
 
   const getUserRole = (orgId: string) => {
-    const orgUser = organizations.find(org => org.id === orgId);
     return organizationRole || 'member';
   };
 
@@ -264,7 +263,7 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
 };
 
 // Export as AppTopbar for backward compatibility
-export const AppTopbar: React.FC<TopbarProps> = (props) => <Topbar {...props} />;
+export const AppTopbar = Topbar;
 
 // Default export
 export default Topbar;
