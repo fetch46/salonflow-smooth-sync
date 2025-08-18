@@ -404,14 +404,10 @@ export default function SuperAdmin() {
 
   const handleChangeUserRole = async (userId: string, organizationId: string, newRole: string) => {
     try {
-      const { error } = await supabase
-        .from('organization_users')
-        .update({ role: newRole })
-        .eq('user_id', userId)
-        .eq('organization_id', organizationId);
-
+      const { error } = await supabase.functions.invoke('update-org-user-role', {
+        body: { user_id: userId, organization_id: organizationId, role: newRole },
+      });
       if (error) throw error;
-
       toast.success('User role updated successfully');
       await fetchOrganizationUsers(organizationId);
     } catch (error) {
