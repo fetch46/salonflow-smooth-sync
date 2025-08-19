@@ -65,8 +65,11 @@ AS $$
     AND is_active = true;
 $$;
 
--- 4) generate_job_number
-CREATE OR REPLACE FUNCTION public.generate_job_number()
+-- 4) generate_job_number (scoped per organization)
+-- Generates the next sequential number per organization in the format JCNNN
+-- If multiple concurrent inserts happen, the unique constraint (organization_id, job_number)
+-- will protect against duplicates; callers should retry on conflict.
+CREATE OR REPLACE FUNCTION public.generate_job_number(p_organization_id uuid)
 RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -79,7 +82,8 @@ BEGIN
     SELECT COALESCE(MAX(CAST(SUBSTRING(job_number FROM 'JC(\d+)') AS INTEGER)), 0) + 1
     INTO next_number
     FROM public.job_cards
-    WHERE job_number ~ '^JC\d+$';
+    WHERE organization_id = p_organization_id
+      AND job_number ~ '^JC\d+$';
     job_number := 'JC' || LPAD(next_number::TEXT, 3, '0');
     RETURN job_number;
 END;

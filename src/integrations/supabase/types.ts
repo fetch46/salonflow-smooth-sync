@@ -3097,7 +3097,9 @@ export type Database = {
         Returns: string
       }
       generate_job_number: {
-        Args: Record<PropertyKey, never>
+        Args: {
+          p_organization_id: string
+        }
         Returns: string
       }
       get_user_organization_count: {
