@@ -533,9 +533,11 @@ export default function Payments() {
                       )}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="p-0" align="start">
+                  <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="range"
+                      initialFocus
+                      defaultMonth={dateRange?.from}
                       selected={dateRange}
                       onSelect={setDateRange}
                       numberOfMonths={2}
