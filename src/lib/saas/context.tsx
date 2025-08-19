@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useContext,
   useCallback,
+  useMemo,
 } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import {
@@ -17,32 +18,21 @@ import {
 import type {
   Organization,
   OrganizationUser,
+  OrganizationSubscription,
   SubscriptionPlan,
+  SubscriptionStatus,
+  UsageMetrics,
+  UserInvitation,
+  CreateOrganizationData,
+  SaasContextType,
   UserRole,
 } from './types'
-
-interface SaasContextType {
-  organizations: OrganizationUser[]
-  currentOrganization: Organization | null
-  setCurrentOrganization: (org: Organization | null) => void
-  // Expose selected organization using common key expected by consumers
-  organization: Organization | null
-  // Current user's role within the selected organization
-  organizationRole: UserRole | null
-  // Simple organization switcher by id
-  switchOrganization: (organizationId: string) => Promise<void>
-  subscriptionPlan: SubscriptionPlan | null
-  isSubscriptionActive: boolean
-  updateSubscription: (planId: string) => Promise<void>
-  cancelSubscription: () => Promise<void>
-  organizationUsers: OrganizationUser[]
-  inviteUser: (email: string, role: string) => Promise<void>
-  removeUser: (userId: string) => Promise<void>
-  updateUserRole: (userId: string, role: string) => Promise<void>
-  isSuperAdmin: boolean
-  systemSettings: any
-  user: any
-}
+import { PLAN_FEATURES } from '@/lib/features'
+import {
+  calculateFeatureAccess,
+  canPerformAction as canPerformActionUtil,
+  hasMinimumRole,
+} from './utils'
 
 const SaasContext = createContext<SaasContextType | undefined>(undefined)
 
@@ -62,19 +52,53 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
   const [organizations, setOrganizations] = useState<OrganizationUser[]>([])
   const [currentOrganization, setCurrentOrganization] =
     useState<Organization | null>(null)
-  const [subscriptionPlan, setSubscriptionPlan] =
-    useState<SubscriptionPlan | null>(null)
-  const [organizationUsers, setOrganizationUsers] = useState<OrganizationUser[]>(
-    []
-  )
+  const [subscription, setSubscription] =
+    useState<OrganizationSubscription | null>(null)
+  const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlan | null>(null)
+  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null)
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false)
   const [systemSettings, setSystemSettings] = useState<any>(null)
   const [user, setUser] = useState<any>(null)
   const [organizationRole, setOrganizationRole] = useState<UserRole | null>(null)
+  const [loading, setLoading] = useState<boolean>(false)
+  const [error, setError] = useState<string | null>(null)
+  const [usageMetrics, setUsageMetrics] = useState<UsageMetrics>({})
+  const [locale, setLocale] = useState<string>('en-US')
 
-  const isSubscriptionActive = !!(
-    subscriptionPlan && subscriptionPlan.status === 'active'
+  const isSubscriptionActive = useMemo(() => subscriptionStatus === 'active', [subscriptionStatus])
+
+  const isTrialing = useMemo(() => subscriptionStatus === 'trial', [subscriptionStatus])
+
+  const daysLeftInTrial = useMemo(() => {
+    if (!subscription || !subscription.trial_end) return null
+    const end = new Date(subscription.trial_end).getTime()
+    const now = Date.now()
+    const diffDays = Math.ceil((end - now) / (1000 * 60 * 60 * 24))
+    return Math.max(diffDays, 0)
+  }, [subscription])
+
+  const isOrganizationOwner = useMemo(() => organizationRole === 'owner', [organizationRole])
+  const isOrganizationAdmin = useMemo(
+    () => organizationRole === 'owner' || organizationRole === 'admin',
+    [organizationRole]
   )
+  const canManageUsers = useMemo(() => hasMinimumRole(organizationRole, 'manager'), [organizationRole])
+  const canManageSettings = useMemo(() => hasMinimumRole(organizationRole, 'admin'), [organizationRole])
+  const canManageSystem = useMemo(() => isSuperAdmin, [isSuperAdmin])
+
+  const organizationsList = useMemo(() => {
+    return organizations
+      .map((m) => m.organizations)
+      .filter(Boolean) as Organization[]
+  }, [organizations])
+
+  const userRoles = useMemo(() => {
+    const mapping: Record<string, UserRole> = {}
+    organizations.forEach((m) => {
+      if (m.organizations) mapping[m.organizations.id] = m.role
+    })
+    return mapping
+  }, [organizations])
 
   // Get current user
   useEffect(() => {
@@ -103,6 +127,7 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
     if (!user) return
 
     try {
+      setLoading(true)
       const orgs = await OrganizationService.getUserOrganizations(user.id)
       setOrganizations(orgs)
 
@@ -111,6 +136,9 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
       }
     } catch (error) {
       console.error('Failed to load organizations:', error)
+      setError('Failed to load organizations')
+    } finally {
+      setLoading(false)
     }
   }, [user, currentOrganization])
 
@@ -130,13 +158,18 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
     if (!currentOrganization) return
 
     try {
-      const subscription =
-        await SubscriptionService.getOrganizationSubscription(
-          currentOrganization.id
-        )
-      setSubscriptionPlan(subscription?.subscription_plans || null)
+      setLoading(true)
+      const sub = await SubscriptionService.getOrganizationSubscription(
+        currentOrganization.id
+      )
+      setSubscription(sub)
+      setSubscriptionPlan(sub?.subscription_plans || null)
+      setSubscriptionStatus(sub?.status || null)
     } catch (error) {
       console.error('Failed to load subscription:', error)
+      setError('Failed to load subscription')
+    } finally {
+      setLoading(false)
     }
   }, [currentOrganization])
 
@@ -144,13 +177,19 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
     if (!currentOrganization) return
 
     try {
-      const subscription = await SubscriptionService.updateSubscription(
+      setLoading(true)
+      const sub = await SubscriptionService.updateSubscription(
         currentOrganization.id,
         planId
       )
-      setSubscriptionPlan(subscription.subscription_plans)
+      setSubscription(sub)
+      setSubscriptionPlan(sub.subscription_plans)
+      setSubscriptionStatus(sub.status)
     } catch (error) {
       console.error('Failed to update subscription:', error)
+      setError('Failed to update subscription')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -158,39 +197,34 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
     if (!currentOrganization) return
 
     try {
+      setLoading(true)
       await SubscriptionService.cancelSubscription(currentOrganization.id)
+      setSubscription(null)
       setSubscriptionPlan(null)
+      setSubscriptionStatus(null)
     } catch (error) {
       console.error('Failed to cancel subscription:', error)
+      setError('Failed to cancel subscription')
+    } finally {
+      setLoading(false)
     }
   }
 
-  const loadOrganizationUsers = useCallback(async () => {
-    if (!currentOrganization) return
-
-    try {
-      const users = await UserService.getOrganizationUsers(
-        currentOrganization.id
-      )
-      setOrganizationUsers(users)
-    } catch (error) {
-      console.error('Failed to load organization users:', error)
-    }
-  }, [currentOrganization])
-
-  const inviteUser = async (email: string, role: string) => {
+  const inviteUser = async (email: string, role: UserRole): Promise<UserInvitation> => {
     if (!currentOrganization || !user) return
 
     try {
-      await UserService.inviteUser(
+      const invitation = await UserService.inviteUser(
         currentOrganization.id,
         email,
         role,
         user.id
       )
-      await loadOrganizationUsers()
+      return invitation
     } catch (error) {
       console.error('Failed to invite user:', error)
+      setError('Failed to invite user')
+      throw error
     }
   }
 
@@ -199,13 +233,13 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
 
     try {
       await UserService.removeUser(currentOrganization.id, userId)
-      await loadOrganizationUsers()
     } catch (error) {
       console.error('Failed to remove user:', error)
+      setError('Failed to remove user')
     }
   }
 
-  const updateUserRole = async (userId: string, role: string) => {
+  const updateUserRole = async (userId: string, role: UserRole) => {
     if (!currentOrganization) return
 
     try {
@@ -214,9 +248,9 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
         userId,
         role
       )
-      await loadOrganizationUsers()
     } catch (error) {
       console.error('Failed to update user role:', error)
+      setError('Failed to update user role')
     }
   }
 
@@ -255,6 +289,9 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
         regional_formats_enabled: false,
         app_name: 'AURA OS',
       })
+      if (settings?.regional_formats_enabled && (settings as any)?.default_locale) {
+        setLocale((settings as any).default_locale)
+      }
     } catch (error) {
       console.warn('Failed to load system settings:', error)
       // Set default settings on error
@@ -273,15 +310,35 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
     }
   }, [])
 
+  const refreshUsage = useCallback(async () => {
+    if (!currentOrganization) return
+    try {
+      setLoading(true)
+      // Placeholder: usage tracking integration
+      // For now, keep empty metrics
+      setUsageMetrics({})
+    } catch (error) {
+      console.error('Failed to refresh usage metrics:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [currentOrganization])
+
+  const refreshOrganization = useCallback(async () => {
+    await loadUserOrganizations()
+  }, [loadUserOrganizations])
+
   useEffect(() => {
     if (currentOrganization) {
       loadSubscription()
-      loadOrganizationUsers()
+      refreshUsage()
     } else {
+      setSubscription(null)
       setSubscriptionPlan(null)
-      setOrganizationUsers([])
+      setSubscriptionStatus(null)
+      setUsageMetrics({})
     }
-  }, [currentOrganization, loadSubscription, loadOrganizationUsers])
+  }, [currentOrganization, loadSubscription, refreshUsage])
 
   useEffect(() => {
     // Load system settings on mount
@@ -298,24 +355,77 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
     }
   }, [user, loadUserOrganizations, checkSuperAdminStatus, loadSystemSettings])
 
+  const hasFeature = useCallback((feature: string): boolean => {
+    if (!subscriptionPlan) return false
+    const planFeatures = PLAN_FEATURES[subscriptionPlan.slug] || PLAN_FEATURES['starter']
+    const config = planFeatures?.[feature as keyof typeof planFeatures]
+    return !!config?.enabled
+  }, [subscriptionPlan])
+
+  const getFeatureAccess = useCallback((feature: string) => {
+    if (!subscriptionPlan) return calculateFeatureAccess(false)
+    const planFeatures = PLAN_FEATURES[subscriptionPlan.slug] || PLAN_FEATURES['starter']
+    const config: any = planFeatures?.[feature as keyof typeof planFeatures]
+    const usage = usageMetrics[feature] || 0
+    return calculateFeatureAccess(!!config?.enabled, config?.max, usage)
+  }, [subscriptionPlan, usageMetrics])
+
+  const canPerformAction = useCallback((action: string, resource: string): boolean => {
+    return canPerformActionUtil(organizationRole, action, resource)
+  }, [organizationRole])
+
+  const clearError = useCallback(() => setError(null), [])
+
   const value: SaasContextType = {
-    organizations,
-    currentOrganization,
-    setCurrentOrganization,
+    // State
+    user,
+    loading,
     organization: currentOrganization,
+    organizations: organizationsList,
     organizationRole,
+    userRoles,
+    subscription,
+    subscriptionPlan,
+    subscriptionStatus,
+    isSuperAdmin,
+    superAdminPermissions: null,
+    usageMetrics,
+    error,
+    systemSettings,
+    // Actions
     switchOrganization,
-    subscriptionPlan: subscriptionPlan || null,
-    isSubscriptionActive,
-    updateSubscription,
-    cancelSubscription,
-    organizationUsers,
+    refreshOrganization,
+    createOrganization: async (data: CreateOrganizationData) => {
+      if (!user) throw new Error('Not authenticated')
+      const org = await OrganizationService.createOrganization(data, user.id)
+      await loadUserOrganizations()
+      return org
+    },
+    updateOrganization: async (id: string, data: Partial<Organization>) => {
+      const org = await OrganizationService.updateOrganization(id, data)
+      await loadUserOrganizations()
+      return org
+    },
     inviteUser,
     removeUser,
     updateUserRole,
-    isSuperAdmin,
-    systemSettings,
-    user,
+    updateSubscription,
+    cancelSubscription,
+    refreshUsage,
+    clearError,
+    // Computed
+    isOrganizationOwner,
+    isOrganizationAdmin,
+    canManageUsers,
+    canManageSettings,
+    canManageSystem,
+    isTrialing,
+    isSubscriptionActive,
+    daysLeftInTrial,
+    hasFeature,
+    getFeatureAccess,
+    canPerformAction,
+    locale,
   }
 
   return <SaasContext.Provider value={value}>{children}</SaasContext.Provider>
