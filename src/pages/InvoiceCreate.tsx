@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Users, Receipt, Trash2, Plus } from "lucide-react";
-import { useOrganizationCurrency, useOrganizationTaxRate } from "@/lib/saas/hooks";
+import { useOrganizationCurrency, useOrganizationTaxRate, useOrganization } from "@/lib/saas/hooks";
 import { createInvoiceWithFallback, getInvoiceItemsWithFallback, getInvoicesWithFallback } from "@/utils/mockDatabase";
 
 interface Customer { id: string; full_name: string; email: string | null; phone: string | null }
@@ -23,6 +23,7 @@ export default function InvoiceCreate() {
   const [searchParams] = useSearchParams();
   const { symbol } = useOrganizationCurrency();
   const orgTaxRate = useOrganizationTaxRate();
+  const { organization } = useOrganization();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -90,6 +91,7 @@ export default function InvoiceCreate() {
       const { data } = await supabase
         .from("business_locations")
         .select("id, name, is_default, is_active")
+        .eq('organization_id', organization?.id || '')
         .order("name");
       const active = (data || []).filter((l: any) => l.is_active !== false);
       setLocations(active as any);
@@ -121,7 +123,7 @@ export default function InvoiceCreate() {
       const locId = await resolveUserDefaultLocation();
       setDefaultLocationIdForUser(locId);
     })();
-  }, []);
+  }, [organization?.id]);
 
   // Apply default location: user's default, else org default flag, else first
   useEffect(() => {

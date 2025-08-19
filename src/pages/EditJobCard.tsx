@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useOrganization } from "@/lib/saas/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,6 +93,7 @@ function fromInputDateTimeLocal(value: string) {
 
 export default function EditJobCard() {
   const { id } = useParams<{ id: string }>();
+  const { organization } = useOrganization();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
@@ -131,7 +133,11 @@ export default function EditJobCard() {
             .eq("id", id)
             .single(),
         ]);
-        const { data: locs } = await supabase.from('business_locations').select('id, name').order('name');
+        const { data: locs } = await supabase
+          .from('business_locations')
+          .select('id, name')
+          .eq('organization_id', organization?.id || '')
+          .order('name');
         setLocations((locs || []) as any);
 
         if (staffRes.data) setStaff(staffRes.data);

@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Users, Receipt, Trash2, Plus } from "lucide-react";
-import { useOrganizationCurrency, useOrganizationTaxRate } from "@/lib/saas/hooks";
+import { useOrganizationCurrency, useOrganizationTaxRate, useOrganization } from "@/lib/saas/hooks";
 import { getInvoiceItemsWithFallback, getInvoicesWithFallback, updateInvoiceWithFallback } from "@/utils/mockDatabase";
 
 export default function InvoiceEdit() {
@@ -19,6 +19,7 @@ export default function InvoiceEdit() {
   const { id } = useParams();
   const { symbol } = useOrganizationCurrency();
   const orgTaxRate = useOrganizationTaxRate();
+  const { organization } = useOrganization();
 
   const [loading, setLoading] = useState(true);
   const [customers, setCustomers] = useState<any[]>([]);
@@ -56,6 +57,7 @@ export default function InvoiceEdit() {
       const { data } = await supabase
         .from("business_locations")
         .select("id, name, is_default, is_active")
+        .eq('organization_id', organization?.id || '')
         .order("name");
       const active = (data || []).filter((l: any) => l.is_active !== false);
       setLocations(active as any);

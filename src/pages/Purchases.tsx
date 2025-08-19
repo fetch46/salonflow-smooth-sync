@@ -171,7 +171,7 @@ export default function Purchases() {
       setReceivePurchaseId(purchaseId);
       // Load locations, items and purchase (for existing location)
       const [locsRes, itemsRes, purchaseRes] = await Promise.all([
-        supabase.from("business_locations").select("id, name").order("name"),
+        supabase.from("business_locations").select("id, name").eq('organization_id', organization?.id || '').order("name"),
         supabase
           .from("purchase_items")
           .select(`id, item_id, quantity, unit_cost, total_cost, received_quantity, inventory_items (name)`) 

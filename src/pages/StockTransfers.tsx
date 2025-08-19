@@ -18,7 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { addDays, format, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays } from "date-fns";
 import { DateRange } from "react-day-picker";
-import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { useOrganizationCurrency, useOrganization } from "@/lib/saas/hooks";
 
 interface InventoryItem { id: string; name: string; cost_price?: number | null; selling_price?: number | null; unit?: string | null }
 interface Location { id: string; name: string; }
@@ -29,6 +29,7 @@ interface TransferRow { id: string; item_id: string; from_location_id: string; t
 export default function StockTransfers() {
   const { toast } = useToast();
   const { format: formatMoney } = useOrganizationCurrency();
+  const { organization } = useOrganization();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [levels, setLevels] = useState<LevelRow[]>([]);
@@ -63,7 +64,7 @@ export default function StockTransfers() {
     try {
       const [itemsRes, locsRes, levelsRes, transfersRes] = await Promise.all([
         supabase.from("inventory_items").select("id, name, cost_price, selling_price, unit").eq("type", "good").eq("is_active", true).order("name"),
-        supabase.from("business_locations").select("id, name").order("name"),
+        supabase.from("business_locations").select("id, name").eq('organization_id', organization?.id || '').order("name"),
         supabase
           .from("inventory_levels")
           .select(
