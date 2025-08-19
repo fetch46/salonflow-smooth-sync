@@ -110,24 +110,27 @@ router.get('/revenue-by-location', requirePermission('REPORTS','VIEW'), async (r
   try {
     const start = req.query.start ? new Date(String(req.query.start)) : new Date('1900-01-01');
     const end = req.query.end ? new Date(String(req.query.end)) : new Date();
-
-    const lines = await prisma.journalLine.findMany({
-      where: { entry: { date: { gte: start, lte: end } } },
-      include: { account: true, product: true },
+    // Compute revenue from invoice items grouped by location within period
+    const invoices = await prisma.salesInvoice.findMany({
+      where: { createdAt: { gte: start, lte: end } },
+      select: { id: true, items: { select: { locationId: true, lineTotal: true } } },
     });
-
     const byLocation = new Map<string, number>();
-    for (const l of lines as any[]) {
-      if (l.account.category === 'INCOME' && l.locationId) {
-        const amount = Number(l.credit || 0) - Number(l.debit || 0);
-        byLocation.set(l.locationId, (byLocation.get(l.locationId) || 0) + amount);
+    for (const inv of invoices as any[]) {
+      for (const it of inv.items as any[]) {
+        const locId = it.locationId || 'unassigned';
+        byLocation.set(locId, (byLocation.get(locId) || 0) + Number(it.lineTotal || 0));
       }
     }
-
-    const locations = await prisma.stockLocation.findMany({ where: { id: { in: Array.from(byLocation.keys()) } } });
-
-    const rows = locations.map((loc: any) => ({ locationId: loc.id, locationName: loc.name, amount: byLocation.get(loc.id) || 0 }));
-    res.json({ rows });
+    const locIds = Array.from(byLocation.keys()).filter((k) => k !== 'unassigned');
+    const locations = locIds.length > 0 ? await prisma.stockLocation.findMany({ where: { id: { in: locIds } } }) : [];
+    const nameMap = new Map(locations.map((l: any) => [l.id, l.name]));
+    const rows = Array.from(byLocation.entries()).map(([id, amt]) => ({
+      locationId: id === 'unassigned' ? null : id,
+      locationName: id === 'unassigned' ? 'Unassigned' : (nameMap.get(id) || 'Location'),
+      amount: amt,
+    }));
+    res.json({ rows: rows.sort((a, b) => b.amount - a.amount) });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
