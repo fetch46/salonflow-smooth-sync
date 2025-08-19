@@ -940,7 +940,7 @@ export default function Appointments() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 {filteredAppointments.map((appointment) => {
                   const items = appointmentServicesById[appointment.id] || [];
                   const serviceNames = (items.length
@@ -950,7 +950,7 @@ export default function Appointments() {
                   return (
                     <div
                       key={appointment.id}
-                      className="group relative rounded-xl border bg-gradient-to-b from-white to-slate-50 dark:from-slate-950 dark:to-slate-900 p-3 md:p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all text-sm"
+                      className="group relative w-full rounded-xl border bg-gradient-to-b from-white to-slate-50 dark:from-slate-950 dark:to-slate-900 p-3 md:p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all text-sm"
                     >
                       <div className="absolute top-3 right-3">
                         <DropdownMenu>
