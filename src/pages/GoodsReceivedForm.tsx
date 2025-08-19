@@ -418,58 +418,105 @@ export default function GoodsReceivedForm() {
             }
           }
 
-          // 2) Adjust inventory by delta per item at derived location and warehouse
+          // 2) Adjust inventory by moving from old header's warehouse/location to the newly selected one
+          // Load previous header to identify old warehouse/location
+          let oldHeader: { location_id: string | null; warehouse_id: string | null } | null = null;
+          try {
+            const { data: h } = await supabase
+              .from("goods_received")
+              .select("location_id, warehouse_id")
+              .eq("id", id)
+              .single();
+            oldHeader = (h as any) || null;
+          } catch {}
+
           for (const it of purchaseItems) {
             const prev = Number(originalQuantities[it.id] || 0);
             const next = Math.max(0, Number(quantities[it.id] || 0));
             const delta = next - prev;
-            if (delta === 0) continue;
+            const movedHeader = (oldHeader?.location_id !== derivedLocationId) || (oldHeader?.warehouse_id !== warehouseId);
 
-            // 2a) Location-based levels
-            {
-              const { data: levelRows, error: levelErr } = await supabase
-                .from("inventory_levels")
-                .select("id, quantity")
-                .eq("item_id", it.item_id)
-                .eq("location_id", derivedLocationId)
-                .limit(1);
-              if (levelErr) throw levelErr;
-              const existing = (levelRows || [])[0] as { id: string; quantity: number } | undefined;
-              if (existing) {
-                const { error: updErr } = await supabase
+            // Reverse entire previous qty if header changed (remove from old loc/wh)
+            if (movedHeader && prev > 0) {
+              const oldLoc = oldHeader?.location_id || null;
+              const oldWh = oldHeader?.warehouse_id || null;
+              if (oldLoc) {
+                const { data: levelRows } = await supabase
                   .from("inventory_levels")
-                  .update({ quantity: Number(existing.quantity || 0) + delta })
-                  .eq("id", existing.id);
-                if (updErr) throw updErr;
-              } else {
-                const { error: insErr } = await supabase
+                  .select("id, quantity")
+                  .eq("item_id", it.item_id)
+                  .eq("location_id", oldLoc)
+                  .limit(1);
+                const existing = (levelRows || [])[0] as { id: string; quantity: number } | undefined;
+                if (existing) {
+                  await supabase
+                    .from("inventory_levels")
+                    .update({ quantity: Math.max(0, Number(existing.quantity || 0) - prev) })
+                    .eq("id", existing.id);
+                }
+              }
+              if (oldWh) {
+                const { data: whRows } = await supabase
                   .from("inventory_levels")
-                  .insert([{ item_id: it.item_id, location_id: derivedLocationId, quantity: Math.max(0, delta) }]);
-                if (insErr) throw insErr;
+                  .select("id, quantity")
+                  .eq("item_id", it.item_id)
+                  .eq("warehouse_id", oldWh)
+                  .limit(1);
+                const existingWh = (whRows || [])[0] as { id: string; quantity: number } | undefined;
+                if (existingWh) {
+                  await supabase
+                    .from("inventory_levels")
+                    .update({ quantity: Math.max(0, Number(existingWh.quantity || 0) - prev) })
+                    .eq("id", existingWh.id);
+                }
               }
             }
 
-            // 2b) Warehouse-based levels
+            // Apply to new location
             {
-              const { data: whRows, error: whErr } = await supabase
-                .from("inventory_levels")
-                .select("id, quantity")
-                .eq("item_id", it.item_id)
-                .eq("warehouse_id", warehouseId)
-                .limit(1);
-              if (whErr) throw whErr;
-              const existingWh = (whRows || [])[0] as { id: string; quantity: number } | undefined;
-              if (existingWh) {
-                const { error: updWhErr } = await supabase
+              const addQty = movedHeader ? next : delta;
+              if (addQty !== 0) {
+                const { data: levelRows } = await supabase
                   .from("inventory_levels")
-                  .update({ quantity: Number(existingWh.quantity || 0) + delta })
-                  .eq("id", existingWh.id);
-                if (updWhErr) throw updWhErr;
-              } else {
-                const { error: insWhErr } = await supabase
+                  .select("id, quantity")
+                  .eq("item_id", it.item_id)
+                  .eq("location_id", derivedLocationId)
+                  .limit(1);
+                const existing = (levelRows || [])[0] as { id: string; quantity: number } | undefined;
+                if (existing) {
+                  await supabase
+                    .from("inventory_levels")
+                    .update({ quantity: Math.max(0, Number(existing.quantity || 0) + addQty) })
+                    .eq("id", existing.id);
+                } else if (addQty > 0) {
+                  await supabase
+                    .from("inventory_levels")
+                    .insert([{ item_id: it.item_id, location_id: derivedLocationId, quantity: addQty }]);
+                }
+              }
+            }
+
+            // Apply to new warehouse
+            {
+              const addQty = movedHeader ? next : delta;
+              if (addQty !== 0) {
+                const { data: whRows } = await supabase
                   .from("inventory_levels")
-                  .insert([{ item_id: it.item_id, warehouse_id: warehouseId, quantity: Math.max(0, delta) }]);
-                if (insWhErr) throw insWhErr;
+                  .select("id, quantity")
+                  .eq("item_id", it.item_id)
+                  .eq("warehouse_id", warehouseId)
+                  .limit(1);
+                const existingWh = (whRows || [])[0] as { id: string; quantity: number } | undefined;
+                if (existingWh) {
+                  await supabase
+                    .from("inventory_levels")
+                    .update({ quantity: Math.max(0, Number(existingWh.quantity || 0) + addQty) })
+                    .eq("id", existingWh.id);
+                } else if (addQty > 0) {
+                  await supabase
+                    .from("inventory_levels")
+                    .insert([{ item_id: it.item_id, warehouse_id: warehouseId, quantity: addQty }]);
+                }
               }
             }
           }
