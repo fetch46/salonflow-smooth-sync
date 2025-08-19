@@ -8,7 +8,8 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => {
 
 	return {
-		base: process.env.VITE_BASE || '/',
+		// Use relative base by default so assets/chunks load correctly on sub-path previews
+		base: process.env.VITE_BASE ?? './',
 		server: {
 			host: "::",
 			port: 8080,
