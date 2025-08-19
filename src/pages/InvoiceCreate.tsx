@@ -147,7 +147,11 @@ export default function InvoiceCreate() {
     if (!fromJobCard) return;
     (async () => {
       try {
-        const { data: jc } = await supabase.from('job_cards').select('id, client_id').eq('id', fromJobCard).maybeSingle();
+        const { data: jc } = await supabase
+          .from('job_cards')
+          .select('id, client_id, location_id')
+          .eq('id', fromJobCard)
+          .maybeSingle();
         if (!jc) return;
         // Prefill client
         const client = customers.find(c => c.id === jc.client_id);
@@ -159,6 +163,8 @@ export default function InvoiceCreate() {
             customer_email: client.email || '',
             customer_phone: client.phone || '',
             jobcard_id: jc.id,
+            // Use the job card's location if available
+            location_id: (jc as any).location_id || prev.location_id,
           }));
         } else if (jc.client_id) {
           const { data: cli } = await supabase.from('clients').select('id, full_name, email, phone').eq('id', jc.client_id).maybeSingle();
@@ -171,6 +177,8 @@ export default function InvoiceCreate() {
               customer_email: (cli as any).email || '',
               customer_phone: (cli as any).phone || '',
               jobcard_id: jc.id,
+              // Use the job card's location if available
+              location_id: (jc as any).location_id || prev.location_id,
             }));
           }
         }
