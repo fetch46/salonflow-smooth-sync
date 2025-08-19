@@ -1327,41 +1327,35 @@ export type Database = {
       inventory_transfers: {
         Row: {
           created_at: string
-          from_location_id: string | null
-          from_warehouse_id: string | null
+          from_location_id: string
           id: string
           item_id: string
           notes: string | null
           organization_id: string | null
           quantity: number
-          to_location_id: string | null
-          to_warehouse_id: string | null
+          to_location_id: string
           updated_at: string
         }
         Insert: {
           created_at?: string
-          from_location_id?: string | null
-          from_warehouse_id?: string | null
+          from_location_id: string
           id?: string
           item_id: string
           notes?: string | null
           organization_id?: string | null
           quantity: number
-          to_location_id?: string | null
-          to_warehouse_id?: string | null
+          to_location_id: string
           updated_at?: string
         }
         Update: {
           created_at?: string
-          from_location_id?: string | null
-          from_warehouse_id?: string | null
+          from_location_id?: string
           id?: string
           item_id?: string
           notes?: string | null
           organization_id?: string | null
           quantity?: number
-          to_location_id?: string | null
-          to_warehouse_id?: string | null
+          to_location_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -1377,13 +1371,6 @@ export type Database = {
             columns: ["from_location_id"]
             isOneToOne: false
             referencedRelation: "storage_locations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "inventory_transfers_from_warehouse_id_fkey"
-            columns: ["from_warehouse_id"]
-            isOneToOne: false
-            referencedRelation: "warehouses"
             referencedColumns: ["id"]
           },
           {
@@ -1405,13 +1392,6 @@ export type Database = {
             columns: ["to_location_id"]
             isOneToOne: false
             referencedRelation: "storage_locations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "inventory_transfers_to_warehouse_id_fkey"
-            columns: ["to_warehouse_id"]
-            isOneToOne: false
-            referencedRelation: "warehouses"
             referencedColumns: ["id"]
           },
         ]

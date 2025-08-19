@@ -90,9 +90,7 @@ VALUES
   ('pnl', 'Profit & Loss', 'Income, COGS and Expenses over a period', 'Financial'),
   ('balance_sheet', 'Balance Sheet', 'Assets, Liabilities and Equity as of a specific date', 'Financial'),
   ('trial_balance', 'Trial Balance', 'Debits and Credits by account for the selected period', 'Financial'),
-  ('revenue_by_location', 'Revenue by Location', 'Income by business location for the selected period', 'Financial'),
-  ('invoice_details', 'Invoice Details', 'Invoices with paid and balance for the selected period', 'Financial'),
-  ('payment_details', 'Payment Details', 'Payments received with references for the selected period', 'Financial')
+  ('revenue_by_location', 'Revenue by Location', 'Income by business location for the selected period', 'Financial')
 ON CONFLICT (key) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
