@@ -24,9 +24,9 @@ const handleNetworkError = (error: unknown): never => {
 export class OrganizationService {
   static async getUserOrganizations(userId: string): Promise<OrganizationUser[]> {
     try {
-      const { data, error } = await withTimeout(
-        withRetry(() =>
-          supabase
+      const { data, error } = await withTimeout<any>(
+        withRetry(async () =>
+          await supabase
             .from('organization_users')
             .select(`
               *,
@@ -57,9 +57,9 @@ export class OrganizationService {
 
   static async createOrganization(data: CreateOrganizationData, userId: string): Promise<Organization> {
     try {
-      const { data: orgData, error } = await withTimeout(
-        withRetry(() =>
-          supabase
+      const { data: orgData, error } = await withTimeout<any>(
+        withRetry(async () =>
+          await supabase
             .from('organizations')
             .insert({
               name: data.name,
@@ -87,9 +87,9 @@ export class OrganizationService {
 
   static async updateOrganization(id: string, data: Partial<Organization>): Promise<Organization> {
     try {
-      const { data: orgData, error } = await withTimeout(
-        withRetry(() =>
-          supabase
+      const { data: orgData, error } = await withTimeout<any>(
+        withRetry(async () =>
+          await supabase
             .from('organizations')
             .update(data)
             .eq('id', id)
@@ -116,9 +116,9 @@ export class OrganizationService {
 export class SubscriptionService {
   static async getOrganizationSubscription(organizationId: string): Promise<OrganizationSubscription | null> {
     try {
-      const { data, error } = await withTimeout(
-        withRetry(() =>
-          supabase
+      const { data, error } = await withTimeout<any>(
+        withRetry(async () =>
+          await supabase
             .from('organization_subscriptions')
             .select(`
               *,
@@ -147,9 +147,9 @@ export class SubscriptionService {
 
   static async updateSubscription(organizationId: string, planId: string): Promise<OrganizationSubscription> {
     try {
-      const { data, error } = await withTimeout(
-        withRetry(() =>
-          supabase
+      const { data, error } = await withTimeout<any>(
+        withRetry(async () =>
+          await supabase
             .from('organization_subscriptions')
             .update({ plan_id: planId })
             .eq('organization_id', organizationId)
@@ -177,9 +177,9 @@ export class SubscriptionService {
 
   static async cancelSubscription(organizationId: string): Promise<void> {
     try {
-      const { error } = await withTimeout(
-        withRetry(() =>
-          supabase
+      const { error } = await withTimeout<any>(
+        withRetry(async () =>
+          await supabase
             .from('organization_subscriptions')
             .update({ status: 'canceled' })
             .eq('organization_id', organizationId)
@@ -198,9 +198,9 @@ export class SubscriptionService {
 export class UserService {
   static async getOrganizationUsers(organizationId: string): Promise<OrganizationUser[]> {
     try {
-      const { data, error } = await withTimeout(
-        withRetry(() =>
-          supabase
+      const { data, error } = await withTimeout<any>(
+        withRetry(async () =>
+          await supabase
             .from('organization_users')
             .select(`
               *,
@@ -227,16 +227,20 @@ export class UserService {
 
   static async inviteUser(organizationId: string, email: string, role: UserRole, invitedBy: string): Promise<UserInvitation> {
     try {
-      const { data, error } = await withTimeout(
-        withRetry(() =>
-          supabase
+      const token = Math.random().toString(36).slice(2)
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      const { data, error } = await withTimeout<any>(
+        withRetry(async () =>
+          await supabase
             .from('user_invitations')
             .insert({
               organization_id: organizationId,
               email,
               role,
-              invited_by: invitedBy
-            })
+              invited_by: invitedBy,
+              token: token,
+              expires_at: expiresAt,
+            } as any)
             .select()
             .single()
         ),
@@ -258,9 +262,9 @@ export class UserService {
 
   static async removeUser(organizationId: string, userId: string): Promise<void> {
     try {
-      const { error } = await withTimeout(
-        withRetry(() =>
-          supabase
+      const { error } = await withTimeout<any>(
+        withRetry(async () =>
+          await supabase
             .from('organization_users')
             .update({ is_active: false })
             .eq('organization_id', organizationId)
@@ -278,9 +282,9 @@ export class UserService {
 
   static async updateUserRole(organizationId: string, userId: string, role: UserRole): Promise<void> {
     try {
-      const { error } = await withTimeout(
-        withRetry(() =>
-          supabase
+      const { error } = await withTimeout<any>(
+        withRetry(async () =>
+          await supabase
             .from('organization_users')
             .update({ role })
             .eq('organization_id', organizationId)

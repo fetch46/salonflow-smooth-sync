@@ -620,10 +620,14 @@ export const EnhancedJobCardForm: React.FC<EnhancedJobCardFormProps> = ({
       </Card>
 
       {showCommissionCalc && (
-        <JobCardCommissionCalculator
-          services={selectedServices}
-          onClose={() => setShowCommissionCalc(false)}
-        />
+        <div className="mt-2">
+          <JobCardCommissionCalculator
+            serviceId={selectedServices[0]?.service_id}
+            staffId={selectedServices[0]?.staff_id}
+            amount={selectedServices.reduce((sum, s) => sum + (s.quantity * s.unit_price), 0)}
+            onCommissionChange={() => {}}
+          />
+        </div>
       )}
     </div>
   );
