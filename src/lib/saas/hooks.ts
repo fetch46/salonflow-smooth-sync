@@ -81,9 +81,15 @@ export const useFeatureGating = (): UseFeatureGatingResult => {
     usageMetrics,
     refreshUsage,
     loading,
+    organizationRole,
   } = useSaas()
 
   const hasFeature = useCallback((feature: string): boolean => {
+    // Owner and Admin roles have full access to all features within their organization
+    if (organizationRole === 'owner' || organizationRole === 'admin') {
+      return true
+    }
+
     if (!subscriptionPlan || !isSubscriptionActive(subscriptionStatus)) {
       if (isSubscriptionTrialing(subscriptionStatus)) {
         const trialFeatures = ['appointments', 'clients', 'staff', 'services', 'reports', 'invoices']
@@ -96,9 +102,14 @@ export const useFeatureGating = (): UseFeatureGatingResult => {
     const featureConfig = planFeatures?.[feature as keyof typeof planFeatures]
     
     return featureConfig?.enabled || false
-  }, [subscriptionPlan, subscriptionStatus])
+  }, [subscriptionPlan, subscriptionStatus, organizationRole])
 
   const getFeatureAccess = useCallback((feature: string): FeatureAccess => {
+    // Owner and Admin roles have unlimited access to all features
+    if (organizationRole === 'owner' || organizationRole === 'admin') {
+      return calculateFeatureAccess(true, undefined, 0) // Unlimited access
+    }
+
     if (!subscriptionPlan || !isSubscriptionActive(subscriptionStatus)) {
       if (isSubscriptionTrialing(subscriptionStatus)) {
         const trialFeatures = ['appointments', 'clients', 'staff', 'services', 'reports', 'invoices']
@@ -117,12 +128,17 @@ export const useFeatureGating = (): UseFeatureGatingResult => {
 
     const usage = usageMetrics[feature] || 0
     return calculateFeatureAccess(featureConfig.enabled, featureConfig.max, usage)
-  }, [subscriptionPlan, subscriptionStatus, usageMetrics])
+  }, [subscriptionPlan, subscriptionStatus, usageMetrics, organizationRole])
 
   const enforceLimit = useCallback((feature: string): boolean => {
+    // Owner and Admin roles are never limited
+    if (organizationRole === 'owner' || organizationRole === 'admin') {
+      return true
+    }
+    
     const access = getFeatureAccess(feature)
     return access.canCreate
-  }, [getFeatureAccess])
+  }, [getFeatureAccess, organizationRole])
 
   return {
     hasFeature,
@@ -135,12 +151,17 @@ export const useFeatureGating = (): UseFeatureGatingResult => {
 }
 
 /**
- * Hook for permissions and role checking
+ * Hook for permissions and role checking with organization-based access control
  */
 export const usePermissions = (): UsePermissionsResult => {
   const { organizationRole, organization } = useSaas()
 
   const canPerformActionCheck = useCallback((action: string, resource: string): boolean => {
+    // Owner and Admin roles have full access to all organization resources
+    if (organizationRole === 'owner' || organizationRole === 'admin') {
+      return true
+    }
+
     const overrides = (organization?.settings as any)?.role_permissions
     if (overrides) {
       try {
@@ -150,9 +171,9 @@ export const usePermissions = (): UsePermissionsResult => {
       }
     }
     return canPerformAction(organizationRole, action, resource)
-    }, [organizationRole, organization])
+  }, [organizationRole, organization])
  
-   const hasRole = useCallback((role: UserRole): boolean => {
+  const hasRole = useCallback((role: UserRole): boolean => {
     return organizationRole === role
   }, [organizationRole])
 

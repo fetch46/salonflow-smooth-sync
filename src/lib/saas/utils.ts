@@ -99,82 +99,118 @@ export function calculateFeatureAccess(
   }
 }
 
-// Role hierarchy definitions
-export type UserRole = 'owner' | 'admin' | 'manager' | 'staff' | 'viewer'
+// Role hierarchy definitions - Updated for organization-based access control
+export type UserRole = 'owner' | 'admin' | 'manager' | 'staff' | 'viewer' | 'member' | 'accountant'
 
 const ROLE_HIERARCHY: Record<UserRole, number> = {
-  owner: 5,
-  admin: 4,
-  manager: 3,
-  staff: 2,
+  owner: 7,
+  admin: 6,
+  accountant: 5,
+  manager: 4,
+  staff: 3,
+  member: 2,
   viewer: 1,
 }
 
-// Role-based permissions
+// All business operations/resources within an organization
+const ORGANIZATION_RESOURCES = [
+  'appointments', 'clients', 'invoices', 'payments', 'jobcards', 'suppliers', 
+  'purchases', 'goods_received', 'expenses', 'products', 'adjustments', 
+  'transfers', 'banking', 'reports', 'settings', 'staff', 'services',
+  'warehouses', 'locations', 'accounts', 'users', 'organization'
+]
+
+// Role-based permissions - Owner and Admin get full access to all organization resources
 const ROLE_PERMISSIONS: Record<UserRole, Record<string, string[]>> = {
-  owner: {
-    users: ['create', 'read', 'update', 'delete', 'invite'],
-    organization: ['create', 'read', 'update', 'delete'],
-    billing: ['create', 'read', 'update', 'delete'],
-    settings: ['create', 'read', 'update', 'delete'],
-    appointments: ['create', 'read', 'update', 'delete'],
-    clients: ['create', 'read', 'update', 'delete'],
-    services: ['create', 'read', 'update', 'delete'],
-    staff: ['create', 'read', 'update', 'delete'],
-    reports: ['read'],
-    inventory: ['create', 'read', 'update', 'delete'],
-  },
-  admin: {
-    users: ['create', 'read', 'update', 'delete', 'invite'],
-    organization: ['read', 'update'],
-    billing: ['read'],
-    settings: ['read', 'update'],
-    appointments: ['create', 'read', 'update', 'delete'],
-    clients: ['create', 'read', 'update', 'delete'],
-    services: ['create', 'read', 'update', 'delete'],
-    staff: ['create', 'read', 'update', 'delete'],
-    reports: ['read'],
-    inventory: ['create', 'read', 'update', 'delete'],
-  },
-  manager: {
-    users: ['read', 'invite'],
-    organization: ['read'],
-    billing: [],
-    settings: ['read'],
-    appointments: ['create', 'read', 'update', 'delete'],
-    clients: ['create', 'read', 'update', 'delete'],
-    services: ['create', 'read', 'update'],
-    staff: ['read', 'update'],
-    reports: ['read'],
-    inventory: ['create', 'read', 'update'],
-  },
-  staff: {
-    users: [],
-    organization: ['read'],
-    billing: [],
-    settings: ['read'],
-    appointments: ['create', 'read', 'update'],
-    clients: ['create', 'read', 'update'],
-    services: ['read'],
-    staff: ['read'],
-    reports: [],
-    inventory: ['read', 'update'],
-  },
-  viewer: {
-    users: [],
-    organization: ['read'],
-    billing: [],
-    settings: ['read'],
+  owner: Object.fromEntries(
+    ORGANIZATION_RESOURCES.map(resource => [resource, ['create', 'read', 'update', 'delete', 'manage']])
+  ),
+  admin: Object.fromEntries(
+    ORGANIZATION_RESOURCES.map(resource => [resource, ['create', 'read', 'update', 'delete', 'manage']])
+  ),
+  accountant: {
+    // Accountants have full access to financial operations
+    banking: ['create', 'read', 'update', 'delete'],
+    reports: ['create', 'read', 'update', 'delete'],
+    accounts: ['create', 'read', 'update', 'delete'],
+    expenses: ['create', 'read', 'update', 'delete'],
+    invoices: ['create', 'read', 'update', 'delete'],
+    payments: ['create', 'read', 'update', 'delete'],
+    purchases: ['create', 'read', 'update', 'delete'],
+    suppliers: ['create', 'read', 'update', 'delete'],
+    // Limited access to other areas
     appointments: ['read'],
     clients: ['read'],
     services: ['read'],
     staff: ['read'],
-    reports: [],
-    inventory: ['read'],
+    products: ['read'],
+    organization: ['read'],
+    settings: ['read'],
+  },
+  manager: {
+    // Managers have broad operational access but limited to financial/admin areas
+    appointments: ['create', 'read', 'update', 'delete'],
+    clients: ['create', 'read', 'update', 'delete'],
+    services: ['create', 'read', 'update', 'delete'],
+    staff: ['create', 'read', 'update', 'delete'],
+    jobcards: ['create', 'read', 'update', 'delete'],
+    products: ['create', 'read', 'update', 'delete'],
+    adjustments: ['create', 'read', 'update', 'delete'],
+    transfers: ['create', 'read', 'update', 'delete'],
+    warehouses: ['create', 'read', 'update', 'delete'],
+    locations: ['read', 'update'],
+    users: ['read', 'invite'],
+    reports: ['read'],
+    organization: ['read'],
+    settings: ['read'],
+    // Limited financial access
+    invoices: ['create', 'read', 'update'],
+    payments: ['read'],
+    expenses: ['read'],
+  },
+  staff: {
+    // Staff have operational access to customer-facing functions
+    appointments: ['create', 'read', 'update'],
+    clients: ['create', 'read', 'update'],
+    services: ['read'],
+    jobcards: ['create', 'read', 'update'],
+    products: ['read'],
+    invoices: ['create', 'read'],
+    // Read-only access to organizational data
+    staff: ['read'],
+    organization: ['read'],
+    settings: ['read'],
+    warehouses: ['read'],
+    locations: ['read'],
+  },
+  member: {
+    // Basic staff with limited operational access
+    appointments: ['read', 'update'],
+    clients: ['read', 'update'],
+    services: ['read'],
+    jobcards: ['read', 'update'],
+    products: ['read'],
+    staff: ['read'],
+    organization: ['read'],
+    settings: ['read'],
+  },
+  viewer: {
+    // View-only access to most areas
+    appointments: ['read'],
+    clients: ['read'],
+    services: ['read'],
+    staff: ['read'],
+    jobcards: ['read'],
+    products: ['read'],
+    organization: ['read'],
+    settings: ['read'],
+    reports: ['read'],
+    warehouses: ['read'],
+    locations: ['read'],
   },
 }
 
-// Permission checking utilities
+// Permission checking utilities with organization-based access control
 export function hasMinimumRole(userRole: UserRole | null | undefined, minRole: UserRole): boolean {
   if (!userRole) return false
   return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[minRole]
@@ -187,13 +223,18 @@ export function canPerformAction(
 ): boolean {
   if (!userRole) return false
   
+  // Owner and Admin roles have full access to all organization resources
+  if (userRole === 'owner' || userRole === 'admin') {
+    return ORGANIZATION_RESOURCES.includes(resource)
+  }
+  
   const permissions = ROLE_PERMISSIONS[userRole]
   if (!permissions) return false
   
   const resourcePermissions = permissions[resource]
   if (!resourcePermissions) return false
   
-  return resourcePermissions.includes(action)
+  return resourcePermissions.includes(action) || resourcePermissions.includes('manage')
 }
 
 export function canPerformActionWithOverrides(
@@ -204,10 +245,15 @@ export function canPerformActionWithOverrides(
 ): boolean {
   if (!userRole) return false
   
-  // Check overrides first
+  // Owner and Admin roles always have full access, overrides don't restrict them
+  if (userRole === 'owner' || userRole === 'admin') {
+    return ORGANIZATION_RESOURCES.includes(resource)
+  }
+  
+  // Check overrides first for other roles
   if (overrides && overrides[userRole] && overrides[userRole][resource]) {
     const overridePermissions = overrides[userRole][resource]
-    if (overridePermissions.includes(action)) return true
+    if (overridePermissions.includes(action) || overridePermissions.includes('manage')) return true
   }
   
   // Fall back to default permissions
