@@ -13,6 +13,7 @@ import { X, Plus, Calculator } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { JobCardCommissionCalculator } from '@/components/JobCardCommissionCalculator';
+import { useSaas } from '@/lib/saas';
 
 const formSchema = z.object({
   client_id: z.string().min(1, 'Client is required'),
@@ -56,6 +57,7 @@ export const EnhancedJobCardForm: React.FC<EnhancedJobCardFormProps> = ({
   const [showCommissionCalc, setShowCommissionCalc] = useState(false);
   const [loading, setLoading] = useState(false);
   const [defaultLocation, setDefaultLocation] = useState<string>('');
+  const { organization } = useSaas();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -75,38 +77,44 @@ export const EnhancedJobCardForm: React.FC<EnhancedJobCardFormProps> = ({
 
   const fetchData = async () => {
     try {
+      if (!organization?.id) throw new Error('No active organization');
       // Fetch clients
       const { data: clientsData } = await supabase
         .from('clients')
         .select('*')
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .eq('organization_id', organization.id);
       setClients(clientsData || []);
 
       // Fetch staff
       const { data: staffData } = await supabase
         .from('staff')
         .select('*')
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .eq('organization_id', organization.id);
       setStaff(staffData || []);
 
       // Fetch services
       const { data: servicesData } = await supabase
         .from('services')
         .select('*')
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .eq('organization_id', organization.id);
       setServices(servicesData || []);
 
       // Fetch inventory items
       const { data: inventoryData } = await supabase
         .from('inventory_items')
         .select('*')
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .eq('organization_id', organization.id);
       setInventoryItems(inventoryData || []);
 
       // Fetch appointments
       const { data: appointmentsData } = await supabase
         .from('appointments')
         .select('*')
+        .eq('organization_id', organization.id)
         .order('appointment_date', { ascending: false });
       setAppointments(appointmentsData || []);
 
@@ -114,6 +122,7 @@ export const EnhancedJobCardForm: React.FC<EnhancedJobCardFormProps> = ({
       const { data: locationData } = await supabase
         .from('business_locations')
         .select('id')
+        .eq('organization_id', organization.id)
         .eq('is_default', true)
         .single();
       
@@ -128,6 +137,7 @@ export const EnhancedJobCardForm: React.FC<EnhancedJobCardFormProps> = ({
   const handleSubmit = async (values: z.infer<typeof formSchema>) => {
     setLoading(true);
     try {
+      if (!organization?.id) throw new Error('No active organization');
       const jobCardData = {
         client_id: values.client_id,
         appointment_id: values.appointment_id || null,
@@ -135,6 +145,7 @@ export const EnhancedJobCardForm: React.FC<EnhancedJobCardFormProps> = ({
         notes: values.notes,
         total_amount: calculateTotal(),
         status: 'in_progress',
+        organization_id: organization.id,
       };
 
       const { data: jobCard, error: jobCardError } = await supabase

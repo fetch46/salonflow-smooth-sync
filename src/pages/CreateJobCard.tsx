@@ -54,6 +54,7 @@ import { useFeatureGating } from "@/hooks/useFeatureGating";
 import { CreateButtonGate, FeatureGate } from "@/components/features/FeatureGate";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSaas } from "@/lib/saas";
 
 interface Staff {
   id: string;
@@ -144,6 +145,7 @@ export default function CreateJobCard() {
   const [saving, setSaving] = useState(false);
   const { hasFeature, getFeatureAccess } = useFeatureGating();
   const { format: formatMoney } = useOrganizationCurrency();
+  const { organization } = useSaas();
   
   // Data State
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -209,25 +211,27 @@ export default function CreateJobCard() {
   const fetchInitialData = async () => {
     setLoading(true);
     try {
+      if (!organization?.id) {
+        throw new Error('No active organization selected');
+      }
+
       const [staffRes, clientsRes, servicesRes, appointmentsRes, locationsRes] = await Promise.all([
-        supabase.from("staff").select("*").eq("is_active", true),
-        supabase.from("clients").select("*"),
-        supabase.from("services").select("*").eq("is_active", true).eq('organization_id', organization?.id || ''),
-        supabase.from("appointments").select("*").gte("appointment_date", format(new Date(), 'yyyy-MM-dd')),
-        supabase.from('business_locations').select('id, name').order('name')
+        supabase.from("staff").select("*").eq("is_active", true).eq('organization_id', organization.id),
+        supabase.from("clients").select("*").eq('organization_id', organization.id),
+        supabase.from("services").select("*").eq("is_active", true).eq('organization_id', organization.id),
+        supabase.from("appointments").select("*").eq('organization_id', organization.id).gte("appointment_date", format(new Date(), 'yyyy-MM-dd')),
+        supabase.from('business_locations').select('id, name, is_default').eq('organization_id', organization.id).order('name')
       ]);
 
       if (staffRes.data) setStaff(staffRes.data);
       if (clientsRes.data) setClients(clientsRes.data);
       if (servicesRes.data) setServices(servicesRes.data);
       if (appointmentsRes.data) setAppointments(appointmentsRes.data);
-      if (locationsRes.data) setLocations(locationsRes.data as any);
-
-      // Attempt to set default from organization settings
-      try {
-        const posDefault = ((useFeatureGating as any)?.organization?.settings || ({} as any))?.pos_default_location_id as string | undefined;
-        if (posDefault) setSelectedLocationId(posDefault);
-      } catch {}
+      if (locationsRes.data) {
+        setLocations(locationsRes.data as any);
+        const defaultLoc = (locationsRes.data as any[]).find((l) => l.is_default);
+        if (defaultLoc?.id) setSelectedLocationId(defaultLoc.id);
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Failed to load initial data");
@@ -493,6 +497,7 @@ export default function CreateJobCard() {
             total_amount: jobCardData.service_charge,
             status: jobCardData.end_time ? "completed" : "in_progress",
             location_id: selectedLocationId || null,
+            organization_id: organization?.id || null,
           }])
           .select()
           .single();
@@ -517,6 +522,7 @@ export default function CreateJobCard() {
               end_time: jobCardData.end_time,
               total_amount: jobCardData.service_charge,
               status: jobCardData.end_time ? "completed" : "in_progress",
+              organization_id: organization?.id || null,
             }])
             .select()
             .single();
@@ -532,6 +538,7 @@ export default function CreateJobCard() {
               staff_id: primaryStaffId || null,
               start_time: jobCardData.start_time || now,
               status: jobCardData.end_time ? "completed" : "in_progress",
+              organization_id: organization?.id || null,
             }])
             .select()
             .single();
@@ -620,6 +627,7 @@ export default function CreateJobCard() {
                 status: jobCardData.payment_method ? 'paid' : 'open',
                 notes: `Receipt for ${jobNumber}`,
                 location_id: selectedLocationId || null,
+                organization_id: organization?.id || null,
               },
             ])
             .select('id')
