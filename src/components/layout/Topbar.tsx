@@ -100,7 +100,7 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <header className="bg-background border-b border-border px-6 py-4">
+    <header className="sticky top-0 z-50 bg-background border-b border-border px-6 py-4">
       <div className="flex items-center justify-between">
         {/* Left side */}
         <div className="flex items-center gap-4">
