@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarRange, Download, Edit, Filter, List, MoreVertical, ReceiptText, RefreshCw, Search, Trash2, Bookmark, BookmarkPlus } from "lucide-react";
+import { CalendarRange, Download, Edit, Filter, List, MoreVertical, ReceiptText, RefreshCw, Search, Trash2, Bookmark, BookmarkPlus, Banknote } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { getInvoicesWithBalanceWithFallback, getAllInvoicePaymentsWithFallback, updateInvoicePaymentWithFallback, deleteInvoicePaymentWithFallback } from "@/utils/mockDatabase";
@@ -450,9 +450,21 @@ export default function Payments() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h2 className="text-2xl font-bold">Payments</h2>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="default" onClick={() => navigate('/payments/received/new')}>
-            <DollarSign className="w-4 h-4 mr-2" /> Record Payment Received
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="default">
+                Create
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => navigate('/payments/received/new')}>
+                <DollarSign className="w-4 h-4 mr-2" /> Create Payment Received
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/expenses/new')}>
+                <Banknote className="w-4 h-4 mr-2" /> Create Payments Made
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="outline" onClick={refresh} disabled={refreshing}>
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
@@ -465,7 +477,7 @@ export default function Payments() {
       </div>
 
       <Tabs defaultValue="received" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:w-auto h-9">
+        <TabsList className="grid w-full grid-cols-2 md:w-auto h-9 overflow-x-hidden">
           <TabsTrigger
             value="received"
             className="px-3 py-2 text-sm text-green-700 data-[state=active]:!bg-green-600 data-[state=active]:!text-white data-[state=active]:shadow-sm"
