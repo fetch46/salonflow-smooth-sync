@@ -4,6 +4,37 @@
 -- 0) Ensure extensions used for UUIDs are present
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- 0a) Ensure invoices.organization_id exists for older databases before referencing it
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'invoices' AND column_name = 'organization_id'
+  ) THEN
+    ALTER TABLE public.invoices ADD COLUMN organization_id uuid NULL;
+  END IF;
+END $$;
+
+-- 0b) Best-effort backfill invoices.organization_id from related records (guard table existence)
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'job_cards'
+  ) THEN
+    UPDATE public.invoices i
+    SET organization_id = jc.organization_id
+    FROM public.job_cards jc
+    WHERE i.jobcard_id = jc.id AND i.organization_id IS NULL;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'clients'
+  ) THEN
+    UPDATE public.invoices i
+    SET organization_id = c.organization_id
+    FROM public.clients c
+    WHERE i.customer_id = c.id AND i.organization_id IS NULL;
+  END IF;
+END $$;
+
 -- 1) Invoices: make invoice_number unique per organization (drop global UNIQUE if present)
 DO $$
 BEGIN
