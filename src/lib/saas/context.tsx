@@ -1,4 +1,3 @@
-
 import React, {
   createContext,
   useState,
@@ -19,6 +18,7 @@ import type {
   OrganizationUser,
   SubscriptionPlan,
   UserRole,
+  CreateOrganizationData,
 } from './types'
 
 interface SaasContextType {
@@ -31,6 +31,9 @@ interface SaasContextType {
   organizationRole: UserRole | null
   // Simple organization switcher by id
   switchOrganization: (organizationId: string) => Promise<void>
+  // Organization CRUD used by hooks
+  createOrganization: (data: CreateOrganizationData) => Promise<Organization>
+  updateOrganization: (id: string, data: Partial<Organization>) => Promise<Organization>
   subscriptionPlan: SubscriptionPlan | null
   isSubscriptionActive: boolean
   updateSubscription: (planId: string) => Promise<void>
@@ -163,6 +166,22 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Failed to cancel subscription:', error)
     }
+  }
+
+  const createOrganization = async (data: CreateOrganizationData): Promise<Organization> => {
+    if (!user) {
+      throw new Error('User must be authenticated')
+    }
+    const org = await OrganizationService.createOrganization(data, user.id)
+    await loadUserOrganizations()
+    setCurrentOrganization(org)
+    return org
+  }
+
+  const updateOrganization = async (id: string, data: Partial<Organization>): Promise<Organization> => {
+    const updated = await OrganizationService.updateOrganization(id, data)
+    setCurrentOrganization((prev) => (prev && prev.id === id ? { ...prev, ...updated } : prev))
+    return updated
   }
 
   const loadOrganizationUsers = useCallback(async () => {
@@ -305,6 +324,8 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
     organization: currentOrganization,
     organizationRole,
     switchOrganization,
+    createOrganization,
+    updateOrganization,
     subscriptionPlan: subscriptionPlan || null,
     isSubscriptionActive,
     updateSubscription,
