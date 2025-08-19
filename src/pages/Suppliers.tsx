@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Search, Package, Users, Building, Edit2, Trash2, Eye, Phone, Mail, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { useSaas } from "@/lib/saas";
 
 interface Supplier {
   id: string;
@@ -54,18 +55,25 @@ export default function Suppliers() {
     notes: ""
   });
   const navigate = useNavigate();
+  const { organization } = useSaas();
 
   useEffect(() => {
     fetchSuppliers();
-  }, []);
+  }, [organization?.id]);
 
   const fetchSuppliers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from("suppliers")
         .select("*")
         .order("name");
+
+      if (organization?.id) {
+        query = query.eq("organization_id", organization.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setSuppliers(data || []);
@@ -82,19 +90,33 @@ export default function Suppliers() {
     
     try {
       setLoading(true);
+      if (!organization?.id) {
+        toast.error("No organization selected");
+        return;
+      }
       
       if (editingSupplier) {
         const { error } = await supabase
           .from("suppliers")
-          .update(formData)
+          .update({
+            ...formData,
+            website: normalizeUrl(formData.website),
+          })
           .eq("id", editingSupplier.id);
 
         if (error) throw error;
         toast.success("Supplier updated successfully");
       } else {
+        const payload = {
+          ...formData,
+          website: normalizeUrl(formData.website),
+          organization_id: organization.id,
+          is_active: true,
+        };
+
         const { error } = await supabase
           .from("suppliers")
-          .insert([formData]);
+          .insert([payload]);
 
         if (error) throw error;
         toast.success("Supplier created successfully");
