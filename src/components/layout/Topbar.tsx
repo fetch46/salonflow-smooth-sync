@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Bell, User, Search, Menu, ChevronDown, Settings, LogOut, Plus, Building2 } from 'lucide-react';
+import { Bell, User, Search, Menu, ChevronDown, Settings, LogOut, Plus, Building2, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -122,6 +122,10 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
         {/* Right side */}
         <div className="flex items-center gap-4">
           <ThemeToggle />
+          <Button onClick={() => navigate('/pos')} className="hidden sm:inline-flex gap-2">
+            <CreditCard className="h-4 w-4" />
+            POS
+          </Button>
           {/* Organization Switcher */}
           {organizations.length > 1 && (
             <DropdownMenu>
