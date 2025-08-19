@@ -2172,17 +2172,13 @@ function StepPaymentReceipt({
 
               {/* Totals */}
               <div className="space-y-2 pt-4 border-t">
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-sm font-bold">
                   <span>Services Total:</span>
                   <span>{formatMoney(totalCost)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span>Materials Cost:</span>
+                <div className="flex justify-between text-sm font-bold">
+                  <span>Material Cost:</span>
                   <span>{formatMoney(productCosts)}</span>
-                </div>
-                <div className="flex justify-between text-lg font-bold border-t pt-2">
-                  <span>Final Total:</span>
-                  <span>{formatMoney(finalTotal)}</span>
                 </div>
               </div>
             </div>
