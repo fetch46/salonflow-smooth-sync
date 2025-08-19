@@ -212,8 +212,14 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
                     </DropdownMenuItem>
                   ))}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-center w-full">
-                    View all notifications
+                  <DropdownMenuItem
+                    className="text-center w-full"
+                    onClick={() => {
+                      setNotifications([]);
+                      toast.success('All notifications cleared');
+                    }}
+                  >
+                    Mark all as viewed
                   </DropdownMenuItem>
                 </>
               )}
