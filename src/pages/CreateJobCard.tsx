@@ -155,6 +155,9 @@ export default function CreateJobCard() {
   const [serviceKits, setServiceKits] = useState<ServiceKit[]>([]);
   const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedLocationId, setSelectedLocationId] = useState<string>("");
+  const [warehouses, setWarehouses] = useState<Array<{ id: string; name: string; is_active: boolean; location_id?: string }>>([]);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
+  const [inventoryByItemId, setInventoryByItemId] = useState<Record<string, number>>({});
   
   // Form State
   const [jobCardData, setJobCardData] = useState<JobCardData>({
@@ -215,12 +218,14 @@ export default function CreateJobCard() {
         throw new Error('No active organization selected');
       }
 
-      const [staffRes, clientsRes, servicesRes, appointmentsRes, locationsRes] = await Promise.all([
+      const [staffRes, clientsRes, servicesRes, appointmentsRes, locationsRes, orgRes, whRes] = await Promise.all([
         supabase.from("staff").select("*").eq("is_active", true).eq('organization_id', organization.id),
         supabase.from("clients").select("*").eq('organization_id', organization.id),
         supabase.from("services").select("*").eq("is_active", true).eq('organization_id', organization.id),
         supabase.from("appointments").select("*").eq('organization_id', organization.id).gte("appointment_date", format(new Date(), 'yyyy-MM-dd')),
-        supabase.from('business_locations').select('id, name, is_default').eq('organization_id', organization.id).order('name')
+        supabase.from('business_locations').select('id, name, is_default').eq('organization_id', organization.id).order('name'),
+        supabase.from('organizations').select('id, settings').eq('id', organization.id).single(),
+        supabase.from('warehouses').select('id, name, is_active, location_id').eq('organization_id', organization.id).order('name')
       ]);
 
       if (staffRes.data) setStaff(staffRes.data);
@@ -230,7 +235,12 @@ export default function CreateJobCard() {
       if (locationsRes.data) {
         setLocations(locationsRes.data as any);
         const defaultLoc = (locationsRes.data as any[]).find((l) => l.is_default);
-        if (defaultLoc?.id) setSelectedLocationId(defaultLoc.id);
+        const settings = (orgRes.data as any)?.settings || {};
+        const initialLoc = (settings.jobcards_default_location_id || defaultLoc?.id || '') as string;
+        setSelectedLocationId(initialLoc);
+        setWarehouses(whRes.data || []);
+        const initialWh = (settings.jobcards_default_warehouse_id || settings.pos_default_warehouse_id || '') as string;
+        setSelectedWarehouseId(initialWh);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -346,6 +356,22 @@ export default function CreateJobCard() {
 
       if (error) throw error;
       setServiceKits(data || []);
+      // Fetch availability for current kits at selected warehouse or by location fallback
+      const itemIds = (data || []).map(k => k.good_id);
+      if (itemIds.length > 0) {
+        const { data: levels } = await supabase
+          .from('inventory_levels')
+          .select('item_id, quantity, warehouse_id, location_id')
+          .in('item_id', itemIds)
+          .or(`warehouse_id.eq.${selectedWarehouseId || 'null'},location_id.eq.${selectedLocationId || 'null'}`);
+        const map: Record<string, number> = {};
+        for (const row of (levels || [])) {
+          map[row.item_id] = (map[row.item_id] || 0) + (row.quantity || 0);
+        }
+        setInventoryByItemId(map);
+      } else {
+        setInventoryByItemId({});
+      }
       
       // Initialize product quantities
       const initialQuantities: { [key: string]: number } = {};
@@ -357,7 +383,26 @@ export default function CreateJobCard() {
       console.error("Error loading service kits:", error);
       toast.error("Failed to load service materials");
     }
-  }, [selectedServices]);
+  }, [selectedServices, selectedWarehouseId, selectedLocationId]);
+
+  // When warehouse or location changes, refresh availability for current kits
+  useEffect(() => {
+    if (serviceKits.length > 0) {
+      (async () => {
+        const itemIds = serviceKits.map(k => k.good_id);
+        const { data: levels } = await supabase
+          .from('inventory_levels')
+          .select('item_id, quantity, warehouse_id, location_id')
+          .in('item_id', itemIds)
+          .or(`warehouse_id.eq.${selectedWarehouseId || 'null'},location_id.eq.${selectedLocationId || 'null'}`);
+        const map: Record<string, number> = {};
+        for (const row of (levels || [])) {
+          map[row.item_id] = (map[row.item_id] || 0) + (row.quantity || 0);
+        }
+        setInventoryByItemId(map);
+      })();
+    }
+  }, [selectedWarehouseId, selectedLocationId, serviceKits]);
 
   useEffect(() => {
     fetchInitialData();
@@ -464,6 +509,10 @@ export default function CreateJobCard() {
       toast.error("Please complete all required fields");
       return;
     }
+    if (!selectedLocationId) {
+      toast.error("Location is required for Job cards");
+      return;
+    }
 
     // Validate that every selected service has a staff assigned
     const missingAssignments = selectedServices.filter(s => !serviceStaffMap[s.id]);
@@ -479,6 +528,29 @@ export default function CreateJobCard() {
 
     setSaving(true);
     try {
+      // Enforce stock availability when prevent_negative_stock is enabled
+      try {
+        const { data: orgRow } = await supabase.from('organizations').select('settings').eq('id', organization!.id).single();
+        const settings = (orgRow as any)?.settings || {};
+        const preventNeg = !!settings.prevent_negative_stock;
+        if (preventNeg && Object.keys(jobCardData.products_used).length > 0) {
+          const required = jobCardData.products_used;
+          const ids = Object.keys(required);
+          const { data: levels } = await supabase
+            .from('inventory_levels')
+            .select('item_id, quantity')
+            .in('item_id', ids)
+            .or(`warehouse_id.eq.${selectedWarehouseId || 'null'},location_id.eq.${selectedLocationId || 'null'}`);
+          const have: Record<string, number> = {};
+          for (const row of (levels || [])) have[row.item_id] = (have[row.item_id] || 0) + (row.quantity || 0);
+          const shortages = ids.filter(id => (required[id] || 0) > (have[id] || 0));
+          if (shortages.length > 0) {
+            toast.error('Insufficient stock for selected kit items.');
+            setSaving(false);
+            return;
+          }
+        }
+      } catch {}
       const now = new Date().toISOString();
       // Pick a primary staff for the job card (first assigned) for backward compatibility
       const primaryStaffId = serviceStaffMap[selectedServices[0].id];
@@ -590,6 +662,35 @@ export default function CreateJobCard() {
               .insert(productEntries);
 
             if (productsError) throw productsError;
+
+            // Consume inventory after recording usage
+            for (const entry of productEntries) {
+              // Try warehouse-level consumption first
+              if (selectedWarehouseId) {
+                const { data: existingWh } = await supabase
+                  .from('inventory_levels')
+                  .select('id, quantity')
+                  .eq('item_id', entry.inventory_item_id)
+                  .eq('warehouse_id', selectedWarehouseId)
+                  .limit(1)
+                  .maybeSingle();
+                if (existingWh) {
+                  await supabase.from('inventory_levels').update({ quantity: (existingWh.quantity || 0) - entry.quantity_used }).eq('id', existingWh.id);
+                  continue;
+                }
+              }
+              // Fallback to location-level consumption
+              const { data: existingLoc } = await supabase
+                .from('inventory_levels')
+                .select('id, quantity')
+                .eq('item_id', entry.inventory_item_id)
+                .eq('location_id', selectedLocationId)
+                .limit(1)
+                .maybeSingle();
+              if (existingLoc) {
+                await supabase.from('inventory_levels').update({ quantity: (existingLoc.quantity || 0) - entry.quantity_used }).eq('id', existingLoc.id);
+              }
+            }
           }
         } catch (prodErr) {
           console.error('Failed to save job card products:', prodErr);
@@ -755,6 +856,19 @@ export default function CreateJobCard() {
                     <SelectContent>
                       {locations.map((l) => (
                         <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-56">
+                  <Label className="text-xs">Warehouse</Label>
+                  <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={warehouses.length ? 'Select warehouse' : 'No warehouses'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {warehouses.filter(w => w.is_active).map((w) => (
+                        <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -1448,6 +1562,7 @@ function StepProductsMaterials({
                       {kits.map((kit) => {
                         const quantity = productsUsed[kit.good_id] || kit.default_quantity || 0;
                         const totalItemCost = quantity * (kit.inventory_items.cost_price || 0);
+                        const availableQty = inventoryByItemId[kit.good_id] ?? 0;
                         return (
                           <div key={kit.id} className="border border-border rounded-lg p-4 bg-card">
                             <div className="flex items-center justify-between">
@@ -1467,6 +1582,10 @@ function StepProductsMaterials({
                                   <div>
                                     <Label className="text-sm text-slate-600">Default Quantity</Label>
                                     <div className="text-sm font-medium">{kit.default_quantity}</div>
+                                  </div>
+                                  <div>
+                                    <Label className="text-sm text-slate-600">Available</Label>
+                                    <div className={`text-sm font-medium ${availableQty <= 0 ? 'text-red-600' : 'text-emerald-600'}`}>{availableQty}</div>
                                   </div>
                                   <div>
                                     <Label className="text-sm text-slate-600">Quantity Used</Label>
@@ -1525,6 +1644,7 @@ function StepProductsMaterials({
                         {kits.map((kit) => {
                           const quantity = productsUsed[kit.good_id] || kit.default_quantity || 0;
                           const totalItemCost = quantity * (kit.inventory_items.cost_price || 0);
+                          const availableQty = inventoryByItemId[kit.good_id] ?? 0;
                           return (
                             <div key={kit.id} className="border border-border rounded-lg p-4 bg-card">
                               <div className="flex items-center justify-between">
@@ -1544,6 +1664,10 @@ function StepProductsMaterials({
                                     <div>
                                       <Label className="text-sm text-slate-600">Default Quantity</Label>
                                       <div className="text-sm font-medium">{kit.default_quantity}</div>
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm text-slate-600">Available</Label>
+                                      <div className={`text-sm font-medium ${availableQty <= 0 ? 'text-red-600' : 'text-emerald-600'}`}>{availableQty}</div>
                                     </div>
                                     <div>
                                       <Label className="text-sm text-slate-600">Quantity Used</Label>
