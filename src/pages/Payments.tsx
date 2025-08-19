@@ -465,16 +465,16 @@ export default function Payments() {
       </div>
 
       <Tabs defaultValue="received" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:w-auto h-12">
+        <TabsList className="grid w-full grid-cols-2 md:w-auto h-9">
           <TabsTrigger
             value="received"
-            className="px-5 py-3 text-base text-green-700 data-[state=active]:!bg-green-600 data-[state=active]:!text-white data-[state=active]:shadow-sm"
+            className="px-3 py-2 text-sm text-green-700 data-[state=active]:!bg-green-600 data-[state=active]:!text-white data-[state=active]:shadow-sm"
           >
             Payments Received
           </TabsTrigger>
           <TabsTrigger
             value="made"
-            className="px-5 py-3 text-base text-red-700 data-[state=active]:!bg-red-600 data-[state=active]:!text-white data-[state=active]:shadow-sm"
+            className="px-3 py-2 text-sm text-red-700 data-[state=active]:!bg-red-600 data-[state=active]:!text-white data-[state=active]:shadow-sm"
           >
             Payments Made
           </TabsTrigger>
