@@ -301,6 +301,7 @@ phone: "",
   const [preventNegativeStock, setPreventNegativeStock] = useState<boolean>(false)
   const [defaultJobcardWarehouseId, setDefaultJobcardWarehouseId] = useState<string>("")
   const [defaultJobcardLocationId, setDefaultJobcardLocationId] = useState<string>("")
+  const [defaultAppointmentsLocationId, setDefaultAppointmentsLocationId] = useState<string>("")
 
   const openNewLocation = () => {
     setEditingLocation(null)
@@ -382,6 +383,7 @@ phone: "",
       setPreventNegativeStock(!!s.prevent_negative_stock)
       setDefaultJobcardWarehouseId(s.jobcards_default_warehouse_id || "")
       setDefaultJobcardLocationId(s.jobcards_default_location_id || "")
+      setDefaultAppointmentsLocationId(s.appointments_default_location_id || "")
       // Initialize deposit account mapping from org settings
       const map = (s.default_deposit_accounts_by_method as Record<string, string>) || {}
       setDepositAccountMap(map)
@@ -739,6 +741,22 @@ phone: "",
     } catch (e) {
       console.error(e)
       toast.error('Failed to save default POS warehouse')
+    }
+  }
+
+  const handleSaveDefaultAppointmentsLocation = async () => {
+    if (!organization) return toast.error('No organization selected');
+    try {
+      await updateOrganization(organization.id, {
+        settings: {
+          ...(organization.settings as any),
+          appointments_default_location_id: defaultAppointmentsLocationId || null,
+        },
+      } as any)
+      toast.success('Default appointment location saved');
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to save default appointment location');
     }
   }
 
@@ -1461,6 +1479,25 @@ phone: "",
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                <div className="mb-6 p-4 border rounded-md bg-slate-50">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:items-end">
+                    <div>
+                      <Label>Default Location for Appointments</Label>
+                      <Select value={defaultAppointmentsLocationId || "__none__"} onValueChange={(v) => setDefaultAppointmentsLocationId(v === "__none__" ? "" : v)}>
+                        <SelectTrigger className="w-full md:w-80">
+                          <SelectValue placeholder="Select default appointment location" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">— None —</SelectItem>
+                          {stockLocations.map(l => (
+                            <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex md:justify-start"><Button type="button" variant="outline" onClick={handleSaveDefaultAppointmentsLocation}>Save</Button></div>
+                  </div>
+                </div>
                 <Table>
                   <TableHeader>
                     <TableRow>

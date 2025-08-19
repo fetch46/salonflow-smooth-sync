@@ -250,6 +250,17 @@ export default function AppointmentForm() {
         });
       } catch {}
 
+      // Prefill default appointment location if configured and creating new
+      try {
+        if (!id) {
+          const settings = (organization?.settings || {}) as any;
+          const defaultApptLocationId = settings?.appointments_default_location_id || '';
+          if (defaultApptLocationId) {
+            setForm(prev => ({ ...prev, location_id: prev.location_id || defaultApptLocationId }));
+          }
+        }
+      } catch {}
+
       await loadClients();
     } catch (error: any) {
       toast.error(error?.message ? `Error loading data: ${error.message}` : "Error loading data");
