@@ -45,7 +45,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
-import { useFeatureGating } from "@/hooks/useFeatureGating";
+import { useFeatureGating, usePermissions } from "@/lib/saas/hooks";
 import { useSaas } from "@/lib/saas";
 
 interface MenuSubItem {
@@ -261,9 +261,14 @@ const superAdminMenuItem: MenuItem = {
 export function AppSidebar() {
   const location = useLocation();
   const [openSubmenus, setOpenSubmenus] = useState<string[]>([]);
-  const { hasFeature, getFeatureAccess, usageData } = useFeatureGating();
-  const { subscriptionPlan, isTrialing, daysLeftInTrial, isSuperAdmin } = useSaas();
+  const { hasFeature, getFeatureAccess } = useFeatureGating();
+  const { userRole: organizationRole } = usePermissions();
+  const { subscriptionPlan, isSuperAdmin, systemSettings } = useSaas();
   const { state, isMobile, setOpenMobile } = useSidebar();
+
+  // Get trial info from system settings
+  const isTrialing = systemSettings?.subscription_status === 'trial';
+  const daysLeftInTrial = systemSettings?.trial_days_remaining || null;
 
   const toggleSubmenu = (title: string) => {
     setOpenSubmenus((prev) =>
@@ -323,17 +328,21 @@ export function AppSidebar() {
   };
 
   const isMenuItemAvailable = (item: MenuItem) => {
+    // Owner and Admin roles have full access to all organization features
+    if (['owner', 'admin'].includes(organizationRole || '')) {
+      return true;
+    }
+
     if (item.title === 'Services') {
       return true;
     }
     if (item.title === 'Reports') {
-      // Only Accountant or Owner can view
-      const role = (useSaas() as any).organizationRole;
-      if (role !== 'accountant' && role !== 'owner') return false;
+      // Only Accountant, Admin or Owner can view reports
+      return ['accountant', 'owner', 'admin'].includes(organizationRole || '');
     }
     if (item.title === 'Accountant') {
-      const role = (useSaas() as any).organizationRole;
-      if (role !== 'accountant' && role !== 'owner') return false;
+      // Only Accountant, Admin or Owner can view accounting features
+      return ['accountant', 'owner', 'admin'].includes(organizationRole || '');
     }
     if (item.subItems) {
       return item.subItems.some(subItem => hasFeature(subItem.feature));
@@ -418,7 +427,8 @@ export function AppSidebar() {
                       {isOpen && (
                         <SidebarMenuSub id={`submenu-${item.title.toLowerCase().replace(/\s+/g, '-')}`} className="gap-2">
                           {item.subItems?.map((subItem) => {
-                            const subItemAvailable = hasFeature(subItem.feature);
+                            // Owner and Admin roles have access to all sub-items
+                            const subItemAvailable = ['owner', 'admin'].includes(organizationRole || '') || hasFeature(subItem.feature);
                             const subItemUsageBadge = getUsageBadge(subItem.feature);
                             
                             return (
@@ -455,9 +465,9 @@ export function AppSidebar() {
 
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton 
-                      asChild
-                                                         className={`text-base ${(!isAvailable && item.title !== 'Services') ? 'opacity-50 pointer-events-none' : ''}`}
+                     <SidebarMenuButton 
+                       asChild
+                       className={`text-base ${(!isAvailable && item.title !== 'Services') ? 'opacity-50 pointer-events-none' : ''}`}
                                    tooltip={state === 'collapsed' ? item.title : undefined}
                                    isActive={location.pathname === item.url}
                                    size="lg"

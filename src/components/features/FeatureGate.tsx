@@ -1,5 +1,5 @@
 import React from 'react';
-import { useFeatureAccess } from '@/hooks/useFeatureGating';
+import { useFeatureAccess } from '@/lib/saas/hooks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,10 +32,10 @@ export const FeatureGate: React.FC<FeatureGateProps> = ({
   showUpgradePrompt = true,
   className = '',
 }) => {
-  const { access, hasFeature } = useFeatureAccess(feature);
+  const { access, enabled } = useFeatureAccess(feature);
   const navigate = useNavigate();
 
-  if (!hasFeature) {
+  if (!enabled) {
     if (hideWhenDisabled) {
       return null;
     }
@@ -93,11 +93,11 @@ export const CreateButtonGate: React.FC<CreateButtonGateProps> = ({
   onClick,
   className = '',
 }) => {
-  const { access, enforce } = useFeatureAccess(feature);
+  const { access, canCreate } = useFeatureAccess(feature);
   const navigate = useNavigate();
 
   const handleClick = () => {
-    if (enforce()) {
+    if (canCreate) {
       onClick();
     }
   };
@@ -115,7 +115,7 @@ export const CreateButtonGate: React.FC<CreateButtonGateProps> = ({
     );
   }
 
-  if (!access.canCreate) {
+  if (!canCreate) {
     return (
       <Button
         variant="outline"
