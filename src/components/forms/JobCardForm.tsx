@@ -15,6 +15,7 @@ import { Calendar, CalendarIcon, Clock, User, Phone, Mail, Scissors, Sparkles } 
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { useSaas } from "@/lib/saas";
 
 interface JobCardFormProps {
   clientId?: string;
@@ -94,6 +95,7 @@ export function JobCardForm({ clientId, appointmentId, onSuccess }: JobCardFormP
   const [staff, setStaff] = useState<Staff[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(false);
+  const { organization } = useSaas();
   
   const technicianType = watch("technicianType");
   const selectedServices = watch("services") || [];
@@ -105,9 +107,10 @@ export function JobCardForm({ clientId, appointmentId, onSuccess }: JobCardFormP
 
   const fetchStaffAndClients = async () => {
     try {
+      if (!organization?.id) return;
       const [staffRes, clientsRes] = await Promise.all([
-        supabase.from("staff").select("id, full_name").eq("is_active", true),
-        supabase.from("clients").select("id, full_name, phone, email").eq("is_active", true)
+        supabase.from("staff").select("id, full_name").eq("is_active", true).eq('organization_id', organization.id),
+        supabase.from("clients").select("id, full_name, phone, email").eq("is_active", true).eq('organization_id', organization.id)
       ]);
 
       if (staffRes.data) setStaff(staffRes.data);
@@ -120,6 +123,7 @@ export function JobCardForm({ clientId, appointmentId, onSuccess }: JobCardFormP
   const onSubmit = async (data: Record<string, unknown>) => {
     setLoading(true);
     try {
+      if (!organization?.id) throw new Error('No active organization');
       const jobCardData = {
         client_id: data.clientId as string,
         staff_id: data.staffId as string,
@@ -128,6 +132,7 @@ export function JobCardForm({ clientId, appointmentId, onSuccess }: JobCardFormP
         start_time: new Date(`${data.date}T${data.time}`).toISOString(),
         status: 'completed',
         total_amount: parseFloat(data.serviceCharge as string) || 0,
+        organization_id: organization.id,
         notes: JSON.stringify({
           technicianType: data.technicianType,
           services: data.services,
@@ -155,7 +160,8 @@ export function JobCardForm({ clientId, appointmentId, onSuccess }: JobCardFormP
         const { data: svcRows } = await supabase
           .from('services')
           .select('id, name, price, duration_minutes')
-          .in('name', selectedNames);
+          .in('name', selectedNames)
+          .eq('organization_id', organization.id);
         const rows = (svcRows || []).map((svc: any) => ({
           job_card_id: (created as any).id,
           service_id: svc.id,
