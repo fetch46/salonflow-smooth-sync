@@ -959,6 +959,7 @@ export default function CreateJobCard() {
               serviceKits={serviceKits}
               productsUsed={jobCardData.products_used}
               productCosts={productCosts}
+              inventoryByItemId={inventoryByItemId}
               onQuantityChange={updateProductQuantity}
               onNext={nextStep}
               onPrev={prevStep}
@@ -1503,6 +1504,7 @@ interface StepProductsMaterialsProps {
   serviceKits: ServiceKit[];
   productsUsed: { [key: string]: number };
   productCosts: number;
+  inventoryByItemId: Record<string, number>;
   onQuantityChange: (productId: string, quantity: number) => void;
   onNext: () => void;
   onPrev: () => void;
@@ -1513,6 +1515,7 @@ function StepProductsMaterials({
   serviceKits,
   productsUsed,
   productCosts,
+  inventoryByItemId,
   onQuantityChange,
   onNext,
   onPrev,
