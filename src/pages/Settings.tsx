@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Building, Users, CreditCard, MessageSquare, MapPin, Plus, Edit2, Trash2, Crown, Shield, User } from "lucide-react";
+import { Building, Users, CreditCard, MessageSquare, MapPin, Plus, Edit2, Trash2, Crown, Shield, User, Package } from "lucide-react";
 import { Dialog as UIDialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { usePermissions } from "@/lib/saas/hooks";
 import { toast } from "sonner";
@@ -298,6 +298,9 @@ phone: "",
     default_warehouse_id: "",
   })
   const [defaultPosWarehouseId, setDefaultPosWarehouseId] = useState<string>("")
+  const [preventNegativeStock, setPreventNegativeStock] = useState<boolean>(false)
+  const [defaultJobcardWarehouseId, setDefaultJobcardWarehouseId] = useState<string>("")
+  const [defaultJobcardLocationId, setDefaultJobcardLocationId] = useState<string>("")
 
   const openNewLocation = () => {
     setEditingLocation(null)
@@ -376,6 +379,9 @@ phone: "",
       setTaxRatePercent(Number.isFinite(parsed) ? String(parsed) : "")
       // Initialize default POS warehouse from org settings
       setDefaultPosWarehouseId(s.pos_default_warehouse_id || "")
+      setPreventNegativeStock(!!s.prevent_negative_stock)
+      setDefaultJobcardWarehouseId(s.jobcards_default_warehouse_id || "")
+      setDefaultJobcardLocationId(s.jobcards_default_location_id || "")
       // Initialize deposit account mapping from org settings
       const map = (s.default_deposit_accounts_by_method as Record<string, string>) || {}
       setDepositAccountMap(map)
@@ -736,6 +742,24 @@ phone: "",
     }
   }
 
+  const handleSaveItemsSettings = async () => {
+    if (!organization) return toast.error('No organization selected');
+    try {
+      await updateOrganization(organization.id, {
+        settings: {
+          ...(organization.settings as any),
+          prevent_negative_stock: preventNegativeStock,
+          jobcards_default_warehouse_id: defaultJobcardWarehouseId || null,
+          jobcards_default_location_id: defaultJobcardLocationId || null,
+        },
+      } as any)
+      toast.success('Items settings saved')
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to save items settings')
+    }
+  }
+
   return (
     <div className="flex-1 space-y-6 p-8 pt-3">
       {/* Header */}
@@ -784,6 +808,10 @@ phone: "",
           <TabsTrigger value="warehouses" className="justify-start gap-2 data-[state=active]:bg-muted">
             <Building className="w-4 h-4" />
             Warehouses
+          </TabsTrigger>
+          <TabsTrigger value="items" className="justify-start gap-2 data-[state=active]:bg-muted">
+            <Package className="w-4 h-4" />
+            Items
           </TabsTrigger>
           <TabsTrigger value="accounting" className="justify-start gap-2 data-[state=active]:bg-muted">
             <CreditCard className="w-4 h-4" />
@@ -1645,6 +1673,61 @@ phone: "",
                 </DialogFooter>
               </DialogContent>
             </UIDialog>
+          </TabsContent>
+
+          {/* Items */}
+          <TabsContent value="items">
+            <Card>
+              <CardHeader>
+                <CardTitle>Items & Inventory</CardTitle>
+                <CardDescription>Configure item and inventory preferences</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Prevent Negative Stock</Label>
+                    <p className="text-xs text-muted-foreground">When enabled, stock deductions cannot result in negative quantities</p>
+                  </div>
+                  <Switch checked={preventNegativeStock} onCheckedChange={setPreventNegativeStock} />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label>Default Warehouse for Jobcards</Label>
+                    <Select value={defaultJobcardWarehouseId || "__none__"} onValueChange={(v) => setDefaultJobcardWarehouseId(v === "__none__" ? "" : v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select default warehouse" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— None —</SelectItem>
+                        {warehouses.filter(w => w.is_active).map(w => (
+                          <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>Default Location for Jobcards</Label>
+                    <Select value={defaultJobcardLocationId || "__none__"} onValueChange={(v) => setDefaultJobcardLocationId(v === "__none__" ? "" : v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select default location" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— None —</SelectItem>
+                        {stockLocations.map(l => (
+                          <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button onClick={handleSaveItemsSettings}>Save</Button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
                      {/* Accounting */}
