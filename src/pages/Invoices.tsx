@@ -77,7 +77,7 @@ import {
   deleteInvoiceWithFallback,
   getInvoiceItemsWithFallback 
 } from "@/utils/mockDatabase";
-import { useOrganizationCurrency, useOrganization } from "@/lib/saas/hooks";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { useOrganizationTaxRate } from "@/lib/saas/hooks";
 import { Database } from "@/integrations/supabase/types";
 import { useNavigate } from "react-router-dom";
@@ -180,7 +180,6 @@ const DATE_FILTERS = [
 
 export default function Invoices() {
   const { symbol, format: formatMoney } = useOrganizationCurrency();
-  const { organization } = useOrganization();
   const orgTaxRate = useOrganizationTaxRate();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -276,10 +275,10 @@ export default function Invoices() {
 
   const fetchCustomers = async () => {
     try {
-      // Some schemas do not have an is_active column on clients. Fetch without that filter for compatibility.
       const { data, error } = await supabase
         .from("clients")
         .select("id, full_name, email, phone")
+        .eq("is_active", true)
         .order("full_name");
 
       if (error) throw error;
@@ -321,12 +320,10 @@ export default function Invoices() {
 
   const fetchLocations = async () => {
     try {
-      const orgId = organization?.id || null;
-      const base = supabase
+      const { data } = await supabase
         .from("business_locations")
         .select("id, name, is_default, is_active")
         .order("name");
-      const { data } = orgId ? await base.eq('organization_id', orgId) : await base;
       const active = (data || []).filter((l: any) => l.is_active !== false);
       setLocations(active as any);
     } catch (error) {
@@ -338,7 +335,7 @@ export default function Invoices() {
   // Ensure locations are loaded for view modal and labels
   useEffect(() => {
     fetchLocations();
-  }, [organization?.id]);
+  }, []);
 
   useEffect(() => {
     if (formData.location_id) return;

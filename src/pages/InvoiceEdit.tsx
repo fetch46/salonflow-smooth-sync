@@ -11,13 +11,12 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Users, Receipt, Trash2, Plus } from "lucide-react";
-import { useOrganization, useOrganizationCurrency, useOrganizationTaxRate } from "@/lib/saas/hooks";
+import { useOrganizationCurrency, useOrganizationTaxRate } from "@/lib/saas/hooks";
 import { getInvoiceItemsWithFallback, getInvoicesWithFallback, updateInvoiceWithFallback } from "@/utils/mockDatabase";
 
 export default function InvoiceEdit() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { organization } = useOrganization();
   const { symbol } = useOrganizationCurrency();
   const orgTaxRate = useOrganizationTaxRate();
 
@@ -54,13 +53,11 @@ export default function InvoiceEdit() {
 
   const fetchLocations = async () => {
     try {
-      const base = supabase
+      const { data } = await supabase
         .from("business_locations")
         .select("id, name, is_default, is_active")
         .order("name");
-      const resp = await base.eq('organization_id', organization?.id || '');
-      const list = (resp as any).data as any[] | null;
-      const active = (list || []).filter((l: any) => l.is_active !== false);
+      const active = (data || []).filter((l: any) => l.is_active !== false);
       setLocations(active as any);
     } catch (error) {
       console.warn("Failed to fetch business_locations", error);
@@ -86,8 +83,7 @@ export default function InvoiceEdit() {
     (async () => {
       try {
         const [{ data: cust }, { data: svc }] = await Promise.all([
-          // Some schemas do not have an is_active column on clients. Fetch without that filter for compatibility.
-          supabase.from("clients").select("id, full_name, email, phone").order("full_name"),
+          supabase.from("clients").select("id, full_name, email, phone").eq("is_active", true).order("full_name"),
           supabase.from("services").select("id, name, price").eq("is_active", true).eq('organization_id', organization?.id || '').order("name"),
         ]);
         setCustomers(cust || []);
@@ -97,7 +93,7 @@ export default function InvoiceEdit() {
       const locId = await resolveUserDefaultLocation();
       setDefaultLocationIdForUser(locId);
     })();
-  }, [organization?.id]);
+  }, []);
 
   useEffect(() => {
     (async () => {

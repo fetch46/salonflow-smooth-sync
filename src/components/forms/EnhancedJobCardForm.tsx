@@ -117,6 +117,14 @@ export const EnhancedJobCardForm: React.FC<EnhancedJobCardFormProps> = ({
         .eq('organization_id', organization.id)
         .order('appointment_date', { ascending: false });
       setAppointments(appointmentsData || []);
+
+      // Get default location
+      const { data: locationData } = await supabase
+        .from('business_locations')
+        .select('id')
+        .eq('organization_id', organization.id)
+        .eq('is_default', true)
+        .single();
       
       if (locationData) {
         setDefaultLocation(locationData.id);

@@ -112,11 +112,9 @@ export default function Expenses() {
 
   const fetchLocations = useCallback(async () => {
     try {
-      if (!organization?.id) { setLocations([]); return; }
       const { data, error } = await supabase
         .from("business_locations")
         .select("id, name")
-        .eq('organization_id', organization.id)
         .order("name");
       if (error) throw error;
       setLocations((data || []) as LocationOption[]);
@@ -124,7 +122,7 @@ export default function Expenses() {
       console.warn("Failed to load business locations", err);
       setLocations([]);
     }
-  }, [organization?.id]);
+  }, []);
 
   useEffect(() => {
     fetchExpenses();

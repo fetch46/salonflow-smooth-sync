@@ -252,10 +252,10 @@ export default function POS() {
 
   const fetchCustomers = async () => {
     try {
-      // Some schemas do not have an is_active column on clients. Fetch without that filter for compatibility.
       const { data, error } = await supabase
         .from("clients")
         .select("id, full_name, email, phone")
+        .eq("is_active", true)
         .order("full_name");
 
       if (error) throw error;

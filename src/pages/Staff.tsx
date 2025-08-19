@@ -142,12 +142,11 @@ export default function Staff() {
   useEffect(() => {
     (async () => {
       try {
-        if (!organization?.id) { setLocations([]); return; }
-        const { data } = await supabase.from('business_locations').select('id, name').eq('organization_id', organization.id).eq('is_active', true).order('name');
+        const { data } = await supabase.from('business_locations').select('id, name').eq('is_active', true).order('name');
         setLocations(data || []);
       } catch {}
     })();
-  }, [organization?.id]);
+  }, []);
 
   const loadDefaultLocations = useCallback(async () => {
     try {
