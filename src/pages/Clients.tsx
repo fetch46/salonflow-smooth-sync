@@ -278,9 +278,16 @@ export default function Clients() {
             .from("clients")
             .update(updatePayload)
             .eq("id", editingClient.id);
-          if (error) throw error;
-        } catch {
-          // Fallback local update
+          if (error) throw error as any;
+        } catch (e: any) {
+          const message = e?.message || '';
+          const code = e?.code || '';
+          const isUnique = code === '23505' || /duplicate key value violates unique constraint/i.test(message);
+          if (isUnique) {
+            toast.error('Another client with this mobile number already exists in your organization');
+            return;
+          }
+          // Fallback local update (non-unique errors only)
           const storage = JSON.parse(localStorage.getItem('mockDb') || '{}');
           storage.clients = (storage.clients || []).map((c: any) => c.id === editingClient.id ? { ...c, ...updatePayload, updated_at: new Date().toISOString() } : c);
           localStorage.setItem('mockDb', JSON.stringify(storage));
@@ -297,9 +304,16 @@ export default function Clients() {
           const { error } = await supabase
             .from("clients")
             .insert([insertPayload]);
-          if (error) throw error;
-        } catch {
-          // Fallback: create locally
+          if (error) throw error as any;
+        } catch (e: any) {
+          const message = e?.message || '';
+          const code = e?.code || '';
+          const isUnique = code === '23505' || /duplicate key value violates unique constraint/i.test(message);
+          if (isUnique) {
+            toast.error('A client with this mobile number already exists in your organization');
+            return;
+          }
+          // Fallback: create locally for non-unique errors (e.g., offline/demo)
           const storage = JSON.parse(localStorage.getItem('mockDb') || '{}');
           const nowIso = new Date().toISOString();
           const localClient = { id: `client_${Date.now()}_${Math.random().toString(36).slice(2,9)}`, created_at: nowIso, updated_at: nowIso, client_status: 'active', total_spent: 0, total_visits: 0, ...insertPayload };
