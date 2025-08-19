@@ -24,6 +24,8 @@ import {
   Package,
   MapPin,
   Calculator,
+  Receipt,
+  ShoppingCart,
 } from 'lucide-react';
 import { useSaas } from '@/lib/saas';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,13 +47,13 @@ const Reports = () => {
   const [timeRange, setTimeRange] = useState('month');
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab);
-  const [activeSubTab, setActiveSubTab] = useState<Record<string, string>>({ overview: 'summary', revenue: 'summary', services: 'top', clients: 'top', pnl: 'summary', balancesheet: 'summary', commissions: initialSub || 'summary', product_usage: 'history' });
+  const [activeSubTab, setActiveSubTab] = useState<Record<string, string>>({ overview: 'summary', revenue: 'summary', clients: 'top', expenses: 'summary', purchases: 'summary', pnl: 'summary', balancesheet: 'summary', commissions: initialSub || 'summary', product_usage: 'history' });
   const [staffList, setStaffList] = useState<Array<{ id: string; full_name: string; commission_rate?: number | null }>>([]);
   const [commissionRows, setCommissionRows] = useState<Array<any>>([]);
   const [commissionSummary, setCommissionSummary] = useState<Record<string, { staffId: string; staffName: string; gross: number; commissionRate: number; commission: number }>>({});
   const [commissionStaffFilter, setCommissionStaffFilter] = useState<string>('all');
   const [pl, setPl] = useState<{ income: number; cogs: number; expenses: number; grossProfit: number; netProfit: number; breakdown?: { income: Record<string, number>; expense: Record<string, number> } }>({ income: 0, cogs: 0, expenses: 0, grossProfit: 0, netProfit: 0 });
-  const [bs, setBs] = useState<{ assets: number; liabilities: number; equity: number } >({ assets: 0, liabilities: 0, equity: 0 });
+  const [bs, setBs] = useState<{ assets: number; liabilities: number; equity: number; breakdown?: { assets: Record<string, number>; liabilities: Record<string, number>; equity: Record<string, number> } } >({ assets: 0, liabilities: 0, equity: 0 });
   const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
   const [locationFilter, setLocationFilter] = useState<string>('all');
   const [startDate, setStartDate] = useState<string>(() => {
@@ -270,7 +272,22 @@ const Reports = () => {
       const assets = sumByType('Asset');
       const liabilities = sumByTypeCreditMinusDebit('Liability');
       const equity = sumByTypeCreditMinusDebit('Equity');
-      setBs({ assets, liabilities, equity });
+      const assetsMap: Record<string, number> = {};
+      const liabilitiesMap: Record<string, number> = {};
+      const equityMap: Record<string, number> = {};
+      for (const t of (transactions as any[]).filter(withinRange)) {
+        const code = t.accounts?.account_code || t.account_id || '—';
+        const name = t.accounts?.account_name || '';
+        const key = name ? `${code} · ${name}` : String(code);
+        if (t.accounts?.account_type === 'Asset') {
+          assetsMap[key] = (assetsMap[key] || 0) + (Number(t.debit_amount) || 0) - (Number(t.credit_amount) || 0);
+        } else if (t.accounts?.account_type === 'Liability') {
+          liabilitiesMap[key] = (liabilitiesMap[key] || 0) + (Number(t.credit_amount) || 0) - (Number(t.debit_amount) || 0);
+        } else if (t.accounts?.account_type === 'Equity') {
+          equityMap[key] = (equityMap[key] || 0) + (Number(t.credit_amount) || 0) - (Number(t.debit_amount) || 0);
+        }
+      }
+      setBs({ assets, liabilities, equity, breakdown: { assets: assetsMap, liabilities: liabilitiesMap, equity: equityMap } });
     } catch (e) {
       console.error('Error calculating financials', e);
     } finally {
@@ -1108,9 +1125,13 @@ const Reports = () => {
                       <div className="font-semibold flex items-center gap-2"><Activity className="w-4 h-4" /> Staff Commissions</div>
                       <div className="text-sm text-slate-500">Commission summary by staff for the period</div>
                     </div>
-                    <div className="p-4 border rounded-md hover:bg-slate-50 cursor-pointer" onClick={() => setActiveTab('services')}>
-                      <div className="font-semibold flex items-center gap-2"><BarChart3 className="w-4 h-4" /> Top Services</div>
-                      <div className="text-sm text-slate-500">Best-selling services by revenue</div>
+                    <div className="p-4 border rounded-md hover:bg-slate-50 cursor-pointer" onClick={() => setActiveTab('expenses')}>
+                      <div className="font-semibold flex items-center gap-2"><Receipt className="w-4 h-4" /> Expenses</div>
+                      <div className="text-sm text-slate-500">Track expenses by category and date</div>
+                    </div>
+                    <div className="p-4 border rounded-md hover:bg-slate-50 cursor-pointer" onClick={() => setActiveTab('purchases')}>
+                      <div className="font-semibold flex items-center gap-2"><ShoppingCart className="w-4 h-4" /> Purchases</div>
+                      <div className="text-sm text-slate-500">Monitor purchases and received goods</div>
                     </div>
                     <div className="p-4 border rounded-md hover:bg-slate-50 cursor-pointer" onClick={() => setActiveTab('clients')}>
                       <div className="font-semibold flex items-center gap-2"><Users className="w-4 h-4" /> Top Clients</div>
@@ -1121,32 +1142,26 @@ const Reports = () => {
               </Card>
             </TabsContent>
 
-            {/* Services Tab */}
-            <TabsContent value="services" className="space-y-6">
+            {/* Expenses Tab */}
+            <TabsContent value="expenses" className="space-y-6">
               <Card className="shadow-lg">
                 <CardHeader>
-                  <CardTitle>Top Performing Services</CardTitle>
+                  <CardTitle>Expenses</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {topServices.map((service, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/services?query=${encodeURIComponent(service.name)}`)} title={`View service: ${service.name}`}>
-                        <div className="flex items-center gap-3">
-                          <Badge variant="outline" className="w-8 h-8 flex items-center justify-center">
-                            {index + 1}
-                          </Badge>
-                          <div>
-                            <div className="font-medium">{service.name}</div>
-                            <div className="text-sm text-slate-600">{service.appointments} appointments</div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-medium">{formatMoney(service.revenue, { decimals: 0 })}</div>
-                          <div className="text-sm text-green-600">+{service.growth}%</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <ExpenseReport startDate={startDate} endDate={endDate} locationId={locationFilter} formatMoney={formatMoney} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Purchases Tab */}
+            <TabsContent value="purchases" className="space-y-6">
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle>Purchases</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <PurchasesReport startDate={startDate} endDate={endDate} locationId={locationFilter} formatMoney={formatMoney} />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -1309,6 +1324,43 @@ const Reports = () => {
                   <div className="mt-6 text-center text-sm text-slate-600">
                     {`Check: Assets (${formatMoney(bs.assets, { decimals: 2 })}) = Liabilities (${formatMoney(bs.liabilities, { decimals: 2 })}) + Equity (${formatMoney(bs.equity, { decimals: 2 })})`}
                   </div>
+                  {bs.breakdown && (
+                    <div className="grid gap-6 md:grid-cols-3 mt-6">
+                      <div>
+                        <div className="font-semibold mb-2">Assets</div>
+                        <Table>
+                          <TableHeader><TableRow><TableHead>Account</TableHead><TableHead className="text-right">Balance</TableHead></TableRow></TableHeader>
+                          <TableBody>
+                            {Object.entries(bs.breakdown.assets).map(([k,v]) => (
+                              <TableRow key={k}><TableCell>{k}</TableCell><TableCell className="text-right">{formatMoney(Number(v), { decimals: 2 })}</TableCell></TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                      <div>
+                        <div className="font-semibold mb-2">Liabilities</div>
+                        <Table>
+                          <TableHeader><TableRow><TableHead>Account</TableHead><TableHead className="text-right">Balance</TableHead></TableRow></TableHeader>
+                          <TableBody>
+                            {Object.entries(bs.breakdown.liabilities).map(([k,v]) => (
+                              <TableRow key={k}><TableCell>{k}</TableCell><TableCell className="text-right">{formatMoney(Number(v), { decimals: 2 })}</TableCell></TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                      <div>
+                        <div className="font-semibold mb-2">Equity</div>
+                        <Table>
+                          <TableHeader><TableRow><TableHead>Account</TableHead><TableHead className="text-right">Balance</TableHead></TableRow></TableHeader>
+                          <TableBody>
+                            {Object.entries(bs.breakdown.equity).map(([k,v]) => (
+                              <TableRow key={k}><TableCell>{k}</TableCell><TableCell className="text-right">{formatMoney(Number(v), { decimals: 2 })}</TableCell></TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -1569,6 +1621,139 @@ function groupBy<T, K extends string | number>(arr: T[], keyFn: (t: T) => K): Re
 }
 
 function sum(arr: number[]) { return arr.reduce((a, b) => a + (Number(b) || 0), 0); }
+const ExpenseReport: React.FC<{ startDate: string; endDate: string; locationId: string; formatMoney: (n: number, opts?: any) => string }>
+  = ({ startDate, endDate, locationId, formatMoney }) => {
+  const [rows, setRows] = React.useState<Array<{ date: string; category: string | null; amount: number; location_id: string | null }>>([]);
+  const [byCategory, setByCategory] = React.useState<Record<string, number>>({});
+  const [loading, setLoading] = React.useState(false);
+  React.useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        let q = supabase
+          .from('expenses')
+          .select('expense_date, amount, category, location_id, status')
+          .gte('expense_date', startDate)
+          .lte('expense_date', endDate);
+        if (locationId !== 'all') q = q.eq('location_id', locationId);
+        const { data } = await q;
+        const paid = (data || []).filter((e: any) => (e.status ? String(e.status).toLowerCase() === 'paid' : true));
+        const mapped = paid.map((r: any) => ({ date: String(r.expense_date || '').slice(0,10), category: r.category || 'Uncategorized', amount: Number(r.amount || 0), location_id: r.location_id || null }));
+        setRows(mapped);
+        const cat: Record<string, number> = {};
+        for (const r of mapped) cat[r.category || 'Uncategorized'] = (cat[r.category || 'Uncategorized'] || 0) + r.amount;
+        setByCategory(cat);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [startDate, endDate, locationId]);
+  const total = rows.reduce((s, r) => s + r.amount, 0);
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="text-center p-4 bg-red-50 rounded-lg">
+          <div className="text-2xl font-bold text-red-700">{formatMoney(total, { decimals: 2 })}</div>
+          <div className="text-sm text-red-700">Total Expenses</div>
+        </div>
+      </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        <div>
+          <div className="font-semibold mb-2">By Category</div>
+          <Table>
+            <TableHeader><TableRow><TableHead>Category</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {Object.entries(byCategory).sort((a,b)=>b[1]-a[1]).map(([k,v]) => (
+                <TableRow key={k}><TableCell>{k}</TableCell><TableCell className="text-right">{formatMoney(v, { decimals: 2 })}</TableCell></TableRow>
+              ))}
+              {Object.keys(byCategory).length === 0 && (<TableRow><TableCell colSpan={2} className="text-center text-muted-foreground">No data</TableCell></TableRow>)}
+            </TableBody>
+          </Table>
+        </div>
+        <div>
+          <div className="font-semibold mb-2">Detailed</div>
+          <div className="overflow-x-auto">
+            <Table className="min-w-[720px]">
+              <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Category</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {rows.map((r, idx) => (
+                  <TableRow key={idx}><TableCell>{r.date}</TableCell><TableCell>{r.category}</TableCell><TableCell className="text-right">{formatMoney(r.amount, { decimals: 2 })}</TableCell></TableRow>
+                ))}
+                {rows.length === 0 && (<TableRow><TableCell colSpan={3} className="text-center text-muted-foreground">No expenses</TableCell></TableRow>)}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PurchasesReport: React.FC<{ startDate: string; endDate: string; locationId: string; formatMoney: (n: number, opts?: any) => string }>
+  = ({ startDate, endDate, locationId, formatMoney }) => {
+  const [rows, setRows] = React.useState<Array<{ date: string; item_id: string; qty: number; unit_cost: number }>>([]);
+  const [total, setTotal] = React.useState(0);
+  const [loading, setLoading] = React.useState(false);
+  React.useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        // Prefer goods_received joined to purchase_items for accurate received qty
+        let q = supabase
+          .from('goods_received_items')
+          .select('id, quantity, created_at, goods_received:goods_received_id (location_id), purchase_items:purchase_item_id (item_id, unit_cost)')
+          .gte('created_at', startDate)
+          .lte('created_at', endDate);
+        if (locationId !== 'all') q = q.eq('goods_received.location_id', locationId as any);
+        const { data, error } = await q;
+        let mapped: any[] = [];
+        if (!error) {
+          mapped = (data || []).map((r: any) => ({ date: String(r.created_at || '').slice(0,10), item_id: r.purchase_items?.item_id, qty: Number(r.quantity || 0), unit_cost: Number(r.purchase_items?.unit_cost || 0) }));
+        } else {
+          // Fallback to purchase_items
+          const { data: pi } = await supabase
+            .from('purchase_items')
+            .select('id, created_at, quantity, unit_cost, item_id')
+            .gte('created_at', startDate)
+            .lte('created_at', endDate);
+          mapped = (pi || []).map((r: any) => ({ date: String(r.created_at || '').slice(0,10), item_id: r.item_id, qty: Number(r.quantity || 0), unit_cost: Number(r.unit_cost || 0) }));
+        }
+        setRows(mapped);
+        setTotal(mapped.reduce((s, r) => s + r.qty * r.unit_cost, 0));
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [startDate, endDate, locationId]);
+  return (
+    <div className="space-y-4">
+      <div className="text-center p-4 bg-emerald-50 rounded-lg">
+        <div className="text-2xl font-bold text-emerald-700">{formatMoney(total, { decimals: 2 })}</div>
+        <div className="text-sm text-emerald-700">Total Purchases (received)</div>
+      </div>
+      <div className="overflow-x-auto">
+        <Table className="min-w-[720px]">
+          <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Item</TableHead><TableHead className="text-right">Quantity</TableHead><TableHead className="text-right">Unit Cost</TableHead><TableHead className="text-right">Line Total</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {rows.map((r, idx) => (
+              <TableRow key={idx}>
+                <TableCell>{r.date}</TableCell>
+                <TableCell>{r.item_id}</TableCell>
+                <TableCell className="text-right">{r.qty}</TableCell>
+                <TableCell className="text-right">{formatMoney(r.unit_cost, { decimals: 2 })}</TableCell>
+                <TableCell className="text-right">{formatMoney(r.qty * r.unit_cost, { decimals: 2 })}</TableCell>
+              </TableRow>
+            ))}
+            {rows.length === 0 && (<TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">No purchases</TableCell></TableRow>)}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+};
+
 
 const ProductUsageHistory: React.FC<{ startDate: string; endDate: string; density: 'compact' | 'comfortable'; locationId?: string | 'all'; }> = ({ startDate, endDate, density, locationId = 'all' }) => {
   const [rows, setRows] = React.useState<any[]>([]);
@@ -1587,54 +1772,78 @@ const ProductUsageHistory: React.FC<{ startDate: string; endDate: string; densit
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
-      // Purchases
-      const purchasesQuery = supabase
-        .from('purchase_items')
-        .select('id, created_at, quantity, unit_cost, item_id, purchases:purchase_id (purchase_number, purchase_date)')
+      // IN: Goods received items joined with purchase items to get item_id and unit_cost
+      // Fallback to purchase_items when goods_received is unavailable
+      let goodsQ = supabase
+        .from('goods_received_items')
+        .select('id, created_at, quantity, goods_received:goods_received_id (location_id, received_date), purchase_items:purchase_item_id (item_id, unit_cost)')
         .gte('created_at', startDate)
         .lte('created_at', endDate);
-      const salesQuery = supabase
-        .from('sale_items')
-        .select('id, created_at, quantity, unit_price, product_id, sales:sale_id (sale_number, sale_date)')
-        .gte('created_at', startDate)
-        .lte('created_at', endDate);
-      let receiptItemsQuery = supabase
+      // OUT: invoice_items (product_id) and job_card_products (consumption in services)
+      let invoiceItemsQ = supabase
         .from('invoice_items')
-        .select('id, created_at, quantity, unit_price, product_id, location_id, invoice:invoice_id (id, invoice_number, created_at)')
+        .select('id, created_at, quantity, unit_price, product_id, location_id')
         .gte('created_at', startDate)
-        .lte('created_at', endDate);
+        .lte('created_at', endDate)
+        .not('product_id', 'is', null);
+      let jcpQ = supabase
+        .from('job_card_products')
+        .select('id, created_at, inventory_item_id, quantity_used');
       if (locationId !== 'all') {
-        receiptItemsQuery = receiptItemsQuery.eq('location_id', locationId);
+        invoiceItemsQ = invoiceItemsQ.eq('location_id', locationId);
+        // job_card_products has no location; derive from job_cards if needed in future
       }
-      const [{ data: purchases }, { data: sales }, { data: rItems }] = await Promise.all([
-        purchasesQuery, salesQuery, receiptItemsQuery,
+      const [{ data: goodsItems, error: goodsErr }, { data: invoiceItems }, { data: jobCardProducts } ] = await Promise.all([
+        goodsQ, invoiceItemsQ, jcpQ,
       ]);
 
-      // Sales
-      const receiptItems: any[] = rItems || [];
-
       const normalize: any[] = [];
-      // Purchases as positive in
-      for (const p of (purchases || []) as any[]) {
-        normalize.push({
-          id: p.id,
-          date: (p.created_at || '').slice(0,10),
-          product_id: p.item_id,
-          qty: Number(p.quantity || 0),
-          unit_cost: Number(p.unit_cost || 0),
-          type: 'Purchased',
-        });
+      // Goods received as positive in
+      if (!goodsErr && Array.isArray(goodsItems)) {
+        for (const r of goodsItems as any[]) {
+          const itemId = (r.purchase_items?.item_id) || null;
+          const unitCost = Number(r.purchase_items?.unit_cost || 0);
+          if (!itemId) continue;
+          normalize.push({
+            id: r.id,
+            date: String(r.created_at || r.goods_received?.received_date || '').slice(0,10),
+            product_id: itemId,
+            qty: Number(r.quantity || 0),
+            unit_cost: unitCost,
+            type: 'Received',
+          });
+        }
+      } else {
+        // Fallback to purchase_items within date range when goods_received not available
+        const { data: purchases } = await supabase
+          .from('purchase_items')
+          .select('id, created_at, quantity, unit_cost, item_id')
+          .gte('created_at', startDate)
+          .lte('created_at', endDate);
+        for (const p of (purchases || []) as any[]) {
+          normalize.push({ id: p.id, date: (p.created_at || '').slice(0,10), product_id: p.item_id, qty: Number(p.quantity || 0), unit_cost: Number(p.unit_cost || 0), type: 'Purchased' });
+        }
       }
-      // Sales or invoice_items as out
-      const outItems = (receiptItems && receiptItems.length > 0) ? receiptItems : (sales || []);
-      for (const s of (outItems || []) as any[]) {
+      // Invoice product lines as negative (sold)
+      for (const s of (invoiceItems || []) as any[]) {
         normalize.push({
           id: s.id,
           date: (s.created_at || '').slice(0,10),
           product_id: s.product_id,
           qty: -Math.abs(Number(s.quantity || 0)),
           unit_cost: Number(s.unit_price || 0),
-          type: 'Sold/Used',
+          type: 'Sold',
+        });
+      }
+      // Job card product consumption as negative (used in services)
+      for (const u of (jobCardProducts || []) as any[]) {
+        normalize.push({
+          id: u.id,
+          date: (u.created_at || '').slice(0,10),
+          product_id: u.inventory_item_id,
+          qty: -Math.abs(Number(u.quantity_used || 0)),
+          unit_cost: 0,
+          type: 'Used in Service',
         });
       }
 

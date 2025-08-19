@@ -202,8 +202,9 @@ const menuItems: MenuItem[] = [
     subItems: [
       { title: "Overview", url: "/reports?tab=overview", icon: TrendingUp, feature: "reports" },
       { title: "Revenue", url: "/reports?tab=revenue", icon: DollarSign, feature: "reports" },
-      { title: "Services", url: "/reports?tab=services", icon: Scissors, feature: "reports" },
       { title: "Clients", url: "/reports?tab=clients", icon: Users, feature: "reports" },
+      { title: "Expenses", url: "/reports?tab=expenses", icon: Receipt, feature: "reports" },
+      { title: "Purchases", url: "/reports?tab=purchases", icon: ShoppingCart, feature: "reports" },
       { title: "P&L", url: "/reports?tab=pnl", icon: Calculator, feature: "reports" },
       { title: "Balance Sheet", url: "/reports?tab=balancesheet", icon: Calculator, feature: "reports" },
       { title: "Trial Balance", url: "/reports?tab=trialbalance", icon: Calculator, feature: "reports" },
