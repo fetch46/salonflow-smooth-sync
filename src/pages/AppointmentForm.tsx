@@ -131,7 +131,7 @@ export default function AppointmentForm() {
         supabase.from("staff").select("*").eq("is_active", true),
         supabase.from("clients").select("*"),
         supabase.from("services").select("*").eq("is_active", true).eq('organization_id', organization?.id || ''),
-        supabase.from("business_locations").select("id, name").order("name", { ascending: true }),
+        supabase.from("business_locations").select("id, name").eq('organization_id', organization?.id || '').order("name", { ascending: true }),
       ]);
 
       if (staffRes.error) throw staffRes.error;

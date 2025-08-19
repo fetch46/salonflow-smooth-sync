@@ -243,13 +243,18 @@ export default function Payments() {
     } catch {}
     (async () => {
       try {
-        const { data } = await supabase.from('business_locations').select('id, name').order('name');
+        if (!organization?.id) { setLocations([]); return; }
+        const { data } = await supabase
+          .from('business_locations')
+          .select('id, name')
+          .eq('organization_id', organization.id)
+          .order('name');
         setLocations((data || []) as any);
       } catch {
         setLocations([]);
       }
     })();
-  }, []);
+  }, [organization?.id]);
 
   useEffect(() => {
     localStorage.setItem('payments_density_compact', compact ? '1' : '0');
