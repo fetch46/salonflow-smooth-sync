@@ -86,7 +86,8 @@ export default function InvoiceEdit() {
     (async () => {
       try {
         const [{ data: cust }, { data: svc }] = await Promise.all([
-          supabase.from("clients").select("id, full_name, email, phone").eq("is_active", true).order("full_name"),
+          // Some schemas do not have an is_active column on clients. Fetch without that filter for compatibility.
+          supabase.from("clients").select("id, full_name, email, phone").order("full_name"),
           supabase.from("services").select("id, name, price").eq("is_active", true).eq('organization_id', organization?.id || '').order("name"),
         ]);
         setCustomers(cust || []);
