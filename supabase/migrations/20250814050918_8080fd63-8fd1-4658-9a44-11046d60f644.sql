@@ -577,25 +577,37 @@ SET search_path TO 'public'
 AS $$
 DECLARE
   v_purchase_id UUID;
+  v_old_location_id UUID;
+  v_old_warehouse_id UUID;
   r_old RECORD;
   v_item_id UUID;
   v_new_qty NUMERIC;
   v_pi_id UUID;
 BEGIN
-  SELECT gr.purchase_id INTO v_purchase_id FROM public.goods_received gr WHERE gr.id = p_goods_received_id;
+  -- Load the existing header to know where quantities were previously stored
+  SELECT gr.purchase_id, gr.location_id, gr.warehouse_id
+  INTO v_purchase_id, v_old_location_id, v_old_warehouse_id
+  FROM public.goods_received gr
+  WHERE gr.id = p_goods_received_id;
 
+  -- Reverse previous quantities from the original location and warehouse
   FOR r_old IN
     SELECT gri.*, pi.item_id
     FROM public.goods_received_items gri
     JOIN public.purchase_items pi ON pi.id = gri.purchase_item_id
     WHERE gri.goods_received_id = p_goods_received_id
   LOOP
-    UPDATE public.inventory_levels SET quantity = GREATEST(0, quantity - r_old.quantity)
-    WHERE item_id = r_old.item_id AND location_id = p_location_id;
-    UPDATE public.inventory_levels SET quantity = GREATEST(0, quantity - r_old.quantity)
-    WHERE item_id = r_old.item_id AND warehouse_id = p_warehouse_id;
+    IF v_old_location_id IS NOT NULL THEN
+      UPDATE public.inventory_levels SET quantity = GREATEST(0, quantity - r_old.quantity)
+      WHERE item_id = r_old.item_id AND location_id = v_old_location_id;
+    END IF;
+    IF v_old_warehouse_id IS NOT NULL THEN
+      UPDATE public.inventory_levels SET quantity = GREATEST(0, quantity - r_old.quantity)
+      WHERE item_id = r_old.item_id AND warehouse_id = v_old_warehouse_id;
+    END IF;
   END LOOP;
 
+  -- Update header to new warehouse/location and metadata
   UPDATE public.goods_received
   SET received_date = p_received_date,
       warehouse_id = p_warehouse_id,
@@ -604,6 +616,7 @@ BEGIN
       updated_at = now()
   WHERE id = p_goods_received_id;
 
+  -- Replace items with new quantities snapshot
   DELETE FROM public.goods_received_items WHERE goods_received_id = p_goods_received_id;
 
   FOR v_pi_id, v_new_qty IN
@@ -616,25 +629,32 @@ BEGIN
     INSERT INTO public.goods_received_items (goods_received_id, purchase_item_id, quantity)
     VALUES (p_goods_received_id, v_pi_id, v_new_qty);
 
-    PERFORM 1 FROM public.inventory_levels WHERE item_id = v_item_id AND location_id = p_location_id;
-    IF NOT FOUND THEN
-      INSERT INTO public.inventory_levels (item_id, location_id, quantity)
-      VALUES (v_item_id, p_location_id, v_new_qty);
-    ELSE
-      UPDATE public.inventory_levels SET quantity = quantity + v_new_qty
-      WHERE item_id = v_item_id AND location_id = p_location_id;
+    -- Apply to new location
+    IF p_location_id IS NOT NULL THEN
+      PERFORM 1 FROM public.inventory_levels WHERE item_id = v_item_id AND location_id = p_location_id;
+      IF NOT FOUND THEN
+        INSERT INTO public.inventory_levels (item_id, location_id, quantity)
+        VALUES (v_item_id, p_location_id, v_new_qty);
+      ELSE
+        UPDATE public.inventory_levels SET quantity = quantity + v_new_qty
+        WHERE item_id = v_item_id AND location_id = p_location_id;
+      END IF;
     END IF;
 
-    PERFORM 1 FROM public.inventory_levels WHERE item_id = v_item_id AND warehouse_id = p_warehouse_id;
-    IF NOT FOUND THEN
-      INSERT INTO public.inventory_levels (item_id, warehouse_id, quantity)
-      VALUES (v_item_id, p_warehouse_id, v_new_qty);
-    ELSE
-      UPDATE public.inventory_levels SET quantity = quantity + v_new_qty
-      WHERE item_id = v_item_id AND warehouse_id = p_warehouse_id;
+    -- Apply to new warehouse
+    IF p_warehouse_id IS NOT NULL THEN
+      PERFORM 1 FROM public.inventory_levels WHERE item_id = v_item_id AND warehouse_id = p_warehouse_id;
+      IF NOT FOUND THEN
+        INSERT INTO public.inventory_levels (item_id, warehouse_id, quantity)
+        VALUES (v_item_id, p_warehouse_id, v_new_qty);
+      ELSE
+        UPDATE public.inventory_levels SET quantity = quantity + v_new_qty
+        WHERE item_id = v_item_id AND warehouse_id = p_warehouse_id;
+      END IF;
     END IF;
   END LOOP;
 
+  -- Recompute received quantities per purchase item based on all receipts for this purchase
   UPDATE public.purchase_items pi SET received_quantity = sub.total_received
   FROM (
     SELECT gri.purchase_item_id, SUM(gri.quantity) AS total_received
@@ -644,6 +664,11 @@ BEGIN
     GROUP BY gri.purchase_item_id
   ) sub
   WHERE pi.id = sub.purchase_item_id;
+
+  -- Keep purchase header location in sync with receipt location
+  UPDATE public.purchases
+  SET location_id = p_location_id
+  WHERE id = v_purchase_id AND (location_id IS DISTINCT FROM p_location_id OR location_id IS NULL);
 
   PERFORM public.update_purchase_status(v_purchase_id);
 END;
