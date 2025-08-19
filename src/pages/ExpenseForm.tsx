@@ -73,6 +73,7 @@ export default function ExpenseForm() {
       const { data, error } = await supabase
         .from("business_locations")
         .select("id, name")
+        .eq('organization_id', organization?.id || '')
         .order("name");
       if (error) throw error;
       setLocations((data || []) as LocationOption[]);

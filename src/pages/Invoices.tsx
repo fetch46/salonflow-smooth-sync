@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useOrganization } from "@/lib/saas/hooks";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
@@ -323,6 +324,7 @@ export default function Invoices() {
       const { data } = await supabase
         .from("business_locations")
         .select("id, name, is_default, is_active")
+        .eq('organization_id', organization?.id || '')
         .order("name");
       const active = (data || []).filter((l: any) => l.is_active !== false);
       setLocations(active as any);
@@ -333,9 +335,10 @@ export default function Invoices() {
   };
 
   // Ensure locations are loaded for view modal and labels
+  const { organization } = useOrganization();
   useEffect(() => {
     fetchLocations();
-  }, []);
+  }, [organization?.id]);
 
   useEffect(() => {
     if (formData.location_id) return;

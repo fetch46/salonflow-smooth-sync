@@ -158,7 +158,7 @@ export default function Appointments() {
         supabase.from("appointments").select("*").order("appointment_date", { ascending: true }),
         supabase.from("staff").select("*").eq("is_active", true),
         supabase.from("services").select("*").eq("is_active", true).eq('organization_id', organization?.id || ''),
-        supabase.from("business_locations").select("id, name").order("name", { ascending: true }),
+        supabase.from("business_locations").select("id, name").eq('organization_id', organization?.id || '').order("name", { ascending: true }),
       ]);
 
       if (appointmentsRes.error) throw appointmentsRes.error;
