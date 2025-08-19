@@ -11,12 +11,13 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Users, Receipt, Trash2, Plus } from "lucide-react";
-import { useOrganizationCurrency, useOrganizationTaxRate } from "@/lib/saas/hooks";
+import { useOrganization, useOrganizationCurrency, useOrganizationTaxRate } from "@/lib/saas/hooks";
 import { getInvoiceItemsWithFallback, getInvoicesWithFallback, updateInvoiceWithFallback } from "@/utils/mockDatabase";
 
 export default function InvoiceEdit() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { organization } = useOrganization();
   const { symbol } = useOrganizationCurrency();
   const orgTaxRate = useOrganizationTaxRate();
 
@@ -53,11 +54,13 @@ export default function InvoiceEdit() {
 
   const fetchLocations = async () => {
     try {
-      const { data } = await supabase
+      const base = supabase
         .from("business_locations")
         .select("id, name, is_default, is_active")
         .order("name");
-      const active = (data || []).filter((l: any) => l.is_active !== false);
+      const resp = await base.eq('organization_id', organization?.id || '');
+      const list = (resp as any).data as any[] | null;
+      const active = (list || []).filter((l: any) => l.is_active !== false);
       setLocations(active as any);
     } catch (error) {
       console.warn("Failed to fetch business_locations", error);
@@ -93,7 +96,7 @@ export default function InvoiceEdit() {
       const locId = await resolveUserDefaultLocation();
       setDefaultLocationIdForUser(locId);
     })();
-  }, []);
+  }, [organization?.id]);
 
   useEffect(() => {
     (async () => {

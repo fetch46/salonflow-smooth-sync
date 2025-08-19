@@ -214,7 +214,7 @@ export default function CreateJobCard() {
         supabase.from("clients").select("*"),
         supabase.from("services").select("*").eq("is_active", true).eq('organization_id', organization?.id || ''),
         supabase.from("appointments").select("*").gte("appointment_date", format(new Date(), 'yyyy-MM-dd')),
-        supabase.from('business_locations').select('id, name').order('name')
+        supabase.from('business_locations').select('id, name').eq('organization_id', organization?.id || '').order('name')
       ]);
 
       if (staffRes.data) setStaff(staffRes.data);

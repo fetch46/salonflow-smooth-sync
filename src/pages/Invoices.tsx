@@ -77,7 +77,7 @@ import {
   deleteInvoiceWithFallback,
   getInvoiceItemsWithFallback 
 } from "@/utils/mockDatabase";
-import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { useOrganizationCurrency, useOrganization } from "@/lib/saas/hooks";
 import { useOrganizationTaxRate } from "@/lib/saas/hooks";
 import { Database } from "@/integrations/supabase/types";
 import { useNavigate } from "react-router-dom";
@@ -180,6 +180,7 @@ const DATE_FILTERS = [
 
 export default function Invoices() {
   const { symbol, format: formatMoney } = useOrganizationCurrency();
+  const { organization } = useOrganization();
   const orgTaxRate = useOrganizationTaxRate();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -320,10 +321,12 @@ export default function Invoices() {
 
   const fetchLocations = async () => {
     try {
-      const { data } = await supabase
+      const orgId = organization?.id || null;
+      const base = supabase
         .from("business_locations")
         .select("id, name, is_default, is_active")
         .order("name");
+      const { data } = orgId ? await base.eq('organization_id', orgId) : await base;
       const active = (data || []).filter((l: any) => l.is_active !== false);
       setLocations(active as any);
     } catch (error) {
@@ -335,7 +338,7 @@ export default function Invoices() {
   // Ensure locations are loaded for view modal and labels
   useEffect(() => {
     fetchLocations();
-  }, []);
+  }, [organization?.id]);
 
   useEffect(() => {
     if (formData.location_id) return;

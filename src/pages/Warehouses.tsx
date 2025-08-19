@@ -41,13 +41,11 @@ export default function Warehouses() {
   const loadRefs = useCallback(async () => {
     const orgId = organization?.id;
     try {
-      let query = supabase.from("business_locations").select("id, name").order("name");
-      if (orgId) {
-        query = query.eq("organization_id", orgId);
-      } else {
-        query = query.eq("is_active", true);
-      }
-      const locs = await query;
+      const locs = await supabase
+        .from("business_locations")
+        .select("id, name")
+        .eq("organization_id", orgId || "")
+        .order("name");
       setLocations((locs.data || []) as any);
     } catch (e) {
       setLocations([]);

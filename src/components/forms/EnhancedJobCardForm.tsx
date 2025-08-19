@@ -110,12 +110,34 @@ export const EnhancedJobCardForm: React.FC<EnhancedJobCardFormProps> = ({
         .order('appointment_date', { ascending: false });
       setAppointments(appointmentsData || []);
 
-      // Get default location
-      const { data: locationData } = await supabase
-        .from('business_locations')
-        .select('id')
-        .eq('is_default', true)
-        .single();
+      // Get default location scoped to current organization if available
+      let locationData: any = null;
+      try {
+        const { data: orgUser } = await supabase.auth.getUser();
+        // Try to infer organization via staff_default_locations of current user, then fallback to any default
+        const email = orgUser.user?.email || null;
+        if (email) {
+          const { data: staffRow } = await supabase.from('staff').select('id, organization_id').eq('email', email).maybeSingle();
+          const orgId = (staffRow as any)?.organization_id as string | undefined;
+          if (orgId) {
+            const { data } = await supabase
+              .from('business_locations')
+              .select('id')
+              .eq('organization_id', orgId)
+              .eq('is_default', true)
+              .maybeSingle();
+            locationData = data as any;
+          }
+        }
+        if (!locationData) {
+          const { data } = await supabase
+            .from('business_locations')
+            .select('id')
+            .eq('is_default', true)
+            .maybeSingle();
+          locationData = data as any;
+        }
+      } catch {}
       
       if (locationData) {
         setDefaultLocation(locationData.id);
