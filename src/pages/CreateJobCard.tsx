@@ -475,7 +475,6 @@ export default function CreateJobCard() {
 
     setSaving(true);
     try {
-      const jobNumber = generateJobNumber();
       const now = new Date().toISOString();
       // Pick a primary staff for the job card (first assigned) for backward compatibility
       const primaryStaffId = serviceStaffMap[selectedServices[0].id];
@@ -484,8 +483,7 @@ export default function CreateJobCard() {
       try {
         const res = await supabase
           .from("job_cards")
-          .insert([{
-            job_number: jobNumber,
+          .insert([{ 
             client_id: selectedClient.id,
             staff_id: primaryStaffId || null,
             start_time: jobCardData.start_time || now,
@@ -510,8 +508,7 @@ export default function CreateJobCard() {
           // Retry without location_id
           const res2 = await supabase
             .from("job_cards")
-            .insert([{
-              job_number: jobNumber,
+            .insert([{ 
               client_id: selectedClient.id,
               staff_id: primaryStaffId || null,
               start_time: jobCardData.start_time || now,
@@ -528,8 +525,7 @@ export default function CreateJobCard() {
           // Fallback to a minimal payload compatible with older schemas
           const resMin = await supabase
             .from("job_cards")
-            .insert([{
-              job_number: jobNumber,
+            .insert([{ 
               client_id: selectedClient.id,
               staff_id: primaryStaffId || null,
               start_time: jobCardData.start_time || now,
