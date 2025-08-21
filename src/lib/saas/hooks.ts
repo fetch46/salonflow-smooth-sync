@@ -301,10 +301,24 @@ export const useOrganizationCurrency = () => {
     [currency.code]
   )
 
+  // Backward-compatible helpers used across the app
+  const formatUsdCents = useCallback(
+    (cents: number): string => {
+      const safeCents = Number.isFinite(cents as any) ? (cents as number) : 0
+      return formatAmount(safeCents / 100)
+    },
+    [formatAmount]
+  )
+
   return {
     currency,
     loading,
+    // Modern API
     formatAmount,
+    // Common consumers expect these
+    symbol: currency.symbol,
+    format: formatAmount,
+    formatUsdCents,
   }
 }
 
