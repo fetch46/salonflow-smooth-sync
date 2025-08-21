@@ -15,18 +15,15 @@ import { usePermissions } from "@/lib/saas/hooks";
 import { toast } from "sonner";
 import { useOrganization } from "@/lib/saas/hooks";
 import { supabase } from "@/integrations/supabase/client";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Globe } from "lucide-react";
 import { useSaas } from "@/lib/saas";
-import { useOrganizationCurrency } from "@/lib/saas/hooks";
 
 export default function Settings() {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "company");
   const { systemSettings } = useSaas();
-  const { formatUsdCents } = useOrganizationCurrency();
   const appName = (systemSettings as any)?.app_name || 'AURA OS';
   useEffect(() => {
     const tabParam = searchParams.get("tab");
@@ -79,43 +76,6 @@ phone: "",
   type AccountOption = { id: string; account_code: string; account_name: string; account_subtype?: string | null }
   const [depositAccounts, setDepositAccounts] = useState<AccountOption[]>([])
   const [depositAccountMap, setDepositAccountMap] = useState<Record<string, string>>({})
-  // Derive subscription summary from DB
-  const { subscription, subscriptionPlan } = useSaas();
-
-  const SubscriptionCurrentSummary = () => {
-    const planName = subscriptionPlan?.name || 'No Plan';
-    const status = subscription?.status || 'none';
-    const amount = subscriptionPlan?.price_monthly;
-    const cycle = (subscription?.interval || 'month');
-    const nextBilling = subscription?.current_period_end
-      ? new Date(subscription.current_period_end).toLocaleDateString()
-      : '—';
-    return (
-      <div className="p-6 border rounded-lg bg-gradient-to-r from-pink-50 to-purple-50">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-xl font-semibold">{planName}</h3>
-            <p className="text-muted-foreground">
-              {typeof amount === 'number' ? `${formatUsdCents(amount)} / ${cycle}` : cycle}
-            </p>
-          </div>
-          <Badge className={status === 'active' ? 'bg-green-100 text-green-800' : status === 'trial' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}>
-            {status}
-          </Badge>
-        </div>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-muted-foreground">Next billing date:</span>
-            <div className="font-medium">{nextBilling}</div>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Billing cycle:</span>
-            <div className="font-medium">{cycle}</div>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   // Suggestions feature removed
 
@@ -286,7 +246,15 @@ phone: "",
     }));
   };
 
-  // Removed mocked subscription state; now derived from DB via SubscriptionCurrentSummary
+  // Subscription State
+  const [subscription] = useState({
+    plan: "Professional",
+    status: "Active",
+    billing_cycle: "Monthly",
+    amount: 49.99,
+    next_billing: "2024-02-15",
+    features: ["Unlimited Users", "Advanced Reports", "Email Support", "Mobile App", "API Access"],
+  });
 
   // Communications State
   const [communicationSettings, setCommunicationSettings] = useState({
@@ -1308,7 +1276,29 @@ phone: "",
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Current Plan */}
-                <SubscriptionCurrentSummary />
+                <div className="p-6 border rounded-lg bg-gradient-to-r from-pink-50 to-purple-50">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-xl font-semibold">{subscription.plan} Plan</h3>
+                      <p className="text-muted-foreground">
+                        ${subscription.amount} / {subscription.billing_cycle.toLowerCase()}
+                      </p>
+                    </div>
+                    <Badge className="bg-green-100 text-green-800">
+                      {subscription.status}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Next billing date:</span>
+                      <div className="font-medium">{subscription.next_billing}</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Billing cycle:</span>
+                      <div className="font-medium">{subscription.billing_cycle}</div>
+                    </div>
+                  </div>
+                </div>
 
                 {/* Features */}
                 <div>
@@ -1325,13 +1315,13 @@ phone: "",
 
                 {/* Actions */}
                 <div className="flex gap-3">
-                  <Button className="bg-gradient-to-r from-pink-500 to-purple-600" onClick={() => navigate('/upgrade')}>
+                  <Button className="bg-gradient-to-r from-pink-500 to-purple-600">
                     Upgrade Plan
                   </Button>
-                  <Button variant="outline" onClick={() => navigate('/billing')}>
+                  <Button variant="outline">
                     View Billing History
                   </Button>
-                  <Button variant="outline" onClick={() => navigate('/payment-method')}>
+                  <Button variant="outline">
                     Update Payment Method
                   </Button>
                 </div>

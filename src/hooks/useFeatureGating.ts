@@ -58,24 +58,8 @@ export const useFeatureGating = () => {
       };
     }
 
-    // Prefer DB-backed features on the plan record (boolean enables, optional numeric limits)
-    const dbFeatures: Record<string, any> | undefined = (subscriptionPlan as any)?.features || undefined;
-    let feature: FeatureLimit | undefined;
-    if (dbFeatures && Object.prototype.hasOwnProperty.call(dbFeatures, featureName)) {
-      const value = dbFeatures[featureName];
-      if (typeof value === 'boolean') {
-        feature = { enabled: value };
-      } else if (value && typeof value === 'object') {
-        const enabled = Boolean((value as any).enabled ?? true);
-        const max = typeof (value as any).max === 'number' ? (value as any).max : undefined;
-        feature = { enabled, max };
-      }
-    }
-    // Fallback to static PLAN_FEATURES if DB does not specify the feature
-    if (!feature) {
-      const planFeatures = PLAN_FEATURES[subscriptionPlan.slug];
-      feature = planFeatures?.[featureName as keyof typeof planFeatures];
-    }
+    const planFeatures = PLAN_FEATURES[subscriptionPlan.slug];
+    const feature: FeatureLimit = planFeatures?.[featureName as keyof typeof planFeatures];
 
     if (!feature) {
       return {

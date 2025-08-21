@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PLAN_FEATURES } from "@/lib/features";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useSaas } from "@/lib/saas";
@@ -44,7 +45,7 @@ export default function UpgradePlan() {
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {plans.map((p) => (
-            <div key={p.id} className="border rounded-md p-4 space-y-3">
+            <div key={p} className="border rounded-md p-4 space-y-3">
               <div className="text-lg font-semibold capitalize">{p.name}</div>
               <div className="text-sm text-muted-foreground">{p.slug}</div>
                              <div className="text-xl font-bold">{formatUsdCents(p.price_monthly)}/mo</div>
