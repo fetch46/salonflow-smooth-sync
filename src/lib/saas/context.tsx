@@ -45,6 +45,12 @@ interface SaasContextType {
   isSuperAdmin: boolean
   systemSettings: any
   user: any
+  loading: boolean
+  subscription: any
+  isTrialing: boolean
+  daysLeftInTrial: number | null
+  isOrganizationOwner: boolean
+  isOrganizationAdmin: boolean
 }
 
 const SaasContext = createContext<SaasContextType | undefined>(undefined)
@@ -74,19 +80,33 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
   const [systemSettings, setSystemSettings] = useState<any>(null)
   const [user, setUser] = useState<any>(null)
   const [organizationRole, setOrganizationRole] = useState<UserRole | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [subscription, setSubscription] = useState<any>(null)
 
   const isSubscriptionActive = !!(
-    subscriptionPlan && subscriptionPlan.status === 'active'
+    subscriptionPlan && (subscriptionPlan as any).status === 'active'
   )
+  
+  // Compute trial information
+  const isTrialing = subscription?.status === 'trial' || false
+  const daysLeftInTrial = subscription?.trial_end ? 
+    Math.max(0, Math.ceil((new Date(subscription.trial_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : null
+  
+  // Role checks
+  const isOrganizationOwner = organizationRole === 'owner'
+  const isOrganizationAdmin = organizationRole === 'admin'
 
   // Get current user
   useEffect(() => {
     const getCurrentUser = async () => {
       try {
+        setLoading(true)
         const { data: { user } } = await supabase.auth.getUser()
         setUser(user)
       } catch (error) {
         console.error('Failed to get current user:', error)
+      } finally {
+        setLoading(false)
       }
     }
 
@@ -96,6 +116,7 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setUser(session?.user || null)
+        setLoading(false)
       }
     )
 
@@ -126,18 +147,19 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
     const membership = organizations.find(
       (ou) => ou.organization_id === currentOrganization.id
     )
-    setOrganizationRole((membership?.role as UserRole) || null)
+    setOrganizationRole((membership?.role as any) || null)
   }, [currentOrganization, organizations])
 
   const loadSubscription = useCallback(async () => {
     if (!currentOrganization) return
 
     try {
-      const subscription =
+      const subscriptionData =
         await SubscriptionService.getOrganizationSubscription(
           currentOrganization.id
         )
-      setSubscriptionPlan(subscription?.subscription_plans || null)
+      setSubscription(subscriptionData)
+      setSubscriptionPlan(subscriptionData?.subscription_plans || null)
     } catch (error) {
       console.error('Failed to load subscription:', error)
     }
@@ -337,6 +359,12 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
     isSuperAdmin,
     systemSettings,
     user,
+    loading,
+    subscription,
+    isTrialing,
+    daysLeftInTrial,
+    isOrganizationOwner,
+    isOrganizationAdmin,
   }
 
   return <SaasContext.Provider value={value}>{children}</SaasContext.Provider>

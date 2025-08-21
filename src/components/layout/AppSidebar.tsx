@@ -47,6 +47,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useFeatureGating, usePermissions } from "@/lib/saas/hooks";
 import { useSaas } from "@/lib/saas";
+import { useModuleAccess } from "@/hooks/useModuleAccess";
 
 interface MenuSubItem {
   title: string;
@@ -254,6 +255,7 @@ export function AppSidebar() {
   const { userRole: organizationRole } = usePermissions();
   const { subscriptionPlan, isSuperAdmin, systemSettings } = useSaas();
   const { state, isMobile, setOpenMobile } = useSidebar();
+  const { canAccessModule, isModuleEnabled } = useModuleAccess();
 
   // Get trial info from system settings
   const isTrialing = systemSettings?.subscription_status === 'trial';
@@ -317,25 +319,41 @@ export function AppSidebar() {
   };
 
   const isMenuItemAvailable = (item: MenuItem) => {
-    // Owner and Admin roles have full access to all organization features
-    if (['owner', 'admin'].includes(organizationRole || '')) {
+    // Map menu items to module IDs
+    const moduleMap: Record<string, string> = {
+      'Appointments': 'appointments',
+      'Sales': 'sales',
+      'Purchases': 'purchases',
+      'Services': 'services',
+      'Inventory': 'inventory',
+      'Accountant': 'accountant'
+    };
+
+    const moduleId = moduleMap[item.title];
+    
+    // If it's a module-based item, check module access
+    if (moduleId) {
+      return canAccessModule(moduleId);
+    }
+
+    // Special cases for non-module items
+    if (item.title === 'Dashboard' || item.title === 'Settings') {
       return true;
     }
 
-    if (item.title === 'Services') {
-      return true;
-    }
     if (item.title === 'Reports') {
-      // Only Accountant, Admin or Owner can view reports
-      return ['accountant', 'owner', 'admin'].includes(organizationRole || '');
+      // Reports are part of accountant module
+      return canAccessModule('accountant');
     }
-    if (item.title === 'Accountant') {
-      // Only Accountant, Admin or Owner can view accounting features
-      return ['accountant', 'owner', 'admin'].includes(organizationRole || '');
-    }
+
+    // Default permission check for other items
     if (item.subItems) {
-      return item.subItems.some(subItem => hasFeature(subItem.feature));
+      return item.subItems.some(subItem => {
+        const subModuleId = moduleMap[subItem.title];
+        return subModuleId ? canAccessModule(subModuleId) : hasFeature(subItem.feature);
+      });
     }
+    
     return hasFeature(item.feature);
   };
 

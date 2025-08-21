@@ -83,6 +83,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import BusinessDirectory from "./pages/BusinessDirectory";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import RequirePermission from "./components/auth/RequirePermission";
+import { ModuleGate } from "./components/modules/ModuleGate";
 
 // Admin pages
 const AdminDashboardPage = lazyWithRetry(() => import("./pages/admin/AdminDashboard"));
@@ -231,64 +232,70 @@ const AppRoutes = () => {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="simple-dashboard" element={<SimpleDashboard />} />
           
-          {/* Appointments */}
-          <Route path="appointments" element={<RequirePermission resource="appointments" action="view"><Appointments /></RequirePermission>} />
-          <Route path="appointments/new" element={<RequirePermission resource="appointments" action="create"><AppointmentForm /></RequirePermission>} />
-          <Route path="appointments/:id/edit" element={<RequirePermission resource="appointments" action="edit"><AppointmentForm /></RequirePermission>} />
+          {/* Appointments Module */}
+          <Route path="appointments" element={<ModuleGate moduleId="appointments"><Appointments /></ModuleGate>} />
+          <Route path="appointments/new" element={<ModuleGate moduleId="appointments"><AppointmentForm /></ModuleGate>} />
+          <Route path="appointments/:id/edit" element={<ModuleGate moduleId="appointments"><AppointmentForm /></ModuleGate>} />
           
-          {/* Client Management */}
-          <Route path="clients" element={<RequirePermission resource="clients" action="view"><Clients /></RequirePermission>} />
-          <Route path="clients/:id" element={<RequirePermission resource="clients" action="view"><ClientProfile /></RequirePermission>} />
+          {/* Sales Module */}
+          <Route path="clients" element={<ModuleGate moduleId="sales"><Clients /></ModuleGate>} />
+          <Route path="clients/:id" element={<ModuleGate moduleId="sales"><ClientProfile /></ModuleGate>} />
+          <Route path="invoices" element={<ModuleGate moduleId="sales"><Invoices /></ModuleGate>} />
+          <Route path="invoices/new" element={<ModuleGate moduleId="sales"><InvoiceCreate /></ModuleGate>} />
+          <Route path="invoices/:id/edit" element={<ModuleGate moduleId="sales"><InvoiceEdit /></ModuleGate>} />
+          <Route path="payments" element={<ModuleGate moduleId="sales"><Payments /></ModuleGate>} />
+          <Route path="payments/received/new" element={<ModuleGate moduleId="sales"><PaymentReceivedNew /></ModuleGate>} />
           
-          {/* Staff & Services */}
+          {/* POS Module */}
+          <Route path="pos" element={<ModuleGate moduleId="pos"><POS /></ModuleGate>} />
+          
+          {/* Job Cards Module */}
+          <Route path="job-cards" element={<ModuleGate moduleId="job_cards"><JobCards /></ModuleGate>} />
+          <Route path="job-cards/new" element={<ModuleGate moduleId="job_cards"><CreateJobCard /></ModuleGate>} />
+          <Route path="job-cards/:id" element={<ModuleGate moduleId="job_cards"><JobCardView /></ModuleGate>} />
+          <Route path="job-cards/:id/edit" element={<ModuleGate moduleId="job_cards"><EditJobCard /></ModuleGate>} />
+          
+          {/* Purchases Module */}
+          <Route path="suppliers" element={<ModuleGate moduleId="purchases"><Suppliers /></ModuleGate>} />
+          <Route path="suppliers/:id" element={<ModuleGate moduleId="purchases"><SupplierProfile /></ModuleGate>} />
+          <Route path="purchases" element={<ModuleGate moduleId="purchases"><Purchases /></ModuleGate>} />
+          <Route path="purchases/new" element={<ModuleGate moduleId="purchases"><PurchaseForm /></ModuleGate>} />
+          <Route path="purchases/:id" element={<ModuleGate moduleId="purchases"><PurchaseView /></ModuleGate>} />
+          <Route path="purchases/:id/edit" element={<ModuleGate moduleId="purchases"><PurchaseForm /></ModuleGate>} />
+          <Route path="goods-received" element={<ModuleGate moduleId="purchases"><GoodsReceived /></ModuleGate>} />
+          <Route path="goods-received/new" element={<ModuleGate moduleId="purchases"><GoodsReceivedForm /></ModuleGate>} />
+          <Route path="goods-received/:id/edit" element={<ModuleGate moduleId="purchases"><GoodsReceivedForm /></ModuleGate>} />
+          <Route path="expenses" element={<ModuleGate moduleId="purchases"><Expenses /></ModuleGate>} />
+          <Route path="expenses/new" element={<ModuleGate moduleId="purchases"><ExpenseForm /></ModuleGate>} />
+          <Route path="expenses/:id/edit" element={<ModuleGate moduleId="purchases"><ExpenseForm /></ModuleGate>} />
+          
+          {/* Services Module */}
+          <Route path="services" element={<ModuleGate moduleId="services"><Services /></ModuleGate>} />
+          <Route path="services/new" element={<ModuleGate moduleId="services"><ServiceForm /></ModuleGate>} />
+          <Route path="services/:id" element={<ModuleGate moduleId="services"><ServiceView /></ModuleGate>} />
+          <Route path="services/:id/edit" element={<ModuleGate moduleId="services"><ServiceForm /></ModuleGate>} />
+          
+          {/* Inventory Module */}
+          <Route path="inventory" element={<ModuleGate moduleId="inventory"><Inventory /></ModuleGate>} />
+          <Route path="inventory/new" element={<ModuleGate moduleId="inventory"><ProductForm /></ModuleGate>} />
+          <Route path="inventory/:id" element={<ModuleGate moduleId="inventory"><ProductView /></ModuleGate>} />
+          <Route path="inventory/:id/edit" element={<ModuleGate moduleId="inventory"><ProductEdit /></ModuleGate>} />
+          <Route path="inventory-adjustments" element={<ModuleGate moduleId="inventory"><InventoryAdjustments /></ModuleGate>} />
+          <Route path="inventory-adjustments/:id/edit" element={<ModuleGate moduleId="inventory"><InventoryAdjustmentForm /></ModuleGate>} />
+          <Route path="inventory-transfers" element={<ModuleGate moduleId="inventory"><StockTransfers /></ModuleGate>} />
+          
+          {/* Accountant Module */}
+          <Route path="banking" element={<ModuleGate moduleId="accountant"><Banking /></ModuleGate>} />
+          <Route path="accounts" element={<ModuleGate moduleId="accountant"><Accounts /></ModuleGate>} />
+          <Route path="accounts/new" element={<ModuleGate moduleId="accountant"><AccountCreate /></ModuleGate>} />
+          <Route path="accounts/:id" element={<ModuleGate moduleId="accountant"><AccountView /></ModuleGate>} />
+          <Route path="accounts/:id/edit" element={<ModuleGate moduleId="accountant"><AccountEdit /></ModuleGate>} />
+          <Route path="journal" element={<ModuleGate moduleId="accountant"><Journal /></ModuleGate>} />
+          <Route path="reports" element={<ModuleGate moduleId="accountant"><Reports /></ModuleGate>} />
+          
+          {/* Staff & General Settings (Always available) */}
           <Route path="staff" element={<Staff />} />
           <Route path="staff/:id" element={<StaffProfile />} />
-          <Route path="services" element={<Services />} />
-          <Route path="services/new" element={<ServiceForm />} />
-          <Route path="services/:id" element={<ServiceView />} />
-          <Route path="services/:id/edit" element={<ServiceForm />} />
-          
-          {/* Inventory Management */}
-          <Route path="inventory" element={<RequirePermission resource="products" action="view"><Inventory /></RequirePermission>} />
-          <Route path="inventory/new" element={<RequirePermission resource="products" action="create"><ProductForm /></RequirePermission>} />
-          <Route path="inventory/:id" element={<RequirePermission resource="products" action="view"><ProductView /></RequirePermission>} />
-          <Route path="inventory/:id/edit" element={<RequirePermission resource="products" action="edit"><ProductEdit /></RequirePermission>} />
-          <Route path="inventory-adjustments" element={<RequirePermission resource="adjustments" action="view"><InventoryAdjustments /></RequirePermission>} />
-          <Route path="inventory-adjustments/:id/edit" element={<RequirePermission resource="adjustments" action="edit"><InventoryAdjustmentForm /></RequirePermission>} />
-          <Route path="inventory-transfers" element={<RequirePermission resource="transfers" action="view"><StockTransfers /></RequirePermission>} />
-          
-          {/* Business Operations */}
-          <Route path="pos" element={<POS />} />
-          <Route path="invoices" element={<RequirePermission resource="invoices" action="view"><Invoices /></RequirePermission>} />
-          <Route path="invoices/new" element={<RequirePermission resource="invoices" action="create"><InvoiceCreate /></RequirePermission>} />
-          <Route path="invoices/:id/edit" element={<RequirePermission resource="invoices" action="edit"><InvoiceEdit /></RequirePermission>} />
-          <Route path="expenses" element={<RequirePermission resource="expenses" action="view"><Expenses /></RequirePermission>} />
-          <Route path="expenses/new" element={<RequirePermission resource="expenses" action="create"><ExpenseForm /></RequirePermission>} />
-          <Route path="expenses/:id/edit" element={<RequirePermission resource="expenses" action="edit"><ExpenseForm /></RequirePermission>} />
-          <Route path="payments" element={<RequirePermission resource="payments" action="view"><Payments /></RequirePermission>} />
-          <Route path="payments/received/new" element={<RequirePermission resource="payments" action="create"><PaymentReceivedNew /></RequirePermission>} />
-          <Route path="job-cards" element={<RequirePermission resource="jobcards" action="view"><JobCards /></RequirePermission>} />
-          <Route path="job-cards/new" element={<CreateJobCard />} />
-          <Route path="job-cards/:id" element={<JobCardView />} />
-          <Route path="job-cards/:id/edit" element={<EditJobCard />} />
-          <Route path="suppliers" element={<RequirePermission resource="suppliers" action="view"><Suppliers /></RequirePermission>} />
-          <Route path="suppliers/:id" element={<RequirePermission resource="suppliers" action="view"><SupplierProfile /></RequirePermission>} />
-          <Route path="purchases" element={<RequirePermission resource="purchases" action="view"><Purchases /></RequirePermission>} />
-          <Route path="purchases/new" element={<PurchaseForm />} />
-          <Route path="purchases/:id" element={<PurchaseView />} />
-          <Route path="purchases/:id/edit" element={<PurchaseForm />} />
-          <Route path="goods-received" element={<RequirePermission resource="goods_received" action="view"><GoodsReceived /></RequirePermission>} />
-          <Route path="goods-received/new" element={<RequirePermission resource="goods_received" action="create"><GoodsReceivedForm /></RequirePermission>} />
-          <Route path="goods-received/:id/edit" element={<GoodsReceivedForm />} />
-          
-          {/* Financial */}
-          <Route path="banking" element={<RequirePermission resource="banking" action="view"><Banking /></RequirePermission>} />
-          <Route path="accounts" element={<RequirePermission resource="settings" action="view"><Accounts /></RequirePermission>} />
-          <Route path="accounts/new" element={<RequirePermission resource="settings" action="edit"><AccountCreate /></RequirePermission>} />
-          <Route path="accounts/:id" element={<RequirePermission resource="settings" action="view"><AccountView /></RequirePermission>} />
-          <Route path="accounts/:id/edit" element={<RequirePermission resource="settings" action="edit"><AccountEdit /></RequirePermission>} />
-          <Route path="journal" element={<RequirePermission resource="settings" action="edit"><Journal /></RequirePermission>} />
-          <Route path="reports" element={<RequirePermission resource="reports" action="view"><Reports /></RequirePermission>} />
           
           {/* Settings & Support */}
           <Route path="settings" element={<Settings />} />
