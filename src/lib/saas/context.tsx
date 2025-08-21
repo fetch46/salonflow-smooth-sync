@@ -83,9 +83,7 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true)
   const [subscription, setSubscription] = useState<any>(null)
 
-  const isSubscriptionActive = !!(
-    subscriptionPlan && (subscriptionPlan as any).status === 'active'
-  )
+  const isSubscriptionActive = subscription?.status === 'active'
   
   // Compute trial information
   const isTrialing = subscription?.status === 'trial' || false
@@ -173,6 +171,7 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
         currentOrganization.id,
         planId
       )
+      setSubscription(subscription)
       setSubscriptionPlan(subscription.subscription_plans)
     } catch (error) {
       console.error('Failed to update subscription:', error)
@@ -184,6 +183,7 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
 
     try {
       await SubscriptionService.cancelSubscription(currentOrganization.id)
+      setSubscription(null)
       setSubscriptionPlan(null)
     } catch (error) {
       console.error('Failed to cancel subscription:', error)

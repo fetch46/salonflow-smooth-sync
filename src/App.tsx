@@ -60,6 +60,9 @@ const InvoiceEdit = lazyWithRetry(() => import("./pages/InvoiceEdit"));
 const Expenses = lazyWithRetry(() => import("./pages/Expenses"));
 const Payments = lazyWithRetry(() => import("./pages/Payments"));
 const PaymentReceivedNew = lazyWithRetry(() => import("./pages/PaymentReceivedNew"));
+const UpgradePlan = lazyWithRetry(() => import("./pages/UpgradePlan"));
+const BillingHistory = lazyWithRetry(() => import("./pages/BillingHistory"));
+const PaymentMethod = lazyWithRetry(() => import("./pages/PaymentMethod"));
 const JobCards = lazyWithRetry(() => import("./pages/JobCards"));
 const CreateJobCard = lazyWithRetry(() => import("./pages/CreateJobCard"));
 const EditJobCard = lazyWithRetry(() => import("./pages/EditJobCard"));
@@ -299,6 +302,9 @@ const AppRoutes = () => {
           
           {/* Settings & Support */}
           <Route path="settings" element={<Settings />} />
+          <Route path="upgrade" element={<UpgradePlan />} />
+          <Route path="billing" element={<BillingHistory />} />
+          <Route path="payment-method" element={<PaymentMethod />} />
           <Route path="profile" element={<Profile />} />
           <Route path="help" element={<Help />} />
         </Route>
