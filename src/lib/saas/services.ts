@@ -1,26 +1,47 @@
-
+// SaaS Services for managing organizations, subscriptions, and users
 import { supabase } from '@/integrations/supabase/client'
-import type { 
-  Organization, 
-  OrganizationUser, 
-  OrganizationSubscription, 
+import type {
+  Organization,
+  OrganizationUser,
+  OrganizationSubscription,
   SubscriptionPlan,
-  UserRole,
-  OrganizationStatus,
-  CreateOrganizationData,
   UserInvitation,
-  UsageMetrics
+  UserRole,
+  CreateOrganizationData,
+  UsageMetrics,
 } from './types'
-import { withRetry, withTimeout } from './utils'
 
-// Network error handler
-const handleNetworkError = (error: unknown): never => {
-  if (error instanceof Error && error.message.includes('Failed to fetch')) {
-    throw new Error('Network connection failed. Please check your internet connection and try again.')
+// Simple retry utility
+const withRetry = async <T>(fn: () => Promise<T>, retries = 3): Promise<T> => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn()
+    } catch (error) {
+      if (i === retries - 1) throw error
+      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)))
+    }
   }
-  throw error
+  throw new Error('Max retries exceeded')
 }
 
+// Simple timeout utility
+const withTimeout = <T>(promise: Promise<T>, ms = 10000): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('Request timeout')), ms)
+    )
+  ])
+}
+
+// Network error handler
+const handleNetworkError = (error: any) => {
+  console.error('Network error:', error)
+}
+
+/**
+ * Organization Service
+ */
 export class OrganizationService {
   static async getUserOrganizations(userId: string): Promise<OrganizationUser[]> {
     try {
@@ -34,85 +55,171 @@ export class OrganizationService {
             `)
             .eq('user_id', userId)
             .eq('is_active', true)
-        ),
-        5000
+        )
       )
 
       if (error) throw error
-      if (!data) return []
-
-      return data.map(item => ({
-        ...item,
-        role: item.role as UserRole,
-        organizations: item.organizations ? {
-          ...item.organizations,
-          status: item.organizations.status as OrganizationStatus
-        } : null
-      }))
+      return data || []
     } catch (error) {
-      console.error('Error fetching user organizations:', error)
-      handleNetworkError(error)
+      console.error('Failed to fetch user organizations:', error)
+      throw error
     }
   }
 
   static async createOrganization(data: CreateOrganizationData, userId: string): Promise<Organization> {
     try {
-      const { data: orgData, error } = await withTimeout(
-        withRetry(() =>
-          supabase
-            .from('organizations')
-            .insert({
-              name: data.name,
-              slug: data.slug,
-              settings: data.settings || {}
-            })
-            .select()
-            .single()
-        ),
-        5000
+      const { data: orgData, error: orgError } = await withTimeout(
+        supabase
+          .from('organizations')
+          .insert([{
+            name: data.name,
+            slug: data.slug || data.name.toLowerCase().replace(/\s+/g, '-'),
+            settings: data.settings || {},
+          }])
+          .select()
+          .single()
       )
 
-      if (error) throw error
-      if (!orgData) throw new Error('Failed to create organization')
+      if (orgError) throw orgError
 
-      return {
-        ...orgData,
-        status: orgData.status as OrganizationStatus
-      }
+      // Add user as owner
+      const { error: memberError } = await supabase
+        .from('organization_users')
+        .insert([{
+          organization_id: orgData.id,
+          user_id: userId,
+          role: 'owner',
+          is_active: true,
+        }])
+
+      if (memberError) throw memberError
+      
+      return orgData
     } catch (error) {
-      console.error('Error creating organization:', error)
-      handleNetworkError(error)
+      console.error('Failed to create organization:', error)
+      throw error
     }
   }
 
   static async updateOrganization(id: string, data: Partial<Organization>): Promise<Organization> {
     try {
-      const { data: orgData, error } = await withTimeout(
-        withRetry(() =>
-          supabase
-            .from('organizations')
-            .update(data)
-            .eq('id', id)
-            .select()
-            .single()
-        ),
-        5000
+      const { data: orgData, error: orgError } = await withTimeout(
+        supabase
+          .from('organizations')
+          .update(data)
+          .eq('id', id)
+          .select()
+          .single()
       )
 
-      if (error) throw error
-      if (!orgData) throw new Error('Organization not found')
-
-      return {
-        ...orgData,
-        status: orgData.status as OrganizationStatus
-      }
+      if (orgError) throw orgError
+      return orgData
     } catch (error) {
-      console.error('Error updating organization:', error)
-      handleNetworkError(error)
+      console.error('Failed to update organization:', error)
+      throw error
     }
   }
 }
 
+/**
+ * User Service
+ */
+export class UserService {
+  static async getOrganizationUsers(organizationId: string): Promise<OrganizationUser[]> {
+    try {
+      const { data, error } = await withTimeout(
+        withRetry(() =>
+          supabase
+            .from('organization_users')
+            .select(`
+              *,
+              profiles:user_id (*)
+            `)
+            .eq('organization_id', organizationId)
+            .eq('is_active', true)
+        )
+      )
+
+      if (error) throw error
+      return (data || []).map(item => ({
+        ...item,
+        role: item.role as UserRole
+      }))
+    } catch (error) {
+      console.error('Error fetching organization users:', error)
+      handleNetworkError(error)
+      return []
+    }
+  }
+
+  static async inviteUser(organizationId: string, email: string, role: UserRole, invitedBy: string): Promise<UserInvitation> {
+    try {
+      const token = Math.random().toString(36).substring(2, 15)
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+
+      const { data, error } = await withTimeout(
+        withRetry(() =>
+          supabase
+            .from('user_invitations')
+            .insert({
+              organization_id: organizationId,
+              email,
+              role,
+              invited_by: invitedBy,
+              token,
+              expires_at: expiresAt
+            })
+            .select()
+            .single()
+        )
+      )
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error inviting user:', error)
+      throw error
+    }
+  }
+
+  static async removeUser(organizationId: string, userId: string): Promise<void> {
+    try {
+      const { error } = await withTimeout(
+        supabase
+          .from('organization_users')
+          .update({ is_active: false })
+          .eq('organization_id', organizationId)
+          .eq('user_id', userId)
+      )
+
+      if (error) throw error
+    } catch (error) {
+      console.error('Error removing user:', error)
+      throw error
+    }
+  }
+
+  static async updateUserRole(organizationId: string, userId: string, role: UserRole): Promise<void> {
+    try {
+      const { error } = await withTimeout(
+        supabase
+          .from('organization_users')
+          .update({ role })
+          .eq('organization_id', organizationId)
+          .eq('user_id', userId)
+      )
+
+      if (error) throw error
+    } catch (error) {
+      console.error('Error updating user role:', error)
+      throw error
+    }
+  }
+}
+
+/**
+ * Subscription Service
+ */
 export class SubscriptionService {
   static async getOrganizationSubscription(organizationId: string): Promise<OrganizationSubscription | null> {
     try {
@@ -126,22 +233,17 @@ export class SubscriptionService {
             `)
             .eq('organization_id', organizationId)
             .single()
-        ),
-        5000
+        )
       )
 
       if (error) {
-        if (error.code === 'PGRST116') return null // No subscription found
+        if (error.code === 'PGRST116') return null // No rows found
         throw error
       }
-
-      return {
-        ...data,
-        metadata: data.metadata || {}
-      }
+      return data
     } catch (error) {
-      console.error('Error fetching subscription:', error)
-      handleNetworkError(error)
+      console.error('Failed to fetch subscription:', error)
+      return null
     }
   }
 
@@ -151,223 +253,151 @@ export class SubscriptionService {
         withRetry(() =>
           supabase
             .from('organization_subscriptions')
-            .update({ plan_id: planId })
-            .eq('organization_id', organizationId)
+            .upsert({
+              organization_id: organizationId,
+              plan_id: planId,
+              status: 'active',
+              interval: 'month',
+              current_period_start: new Date().toISOString(),
+              current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            })
             .select(`
               *,
               subscription_plans (*)
             `)
             .single()
-        ),
-        5000
+        )
       )
 
       if (error) throw error
-      if (!data) throw new Error('Subscription not found')
-
-      return {
-        ...data,
-        metadata: data.metadata || {}
-      }
+      return data
     } catch (error) {
-      console.error('Error updating subscription:', error)
-      handleNetworkError(error)
+      console.error('Failed to update subscription:', error)
+      throw error
     }
   }
 
   static async cancelSubscription(organizationId: string): Promise<void> {
     try {
       const { error } = await withTimeout(
-        withRetry(() =>
-          supabase
-            .from('organization_subscriptions')
-            .update({ status: 'canceled' })
-            .eq('organization_id', organizationId)
-        ),
-        5000
+        supabase
+          .from('organization_subscriptions')
+          .update({ status: 'canceled' })
+          .eq('organization_id', organizationId)
       )
 
       if (error) throw error
     } catch (error) {
-      console.error('Error canceling subscription:', error)
-      handleNetworkError(error)
+      console.error('Failed to cancel subscription:', error)
+      throw error
     }
   }
 }
 
-export class UserService {
-  static async getOrganizationUsers(organizationId: string): Promise<OrganizationUser[]> {
-    try {
-      const { data, error } = await withTimeout(
-        withRetry(() =>
-          supabase
-            .from('organization_users')
-            .select(`
-              *,
-              profiles (*)
-            `)
-            .eq('organization_id', organizationId)
-            .eq('is_active', true)
-        ),
-        5000
-      )
-
-      if (error) throw error
-      if (!data) return []
-
-      return data.map(item => ({
-        ...item,
-        role: item.role as UserRole
-      }))
-    } catch (error) {
-      console.error('Error fetching organization users:', error)
-      handleNetworkError(error)
-    }
-  }
-
-  static async inviteUser(organizationId: string, email: string, role: UserRole, invitedBy: string): Promise<UserInvitation> {
-    try {
-      const { data, error } = await withTimeout(
-        withRetry(() =>
-          supabase
-            .from('user_invitations')
-            .insert({
-              organization_id: organizationId,
-              email,
-              role,
-              invited_by: invitedBy
-            })
-            .select()
-            .single()
-        ),
-        5000
-      )
-
-      if (error) throw error
-      if (!data) throw new Error('Failed to create invitation')
-
-      return {
-        ...data,
-        role: data.role as UserRole
-      }
-    } catch (error) {
-      console.error('Error inviting user:', error)
-      handleNetworkError(error)
-    }
-  }
-
-  static async removeUser(organizationId: string, userId: string): Promise<void> {
-    try {
-      const { error } = await withTimeout(
-        withRetry(() =>
-          supabase
-            .from('organization_users')
-            .update({ is_active: false })
-            .eq('organization_id', organizationId)
-            .eq('user_id', userId)
-        ),
-        5000
-      )
-
-      if (error) throw error
-    } catch (error) {
-      console.error('Error removing user:', error)
-      handleNetworkError(error)
-    }
-  }
-
-  static async updateUserRole(organizationId: string, userId: string, role: UserRole): Promise<void> {
-    try {
-      const { error } = await withTimeout(
-        withRetry(() =>
-          supabase
-            .from('organization_users')
-            .update({ role })
-            .eq('organization_id', organizationId)
-            .eq('user_id', userId)
-        ),
-        5000
-      )
-
-      if (error) throw error
-    } catch (error) {
-      console.error('Error updating user role:', error)
-      handleNetworkError(error)
-    }
-  }
-}
-
+/**
+ * Super Admin Service
+ */
 export class SuperAdminService {
   static async checkSuperAdminStatus(userId: string): Promise<boolean> {
     try {
       const { data, error } = await withTimeout(
-        withRetry(() =>
-          supabase
-            .from('super_admins')
-            .select('id')
-            .eq('user_id', userId)
-            .eq('is_active', true)
-            .single()
-        ),
-        5000
+        supabase
+          .from('super_admins')
+          .select('is_active')
+          .eq('user_id', userId)
+          .eq('is_active', true)
+          .single()
       )
 
       if (error) {
-        if (error.code === 'PGRST116') return false // No super admin record
+        if (error.code === 'PGRST116') return false // No rows found
         throw error
       }
-
-      return !!data
+      return data?.is_active || false
     } catch (error) {
-      console.error('Error checking super admin status:', error)
-      handleNetworkError(error)
+      console.error('Failed to check super admin status:', error)
+      return false
     }
   }
 }
 
+/**
+ * Usage Service
+ */
 export class UsageService {
   static async getUsageMetrics(organizationId: string): Promise<UsageMetrics> {
+    // Mock implementation for now
+    return {}
+  }
+}
+
+/**
+ * System Settings Service
+ */
+export class SystemSettingsService {
+  static async getSystemSettings(): Promise<any | null> {
     try {
-      // This would typically fetch from usage tracking tables
-      // For now, returning empty metrics
-      return {}
+      const { data, error } = await withTimeout(
+        supabase
+          .from('system_settings')
+          .select('*')
+          .single()
+      )
+
+      if (error) {
+        if (error.code === 'PGRST116') return null // No rows found
+        throw error
+      }
+      return data
     } catch (error) {
-      console.error('Error fetching usage metrics:', error)
-      handleNetworkError(error)
+      console.error('Failed to fetch system settings:', error)
+      return null
+    }
+  }
+
+  static async saveSystemSettings(settings: any): Promise<boolean> {
+    try {
+      const { error } = await withTimeout(
+        supabase
+          .from('system_settings')
+          .upsert(settings)
+      )
+
+      if (error) throw error
+      return true
+    } catch (error) {
+      console.error('Failed to save system settings:', error)
+      return false
     }
   }
 }
 
+/**
+ * Analytics Service
+ */
 export class AnalyticsService {
   static trackEvent(organizationId: string, event: string, properties: Record<string, any>): void {
-    try {
-      // Log analytics event (replace with actual analytics service)
-      console.log('Analytics event:', {
-        organizationId,
-        event,
-        properties,
-        timestamp: new Date().toISOString()
-      })
-    } catch (error) {
-      console.warn('Analytics tracking failed:', error)
-    }
+    console.log('Analytics Event:', { organizationId, event, properties })
   }
 }
 
+/**
+ * Cache Service
+ */
 export class CacheService {
+  private static CACHE_PREFIX = 'saas_cache_'
+
   static get<T>(key: string): T | null {
     try {
-      const item = localStorage.getItem(key)
-      if (!item) return null
-      const parsed = JSON.parse(item)
-      
-      // Check expiration
-      if (parsed.expires && Date.now() > parsed.expires) {
-        localStorage.removeItem(key)
+      const cached = localStorage.getItem(this.CACHE_PREFIX + key)
+      if (!cached) return null
+
+      const { data, expiry } = JSON.parse(cached)
+      if (Date.now() > expiry) {
+        localStorage.removeItem(this.CACHE_PREFIX + key)
         return null
       }
-      
-      return parsed.value
+      return data
     } catch {
       return null
     }
@@ -375,101 +405,23 @@ export class CacheService {
 
   static set<T>(key: string, value: T, ttlMs = 5 * 60 * 1000): void {
     try {
-      const item = {
-        value,
-        expires: Date.now() + ttlMs
-      }
-      localStorage.setItem(key, JSON.stringify(item))
+      const expiry = Date.now() + ttlMs
+      localStorage.setItem(
+        this.CACHE_PREFIX + key,
+        JSON.stringify({ data: value, expiry })
+      )
     } catch (error) {
-      console.warn('Cache set failed:', error)
+      console.warn('Failed to cache data:', error)
     }
   }
 
   static delete(key: string): void {
-    try {
-      localStorage.removeItem(key)
-    } catch (error) {
-      console.warn('Cache delete failed:', error)
-    }
+    localStorage.removeItem(this.CACHE_PREFIX + key)
   }
 
   static clear(): void {
-    try {
-      // Only clear cache items, not all localStorage
-      const keys = Object.keys(localStorage)
-      keys.forEach(key => {
-        if (key.startsWith('cache_')) {
-          localStorage.removeItem(key)
-        }
-      })
-    } catch (error) {
-      console.warn('Cache clear failed:', error)
-    }
-  }
-}
-
-export class SystemSettingsService {
-  static async getSystemSettings(): Promise<any | null> {
-    try {
-      const { data, error } = await withTimeout(
-        withRetry(() =>
-          supabase
-            .from('system_settings')
-            .select('*')
-            .single()
-        ),
-        5000
-      )
-
-      if (error) {
-        if (error.code === 'PGRST116') return null // No settings found
-        throw error
-      }
-
-      return data
-    } catch (error) {
-      console.error('Error fetching system settings:', error)
-      handleNetworkError(error)
-    }
-  }
-
-  static async saveSystemSettings(settings: any): Promise<boolean> {
-    try {
-      // First try to get existing settings
-      const { data: existing } = await supabase
-        .from('system_settings')
-        .select('id')
-        .single()
-
-      let result
-      if (existing) {
-        // Update existing settings
-        result = await withTimeout(
-          withRetry(() =>
-            supabase
-              .from('system_settings')
-              .update(settings)
-              .eq('id', existing.id)
-          ),
-          5000
-        )
-      } else {
-        // Insert new settings
-        result = await withTimeout(
-          withRetry(() =>
-            supabase
-              .from('system_settings')
-              .insert([settings])
-          ),
-          5000
-        )
-      }
-
-      if (result.error) throw result.error
-      return true
-    } catch (error) {
-      console.error('Error saving system settings:', error)
-      handleNetworkError(error)
-    }
+    Object.keys(localStorage)
+      .filter(key => key.startsWith(this.CACHE_PREFIX))
+      .forEach(key => localStorage.removeItem(key))
   }
 }

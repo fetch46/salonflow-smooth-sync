@@ -226,7 +226,7 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
       await UserService.inviteUser(
         currentOrganization.id,
         email,
-        role,
+        role as UserRole,
         user.id
       )
       await loadOrganizationUsers()
@@ -253,7 +253,7 @@ export const SaasProvider: React.FC<SaasProviderProps> = ({ children }) => {
       await UserService.updateUserRole(
         currentOrganization.id,
         userId,
-        role
+        role as UserRole
       )
       await loadOrganizationUsers()
     } catch (error) {

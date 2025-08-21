@@ -148,7 +148,7 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
                     className="flex items-center justify-between"
                   >
                     <div className="flex flex-col">
-                      <span className="font-medium">{org.name}</span>
+                      <span className="font-medium">{org.organizations?.name || 'Unknown Organization'}</span>
                       <span className="text-xs text-muted-foreground">
                         Role: {getUserRole(org.id)}
                       </span>

@@ -630,10 +630,15 @@ export const EnhancedJobCardForm: React.FC<EnhancedJobCardFormProps> = ({
         </CardContent>
       </Card>
 
-      {showCommissionCalc && (
+      {showCommissionCalc && selectedServices.length > 0 && (
         <JobCardCommissionCalculator
-          services={selectedServices}
-          onClose={() => setShowCommissionCalc(false)}
+          serviceId={selectedServices[0]?.service_id}
+          staffId={selectedServices[0]?.staff_id}
+          amount={selectedServices[0]?.unit_price || 0}
+          onCommissionChange={(commission, rate) => {
+            console.log('Commission calculated:', commission, rate);
+            setShowCommissionCalc(false);
+          }}
         />
       )}
     </div>
