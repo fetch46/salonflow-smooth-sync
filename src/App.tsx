@@ -1,6 +1,6 @@
 
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { useSaas } from "./lib/saas";
+import { SaasProvider, useSaas } from "./lib/saas";
 import React, { Suspense, lazy, useEffect } from "react";
 import { Toaster } from "./components/ui/sonner";
 import AppFooter from "./components/layout/AppFooter";
@@ -335,17 +335,19 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        {(() => {
-          const base = import.meta.env.BASE_URL;
-          const basename = typeof base === 'string' && base.startsWith('/') ? base : undefined;
-          return (
-            <Router basename={basename}>
-              <AppRoutes />
-              <Toaster />
-              <AppFooter />
-            </Router>
-          );
-        })()}
+        <SaasProvider>
+          {(() => {
+            const base = import.meta.env.BASE_URL;
+            const basename = typeof base === 'string' && base.startsWith('/') ? base : undefined;
+            return (
+              <Router basename={basename}>
+                <AppRoutes />
+                <Toaster />
+                <AppFooter />
+              </Router>
+            );
+          })()}
+        </SaasProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );
