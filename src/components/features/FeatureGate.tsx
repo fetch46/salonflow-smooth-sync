@@ -32,7 +32,7 @@ export const FeatureGate: React.FC<FeatureGateProps> = ({
   showUpgradePrompt = true,
   className = '',
 }) => {
-  const { access, enabled } = useFeatureAccess(feature);
+  const { enabled } = useFeatureAccess(feature);
   const navigate = useNavigate();
 
   if (!enabled) {
@@ -93,7 +93,7 @@ export const CreateButtonGate: React.FC<CreateButtonGateProps> = ({
   onClick,
   className = '',
 }) => {
-  const { access, canCreate } = useFeatureAccess(feature);
+  const { enabled, canCreate } = useFeatureAccess(feature);
   const navigate = useNavigate();
 
   const handleClick = () => {
@@ -102,7 +102,7 @@ export const CreateButtonGate: React.FC<CreateButtonGateProps> = ({
     }
   };
 
-  if (!access.enabled) {
+  if (!enabled) {
     return (
       <Button
         variant="outline"
@@ -146,9 +146,9 @@ export const UsageBadge: React.FC<UsageBadgeProps> = ({
   showOnUnlimited = false,
   className = '',
 }) => {
-  const { access } = useFeatureAccess(feature);
+  const { enabled, unlimited, usage, limit } = useFeatureAccess(feature);
 
-  if (!access.enabled) {
+  if (!enabled) {
     return (
       <Badge variant="outline" className={`text-slate-500 ${className}`}>
         <Lock className="w-3 h-3 mr-1" />
@@ -157,7 +157,7 @@ export const UsageBadge: React.FC<UsageBadgeProps> = ({
     );
   }
 
-  if (access.unlimited) {
+  if (unlimited) {
     if (!showOnUnlimited) return null;
     return (
       <Badge className={`bg-emerald-100 text-emerald-700 border-emerald-200 ${className}`}>
@@ -167,7 +167,9 @@ export const UsageBadge: React.FC<UsageBadgeProps> = ({
     );
   }
 
-  const percentage = access.limit ? (access.usage! / access.limit) * 100 : 0;
+  const safeUsage = usage ?? 0;
+  const safeLimit = limit ?? 0;
+  const percentage = limit ? (safeUsage / safeLimit) * 100 : 0;
   const isNearLimit = percentage >= 80;
   const isAtLimit = percentage >= 100;
 
@@ -180,7 +182,7 @@ export const UsageBadge: React.FC<UsageBadgeProps> = ({
         'border-slate-300 text-slate-700'
       } ${className}`}
     >
-      {access.usage}/{access.limit}
+      {safeUsage}/{safeLimit}
       {isAtLimit && <AlertTriangle className="w-3 h-3 ml-1" />}
     </Badge>
   );
@@ -201,13 +203,13 @@ export const UsageCard: React.FC<UsageCardProps> = ({
   icon,
   className = '',
 }) => {
-  const { access } = useFeatureAccess(feature);
+  const { enabled, unlimited, usage, limit } = useFeatureAccess(feature);
   const navigate = useNavigate();
 
   const displayTitle = title || FEATURE_LABELS[feature] || feature;
   const displayDescription = description || FEATURE_DESCRIPTIONS[feature];
 
-  if (!access.enabled) {
+  if (!enabled) {
     return (
       <Card className={`border-dashed border-slate-300 ${className}`}>
         <CardHeader className="pb-3">
@@ -238,7 +240,9 @@ export const UsageCard: React.FC<UsageCardProps> = ({
     );
   }
 
-  const percentage = access.unlimited ? 0 : ((access.usage! / access.limit!) * 100);
+  const safeUsage = usage ?? 0;
+  const safeLimit = limit ?? 0;
+  const percentage = unlimited ? 0 : ((safeUsage / safeLimit) * 100);
   const isNearLimit = percentage >= 80;
   const isAtLimit = percentage >= 100;
 
@@ -262,7 +266,7 @@ export const UsageCard: React.FC<UsageCardProps> = ({
         </div>
       </CardHeader>
       <CardContent>
-        {!access.unlimited && (
+        {!unlimited && (
           <div className="space-y-2 mb-3">
             <div className="flex justify-between text-xs">
               <span className="text-slate-600">Usage</span>
@@ -271,7 +275,7 @@ export const UsageCard: React.FC<UsageCardProps> = ({
                 isNearLimit ? 'text-amber-600' :
                 'text-slate-600'
               }`}>
-                {access.usage}/{access.limit}
+                {safeUsage}/{safeLimit}
               </span>
             </div>
             <Progress 
@@ -285,7 +289,7 @@ export const UsageCard: React.FC<UsageCardProps> = ({
           </div>
         )}
         
-        {access.unlimited && (
+        {unlimited && (
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="w-4 h-4 text-emerald-600" />
             <span className="text-sm text-emerald-700 font-medium">Unlimited usage</span>
@@ -329,9 +333,9 @@ export const FeatureTooltip: React.FC<FeatureTooltipProps> = ({
   feature,
   children,
 }) => {
-  const { access } = useFeatureAccess(feature);
+  const { enabled } = useFeatureAccess(feature);
   
-  if (!access.enabled) {
+  if (!enabled) {
     return (
       <div className="group relative inline-block">
         {children}
