@@ -46,7 +46,7 @@ export class OrganizationService {
   static async getUserOrganizations(userId: string): Promise<OrganizationUser[]> {
     try {
       const { data, error } = await withTimeout(
-        withRetry(() =>
+        withRetry(async () => 
           supabase
             .from('organization_users')
             .select(`
@@ -128,7 +128,7 @@ export class UserService {
   static async getOrganizationUsers(organizationId: string): Promise<OrganizationUser[]> {
     try {
       const { data, error } = await withTimeout(
-        withRetry(() =>
+        withRetry(async () =>
           supabase
             .from('organization_users')
             .select(`
@@ -158,20 +158,18 @@ export class UserService {
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
       const { data, error } = await withTimeout(
-        withRetry(() =>
-          supabase
-            .from('user_invitations')
-            .insert({
-              organization_id: organizationId,
-              email,
-              role,
-              invited_by: invitedBy,
-              token,
-              expires_at: expiresAt
-            })
-            .select()
-            .single()
-        )
+        supabase
+          .from('user_invitations')
+          .insert({
+            organization_id: organizationId,
+            email,
+            role,
+            invited_by: invitedBy,
+            token,
+            expires_at: expiresAt
+          })
+          .select()
+          .single()
       )
 
       if (error) throw error
@@ -224,7 +222,7 @@ export class SubscriptionService {
   static async getOrganizationSubscription(organizationId: string): Promise<OrganizationSubscription | null> {
     try {
       const { data, error } = await withTimeout(
-        withRetry(() =>
+        withRetry(async () =>
           supabase
             .from('organization_subscriptions')
             .select(`
@@ -250,23 +248,21 @@ export class SubscriptionService {
   static async updateSubscription(organizationId: string, planId: string): Promise<OrganizationSubscription> {
     try {
       const { data, error } = await withTimeout(
-        withRetry(() =>
-          supabase
-            .from('organization_subscriptions')
-            .upsert({
-              organization_id: organizationId,
-              plan_id: planId,
-              status: 'active',
-              interval: 'month',
-              current_period_start: new Date().toISOString(),
-              current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-            })
-            .select(`
-              *,
-              subscription_plans (*)
-            `)
-            .single()
-        )
+        supabase
+          .from('organization_subscriptions')
+          .upsert({
+            organization_id: organizationId,
+            plan_id: planId,
+            status: 'active',
+            interval: 'month',
+            current_period_start: new Date().toISOString(),
+            current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          })
+          .select(`
+            *,
+            subscription_plans (*)
+          `)
+          .single()
       )
 
       if (error) throw error
