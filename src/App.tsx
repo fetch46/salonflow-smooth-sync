@@ -112,6 +112,14 @@ const AppRoutes = () => {
   const { user, loading, organization, organizations, isSuperAdmin } = useSaas();
   const location = useLocation();
 
+  // Prefetch some commonly used lazy routes soon after auth/org is ready
+  // This useEffect must be called before any conditional returns to follow Rules of Hooks
+  useEffect(() => {
+    if (user && organization?.id) {
+      // Dynamic prefetch removed to avoid chunk fetch failures; rely on on-demand loading
+    }
+  }, [user, organization?.id]);
+
   if (loading) {
     return <LoadingFallback />;
   }
@@ -131,13 +139,6 @@ const AppRoutes = () => {
       </Suspense>
     );
   }
-
-  // Prefetch some commonly used lazy routes soon after auth/org is ready
-  useEffect(() => {
-    if (user && organization?.id) {
-      // Dynamic prefetch removed to avoid chunk fetch failures; rely on on-demand loading
-    }
-  }, [user, organization?.id]);
 
   // Redirect super admins to Admin dashboard on initial landings
   if (isSuperAdmin && (location.pathname === '/' || location.pathname === '/dashboard')) {
