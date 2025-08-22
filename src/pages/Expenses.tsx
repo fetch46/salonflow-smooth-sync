@@ -7,13 +7,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Plus, Search, Receipt, DollarSign, TrendingUp, AlertTriangle, RefreshCw, MapPin } from "lucide-react";
+import { Plus, Search, Receipt, DollarSign, TrendingUp, AlertTriangle, RefreshCw, MapPin, MoreHorizontal, FileText, Edit3, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useSaas, useOrganizationCurrency } from "@/lib/saas";
 import { postExpensePaymentToLedger } from "@/utils/ledger";
 import { useNavigate } from "react-router-dom";
 import { deleteTransactionsByReference } from "@/utils/ledger";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 
 
 interface Expense {
@@ -599,13 +600,27 @@ export default function Expenses() {
                     <TableCell>{formatMoney(expense.amount)}</TableCell>
                     <TableCell>{getStatusBadge(expense.status)}</TableCell>
                     <TableCell>
-                      <div className="flex space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => navigate(`/expenses/${expense.id}/edit`)}>
-                          Edit
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleDelete(expense.id)}>
-                          Delete
-                        </Button>
+                      <div className="flex gap-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className="gap-2">
+                              <MoreHorizontal className="h-4 w-4" />
+                              Actions
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={() => navigate(`/expenses/${expense.id}/edit`)} className="gap-2">
+                              <FileText className="h-4 w-4" /> View Expense
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/expenses/${expense.id}/edit`)} className="gap-2">
+                              <Edit3 className="h-4 w-4" /> Edit Expense
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleDelete(expense.id)} className="gap-2 text-red-600 focus:text-red-600">
+                              <Trash2 className="h-4 w-4" /> Delete Expense
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   </TableRow>
