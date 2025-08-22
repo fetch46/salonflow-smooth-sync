@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Building, Users, CreditCard, MessageSquare, MapPin, Plus, Edit2, Trash2, Crown, Shield, User, Package } from "lucide-react";
+import { Building, Users, CreditCard, MessageSquare, MapPin, Plus, Edit2, Trash2, Crown, Shield, User, Package, Settings2 } from "lucide-react";
 import { Dialog as UIDialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { usePermissions } from "@/lib/saas/hooks";
 import { toast } from "sonner";
@@ -19,6 +19,7 @@ import { useSearchParams } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Globe } from "lucide-react";
 import { useSaas } from "@/lib/saas";
+import { ModuleManagement } from "@/components/settings/ModuleManagement";
 
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -810,6 +811,10 @@ phone: "",
           <TabsTrigger value="roles" className="justify-start gap-2 data-[state=active]:bg-muted">
             <Shield className="w-4 h-4" />
             Roles
+          </TabsTrigger>
+          <TabsTrigger value="modules" className="justify-start gap-2 data-[state=active]:bg-muted">
+            <Settings2 className="w-4 h-4" />
+            Modules
           </TabsTrigger>
           <TabsTrigger value="subscription" className="justify-start gap-2 data-[state=active]:bg-muted">
             <CreditCard className="w-4 h-4" />
@@ -1830,7 +1835,12 @@ phone: "",
                  </CardContent>
                </Card>
              </div>
-           </TabsContent>
+          </TabsContent>
+
+          {/* Modules Tab */}
+          <TabsContent value="modules">
+            <ModuleManagement />
+          </TabsContent>
         </div>
       </Tabs>
     </div>
