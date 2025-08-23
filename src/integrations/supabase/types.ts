@@ -1692,7 +1692,7 @@ export type Database = {
           end_time?: string | null
           id?: string
           job_card_number?: string | null
-          job_number?: string
+          job_number: string
           notes?: string | null
           organization_id: string
           service_ids?: string[] | null
@@ -3379,7 +3379,7 @@ export type Database = {
         Returns: string
       }
       generate_job_number: {
-        Args: Record<PropertyKey, never> | { p_organization_id: string }
+        Args: { p_organization_id: string }
         Returns: string
       }
       get_next_transaction_number: {
