@@ -933,26 +933,58 @@ export default function JobCards() {
                 </DropdownMenu>
               </div>
             </CardHeader>
-            <CardContent className="pt-0">
-              <div className="grid grid-cols-2 gap-3 text-sm">
+            <CardContent className="pt-0 space-y-3">
+              {/* Top Row: Date/Time and Amount */}
+              <div className="flex justify-between items-start">
                 <div className="space-y-1">
-                  <div className="flex items-center text-slate-600">
-                    <User className="w-3 h-3 mr-1" />
-                    {jobCard.client?.full_name || "No client"}
-                  </div>
-                  <div className="flex items-center text-slate-600">
-                    <UserCheck className="w-3 h-3 mr-1" />
-                    {jobCard.staff?.full_name || "Unassigned"}
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center text-slate-600">
+                  <div className="flex items-center text-slate-600 text-sm">
                     <Calendar className="w-3 h-3 mr-1" />
                     {format(new Date(jobCard.created_at), "MMM dd, yyyy")}
                   </div>
+                  <div className="flex items-center text-slate-600 text-xs">
+                    <Clock className="w-3 h-3 mr-1" />
+                    {jobCard.start_time ? format(new Date(jobCard.start_time), "h:mm a") : "Not started"}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-semibold text-slate-900">{formatMoney(jobCard.total_amount)}</div>
+                  <div className="text-xs text-slate-500">Service Amount</div>
+                </div>
+              </div>
+              
+              {/* Middle Row: Service */}
+              <div className="border-t pt-2">
+                <div className="text-sm font-medium text-slate-700 mb-1">Service</div>
+                <div className="text-sm text-slate-600">
+                  {jobCard.service_type || "General Service"}
+                </div>
+              </div>
+              
+              {/* Bottom Row: Client and Technician */}
+              <div className="border-t pt-2 space-y-2">
+                <div>
+                  <div className="text-xs text-slate-500 mb-1">Client Name</div>
+                  <div className="font-medium text-slate-900">{jobCard.client?.full_name || "No client"}</div>
+                  <div className="flex gap-2 text-xs text-slate-500 mt-1">
+                    {jobCard.client?.email && (
+                      <span className="flex items-center">
+                        <Mail className="w-2.5 h-2.5 mr-1" />
+                        {jobCard.client.email}
+                      </span>
+                    )}
+                    {jobCard.client?.phone && (
+                      <span className="flex items-center">
+                        <Phone className="w-2.5 h-2.5 mr-1" />
+                        {jobCard.client.phone}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-500 mb-1">Assigned Technicians</div>
                   <div className="flex items-center text-slate-600">
-                    <DollarSign className="w-3 h-3 mr-1" />
-                    {formatMoney(jobCard.total_amount)}
+                    <UserCheck className="w-3 h-3 mr-1" />
+                    {jobCard.staff?.full_name || "Unassigned"}
                   </div>
                 </div>
               </div>
