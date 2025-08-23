@@ -847,155 +847,49 @@ export default function Clients() {
         </Card>
       </div>
 
-      {/* Analytics Section */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Top Clients */}
-        <Collapsible>
-          <Card className="shadow-sm border-slate-200">
-            <CardHeader className="border-b border-slate-200 flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Award className="w-5 h-5 text-amber-600" />
-                Top Clients
-              </CardTitle>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm">Toggle</Button>
-              </CollapsibleTrigger>
-            </CardHeader>
-            <CollapsibleContent>
-              <CardContent className="p-0">
-                <div className="divide-y">
-                  {topClients.map((client, idx) => (
-                    <div key={client.id} className="p-4 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={`h-8 w-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-white flex items-center justify-center font-semibold`}>
-                          {getInitials(client.full_name)}
-                        </div>
-                        <div>
-                          <div className="font-medium">{client.full_name}</div>
-                          <div className="text-xs text-slate-500">Visits: {client.total_visits || 0}</div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-semibold">{formatMoney(client.total_spent || 0)}</div>
-                        <div className="text-xs text-slate-500">Tier: {getLoyaltyTier(client.total_spent || 0).name}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
-
-        {/* Recent Activity */}
-        <Collapsible>
-          <Card className="shadow-sm border-slate-200">
-            <CardHeader className="border-b border-slate-200 flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-green-600" />
-                Recent Activity
-              </CardTitle>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm">Toggle</Button>
-              </CollapsibleTrigger>
-            </CardHeader>
-            <CollapsibleContent>
-              <CardContent className="p-0">
-                <div className="divide-y">
-                  {recentActivity.map((item) => (
-                    <div key={item.id} className="p-4 flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">{item.name}</div>
-                        <div className="text-xs text-slate-500">{item.action} • {item.time}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-semibold">{formatMoney(item.amount)}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
-
-        {/* Loyalty Tiers */}
-        <Collapsible>
-          <Card className="shadow-sm border-slate-200">
-            <CardHeader className="border-b border-slate-200 flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-purple-600" />
-                Loyalty Tiers
-              </CardTitle>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm">Toggle</Button>
-              </CollapsibleTrigger>
-            </CardHeader>
-            <CollapsibleContent>
-              <CardContent className="p-4">
-                <div className="space-y-3">
-                  {LOYALTY_TIERS.slice().reverse().map((tier) => {
-                    const count = clients.filter(c => getLoyaltyTier(c.total_spent || 0).name === tier.name).length;
-                    const percentage = stats.total > 0 ? (count / stats.total) * 100 : 0;
-                    return (
-                      <div key={tier.name} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${tier.color}`} />
-                            <span className="font-medium text-sm">{tier.name}</span>
-                            <span className="text-xs text-slate-500">
-                              ${tier.minSpent.toLocaleString()}+
-                            </span>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-semibold text-sm">{count}</div>
-                            <div className="text-xs text-slate-500">{percentage.toFixed(1)}%</div>
-                          </div>
-                        </div>
-                        <Progress value={percentage} className="h-1.5" />
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
-      </div>
-
-      {/* Clients List */}
-      <Card className="shadow-sm border-slate-200">
-        <CardHeader className="border-b border-slate-200">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-fit">
-              <TabsList className="grid grid-cols-4 w-fit">
-                <TabsTrigger value="all" className="flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  All ({clients.length})
-                </TabsTrigger>
-                <TabsTrigger value="new" className="flex items-center gap-2">
-                  <UserPlus className="w-4 h-4" />
-                  New
-                </TabsTrigger>
-                <TabsTrigger value="vip" className="flex items-center gap-2">
-                  <Crown className="w-4 h-4" />
-                  VIP
-                </TabsTrigger>
-                <TabsTrigger value="inactive" className="flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  Inactive
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-
+      {/* Main Clients Table/Grid */}
+      <div className="space-y-6">
+        {/* Quick Actions Bar */}
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4 p-4 bg-gradient-to-r from-slate-50 to-blue-50 rounded-lg border">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <UserPlus className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-medium text-slate-900">Quick Actions</h3>
+              <p className="text-sm text-slate-600">Manage your client database efficiently</p>
+            </div>
+          </div>
+          <div className="flex gap-2 ml-auto">
+            <Button variant="outline" size="sm" onClick={refreshData} disabled={refreshing}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setEditingClient(null);
+                setIsModalOpen(true);
+              }}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Client
+            </Button>
+          </div>
+        </div>
+        {/* Main Content */}
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader className="border-b border-slate-200">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="relative">
+                <div className="relative w-full md:w-64">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
                     placeholder="Search clients..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9 w-64"
+                    className="pl-9 w-full"
                   />
                 </div>
                 
@@ -1015,10 +909,10 @@ export default function Clients() {
                     ))}
                   </SelectContent>
                 </Select>
-                
+
                 <Select value={sortBy} onValueChange={setSortBy}>
                   <SelectTrigger className="w-32">
-                    <SelectValue placeholder="Sort by" />
+                    <SelectValue placeholder="Sort" />
                   </SelectTrigger>
                   <SelectContent>
                     {SORT_OPTIONS.map((option) => (
@@ -1028,25 +922,24 @@ export default function Clients() {
                     ))}
                   </SelectContent>
                 </Select>
-
-                <ToggleGroup
-                  type="single"
-                  value={viewMode}
-                  onValueChange={(v) => v && setViewMode(v as "cards" | "table")}
-                  aria-label="Select view mode"
-                >
-                  <ToggleGroupItem value="cards" aria-label="Card view">
-                    <LayoutGrid className="w-4 h-4" />
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="table" aria-label="Table view">
-                    <TableIcon className="w-4 h-4" />
-                  </ToggleGroupItem>
-                </ToggleGroup>
               </div>
-          </div>
-        </CardHeader>
-        
-        <CardContent className="p-0">
+              
+              <div className="flex items-center gap-2">
+                <div className="hidden md:flex rounded-lg border border-border p-1 bg-card shadow-sm">
+                  <Button variant={viewMode === 'table' ? 'default' : 'ghost'} size="sm" className="gap-2" onClick={() => setViewMode('table')}>
+                    <TableIcon className="w-4 h-4" />
+                    Table
+                  </Button>
+                  <Button variant={viewMode === 'cards' ? 'default' : 'ghost'} size="sm" className="gap-2" onClick={() => setViewMode('cards')}>
+                    <LayoutGrid className="w-4 h-4" />
+                    Cards
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          
+          <CardContent className="p-0">
           {currentClients.length === 0 ? (
             <div className="text-center py-16 space-y-4">
               <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
@@ -1212,8 +1105,9 @@ export default function Clients() {
             )}
             </>
           )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

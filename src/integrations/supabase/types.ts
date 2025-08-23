@@ -1887,6 +1887,7 @@ export type Database = {
       }
       organization_modules: {
         Row: {
+          controlled_by_plan: boolean | null
           created_at: string
           enabled_at: string | null
           enabled_by: string | null
@@ -1897,6 +1898,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          controlled_by_plan?: boolean | null
           created_at?: string
           enabled_at?: string | null
           enabled_by?: string | null
@@ -1907,6 +1909,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          controlled_by_plan?: boolean | null
           created_at?: string
           enabled_at?: string | null
           enabled_by?: string | null
