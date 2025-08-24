@@ -124,9 +124,8 @@ export default function Accounts() {
           try {
             const res = await supabase
               .from("account_transactions")
-              .select("account_id, count:account_id")
-              .in("account_id", ids)
-              .group("account_id");
+              .select("account_id")
+              .in("account_id", ids);
             grouped = (res.data as any) || null;
             groupedErr = res.error;
           } catch (gErr: any) {
@@ -191,7 +190,7 @@ export default function Accounts() {
       if (!organization?.id) return toast.error("No active organization");
       const { data, error } = await supabase.rpc('rebuild_organization_chart_of_accounts', { p_organization_id: organization.id, p_force: force });
       if (error) throw error;
-      toast.success(`Chart rebuilt${data ? ` (inserted ${data.inserted}, updated ${data.updated}${force ? `, deleted ${data.deleted}` : ''})` : ''}`);
+      toast.success(`Chart rebuilt${data ? ` (changes made)` : ''}`);
       await refresh();
     } catch (e: any) {
       console.error(e);

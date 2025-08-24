@@ -101,7 +101,7 @@ export class OrganizationService {
         .single()
 
       if (orgError) throw orgError
-      return orgData
+      return orgData as any
     } catch (error) {
       console.error('Failed to update organization:', error)
       throw error

@@ -273,7 +273,7 @@ export default function AccountView() {
                     className={r.reference_id ? "cursor-pointer hover:bg-slate-50" : ""}
                     title={r.reference_id ? `Open ${(r.reference_type || '').toString()} ${r.reference_id || ''}` : undefined}
                   >
-                    <TableCell>{formatDate(r.transaction_date)}</TableCell>
+                    <TableCell>{formatDate(new Date(r.transaction_date))}</TableCell>
                     <TableCell className="max-w-[380px] truncate" title={r.description || ''}>{r.description || "—"}</TableCell>
                     <TableCell className="text-right">{formatCurrency(Number(r.debit_amount || 0))}</TableCell>
                     <TableCell className="text-right">{formatCurrency(Number(r.credit_amount || 0))}</TableCell>

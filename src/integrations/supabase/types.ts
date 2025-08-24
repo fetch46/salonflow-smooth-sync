@@ -179,6 +179,45 @@ export type Database = {
           },
         ]
       }
+      appointment_services: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          quantity: number
+          service_id: string
+          staff_id: string | null
+          total_price: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          quantity?: number
+          service_id: string
+          staff_id?: string | null
+          total_price?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          quantity?: number
+          service_id?: string
+          staff_id?: string | null
+          total_price?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       appointments: {
         Row: {
           appointment_date: string
