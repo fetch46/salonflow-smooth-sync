@@ -146,6 +146,7 @@ export const EnhancedJobCardForm: React.FC<EnhancedJobCardFormProps> = ({
         total_amount: calculateTotal(),
         status: 'in_progress',
         organization_id: organization.id,
+        job_number: '', // Will be set by trigger
       };
 
       const { data: jobCard, error: jobCardError } = await supabase

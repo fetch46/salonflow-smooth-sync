@@ -212,10 +212,7 @@ export class SubscriptionService {
         throw error
       }
       
-      return {
-        ...data,
-        metadata: data.metadata || {}
-      } as OrganizationSubscription
+      return data as OrganizationSubscription
     } catch (error) {
       console.error('Failed to fetch subscription:', error)
       return null
@@ -242,10 +239,7 @@ export class SubscriptionService {
 
       if (error) throw error
       
-      return {
-        ...data,
-        metadata: data.metadata || {}
-      } as OrganizationSubscription
+      return data as OrganizationSubscription
     } catch (error) {
       console.error('Failed to update subscription:', error)
       throw error
