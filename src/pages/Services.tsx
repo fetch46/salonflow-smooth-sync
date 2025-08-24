@@ -981,29 +981,27 @@ export default function Services() {
 
       {/* Enhanced Statistics Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600 opacity-100" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Total Services</CardTitle>
-            <Package className="h-4 w-4 text-white/80" />
+        <Card className="bg-gradient-to-br from-blue-50 to-sky-50 border-blue-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-blue-700">Total Services</CardTitle>
+            <Package className="h-4 w-4 text-blue-600" />
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{services.length}</div>
-            <p className="text-xs text-white/80">
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-700">{services.length}</div>
+            <p className="text-xs text-blue-600">
               {dashboard.active} active
             </p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-emerald-600 opacity-100" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-white/80" />
+        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-green-700">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{formatPrice(dashboard.totalRevenue)}</div>
-            <p className="text-xs text-white/80">
+          <CardContent>
+            <div className="text-2xl font-bold text-green-700">{formatPrice(dashboard.totalRevenue)}</div>
+            <p className="text-xs text-green-600">
               {dashboard.totalBookings} bookings
             </p>
           </CardContent>
@@ -1011,43 +1009,40 @@ export default function Services() {
 
 
 
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-pink-500 to-pink-600 opacity-100" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Avg Rating</CardTitle>
-            <Star className="h-4 w-4 text-white/80" />
+        <Card className="bg-gradient-to-br from-pink-50 to-rose-50 border-pink-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-pink-700">Avg Rating</CardTitle>
+            <Star className="h-4 w-4 text-pink-600" />
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{dashboard.avgRating.toFixed(1)}</div>
-            <p className="text-xs text-white/80">
+          <CardContent>
+            <div className="text-2xl font-bold text-pink-700">{dashboard.avgRating.toFixed(1)}</div>
+            <p className="text-xs text-pink-600">
               Customer rating
             </p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500 to-cyan-600 opacity-100" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Categories</CardTitle>
-            <Target className="h-4 w-4 text-white/80" />
+        <Card className="bg-gradient-to-br from-cyan-50 to-sky-50 border-cyan-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-cyan-700">Categories</CardTitle>
+            <Target className="h-4 w-4 text-cyan-600" />
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{dashboard.categoriesStats.length}</div>
-            <p className="text-xs text-white/80">
+          <CardContent>
+            <div className="text-2xl font-bold text-cyan-700">{dashboard.categoriesStats.length}</div>
+            <p className="text-xs text-cyan-600">
               Service types
             </p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-red-500 to-red-600 opacity-100" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Inactive</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-white/80" />
+        <Card className="bg-gradient-to-br from-red-50 to-rose-50 border-red-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-red-700">Inactive</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-red-600" />
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{dashboard.inactive}</div>
-            <p className="text-xs text-white/80">
+          <CardContent>
+            <div className="text-2xl font-bold text-red-700">{dashboard.inactive}</div>
+            <p className="text-xs text-red-600">
               Need attention
             </p>
           </CardContent>

@@ -415,9 +415,9 @@ export default function InvoiceCreate() {
             <Receipt className="w-4 h-4 text-green-600" />
             Invoice Items
           </h3>
-          <Card className="bg-slate-500/10 border-slate-200">
+          <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm">Add Item</CardTitle>
+              <CardTitle className="text-sm text-purple-800">Add Item</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 lg:grid-cols-7 gap-3">

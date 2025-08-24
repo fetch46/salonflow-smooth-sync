@@ -762,85 +762,79 @@ export default function Clients() {
 
       {/* Enhanced Statistics Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600 opacity-100" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Total Clients</CardTitle>
-            <Users className="h-4 w-4 text-white/80" />
+        <Card className="bg-gradient-to-br from-blue-50 to-sky-50 border-blue-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-blue-700">Total Clients</CardTitle>
+            <Users className="h-4 w-4 text-blue-600" />
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{stats.total}</div>
-            <p className="text-xs text-white/80">
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-700">{stats.total}</div>
+            <p className="text-xs text-blue-600">
               {stats.active} active
             </p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-emerald-600 opacity-100" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-white/80" />
+        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-green-700">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{formatMoney(stats.totalRevenue)}</div>
-            <p className="text-xs text-white/80">
+          <CardContent>
+            <div className="text-2xl font-bold text-green-700">{formatMoney(stats.totalRevenue)}</div>
+            <p className="text-xs text-green-600">
               From all clients
             </p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-violet-600 opacity-100" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Avg Spent</CardTitle>
-            <Target className="h-4 w-4 text-white/80" />
+        <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-purple-700">Avg Spent</CardTitle>
+            <Target className="h-4 w-4 text-purple-600" />
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{formatMoney(stats.averageSpent)}</div>
-            <p className="text-xs text-white/80">
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-700">{formatMoney(stats.averageSpent)}</div>
+            <p className="text-xs text-purple-600">
               Per client
             </p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-500 to-amber-600 opacity-100" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">VIP Clients</CardTitle>
-            <Crown className="h-4 w-4 text-white/80" />
+        <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-orange-700">VIP Clients</CardTitle>
+            <Crown className="h-4 w-4 text-orange-600" />
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{stats.vip}</div>
-            <p className="text-xs text-white/80">
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-700">{stats.vip}</div>
+            <p className="text-xs text-orange-600">
               Premium members
             </p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-pink-500 to-pink-600 opacity-100" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">New This Month</CardTitle>
-            <UserPlus className="h-4 w-4 text-white/80" />
+        <Card className="bg-gradient-to-br from-pink-50 to-rose-50 border-pink-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-pink-700">New This Month</CardTitle>
+            <UserPlus className="h-4 w-4 text-pink-600" />
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{stats.newThisMonth}</div>
-            <p className="text-xs text-white/80">
+          <CardContent>
+            <div className="text-2xl font-bold text-pink-700">{stats.newThisMonth}</div>
+            <p className="text-xs text-pink-600">
               Fresh faces
             </p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500 to-cyan-600 opacity-100" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Retention Rate</CardTitle>
-            <Heart className="h-4 w-4 text-white/80" />
+        <Card className="bg-gradient-to-br from-cyan-50 to-sky-50 border-cyan-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-cyan-700">Retention Rate</CardTitle>
+            <Heart className="h-4 w-4 text-cyan-600" />
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{stats.retentionRate.toFixed(1)}%</div>
-            <p className="text-xs text-white/80">
+          <CardContent>
+            <div className="text-2xl font-bold text-cyan-700">{stats.retentionRate.toFixed(1)}%</div>
+            <p className="text-xs text-cyan-600">
               Return clients
             </p>
           </CardContent>

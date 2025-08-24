@@ -824,17 +824,17 @@ export default function Staff() {
 
       {/* Dashboard Statistics */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium opacity-90 flex items-center gap-2">
+            <CardTitle className="text-sm font-medium text-blue-700 flex items-center gap-2">
               Total Staff
               <UsageBadge feature="staff" className="bg-card/20 text-card-foreground border-border/30" />
             </CardTitle>
-            <Users className="h-4 w-4 opacity-80" />
+            <Users className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboardStats.totalStaff}</div>
-            <p className="text-xs opacity-80">
+            <div className="text-2xl font-bold text-blue-700">{dashboardStats.totalStaff}</div>
+            <p className="text-xs text-blue-600">
               {dashboardStats.activeStaff} active, {dashboardStats.inactiveStaff} inactive
               {(() => {
                 const access = getFeatureAccess('staff');
@@ -847,40 +847,40 @@ export default function Staff() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-0 shadow-lg">
+        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium opacity-90">Active Staff</CardTitle>
-            <UserCheck className="h-4 w-4 opacity-80" />
+            <CardTitle className="text-sm font-medium text-green-700">Active Staff</CardTitle>
+            <UserCheck className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboardStats.activeStaff}</div>
-            <p className="text-xs opacity-80">
+            <div className="text-2xl font-bold text-green-700">{dashboardStats.activeStaff}</div>
+            <p className="text-xs text-green-600">
               {((dashboardStats.activeStaff / dashboardStats.totalStaff) * 100).toFixed(1)}% of total team
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white border-0 shadow-lg">
+        <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium opacity-90">New Hires</CardTitle>
-            <Clock className="h-4 w-4 opacity-80" />
+            <CardTitle className="text-sm font-medium text-orange-700">New Hires</CardTitle>
+            <Clock className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboardStats.newHires}</div>
-            <p className="text-xs opacity-80">
+            <div className="text-2xl font-bold text-orange-700">{dashboardStats.newHires}</div>
+            <p className="text-xs text-orange-600">
               Joined in last 30 days
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
+        <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium opacity-90">Avg Commission</CardTitle>
-            <TrendingUp className="h-4 w-4 opacity-80" />
+            <CardTitle className="text-sm font-medium text-purple-700">Avg Commission</CardTitle>
+            <TrendingUp className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboardStats.avgCommissionRate.toFixed(1)}%</div>
-            <p className="text-xs opacity-80">
+            <div className="text-2xl font-bold text-purple-700">{dashboardStats.avgCommissionRate.toFixed(1)}%</div>
+            <p className="text-xs text-purple-600">
               Average team rate
             </p>
           </CardContent>

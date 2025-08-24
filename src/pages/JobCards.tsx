@@ -1108,85 +1108,79 @@ export default function JobCards() {
 
       {/* Enhanced Statistics Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600 opacity-100" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Total Job Cards</CardTitle>
-            <FileText className="h-4 w-4 text-white/80" />
+        <Card className="bg-gradient-to-br from-blue-50 to-sky-50 border-blue-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-blue-700">Total Job Cards</CardTitle>
+            <FileText className="h-4 w-4 text-blue-600" />
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{stats.total}</div>
-            <p className="text-xs text-white/80">
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-700">{stats.total}</div>
+            <p className="text-xs text-blue-600">
               {stats.todayCards} created today
             </p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-emerald-600 opacity-100" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-white/80" />
+        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-green-700">Completed</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{stats.completed}</div>
-            <p className="text-xs text-white/80">
+          <CardContent>
+            <div className="text-2xl font-bold text-green-700">{stats.completed}</div>
+            <p className="text-xs text-green-600">
               {stats.completionRate.toFixed(1)}% success rate
             </p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-500 to-amber-600 opacity-100" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">In Progress</CardTitle>
-            <PlayCircle className="h-4 w-4 text-white/80" />
+        <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-orange-700">In Progress</CardTitle>
+            <PlayCircle className="h-4 w-4 text-orange-600" />
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{stats.inProgress}</div>
-            <p className="text-xs text-white/80">
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-700">{stats.inProgress}</div>
+            <p className="text-xs text-orange-600">
               Active jobs running
             </p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-violet-600 opacity-100" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-white/80" />
+        <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-purple-700">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-purple-600" />
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{symbol}{stats.totalRevenue.toLocaleString()}</div>
-            <p className="text-xs text-white/80">
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-700">{symbol}{stats.totalRevenue.toLocaleString()}</div>
+            <p className="text-xs text-purple-600">
               From completed jobs
             </p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500 to-cyan-600 opacity-100" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Avg Duration</CardTitle>
-            <Timer className="h-4 w-4 text-white/80" />
+        <Card className="bg-gradient-to-br from-cyan-50 to-sky-50 border-cyan-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-cyan-700">Avg Duration</CardTitle>
+            <Timer className="h-4 w-4 text-cyan-600" />
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{formatDuration(stats.averageDuration)}</div>
-            <p className="text-xs text-white/80">
+          <CardContent>
+            <div className="text-2xl font-bold text-cyan-700">{formatDuration(stats.averageDuration)}</div>
+            <p className="text-xs text-cyan-600">
               Per completed job
             </p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-red-500 to-red-600 opacity-100" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Overdue</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-white/80" />
+        <Card className="bg-gradient-to-br from-red-50 to-rose-50 border-red-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-red-700">Overdue</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-red-600" />
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{stats.overdueCards}</div>
-            <p className="text-xs text-white/80">
+          <CardContent>
+            <div className="text-2xl font-bold text-red-700">{stats.overdueCards}</div>
+            <p className="text-xs text-red-600">
               Need attention
             </p>
           </CardContent>

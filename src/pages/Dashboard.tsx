@@ -314,7 +314,10 @@ const Dashboard = () => {
       previousValue: metrics.revenueYesterday,
       change: safePercent(metrics.revenueToday, metrics.revenueYesterday),
       icon: DollarSign,
-      gradient: "from-emerald-500 to-emerald-600",
+      textColor: "text-green-700",
+      valueColor: "text-green-700",
+      subtextColor: "text-green-600",
+      iconColor: "text-green-600",
       trend: metrics.revenueToday >= metrics.revenueYesterday ? "up" : "down"
     },
     {
@@ -323,7 +326,10 @@ const Dashboard = () => {
       previousValue: metrics.appointmentsYesterday,
       change: safePercent(metrics.appointmentsToday, metrics.appointmentsYesterday),
       icon: Calendar,
-      gradient: "from-blue-500 to-blue-600",
+      textColor: "text-blue-700",
+      valueColor: "text-blue-700",
+      subtextColor: "text-blue-600",
+      iconColor: "text-blue-600",
       trend: metrics.appointmentsToday >= metrics.appointmentsYesterday ? "up" : "down"
     },
     {
@@ -332,7 +338,10 @@ const Dashboard = () => {
       previousValue: metrics.newClientsYesterday,
       change: safePercent(metrics.newClientsToday, metrics.newClientsYesterday),
       icon: Users,
-      gradient: "from-purple-500 to-purple-600",
+      textColor: "text-purple-700",
+      valueColor: "text-purple-700",
+      subtextColor: "text-purple-600",
+      iconColor: "text-purple-600",
       trend: metrics.newClientsToday >= metrics.newClientsYesterday ? "up" : "down"
     },
     {
@@ -341,7 +350,10 @@ const Dashboard = () => {
       previousValue: metrics.staffUtilizationYesterday,
       change: safePercent(metrics.staffUtilizationToday, metrics.staffUtilizationYesterday),
       icon: TrendingUp,
-      gradient: "from-amber-500 to-amber-600",
+      textColor: "text-orange-700",
+      valueColor: "text-orange-700",
+      subtextColor: "text-orange-600",
+      iconColor: "text-orange-600",
       trend: metrics.staffUtilizationToday >= metrics.staffUtilizationYesterday ? "up" : "down"
     },
     {
@@ -350,7 +362,10 @@ const Dashboard = () => {
       previousValue: metrics.completionRateYesterday,
       change: safePercent(metrics.completionRateToday, metrics.completionRateYesterday),
       icon: CheckCircle,
-      gradient: "from-green-500 to-green-600",
+      textColor: "text-green-700",
+      valueColor: "text-green-700",
+      subtextColor: "text-green-600",
+      iconColor: "text-green-600",
       trend: metrics.completionRateToday >= metrics.completionRateYesterday ? "up" : "down"
     },
     {
@@ -359,7 +374,10 @@ const Dashboard = () => {
       previousValue: metrics.avgServiceTimeYesterday,
       change: safePercent(metrics.avgServiceTimeToday, metrics.avgServiceTimeYesterday),
       icon: Timer,
-      gradient: "from-cyan-500 to-cyan-600",
+      textColor: "text-cyan-700",
+      valueColor: "text-cyan-700",
+      subtextColor: "text-cyan-600",
+      iconColor: "text-cyan-600",
       trend: metrics.avgServiceTimeToday <= metrics.avgServiceTimeYesterday ? "up" : "down"
     }
   ];
@@ -559,23 +577,22 @@ const Dashboard = () => {
       {/* Enhanced Statistics Grid */}
       <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {todayStats.map((stat, index) => (
-          <Card key={index} className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-            <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-100`} />
-            <CardHeader className="relative flex flex-row items-center justify-between space-y-0 p-3 sm:p-4 pb-2">
-              <CardTitle className="text-sm font-medium text-white/90">
+          <Card key={index} className={`${stat.bgClass}`}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-4 pb-2">
+              <CardTitle className={`text-sm font-medium ${stat.textColor}`}>
                 {stat.title}
               </CardTitle>
-              <stat.icon className="h-4 w-4 text-white/80" />
+              <stat.icon className={`h-4 w-4 ${stat.iconColor}`} />
             </CardHeader>
-            <CardContent className="relative p-3 sm:p-4">
-              <div className="text-xl sm:text-2xl font-bold text-white">{stat.value}</div>
+            <CardContent className="p-3 sm:p-4">
+              <div className={`text-xl sm:text-2xl font-bold ${stat.valueColor}`}>{stat.value}</div>
               <div className="flex items-center mt-1">
                 {stat.change > 0 ? (
-                  <ArrowUpRight className="h-3 w-3 text-white/80 mr-1" />
+                  <ArrowUpRight className={`h-3 w-3 ${stat.iconColor} mr-1`} />
                 ) : (
-                  <ArrowDownRight className="h-3 w-3 text-white/80 mr-1" />
+                  <ArrowDownRight className={`h-3 w-3 ${stat.iconColor} mr-1`} />
                 )}
-                <p className="text-xs text-white/80">
+                <p className={`text-xs ${stat.subtextColor}`}>
                   {stat.change > 0 ? '+' : ''}{stat.change.toFixed(1)}% from yesterday
                 </p>
               </div>
