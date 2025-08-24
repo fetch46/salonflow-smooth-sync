@@ -328,10 +328,10 @@ export const useOrganizationCurrency = () => {
 export const useOrganizationTaxRate = () => {
   const { organization } = useSaas()
   
-  return {
-    taxRate: 0.1, // 10% default
-    loading: false,
-  }
+  // Return percentage as a number for easier downstream math
+  // e.g., 8.5 means 8.5%
+  const percent = 10 // default 10%
+  return percent
 }
 
 /**
