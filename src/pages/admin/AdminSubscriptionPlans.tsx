@@ -17,6 +17,7 @@ import { FEATURE_CATEGORIES, FEATURE_LABELS } from "@/lib/features";
 import { useSaas } from "@/lib/saas";
 import { SuperAdminService } from "@/lib/saas/services";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { ModuleManagementCard } from "@/components/admin/ModuleManagementCard";
 
 interface SubscriptionPlan {
   id: string;
