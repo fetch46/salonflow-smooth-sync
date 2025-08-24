@@ -697,13 +697,13 @@ export default function Appointments() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "scheduled": return "bg-blue-100 text-blue-800";
-      case "confirmed": return "bg-green-100 text-green-800";
-      case "in_progress": return "bg-yellow-100 text-yellow-800";
-      case "completed": return "bg-emerald-100 text-emerald-800";
-      case "cancelled": return "bg-red-100 text-red-800";
-      case "no_show": return "bg-gray-100 text-gray-800";
-      default: return "bg-gray-100 text-gray-800";
+      case "scheduled": return "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400";
+      case "confirmed": return "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400";
+      case "in_progress": return "bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400";
+      case "completed": return "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400";
+      case "cancelled": return "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400";
+      case "no_show": return "bg-slate-100 text-slate-700 dark:bg-slate-950/40 dark:text-slate-400";
+      default: return "bg-slate-100 text-slate-700 dark:bg-slate-950/40 dark:text-slate-400";
     }
   };
 
@@ -950,7 +950,7 @@ export default function Appointments() {
                   return (
                     <div
                       key={appointment.id}
-                      className="group relative w-full rounded-xl border bg-gradient-to-b from-white to-slate-50 dark:from-slate-950 dark:to-slate-900 p-3 md:p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all text-sm"
+                      className="group relative w-full rounded-xl border bg-card p-3 md:p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all text-sm"
                     >
                       <div className="absolute top-3 right-3">
                         <DropdownMenu>
@@ -1017,7 +1017,7 @@ export default function Appointments() {
                         <div>
                           <div className="flex flex-wrap items-center gap-1.5">
                             <User className="w-3 h-3 text-muted-foreground" />
-                            <span className="font-medium text-slate-900 dark:text-slate-100 text-lg">{appointment.customer_name}</span>
+                            <span className="font-medium text-foreground text-lg">{appointment.customer_name}</span>
                           </div>
                           <div className="mt-1 flex flex-col sm:flex-row sm:flex-wrap gap-2 text-xs text-muted-foreground">
                             {appointment.customer_email && (
@@ -1042,9 +1042,9 @@ export default function Appointments() {
                             const srvName = services.find(s => s.id === it.service_id)?.name || 'Service';
                             const stfName = staff.find(s => s.id === it.staff_id)?.full_name || 'Unassigned';
                             return (
-                              <span key={idx} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm">
+                              <span key={idx} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-muted text-foreground/80 text-sm">
                                 {srvName}
-                                <span className="text-slate-400">→</span>
+                                <span className="text-muted-foreground">→</span>
                                 {stfName}
                               </span>
                             );
