@@ -289,20 +289,20 @@ const AdminDashboard = () => {
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Link to="/admin/organizations">
-            <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer">
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 dark:from-blue-950 dark:to-blue-900 dark:border-blue-800 hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-white/90">Organizations</CardTitle>
-                <Building className="h-4 w-4 text-white/80" />
+                <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">Organizations</CardTitle>
+                <Building className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-bold text-blue-700 dark:text-blue-200">
                   {loading ? '...' : stats.organizations.total.toLocaleString()}
                 </div>
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-white/80">
+                  <span className="text-xs text-blue-600 dark:text-blue-400">
                     +{stats.organizations.recent} this week
                   </span>
-                  <Badge variant="outline" className="text-xs bg-white/10 text-white border-white/20">
+                  <Badge variant="outline" className="text-xs bg-blue-100/60 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-800">
                     {stats.organizations.active} active
                   </Badge>
                 </div>
@@ -311,20 +311,20 @@ const AdminDashboard = () => {
           </Link>
 
           <Link to="/admin/users">
-            <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer">
+            <Card className="bg-gradient-to-br from-emerald-50 to-green-100 border-emerald-200 dark:from-emerald-950 dark:to-emerald-900 dark:border-emerald-800 hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-white/90">Users</CardTitle>
-                <Users className="h-4 w-4 text-white/80" />
+                <CardTitle className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Users</CardTitle>
+                <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-200">
                   {loading ? '...' : stats.users.total.toLocaleString()}
                 </div>
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-white/80">
+                  <span className="text-xs text-emerald-600 dark:text-emerald-400">
                     +{stats.users.recent} this week
                   </span>
-                  <Badge variant="outline" className="text-xs bg-white/10 text-white border-white/20">
+                  <Badge variant="outline" className="text-xs bg-emerald-100/60 text-emerald-800 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-200 dark:border-emerald-800">
                     {stats.users.confirmed} confirmed
                   </Badge>
                 </div>
@@ -333,20 +333,20 @@ const AdminDashboard = () => {
           </Link>
 
           <Link to="/admin/subscription-plans">
-            <Card className="bg-gradient-to-br from-violet-500 to-violet-600 text-white border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer">
+            <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200 dark:from-violet-950 dark:to-violet-900 dark:border-violet-800 hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-white/90">Subscriptions</CardTitle>
-                <CreditCard className="h-4 w-4 text-white/80" />
+                <CardTitle className="text-sm font-medium text-purple-700 dark:text-violet-300">Subscriptions</CardTitle>
+                <CreditCard className="h-4 w-4 text-purple-600 dark:text-violet-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-bold text-purple-700 dark:text-violet-200">
                   {loading ? '...' : stats.subscriptions.active.toLocaleString()}
                 </div>
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-white/80">
+                  <span className="text-xs text-purple-600 dark:text-violet-400">
                     {stats.subscriptions.trial} trial
                   </span>
-                  <Badge variant="outline" className="text-xs bg-white/10 text-white border-white/20">
+                  <Badge variant="outline" className="text-xs bg-purple-100/60 text-purple-800 border-purple-200 dark:bg-violet-900/40 dark:text-violet-200 dark:border-violet-800">
                     {formatCurrency(stats.subscriptions.revenue)}/mo
                   </Badge>
                 </div>
@@ -355,23 +355,23 @@ const AdminDashboard = () => {
           </Link>
 
           <Link to="/admin/business-data">
-            <Card className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer">
+            <Card className="bg-gradient-to-br from-indigo-50 to-blue-100 border-indigo-200 dark:from-indigo-950 dark:to-indigo-900 dark:border-indigo-800 hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-white/90">Business Data</CardTitle>
-                <Database className="h-4 w-4 text-white/80" />
+                <CardTitle className="text-sm font-medium text-indigo-700 dark:text-indigo-300">Business Data</CardTitle>
+                <Database className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-bold text-indigo-700 dark:text-indigo-200">
                   {loading ? '...' : Object.values(stats.businessData)
                     .reduce((sum, data) => sum + data.total, 0)
                     .toLocaleString()}
                 </div>
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-white/80">
+                  <span className="text-xs text-indigo-600 dark:text-indigo-400">
                     +{Object.values(stats.businessData)
                       .reduce((sum, data) => sum + data.recent, 0)} this week
                   </span>
-                  <Badge variant="outline" className="text-xs bg-white/10 text-white border-white/20">
+                  <Badge variant="outline" className="text-xs bg-indigo-100/60 text-indigo-800 border-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-200 dark:border-indigo-800">
                     All records
                   </Badge>
                 </div>

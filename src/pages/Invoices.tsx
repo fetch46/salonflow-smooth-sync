@@ -619,53 +619,53 @@ export default function Invoices() {
 
       {/* Statistics Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+        <Card className="bg-gradient-to-br from-blue-50 to-sky-50 border-blue-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium opacity-90">Total Invoices</CardTitle>
-            <Receipt className="h-4 w-4 opacity-80" />
+            <CardTitle className="text-sm font-medium text-blue-700">Total Invoices</CardTitle>
+            <Receipt className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalInvoices}</div>
-            <p className="text-xs opacity-80">
+            <div className="text-2xl font-bold text-blue-700">{totalInvoices}</div>
+            <p className="text-xs text-blue-600">
               {draftInvoices} drafts, {paidInvoices} paid
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-0 shadow-lg">
+        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium opacity-90">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 opacity-80" />
+            <CardTitle className="text-sm font-medium text-green-700">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatMoney(totalRevenue, { decimals: 0 })}</div>
-            <p className="text-xs opacity-80">
+            <div className="text-2xl font-bold text-green-700">{formatMoney(totalRevenue, { decimals: 0 })}</div>
+            <p className="text-xs text-green-600">
               From {paidInvoices} paid invoices
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white border-0 shadow-lg">
+        <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium opacity-90">Pending Amount</CardTitle>
-            <Clock className="h-4 w-4 opacity-80" />
+            <CardTitle className="text-sm font-medium text-orange-700">Pending Amount</CardTitle>
+            <Clock className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatMoney(pendingRevenue, { decimals: 0 })}</div>
-            <p className="text-xs opacity-80">
+            <div className="text-2xl font-bold text-orange-700">{formatMoney(pendingRevenue, { decimals: 0 })}</div>
+            <p className="text-xs text-orange-600">
               {pendingInvoices + overdueInvoices} pending
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-violet-500 to-violet-600 text-white border-0 shadow-lg">
+        <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium opacity-90">Collection Rate</CardTitle>
-            <Target className="h-4 w-4 opacity-80" />
+            <CardTitle className="text-sm font-medium text-purple-700">Collection Rate</CardTitle>
+            <Target className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{collectionRate.toFixed(1)}%</div>
-            <p className="text-xs opacity-80">
+            <div className="text-2xl font-bold text-purple-700">{collectionRate.toFixed(1)}%</div>
+            <p className="text-xs text-purple-600">
               Avg: {formatMoney(Number(averageInvoiceValue.toFixed(0)), { decimals: 0 })}
             </p>
           </CardContent>

@@ -1327,36 +1327,33 @@ export default function Inventory() {
 
       {/* Metrics Dashboard */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card className="relative overflow-hidden border-0 shadow-lg">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-emerald-600 opacity-95" />
-          <CardHeader className="relative pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Cost Value</CardTitle>
+        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-green-700">Cost Value</CardTitle>
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{formatMoney(totals.totalCost)}</div>
-            <p className="text-xs text-white/80">Stock at cost</p>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-700">{formatMoney(totals.totalCost)}</div>
+            <p className="text-xs text-green-600">Stock at cost</p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg">
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-indigo-600 opacity-95" />
-          <CardHeader className="relative pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Sales Value</CardTitle>
+        <Card className="bg-gradient-to-br from-indigo-50 to-blue-100 border-indigo-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-indigo-700">Sales Value</CardTitle>
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{formatMoney(totals.totalSales)}</div>
-            <p className="text-xs text-white/80">Stock at selling price</p>
+          <CardContent>
+            <div className="text-2xl font-bold text-indigo-700">{formatMoney(totals.totalSales)}</div>
+            <p className="text-xs text-indigo-600">Stock at selling price</p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg">
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-500 to-amber-600 opacity-95" />
-          <CardHeader className="relative pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Quantities in Stock</CardTitle>
+        <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-orange-700">Quantities in Stock</CardTitle>
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{formatRegionalNumber(totals.totalQty)}</div>
-            <p className="text-xs text-white/80">All products</p>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-700">{formatRegionalNumber(totals.totalQty)}</div>
+            <p className="text-xs text-orange-600">All products</p>
           </CardContent>
         </Card>
       </div>
