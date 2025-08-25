@@ -213,6 +213,10 @@ export default function GoodsReceivedForm() {
 
       setLoading(true);
 
+        // Build a quick index of purchase items by id for lookups (needed for both paths)
+        const byId: Record<string, PurchaseItem> = {} as any;
+        for (const it of purchaseItems) byId[it.id] = it;
+
         const ensureReceiptRecord = async (entriesParam: [string, number][]) => {
           try {
             const { data: header, error: headerErr } = await supabase
@@ -230,11 +234,16 @@ export default function GoodsReceivedForm() {
               .select("id")
               .single();
             if (!headerErr && header?.id) {
-              const itemsPayload = entriesParam.map(([purchase_item_id, qty]) => ({
-                goods_received_id: header.id,
-                purchase_item_id,
-                quantity: Number(qty) || 0,
-              }));
+              const itemsPayload = entriesParam.map(([purchase_item_id, qty]) => {
+                const it = byId[purchase_item_id];
+                return {
+                  goods_received_id: header.id,
+                  purchase_item_id,
+                  item_id: it?.item_id || purchase_item_id, // fallback
+                  quantity: Number(qty) || 0,
+                  unit_cost: it?.unit_cost || 0
+                };
+              });
               if (itemsPayload.length > 0) {
                 await supabase.from("goods_received_items").insert(itemsPayload);
               }
@@ -246,9 +255,6 @@ export default function GoodsReceivedForm() {
 
       // Helper fallback: manually update purchase_items and inventory_levels by location
       const manualReceive = async () => {
-        // Build a quick index of purchase items by id for lookups
-        const byId: Record<string, PurchaseItem> = {} as any;
-        for (const it of purchaseItems) byId[it.id] = it;
 
         // 1) Update purchase_items.received_quantity respecting ordered quantity
         for (const [purchase_item_id, rawQty] of entries) {
@@ -316,9 +322,10 @@ export default function GoodsReceivedForm() {
                 .eq("id", existingWh.id);
               if (updWhErr) throw updWhErr;
             } else {
+              // warehouse_id-only inserts need a dummy location_id since it's required
               const { error: insWhErr } = await supabase
                 .from("inventory_levels")
-                .insert([{ item_id: itemId, warehouse_id: warehouseId, quantity: addQty }]);
+                .insert([{ item_id: itemId, warehouse_id: warehouseId, location_id: derivedLocationId, quantity: addQty }]);
               if (insWhErr) throw insWhErr;
             }
           }
@@ -341,11 +348,16 @@ export default function GoodsReceivedForm() {
             .select("id")
             .single();
           if (!headerErr && header?.id) {
-            const itemsPayload = entries.map(([purchase_item_id, qty]) => ({
-              goods_received_id: header.id,
-              purchase_item_id,
-              quantity: Number(qty) || 0,
-            }));
+            const itemsPayload = entries.map(([purchase_item_id, qty]) => {
+              const it = byId[purchase_item_id];
+              return {
+                goods_received_id: header.id,
+                purchase_item_id,
+                item_id: it?.item_id || purchase_item_id, // fallback
+                quantity: Number(qty) || 0,
+                unit_cost: it?.unit_cost || 0
+              };
+            });
             if (itemsPayload.length > 0) {
               await supabase.from("goods_received_items").insert(itemsPayload);
             }
@@ -515,7 +527,7 @@ export default function GoodsReceivedForm() {
                 } else if (addQty > 0) {
                   await supabase
                     .from("inventory_levels")
-                    .insert([{ item_id: it.item_id, warehouse_id: warehouseId, quantity: addQty }]);
+                    .insert([{ item_id: it.item_id, warehouse_id: warehouseId, location_id: derivedLocationId, quantity: addQty }]);
                 }
               }
             }
@@ -537,11 +549,16 @@ export default function GoodsReceivedForm() {
             await supabase.from("goods_received_items").delete().eq("goods_received_id", id);
             const itemsPayload = Object.entries(quantities)
               .filter(([, q]) => Number(q) > 0)
-              .map(([purchase_item_id, q]) => ({
-                goods_received_id: id,
-                purchase_item_id,
-                quantity: Number(q) || 0,
-              }));
+              .map(([purchase_item_id, q]) => {
+                const it = byId[purchase_item_id];
+                return {
+                  goods_received_id: id,
+                  purchase_item_id,
+                  item_id: it?.item_id || purchase_item_id, // fallback
+                  quantity: Number(q) || 0,
+                  unit_cost: it?.unit_cost || 0
+                };
+              });
             if (itemsPayload.length > 0) {
               await supabase.from("goods_received_items").insert(itemsPayload);
             }

@@ -196,11 +196,19 @@ export default function ProductForm() {
 
         const openingQty = Number(formData.opening_stock_quantity || 0);
         if (openingQty > 0 && formData.opening_stock_warehouse_id) {
+          // Get warehouse location_id
+          const { data: warehouseData } = await supabase
+            .from('warehouses')
+            .select('location_id')
+            .eq('id', formData.opening_stock_warehouse_id)
+            .single();
+          const locationId = warehouseData?.location_id || '00000000-0000-0000-0000-000000000000';
           await supabase.from('inventory_levels').upsert({
             item_id: newItemId,
             warehouse_id: formData.opening_stock_warehouse_id,
+            location_id: locationId,
             quantity: openingQty,
-          }, { onConflict: 'item_id,warehouse_id' });
+          }, { onConflict: 'item_id,warehouse_id,location_id' });
         }
       }
 

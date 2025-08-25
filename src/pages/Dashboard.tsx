@@ -314,6 +314,7 @@ const Dashboard = () => {
       previousValue: metrics.revenueYesterday,
       change: safePercent(metrics.revenueToday, metrics.revenueYesterday),
       icon: DollarSign,
+      bgClass: "bg-gradient-to-br from-green-50 to-emerald-50 border-green-200",
       textColor: "text-green-700",
       valueColor: "text-green-700",
       subtextColor: "text-green-600",
@@ -326,6 +327,7 @@ const Dashboard = () => {
       previousValue: metrics.appointmentsYesterday,
       change: safePercent(metrics.appointmentsToday, metrics.appointmentsYesterday),
       icon: Calendar,
+      bgClass: "bg-gradient-to-br from-blue-50 to-sky-50 border-blue-200",
       textColor: "text-blue-700",
       valueColor: "text-blue-700",
       subtextColor: "text-blue-600",
@@ -338,6 +340,7 @@ const Dashboard = () => {
       previousValue: metrics.newClientsYesterday,
       change: safePercent(metrics.newClientsToday, metrics.newClientsYesterday),
       icon: Users,
+      bgClass: "bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200",
       textColor: "text-purple-700",
       valueColor: "text-purple-700",
       subtextColor: "text-purple-600",
@@ -350,6 +353,7 @@ const Dashboard = () => {
       previousValue: metrics.staffUtilizationYesterday,
       change: safePercent(metrics.staffUtilizationToday, metrics.staffUtilizationYesterday),
       icon: TrendingUp,
+      bgClass: "bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200",
       textColor: "text-orange-700",
       valueColor: "text-orange-700",
       subtextColor: "text-orange-600",
@@ -362,6 +366,7 @@ const Dashboard = () => {
       previousValue: metrics.completionRateYesterday,
       change: safePercent(metrics.completionRateToday, metrics.completionRateYesterday),
       icon: CheckCircle,
+      bgClass: "bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200",
       textColor: "text-green-700",
       valueColor: "text-green-700",
       subtextColor: "text-green-600",
@@ -374,6 +379,7 @@ const Dashboard = () => {
       previousValue: metrics.avgServiceTimeYesterday,
       change: safePercent(metrics.avgServiceTimeToday, metrics.avgServiceTimeYesterday),
       icon: Timer,
+      bgClass: "bg-gradient-to-br from-cyan-50 to-teal-50 border-cyan-200",
       textColor: "text-cyan-700",
       valueColor: "text-cyan-700",
       subtextColor: "text-cyan-600",
@@ -614,7 +620,7 @@ const Dashboard = () => {
                     Today's Schedule
                   </CardTitle>
                   <CardDescription>
-                    {todayAppointments.length} appointments • {format(todayAppointments.reduce((sum, apt) => sum + (apt.price || 0), 0), { decimals: 0 })} revenue
+                    {todayAppointments.length} appointments • {format(todayAppointments.reduce((sum, apt) => sum + (apt.price || 0), 0))} revenue
                   </CardDescription>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => navigate('/appointments')}>

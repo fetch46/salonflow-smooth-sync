@@ -699,11 +699,19 @@ export default function Inventory() {
           if (openingQty > 0 && openingWhName) {
             const whId = whNameToId[openingWhName];
             if (!whId) throw new Error(`Unknown warehouse: ${getMapped(raw, 'opening_stock_warehouse_name')}`);
-            await supabase.from('inventory_levels').upsert({
-              item_id: itemId,
-              warehouse_id: whId,
-              quantity: openingQty,
-            }, { onConflict: 'item_id,warehouse_id' });
+          // Need to get warehouse with location_id from business_locations
+          const { data: warehouseData } = await supabase
+            .from('warehouses')
+            .select('location_id')
+            .eq('id', whId)
+            .single();
+          const locationId = warehouseData?.location_id || '00000000-0000-0000-0000-000000000000';
+          await supabase.from('inventory_levels').upsert({
+            item_id: itemId,
+            warehouse_id: whId,
+            location_id: locationId,
+            quantity: openingQty,
+          }, { onConflict: 'item_id,warehouse_id,location_id' });
           }
         } catch (rowErr: any) {
           failed++;
@@ -927,11 +935,19 @@ export default function Inventory() {
           // Opening stock if provided
           const openingQty = Number(formData.opening_stock_quantity || 0);
           if (openingQty > 0 && formData.opening_stock_warehouse_id) {
+            // Get warehouse location_id
+            const { data: warehouseData } = await supabase
+              .from('warehouses')
+              .select('location_id')
+              .eq('id', formData.opening_stock_warehouse_id)
+              .single();
+            const locationId = warehouseData?.location_id || '00000000-0000-0000-0000-000000000000';
             await supabase.from('inventory_levels').upsert({
               item_id: newItemId,
               warehouse_id: formData.opening_stock_warehouse_id,
+              location_id: locationId,
               quantity: openingQty,
-            }, { onConflict: 'item_id,warehouse_id' });
+            }, { onConflict: 'item_id,warehouse_id,location_id' });
           }
         }
         toast({ title: "Success", description: "Product created successfully" });
@@ -1008,7 +1024,7 @@ export default function Inventory() {
 
       // Additional usage checks in related tables that block deletion via FK constraints
       const [salesRes, purchaseRes, jobCardRes, invoiceRes] = await Promise.all([
-        supabase.from("sale_items").select("id", { count: "exact", head: true }).eq("product_id", item.id),
+        supabase.from("receipt_items").select("id", { count: "exact", head: true }).eq("product_id", item.id),
         supabase.from("purchase_items").select("id", { count: "exact", head: true }).eq("item_id", item.id),
         supabase.from("job_card_products").select("id", { count: "exact", head: true }).eq("inventory_item_id", item.id),
         supabase.from("invoice_items").select("id", { count: "exact", head: true }).eq("product_id", item.id),

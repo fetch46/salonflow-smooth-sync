@@ -166,18 +166,8 @@ export default function EditJobCard() {
         if (jcsErr) throw jcsErr;
         setJobServices((jcsData || []) as any);
 
-        // Check if a receipt already exists for this job card (fallback aware)
-        try {
-          const { data: rData, error: rErr } = await supabase
-            .from('receipts')
-            .select('id')
-            .eq('job_card_id', id)
-            .limit(1);
-          if (rErr) throw rErr;
-          setHasReceipt((rData || []).length > 0);
-        } catch {
-          // receipts feature removed
-        }
+        // receipts feature removed, set default value
+        setHasReceipt(false);
       } catch (e: any) {
         console.error("Failed to load job card:", e);
         toast.error(e?.message ? `Failed to load: ${e.message}` : "Failed to load job card");
