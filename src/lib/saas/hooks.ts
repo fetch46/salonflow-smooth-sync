@@ -292,10 +292,12 @@ export const useOrganizationCurrency = () => {
   const [loading, setLoading] = useState(false)
 
   const formatAmount = useCallback(
-    (amount: number): string => {
+    (amount: number, options?: { decimals?: number }): string => {
       return new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: currency.code,
+        minimumFractionDigits: options?.decimals ?? 2,
+        maximumFractionDigits: options?.decimals ?? 2,
       }).format(amount)
     },
     [currency.code]

@@ -415,8 +415,8 @@ export default function JobCards() {
         .insert([
           {
             invoice_number: invoiceNumber,
+            issue_date: new Date().toISOString().split('T')[0],
             client_id: card.client?.id || null,
-            job_card_id: card.id,
             subtotal: card.total_amount,
             tax_amount: 0,
             total_amount: card.total_amount,

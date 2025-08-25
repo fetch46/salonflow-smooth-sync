@@ -704,6 +704,7 @@ export default function Services() {
                 price: payload.price,
                 category: payload.category,
                 is_active: payload.is_active,
+                organization_id: organization?.id || '',
               }])
               .select('id')
               .maybeSingle()
@@ -757,7 +758,12 @@ export default function Services() {
             if (isMissingOrgId) {
               const { error: retryKitError } = await supabase
                 .from("service_kits")
-                .insert(kitData.map(k => ({ service_id: k.service_id, good_id: k.good_id, default_quantity: k.default_quantity })))
+                .insert(kitData.map(k => ({ 
+                  service_id: k.service_id, 
+                  good_id: k.good_id, 
+                  default_quantity: k.default_quantity,
+                  organization_id: organization?.id || ''
+                })))
               if (retryKitError) throw retryKitError
             } else {
               throw kitError

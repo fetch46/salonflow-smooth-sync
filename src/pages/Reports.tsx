@@ -925,7 +925,7 @@ const Reports = () => {
                     <DollarSign className="h-4 w-4 text-green-600" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{formatMoney(overview.revenue.current, { decimals: 0 })}</div>
+                    <div className="text-2xl font-bold">{formatMoney(overview.revenue.current)}</div>
                     <div className="flex items-center text-xs text-slate-600">
                       <TrendingUp className="h-3 w-3 mr-1 text-green-600" />
                       +{overview.revenue.change}% from last period
@@ -1051,15 +1051,15 @@ const Reports = () => {
                   <div className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-3">
                       <div className="text-center p-4 bg-green-50 rounded-lg">
-                        <div className="text-2xl font-bold text-green-600">{formatMoney(overview.revenue.current, { decimals: 0 })}</div>
+                        <div className="text-2xl font-bold text-green-600">{formatMoney(overview.revenue.current)}</div>
                         <div className="text-sm text-green-700">Total Revenue</div>
                       </div>
                       <div className="text-center p-4 bg-blue-50 rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600">{formatMoney(overview.appointments.current ? (overview.revenue.current / overview.appointments.current) : 0, { decimals: 0 })}</div>
+                        <div className="text-2xl font-bold text-blue-600">{formatMoney(overview.appointments.current ? (overview.revenue.current / overview.appointments.current) : 0)}</div>
                         <div className="text-sm text-blue-700">Average per Appointment</div>
                       </div>
                       <div className="text-center p-4 bg-purple-50 rounded-lg">
-                        <div className="text-2xl font-bold text-purple-600">{formatMoney(overview.clients.current ? (overview.revenue.current / overview.clients.current) : 0, { decimals: 0 })}</div>
+                        <div className="text-2xl font-bold text-purple-600">{formatMoney(overview.clients.current ? (overview.revenue.current / overview.clients.current) : 0)}</div>
                         <div className="text-sm text-purple-700">Average per Client</div>
                       </div>
                     </div>
@@ -1083,7 +1083,7 @@ const Reports = () => {
                             {revenueByLocation.map((r, idx) => (
                               <TableRow key={idx}>
                                 <TableCell>{r.locationName}</TableCell>
-                                <TableCell className="text-right">{formatMoney(r.revenue, { decimals: 2 })}</TableCell>
+                                <TableCell className="text-right">{formatMoney(r.revenue)}</TableCell>
                               </TableRow>
                             ))}
                             {revenueByLocation.length === 0 && (
@@ -1185,7 +1185,7 @@ const Reports = () => {
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="font-medium">{formatMoney(client.totalSpent, { decimals: 0 })}</div>
+                          <div className="font-medium">{formatMoney(client.totalSpent)}</div>
                           <div className="text-sm text-slate-600">Total spent</div>
                         </div>
                       </div>

@@ -414,9 +414,9 @@ export default function Invoices() {
   };
 
   const calculateTotals = () => {
-    const subtotal = selectedItems.reduce((sum, item) => sum + item.total_price, 0);
-    const taxAmount = applyTax ? subtotal * ((orgTaxRate || 0) / 100) : 0;
-    const total = subtotal + taxAmount;
+    const subtotal = selectedItems.reduce((sum, item) => Number(sum) + Number(item.total_price), 0);
+    const taxAmount = applyTax ? Number(subtotal) * ((Number(orgTaxRate) || 0) / 100) : 0;
+    const total = Number(subtotal) + Number(taxAmount);
     return { subtotal, taxAmount, total };
   };
 
@@ -638,7 +638,7 @@ export default function Invoices() {
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-700">{formatMoney(totalRevenue, { decimals: 0 })}</div>
+            <div className="text-2xl font-bold text-green-700">{formatMoney(totalRevenue)}</div>
             <p className="text-xs text-green-600">
               From {paidInvoices} paid invoices
             </p>
@@ -651,7 +651,7 @@ export default function Invoices() {
             <Clock className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-700">{formatMoney(pendingRevenue, { decimals: 0 })}</div>
+            <div className="text-2xl font-bold text-orange-700">{formatMoney(pendingRevenue)}</div>
             <p className="text-xs text-orange-600">
               {pendingInvoices + overdueInvoices} pending
             </p>
@@ -666,7 +666,7 @@ export default function Invoices() {
           <CardContent>
             <div className="text-2xl font-bold text-purple-700">{collectionRate.toFixed(1)}%</div>
             <p className="text-xs text-purple-600">
-              Avg: {formatMoney(Number(averageInvoiceValue.toFixed(0)), { decimals: 0 })}
+              Avg: {formatMoney(Number(averageInvoiceValue.toFixed(0)))}
             </p>
           </CardContent>
         </Card>
@@ -1067,7 +1067,7 @@ export default function Invoices() {
                         <span className="font-semibold">{symbol}{selectedInvoice.subtotal.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span>Tax ({selectedInvoice.tax_amount > 0 ? (orgTaxRate || 0) : 0}%):</span>
+                        <span>Tax ({selectedInvoice.tax_amount > 0 ? (Number(orgTaxRate) || 0) : 0}%):</span>
                         <span className="font-semibold">{symbol}{selectedInvoice.tax_amount.toFixed(2)}</span>
                       </div>
                       {selectedInvoice.tax_amount === 0 && (

@@ -74,9 +74,9 @@ export default function PurchaseForm() {
   const generatePurchaseNumber = () => `PUR-${Date.now().toString().slice(-6)}`;
 
   const calculateTotals = useCallback(() => {
-    const subtotal = purchaseItems.reduce((sum, item) => sum + Number(item.total_cost || 0), 0);
-    const computedTax = applyTax ? subtotal * ((orgTaxRate || 0) / 100) : 0;
-    const total = subtotal + computedTax;
+    const subtotal = purchaseItems.reduce((sum, item) => Number(sum) + Number(item.total_cost || 0), 0);
+    const computedTax = applyTax ? Number(subtotal) * ((Number(orgTaxRate) || 0) / 100) : 0;
+    const total = Number(subtotal) + Number(computedTax);
     setFormData((prev) => ({
       ...prev,
       subtotal: subtotal.toFixed(2),
@@ -200,9 +200,9 @@ export default function PurchaseForm() {
         toast({ title: "Supplier required", description: "Please select a supplier before saving.", variant: "destructive" });
         return;
       }
-      const subtotalNow = purchaseItems.reduce((sum, item) => sum + (Number(item.total_cost) || 0), 0);
-      const taxNow = applyTax ? subtotalNow * ((orgTaxRate || 0) / 100) : 0;
-      const totalNow = subtotalNow + taxNow;
+      const subtotalNow = purchaseItems.reduce((sum, item) => Number(sum) + (Number(item.total_cost) || 0), 0);
+      const taxNow = applyTax ? Number(subtotalNow) * ((Number(orgTaxRate) || 0) / 100) : 0;
+      const totalNow = Number(subtotalNow) + Number(taxNow);
       const purchaseData = {
         ...formData,
         purchase_number: formData.purchase_number || generatePurchaseNumber(),
@@ -250,9 +250,9 @@ export default function PurchaseForm() {
   };
 
   const stats = useMemo(() => {
-    const subtotal = purchaseItems.reduce((sum, it) => sum + Number(it.total_cost || 0), 0);
-    const tax = applyTax ? subtotal * ((orgTaxRate || 0) / 100) : 0;
-    const total = subtotal + tax;
+    const subtotal = purchaseItems.reduce((sum, it) => Number(sum) + Number(it.total_cost || 0), 0);
+    const tax = applyTax ? Number(subtotal) * ((Number(orgTaxRate) || 0) / 100) : 0;
+    const total = Number(subtotal) + Number(tax);
     return { subtotal, tax, total };
   }, [purchaseItems, applyTax, orgTaxRate]);
 
@@ -402,7 +402,7 @@ export default function PurchaseForm() {
                     <Input id="tax_amount" type="number" step="0.01" placeholder="0.00" value={formData.tax_amount} readOnly />
                     <div className="flex items-center gap-2">
                       <Switch checked={applyTax} onCheckedChange={setApplyTax} />
-                      <span className="text-sm">Apply Tax ({(orgTaxRate || 0)}%)</span>
+                      <span className="text-sm">Apply Tax ({(Number(orgTaxRate) || 0)}%)</span>
                     </div>
                     <p className="text-xs text-muted-foreground">Auto-calculated when enabled.</p>
                   </div>

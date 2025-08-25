@@ -275,9 +275,14 @@ export default function Purchases() {
           .map((it) => {
             const qty = Number(receiveQuantities[it.item_id] || 0);
             if (!qty || qty <= 0) return null;
-            return { purchase_item_id: it.id, quantity: qty };
+            return { 
+              purchase_item_id: it.id, 
+              quantity: qty,
+              item_id: it.item_id,
+              unit_cost: it.unit_cost || 0
+            };
           })
-          .filter(Boolean) as Array<{ purchase_item_id: string; quantity: number }>;
+          .filter(Boolean) as Array<{ purchase_item_id: string; quantity: number; item_id: string; unit_cost: number }>;
 
         if (itemsPayload.length > 0 && receivePurchaseId) {
           const headerRow: any = {
@@ -295,8 +300,10 @@ export default function Purchases() {
           if (!headerErr && header?.id) {
             const lines = itemsPayload.map((it) => ({
               goods_received_id: header.id,
+              item_id: it.item_id,
               purchase_item_id: it.purchase_item_id,
               quantity: it.quantity,
+              unit_cost: it.unit_cost || 0,
             }));
             await supabase.from("goods_received_items").insert(lines);
           }

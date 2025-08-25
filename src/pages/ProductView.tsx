@@ -535,7 +535,7 @@ export default function ProductView() {
                         ) : (
                           usageHistory.map((row) => (
                             <TableRow key={row.id}>
-                              <TableCell>{formatDate(row.created_at)}</TableCell>
+                              <TableCell>{formatDate(new Date(row.created_at))}</TableCell>
                               <TableCell className="font-medium">{row.job_cards?.job_number || '—'}</TableCell>
                               <TableCell className="text-right">{row.quantity_used}</TableCell>
                               <TableCell className="hidden sm:table-cell text-right">{formatMoney(Number(row.unit_cost || 0))}</TableCell>
@@ -576,7 +576,7 @@ export default function ProductView() {
                         ) : (
                           purchaseHistory.map((row) => (
                             <TableRow key={row.id}>
-                              <TableCell>{formatDate(row.created_at)}</TableCell>
+                              <TableCell>{formatDate(new Date(row.created_at))}</TableCell>
                               <TableCell className="font-medium">{row.purchases?.purchase_number || '—'}</TableCell>
                               <TableCell className="text-right">{row.quantity}</TableCell>
                               <TableCell className="hidden sm:table-cell text-right">{formatMoney(Number(row.unit_cost || 0))}</TableCell>
@@ -618,7 +618,7 @@ export default function ProductView() {
                         ) : (
                           salesHistory.map((row) => (
                             <TableRow key={row.id}>
-                              <TableCell>{formatDate(row.created_at)}</TableCell>
+                              <TableCell>{formatDate(new Date(row.created_at))}</TableCell>
                               <TableCell className="font-medium">{row.sales?.sale_number || '—'}</TableCell>
                               <TableCell className="hidden md:table-cell">{row.sales?.customer_name || 'Walk-in Customer'}</TableCell>
                               <TableCell className="text-right">{row.quantity}</TableCell>

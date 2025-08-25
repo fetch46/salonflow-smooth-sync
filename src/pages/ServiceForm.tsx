@@ -366,6 +366,7 @@ export default function ServiceForm() {
                   price: payload.price,
                   category: payload.category,
                   is_active: payload.is_active,
+                  organization_id: organization?.id || '',
                 },
               ])
               .select('id')
