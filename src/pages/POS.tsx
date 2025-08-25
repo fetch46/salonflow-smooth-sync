@@ -593,8 +593,16 @@ export default function POS() {
               filteredProducts.map((product) => (
                 <Card 
                   key={product.id} 
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => addToCart(product)}
+                  className={`cursor-pointer hover:shadow-md transition-shadow ${
+                    (productQuantities[product.id] || 0) === 0 ? 'opacity-50 grayscale cursor-not-allowed' : ''
+                  }`}
+                  onClick={() => {
+                    if ((productQuantities[product.id] || 0) > 0) {
+                      addToCart(product);
+                    } else {
+                      toast.error("Product is out of stock");
+                    }
+                  }}
                 >
                   <CardContent className="p-4">
                     <div className="space-y-2">

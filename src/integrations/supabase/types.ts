@@ -182,6 +182,7 @@ export type Database = {
       appointment_services: {
         Row: {
           appointment_id: string
+          commission_percentage: number | null
           created_at: string
           id: string
           notes: string | null
@@ -194,6 +195,7 @@ export type Database = {
         }
         Insert: {
           appointment_id: string
+          commission_percentage?: number | null
           created_at?: string
           id?: string
           notes?: string | null
@@ -206,6 +208,7 @@ export type Database = {
         }
         Update: {
           appointment_id?: string
+          commission_percentage?: number | null
           created_at?: string
           id?: string
           notes?: string | null

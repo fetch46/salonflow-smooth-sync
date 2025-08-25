@@ -152,7 +152,7 @@ export const EnhancedJobCardForm: React.FC<EnhancedJobCardFormProps> = ({
       const { data: jobCard, error: jobCardError } = await supabase
         .from('job_cards')
         .insert(jobCardData)
-        .select()
+        .select('*, job_number')
         .single();
 
       if (jobCardError) throw jobCardError;

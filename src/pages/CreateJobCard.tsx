@@ -566,8 +566,8 @@ export default function CreateJobCard() {
             end_time: jobCardData.end_time,
             total_amount: jobCardData.service_charge,
             status: jobCardData.end_time ? "completed" : "in_progress",
-            location_id: selectedLocationId || null,
             organization_id: organization?.id || null,
+            job_number: '', // Will be set by trigger
           }])
           .select()
           .single();
@@ -592,6 +592,7 @@ export default function CreateJobCard() {
               total_amount: jobCardData.service_charge,
               status: jobCardData.end_time ? "completed" : "in_progress",
               organization_id: organization?.id || null,
+              job_number: '', // Will be set by trigger
             }])
             .select()
             .single();
@@ -607,6 +608,7 @@ export default function CreateJobCard() {
               start_time: jobCardData.start_time || now,
               status: jobCardData.end_time ? "completed" : "in_progress",
               organization_id: organization?.id || null,
+              job_number: '', // Will be set by trigger
             }])
             .select()
             .single();
@@ -722,7 +724,7 @@ export default function CreateJobCard() {
                 discount_amount: 0,
                 total_amount: finalTotal,
                 status: jobCardData.payment_method ? 'paid' : 'open',
-                notes: `Receipt for ${jobNumber}`,
+                notes: `Receipt for ${jobCard?.job_number || 'Job Card'}`,
                 location_id: selectedLocationId || null,
                 organization_id: organization?.id || null,
               },
@@ -760,8 +762,8 @@ export default function CreateJobCard() {
                   receipt_id: receipt.id,
                   amount: finalTotal,
                   method: jobCardData.payment_method,
-                  reference_number: jobCardData.payment_transaction_number || null,
-                  location_id: selectedLocationId || null,
+                  reference: jobCardData.payment_transaction_number || null,
+                  organization_id: organization?.id || '',
                 },
               ]);
             if (payError) throw payError;

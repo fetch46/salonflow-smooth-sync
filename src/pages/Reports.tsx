@@ -276,9 +276,8 @@ const Reports = () => {
       const liabilitiesMap: Record<string, number> = {};
       const equityMap: Record<string, number> = {};
       for (const t of (transactions as any[]).filter(withinRange)) {
-        const code = t.accounts?.account_code || t.account_id || '—';
         const name = t.accounts?.account_name || '';
-        const key = name ? `${code} · ${name}` : String(code);
+        const key = name || `Account ${t.account_id || '—'}`;
         if (t.accounts?.account_type === 'Asset') {
           assetsMap[key] = (assetsMap[key] || 0) + (Number(t.debit_amount) || 0) - (Number(t.credit_amount) || 0);
         } else if (t.accounts?.account_type === 'Liability') {
