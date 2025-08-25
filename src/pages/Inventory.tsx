@@ -1254,7 +1254,7 @@ export default function Inventory() {
           sales_account_code: sales?.account_code || '',
           purchase_account_code: purchase?.account_code || '',
           inventory_account_code: inventory?.account_code || '',
-          is_taxable: (map?.is_taxable ? 'true' : 'false') || 'false',
+          is_taxable: map?.is_taxable || false ? 'true' : 'false',
           opening_stock_quantity: levelsByItem[it.id] || 0,
           opening_stock_warehouse_name: ''
         };

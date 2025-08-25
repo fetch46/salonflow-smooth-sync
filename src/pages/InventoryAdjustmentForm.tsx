@@ -261,19 +261,16 @@ export default function InventoryAdjustmentForm() {
       throw new Error(validationError);
     }
 
-    const adjustmentData: Record<string, any> = {
+    const adjustmentData = {
       adjustment_date: formData.adjustment_date,
       adjustment_type: formData.adjustment_type,
       reason: formData.reason,
       notes: formData.notes,
       adjustment_number: formData.adjustment_number || generateAdjustmentNumber(),
       total_items: selectedItems.length,
-      status: "pending",
+      status: "pending" as const,
+      ...(formData.warehouse_id && { warehouse_id: formData.warehouse_id })
     };
-
-    if (formData.warehouse_id) {
-      adjustmentData.warehouse_id = formData.warehouse_id;
-    }
 
     let adjustmentId: string;
 
@@ -293,7 +290,7 @@ export default function InventoryAdjustmentForm() {
     } else {
       const { data, error } = await supabase
         .from("inventory_adjustments")
-        .insert([adjustmentData])
+        .insert(adjustmentData)
         .select()
         .single();
       if (error) throw error;

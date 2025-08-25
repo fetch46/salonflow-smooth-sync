@@ -12,13 +12,8 @@ export default function PaymentMethod() {
   useEffect(() => {
     (async () => {
       if (!organization) return
-      const { data } = await supabase
-        .from('organization_payment_methods')
-        .select('*')
-        .eq('organization_id', organization.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+      // Payment methods feature not implemented yet - using placeholder
+      const data = null; // Payment methods not available in current schema
       setMethod(data || null)
     })()
   }, [organization])

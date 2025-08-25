@@ -149,7 +149,7 @@ export default function InvoiceCreate() {
       try {
         const { data: jc } = await supabase
           .from('job_cards')
-          .select('id, client_id, location_id')
+          .select('id, client_id')
           .eq('id', fromJobCard)
           .maybeSingle();
         if (!jc) return;
@@ -162,9 +162,7 @@ export default function InvoiceCreate() {
             customer_name: client.full_name,
             customer_email: client.email || '',
             customer_phone: client.phone || '',
-            jobcard_id: jc.id,
-            // Use the job card's location if available
-            location_id: (jc as any).location_id || prev.location_id,
+            jobcard_id: jc.id
           }));
         } else if (jc.client_id) {
           const { data: cli } = await supabase.from('clients').select('id, full_name, email, phone').eq('id', jc.client_id).maybeSingle();

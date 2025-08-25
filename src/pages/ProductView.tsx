@@ -117,9 +117,9 @@ export default function ProductView() {
           .order("created_at", { ascending: false });
         setPurchaseHistory((purchases || []) as any);
 
-        // Sales history
+        // Sales history - using receipt_items instead of sale_items
         const { data: sales } = await supabase
-          .from("sale_items")
+          .from("receipt_items")
           .select(`id, sale_id, quantity, unit_price, total_price, created_at,
                    sales:sale_id ( sale_number, created_at, customer_name )`)
           .eq("product_id", id)

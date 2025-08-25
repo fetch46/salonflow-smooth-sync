@@ -310,7 +310,7 @@ const Dashboard = () => {
   const todayStats = [
     {
       title: "Today's Revenue",
-      value: format(metrics.revenueToday) as string,
+      value: `${useOrganizationCurrency().symbol}${metrics.revenueToday.toFixed(2)}`,
       previousValue: metrics.revenueYesterday,
       change: safePercent(metrics.revenueToday, metrics.revenueYesterday),
       icon: DollarSign,
@@ -620,7 +620,7 @@ const Dashboard = () => {
                     Today's Schedule
                   </CardTitle>
                   <CardDescription>
-                    {todayAppointments.length} appointments • {format(todayAppointments.reduce((sum, apt) => sum + (apt.price || 0), 0))} revenue
+                    {todayAppointments.length} appointments • ${todayAppointments.reduce((sum, apt) => sum + (apt.price || 0), 0).toFixed(2)} revenue
                   </CardDescription>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => navigate('/appointments')}>
