@@ -2171,6 +2171,7 @@ export type Database = {
       }
       organizations: {
         Row: {
+          country_id: string | null
           created_at: string | null
           currency_id: string | null
           domain: string | null
@@ -2184,6 +2185,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          country_id?: string | null
           created_at?: string | null
           currency_id?: string | null
           domain?: string | null
@@ -2197,6 +2199,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          country_id?: string | null
           created_at?: string | null
           currency_id?: string | null
           domain?: string | null
@@ -2210,6 +2213,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "organizations_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "organizations_currency_id_fkey"
             columns: ["currency_id"]

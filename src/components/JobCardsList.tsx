@@ -45,7 +45,6 @@ interface JobCard {
   staff: { 
     id: string;
     full_name: string; 
-    profile_image?: string;
   } | null;
   client: { 
     id: string;
@@ -90,7 +89,7 @@ export default function JobCardsList({ onRefresh }: JobCardsListProps) {
         .from("job_cards")
         .select(`
           id, job_number, start_time, end_time, status, total_amount, created_at, updated_at, notes,
-          staff:staff_id (id, full_name, profile_image),
+          staff:staff_id (id, full_name),
           client:client_id (id, full_name, email, phone)
         `)
         .order("created_at", { ascending: false });
@@ -394,7 +393,6 @@ export default function JobCardsList({ onRefresh }: JobCardsListProps) {
                       {/* Staff */}
                       <div className="flex items-center gap-3">
                         <Avatar className="w-10 h-10">
-                          <AvatarImage src={card.staff?.profile_image} />
                           <AvatarFallback className="bg-orange-100 text-orange-600">
                             {card.staff?.full_name.split(' ').map(n => n[0]).join('') || 'S'}
                           </AvatarFallback>

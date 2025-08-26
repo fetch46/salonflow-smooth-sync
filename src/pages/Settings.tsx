@@ -359,7 +359,9 @@ phone: "",
         timezone: s.timezone || prev.timezone,
       }))
       setSelectedCurrencyId((organization as any).currency_id || "")
-      setSelectedCountryCode(s.country || "US")
+      setSelectedCountryCode((organization as any).country_id ? 
+        countries.find(c => c.id === (organization as any).country_id)?.code || "US" 
+        : s.country || "US")
       // Load saved role definitions if present
       const defs = (s.role_definitions as typeof roles) || [];
       if (Array.isArray(defs) && defs.length > 0) {
