@@ -453,7 +453,7 @@ export default function POS() {
         console.warn("Inventory decrement after sale failed:", invErr);
       }
 
-      // Record payment against invoice and post to ledger
+      // Record payment against invoice and post to ledger - Mark as PAID status
       try {
         // Map UI method labels to normalized methods
         const methodLabel = String(paymentData.payment_method || "").toLowerCase();
@@ -475,6 +475,12 @@ export default function POS() {
           payment_date: new Date().toISOString().slice(0, 10),
           location_id: inferredLocationId || null,
         });
+
+        // Update invoice status to paid
+        await supabase
+          .from('invoices')
+          .update({ status: 'paid' })
+          .eq('id', invoice.id);
 
         try {
           if (organization?.id) {
