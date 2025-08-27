@@ -17,7 +17,35 @@ export default {
 				'2xl': '1400px'
 			}
 		},
+		screens: {
+			'xs': '375px',
+			'sm': '640px',
+			'md': '768px',
+			'lg': '1024px',
+			'xl': '1280px',
+			'2xl': '1536px',
+		},
 		extend: {
+			fontFamily: {
+				sans: ['Inter', 'system-ui', 'sans-serif'],
+			},
+			fontSize: {
+				'responsive-xs': 'var(--text-xs)',
+				'responsive-sm': 'var(--text-sm)',
+				'responsive-base': 'var(--text-base)',
+				'responsive-lg': 'var(--text-lg)',
+				'responsive-xl': 'var(--text-xl)',
+				'responsive-2xl': 'var(--text-2xl)',
+				'responsive-3xl': 'var(--text-3xl)',
+				'responsive-4xl': 'var(--text-4xl)',
+			},
+			spacing: {
+				'responsive-xs': 'var(--space-xs)',
+				'responsive-sm': 'var(--space-sm)', 
+				'responsive-md': 'var(--space-md)',
+				'responsive-lg': 'var(--space-lg)',
+				'responsive-xl': 'var(--space-xl)',
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -98,7 +126,12 @@ export default {
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out'
-			}
+			},
+			gridTemplateColumns: {
+				'responsive-cards': 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))',
+				'responsive-stats': 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))',
+				'responsive-compact': 'repeat(auto-fit, minmax(min(160px, 100%), 1fr))',
+			},
 		}
 	},
 	plugins: [],

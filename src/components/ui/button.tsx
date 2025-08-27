@@ -23,10 +23,11 @@ const buttonVariants = cva(
           "bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
-        icon: "h-10 w-10",
+        default: "h-9 px-4 py-2 text-responsive-sm",
+        sm: "h-8 rounded-md px-3 text-responsive-xs",
+        lg: "h-10 rounded-md px-8 text-responsive-base",
+        xl: "h-12 rounded-md px-10 text-responsive-lg",
+        icon: "h-9 w-9",
       },
     },
     defaultVariants: {

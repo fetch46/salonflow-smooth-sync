@@ -581,7 +581,7 @@ const Dashboard = () => {
       </div>
 
       {/* Enhanced Statistics Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-responsive-compact gap-3 sm:gap-4">
         {todayStats.map((stat, index) => (
           <Card key={index} className={`${stat.bgClass}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-4 pb-2">
@@ -608,9 +608,9 @@ const Dashboard = () => {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
         {/* Today's Appointments - Enhanced */}
-        <div className="md:col-span-2 lg:col-span-2">
+        <div className="lg:col-span-2">
           <Card className="shadow-sm border-slate-200">
             <CardHeader className="border-b border-slate-200">
               <div className="flex items-center justify-between">
@@ -769,7 +769,7 @@ const Dashboard = () => {
       </div>
 
       {/* Bottom Section */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
         {/* Recent Activity */}
         <Card className="shadow-sm border-slate-200">
           <CardHeader className="border-b border-slate-200">
@@ -844,7 +844,7 @@ const Dashboard = () => {
 
       {/* Sticky Mobile Footer Actions */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-card/80 backdrop-blur-md supports-[backdrop-filter]:bg-card/60 sm:hidden">
-        <div className="grid grid-cols-4 gap-1 p-2 max-w-3xl mx-auto">
+        <div className="grid grid-cols-4 gap-1 p-responsive-xs max-w-3xl mx-auto">
           <Button variant="ghost" className="flex flex-col gap-1 py-2" onClick={() => navigate('/appointments')}>
             <Calendar className="w-5 h-5" />
             <span className="text-[10px]">Appts</span>

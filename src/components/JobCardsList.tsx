@@ -329,7 +329,7 @@ export default function JobCardsList({ onRefresh }: JobCardsListProps) {
       </div>
 
       {/* Job Cards Grid */}
-      <div className="grid gap-4">
+      <div className="grid grid-cols-responsive-cards gap-4 sm:gap-6">
         {filteredJobCards.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">
@@ -346,73 +346,73 @@ export default function JobCardsList({ onRefresh }: JobCardsListProps) {
           </Card>
         ) : (
           filteredJobCards.map((card) => (
-            <Card key={card.id} className="hover:shadow-md transition-shadow">
+            <Card key={card.id} className="hover:shadow-lg transition-all duration-200 min-w-0">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 space-y-4">
                     {/* Header */}
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="font-mono text-xs">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <Badge variant="outline" className="font-mono text-responsive-xs">
                           {card.job_number}
                         </Badge>
                         {getStatusBadge(card.status)}
                       </div>
                       <div className="text-right">
-                        <div className="text-lg font-semibold text-slate-900">
+                        <div className="text-responsive-lg sm:text-responsive-xl font-semibold text-slate-900">
                           {formatMoney(card.total_amount)}
                         </div>
-                        <div className="text-xs text-slate-500">
+                        <div className="text-responsive-xs text-slate-500">
                           {format(new Date(card.created_at), 'MMM dd, yyyy')}
                         </div>
                       </div>
                     </div>
 
                     {/* Client & Staff Info */}
-                    <div className="grid md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       {/* Client */}
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-10 h-10">
-                          <AvatarFallback className="bg-blue-100 text-blue-600">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <Avatar className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
+                          <AvatarFallback className="bg-blue-100 text-blue-600 text-responsive-xs">
                             {card.client?.full_name.split(' ').map(n => n[0]).join('') || 'C'}
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
-                          <div className="font-medium text-slate-900 truncate">
+                          <div className="font-medium text-slate-900 truncate text-responsive-sm">
                             {card.client?.full_name || 'Unknown Client'}
                           </div>
                           {card.client?.phone && (
-                            <div className="flex items-center gap-1 text-xs text-slate-500">
-                              <Phone className="w-3 h-3" />
-                              {card.client.phone}
+                            <div className="flex items-center gap-1 text-responsive-xs text-slate-500">
+                              <Phone className="w-3 h-3 flex-shrink-0" />
+                              <span className="truncate">{card.client.phone}</span>
                             </div>
                           )}
                         </div>
                       </div>
 
                       {/* Staff */}
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-10 h-10">
-                          <AvatarFallback className="bg-orange-100 text-orange-600">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <Avatar className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
+                          <AvatarFallback className="bg-orange-100 text-orange-600 text-responsive-xs">
                             {card.staff?.full_name.split(' ').map(n => n[0]).join('') || 'S'}
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
-                          <div className="font-medium text-slate-900 truncate">
+                          <div className="font-medium text-slate-900 truncate text-responsive-sm">
                             {card.staff?.full_name || 'Unassigned'}
                           </div>
-                          <div className="text-xs text-slate-500">Staff Member</div>
+                          <div className="text-responsive-xs text-slate-500">Staff Member</div>
                         </div>
                       </div>
                     </div>
 
                     {/* Services */}
                     {card.services && card.services.length > 0 && (
-                      <div className="space-y-2">
-                        <div className="text-sm font-medium text-slate-600">Services</div>
-                        <div className="flex flex-wrap gap-2">
+                      <div className="space-y-1 sm:space-y-2">
+                        <div className="text-responsive-sm font-medium text-slate-600">Services</div>
+                        <div className="flex flex-wrap gap-1 sm:gap-2">
                           {card.services.map((service) => (
-                            <Badge key={service.id} variant="secondary" className="text-xs">
+                            <Badge key={service.id} variant="secondary" className="text-responsive-xs">
                               {service.name}
                             </Badge>
                           ))}
