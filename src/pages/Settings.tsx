@@ -460,6 +460,7 @@ phone: "",
         name: companyData.name,
         logo_url: companyData.logo_url,
         currency_id: selectedCurrencyId || null,
+        country_id: countries.find(c => c.code === selectedCountryCode)?.id || null,
         settings: {
           ...(organization.settings as any),
           address: companyData.address,

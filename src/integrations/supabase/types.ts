@@ -2002,6 +2002,53 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          organization_id: string | null
+          read: boolean | null
+          title: string
+          type: string | null
+          updated_at: string
+          user_id: string | null
+          viewed_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          organization_id?: string | null
+          read?: boolean | null
+          title: string
+          type?: string | null
+          updated_at?: string
+          user_id?: string | null
+          viewed_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          organization_id?: string | null
+          read?: boolean | null
+          title?: string
+          type?: string | null
+          updated_at?: string
+          user_id?: string | null
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_modules: {
         Row: {
           controlled_by_plan: boolean | null

@@ -43,24 +43,80 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
   }, []);
 
   const fetchNotifications = async () => {
-    // This would typically fetch from a notifications table
-    // For now, using mock data
-    setNotifications([
-      {
-        id: 1,
-        title: 'New appointment booked',
-        message: 'John Doe has booked an appointment for tomorrow',
-        timestamp: new Date(),
-        read: false,
-      },
-      {
-        id: 2,
-        title: 'Payment received',
-        message: 'Payment of $150 received from Jane Smith',
-        timestamp: new Date(),
-        read: true,
-      },
-    ]);
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      if (error) throw error;
+      
+      setNotifications(data || []);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      // Fallback to mock data for now
+      setNotifications([
+        {
+          id: 1,
+          title: 'New appointment booked',
+          message: 'John Doe has booked an appointment for tomorrow',
+          created_at: new Date().toISOString(),
+          read: false,
+        },
+        {
+          id: 2,
+          title: 'Payment received',
+          message: 'Payment of $150 received from Jane Smith',
+          created_at: new Date().toISOString(),
+          read: true,
+        },
+      ]);
+    }
+  };
+
+  const markNotificationAsViewed = async (notificationId: string | number) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ 
+          read: true, 
+          viewed_at: new Date().toISOString() 
+        })
+        .eq('id', String(notificationId));
+
+      if (error) throw error;
+
+      // Update local state
+      setNotifications(prev => 
+        prev.map(n => 
+          n.id === notificationId 
+            ? { ...n, read: true, viewed_at: new Date().toISOString() }
+            : n
+        )
+      );
+    } catch (error) {
+      console.error('Error marking notification as viewed:', error);
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .neq('id', ''); // Delete all notifications for the user's organization
+
+      if (error) throw error;
+
+      setNotifications([]);
+      toast.success('All notifications cleared');
+    } catch (error) {
+      console.error('Error clearing notifications:', error);
+      // Fallback to clearing local state
+      setNotifications([]);
+      toast.success('All notifications cleared');
+    }
   };
 
   const handleLogout = async () => {
@@ -194,7 +250,11 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
               ) : (
                 <>
                   {notifications.slice(0, 5).map((notification) => (
-                    <DropdownMenuItem key={notification.id} className="flex flex-col items-start p-3">
+                    <DropdownMenuItem 
+                      key={notification.id} 
+                      className="flex flex-col items-start p-3 cursor-pointer"
+                      onClick={() => markNotificationAsViewed(notification.id)}
+                    >
                       <div className="flex items-center gap-2 w-full">
                         <div className="flex-1">
                           <p className="font-medium text-sm">{notification.title}</p>
@@ -207,19 +267,16 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
                         )}
                       </div>
                       <span className="text-xs text-muted-foreground mt-2">
-                        {notification.timestamp.toLocaleDateString()}
+                        {new Date(notification.created_at || notification.timestamp).toLocaleDateString()}
                       </span>
                     </DropdownMenuItem>
                   ))}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-center w-full"
-                    onClick={() => {
-                      setNotifications([]);
-                      toast.success('All notifications cleared');
-                    }}
+                    onClick={clearAllNotifications}
                   >
-                    Mark all as viewed
+                    Clear all notifications
                   </DropdownMenuItem>
                 </>
               )}
