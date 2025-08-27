@@ -134,9 +134,10 @@ export default function Purchases() {
       let error: any = null;
 
       if (organization?.id) {
-        const res = await buildBaseQuery().eq("organization_id", organization.id);
-        data = res.data as any[] | null;
-        error = res.error;
+        // Use explicit type casting to break complex inference
+        const queryResult: { data: any, error: any } = await (buildBaseQuery() as any).eq("organization_id", organization.id);
+        data = queryResult.data as any[] | null;
+        error = queryResult.error;
         if (error) {
           const message = String(error?.message || "").toLowerCase();
           if (message.includes("column") && message.includes("does not exist")) {

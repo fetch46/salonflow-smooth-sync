@@ -153,11 +153,11 @@ export default function JobCards() {
       const jobIds = (data || []).map((c: any) => c.id);
       if (jobIds.length > 0) {
         try {
-          // Prefer live DB when available
-          const { data: invoicesData, error: invoicesError } = await supabase
+          // Prefer live DB when available - use explicit type to break inference
+          const { data: invoicesData, error: invoicesError }: { data: any, error: any } = await (supabase as any)
             .from('invoices')
             .select('job_card_id')
-            .in('job_card_id', jobIds as string[]);
+            .in('job_card_id', jobIds);
 
           if (invoicesError) throw invoicesError;
           const idsWithReceipts = new Set<string>((invoicesData || [])

@@ -223,9 +223,9 @@ const Reports = () => {
         .gte('transaction_date', startDate)
         .lte('transaction_date', endDate);
       if (locationFilter !== 'all') {
-        paymentsQuery.eq('location_id', locationFilter);
-        expensesQuery.eq('location_id', locationFilter);
-        txnsQuery.eq('location_id', locationFilter);
+        (paymentsQuery as any).eq('location_id', locationFilter);
+        (expensesQuery as any).eq('location_id', locationFilter);
+        (txnsQuery as any).eq('location_id', locationFilter);
       }
       const [{ data: payments }, { data: paidExpenses }, { data: txns } ] = await Promise.all([
         paymentsQuery, expensesQuery, txnsQuery,
@@ -345,7 +345,7 @@ const Reports = () => {
           .select('id, created_at, location_id')
           .gte('created_at', startDate)
           .lte('created_at', endDate);
-        if (locationFilter !== 'all') jcQuery = jcQuery.eq('location_id', locationFilter);
+        if (locationFilter !== 'all') jcQuery = (jcQuery as any).eq('location_id', locationFilter);
         const { data, error } = await jcQuery;
         if (error) throw error;
         jobCardsInRange = data || [];
