@@ -584,13 +584,13 @@ const Dashboard = () => {
       <div className="grid grid-cols-responsive-compact gap-3 sm:gap-4">
         {todayStats.map((stat, index) => (
           <Card key={index} className={`${stat.bgClass}`}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-4 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 sm:p-3 pb-2">
               <CardTitle className={`text-sm font-medium ${stat.textColor}`}>
                 {stat.title}
               </CardTitle>
               <stat.icon className={`h-4 w-4 ${stat.iconColor}`} />
             </CardHeader>
-            <CardContent className="p-3 sm:p-4">
+            <CardContent className="p-2 sm:p-3">
               <div className={`text-xl sm:text-2xl font-bold ${stat.valueColor}`}>{stat.value}</div>
               <div className="flex items-center mt-1">
                 {stat.change > 0 ? (
