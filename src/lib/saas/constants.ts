@@ -228,7 +228,7 @@ export const SAAS_ERROR_CODES = {
 // Default organization settings
 export const DEFAULT_ORGANIZATION_SETTINGS = {
   timezone: 'UTC',
-  currency: 'USD',
+  currency: 'KES',
   date_format: 'MM/DD/YYYY',
   time_format: '12h',
   // Organization-wide regional settings used by UI formatters

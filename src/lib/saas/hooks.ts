@@ -288,7 +288,7 @@ export const useSubscriptionPlans = () => {
  */
 export const useOrganizationCurrency = () => {
   const { organization } = useSaas()
-  const [currency, setCurrency] = useState({ code: 'USD', symbol: '$' })
+  const [currency, setCurrency] = useState({ code: 'KES', symbol: 'KES' })
   const [loading, setLoading] = useState(false)
 
   const formatAmount = useCallback(
@@ -347,7 +347,7 @@ export const useRegionalSettings = () => {
       dateFormat: 'MM/dd/yyyy',
       timeFormat: '12h',
       numberFormat: 'en-US',
-      currency: 'USD',
+      currency: 'KES',
     },
     loading: false,
   }
@@ -375,7 +375,7 @@ export const useRegionalCurrencyFormatter = () => {
 
   return useCallback(
     (amount: number, currencyCode?: string): string => {
-      const currency = currencyCode || 'USD'
+      const currency = currencyCode || 'KES'
       return new Intl.NumberFormat(locale, {
         style: 'currency',
         currency,

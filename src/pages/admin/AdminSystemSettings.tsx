@@ -380,7 +380,7 @@ useEffect(() => {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
                     <Label>Code</Label>
-                    <Input value={newCurrency.code} onChange={(e) => setNewCurrency({ ...newCurrency, code: e.target.value })} placeholder="USD" />
+                    <Input value={newCurrency.code} onChange={(e) => setNewCurrency({ ...newCurrency, code: e.target.value })} placeholder="KES" />
                   </div>
                   <div>
                     <Label>Name</Label>
@@ -388,7 +388,7 @@ useEffect(() => {
                   </div>
                   <div>
                     <Label>Symbol</Label>
-                    <Input value={newCurrency.symbol} onChange={(e) => setNewCurrency({ ...newCurrency, symbol: e.target.value })} placeholder="$" />
+                    <Input value={newCurrency.symbol} onChange={(e) => setNewCurrency({ ...newCurrency, symbol: e.target.value })} placeholder="KES" />
                   </div>
                   <div className="flex items-end">
                     <Button onClick={addCurrency} disabled={savingCurrency} className="w-full">{savingCurrency ? 'Adding...' : 'Add Currency'}</Button>

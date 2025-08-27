@@ -372,7 +372,7 @@ export function sanitizeOrganizationData(data: any): any {
   return sanitized
 }
 
-export function formatCurrency(amount: number, currency: string = 'USD'): string {
+export function formatCurrency(amount: number, currency: string = 'KES'): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency,
