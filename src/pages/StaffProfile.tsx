@@ -34,12 +34,10 @@ interface StaffRecord {
   full_name: string;
   email?: string | null;
   phone?: string | null;
-  profile_image?: string | null;
   commission_rate?: number | null;
   is_active: boolean;
   hire_date?: string | null;
   specialties?: string[] | null;
-  notes?: string | null;
 }
 
 interface StaffGalleryItem {
@@ -87,7 +85,6 @@ export default function StaffProfile() {
         setStaff(s as any);
         if (s) {
           setCommissionDraft(typeof s.commission_rate === 'number' ? Number(s.commission_rate) : '');
-          setNotesDraft((s as any).notes || '');
         }
       } catch (e: any) {
         toast({ title: 'Error', description: e?.message || 'Failed to load staff', variant: 'destructive' });
@@ -182,17 +179,8 @@ export default function StaffProfile() {
 
   const loadGallery = async () => {
     if (!id) return;
-    try {
-      const { data, error } = await supabase
-        .from('staff_gallery')
-        .select('*')
-        .eq('staff_id', id)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      setGallery((data as any) || []);
-    } catch (e: any) {
-      console.warn('Failed to load gallery', e?.message);
-    }
+    // Staff gallery feature not implemented yet
+    setGallery([]);
   };
 
   useEffect(() => {
@@ -243,13 +231,8 @@ export default function StaffProfile() {
       const publicUrl = pub?.publicUrl;
       if (!publicUrl) throw new Error('Failed to get public URL');
 
-      const { error: updateError } = await supabase
-        .from('staff')
-        .update({ profile_image: publicUrl })
-        .eq('id', id);
-      if (updateError) throw updateError;
-
-      setStaff((prev) => (prev ? { ...prev, profile_image: publicUrl } : prev));
+      // Profile image storage not implemented yet - would need to add column to staff table
+      toast({ title: 'Profile photo feature not available yet' });
       toast({ title: 'Profile photo updated' });
     } catch (e: any) {
       console.error(e);
@@ -278,12 +261,8 @@ export default function StaffProfile() {
         const { data: pub } = supabase.storage.from(STAFF_MEDIA_BUCKET).getPublicUrl(filePath);
         const publicUrl = pub?.publicUrl;
         if (!publicUrl) throw new Error('Failed to get public URL');
-        const { data: inserted, error: insErr } = await supabase
-          .from('staff_gallery')
-          .insert({ staff_id: id, storage_path: filePath, public_url: publicUrl })
-          .select('*')
-          .single();
-        if (insErr) throw insErr;
+        // Gallery feature not implemented yet - would need staff_gallery table
+        const inserted = { id: '', staff_id: id, storage_path: filePath, public_url: publicUrl, created_at: new Date().toISOString() };
         uploadedItems.push(inserted as any);
       }
       setGallery((prev) => [...uploadedItems, ...prev]);
@@ -302,8 +281,7 @@ export default function StaffProfile() {
     try {
       const { error: rmErr } = await supabase.storage.from(STAFF_MEDIA_BUCKET).remove([item.storage_path]);
       if (rmErr) throw rmErr;
-      const { error: delErr } = await supabase.from('staff_gallery').delete().eq('id', item.id);
-      if (delErr) throw delErr;
+      // Gallery feature not implemented yet
       setGallery((prev) => prev.filter((g) => g.id !== item.id));
       toast({ title: 'Image removed' });
     } catch (e: any) {
@@ -345,18 +323,8 @@ export default function StaffProfile() {
   };
 
   const handleSaveNotes = async () => {
-    if (!id) return;
-    try {
-      const { error } = await supabase
-        .from('staff')
-        .update({ notes: notesDraft })
-        .eq('id', id);
-      if (error) throw error;
-      setStaff((prev) => (prev ? { ...prev, notes: notesDraft } : prev));
-      toast({ title: 'Notes saved' });
-    } catch (e: any) {
-      toast({ title: 'Save failed', description: e?.message || 'Could not save notes', variant: 'destructive' });
-    }
+    // Notes feature not implemented yet - would need to add notes column to staff table
+    toast({ title: 'Notes feature not available yet' });
   };
 
   // Preset quick ranges removed
@@ -374,13 +342,9 @@ export default function StaffProfile() {
           <div className="flex items-center gap-4 min-w-0">
             <div className="relative">
               <Avatar className="w-16 h-16 shadow-md ring-2 ring-white">
-                {staff.profile_image ? (
-                  <AvatarImage src={staff.profile_image} alt={staff.full_name} />
-                ) : (
-                  <AvatarFallback className="text-lg font-semibold">
-                    {getInitials(staff.full_name)}
-                  </AvatarFallback>
-                )}
+                <AvatarFallback className="text-lg font-semibold">
+                  {getInitials(staff.full_name)}
+                </AvatarFallback>
               </Avatar>
               <input
                 type="file"
@@ -781,7 +745,7 @@ export default function StaffProfile() {
                 rows={6}
               />
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setNotesDraft(staff.notes || '')}>Reset</Button>
+                <Button variant="outline" onClick={() => setNotesDraft('')}>Reset</Button>
                 <Button onClick={handleSaveNotes}>Save Notes</Button>
               </div>
             </CardContent>

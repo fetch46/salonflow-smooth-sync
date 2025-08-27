@@ -153,14 +153,14 @@ const AdminDashboard = () => {
         try {
           // Get total count
           const { count: total, error: totalError } = await supabase
-            .from(table.name)
+            .from(table.name as any)
             .select('*', { count: 'exact', head: true });
 
           if (totalError) throw totalError;
 
           // Get recent count (last 7 days)
           const { count: recent, error: recentError } = await supabase
-            .from(table.name)
+            .from(table.name as any)
             .select('*', { count: 'exact', head: true })
             .gte('created_at', subDays(new Date(), 7).toISOString());
 
@@ -168,7 +168,7 @@ const AdminDashboard = () => {
 
           // Get previous period count for growth calculation
           const { count: previousPeriod, error: prevError } = await supabase
-            .from(table.name)
+            .from(table.name as any)
             .select('*', { count: 'exact', head: true })
             .gte('created_at', subDays(new Date(), 14).toISOString())
             .lt('created_at', subDays(new Date(), 7).toISOString());

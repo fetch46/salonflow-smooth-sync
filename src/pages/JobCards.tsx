@@ -293,8 +293,8 @@ export default function JobCards() {
             Refresh
           </Button>
           
-          <CreateButtonGate feature="jobcards" action="create">
-            <Button onClick={() => navigate("/job-cards/new")} className="bg-primary hover:bg-primary/90">
+          <CreateButtonGate feature="jobcards" onClick={() => navigate("/job-cards/new")}>
+            <Button className="bg-primary hover:bg-primary/90">
               <Plus className="w-4 h-4 mr-2" />
               New Job Card
             </Button>

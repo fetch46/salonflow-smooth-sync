@@ -250,8 +250,11 @@ const AdminOrganizations = () => {
 
     try {
       // Prefer soft delete through service to maintain referential integrity
-      await OrganizationService.deleteOrganization(id);
-      const error = null as any;
+      // Delete organization directly via Supabase since deleteOrganization method doesn't exist
+      const { error } = await supabase
+        .from('organizations')
+        .update({ status: 'inactive' })
+        .eq('id', id);
 
       if (error) throw error;
 

@@ -67,7 +67,7 @@ const AdminBusinessData = () => {
         try {
           // Get total count
           const { count: totalCount, error: totalError } = await supabase
-            .from(table.name)
+            .from(table.name as any)
             .select('*', { count: 'exact', head: true });
 
           if (totalError) throw totalError;
@@ -77,7 +77,7 @@ const AdminBusinessData = () => {
           sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
           
           const { count: recentCount, error: recentError } = await supabase
-            .from(table.name)
+            .from(table.name as any)
             .select('*', { count: 'exact', head: true })
             .gte('created_at', sevenDaysAgo.toISOString());
 
@@ -85,19 +85,22 @@ const AdminBusinessData = () => {
 
           // Get last updated record
           const { data: lastRecord, error: lastError } = await supabase
-            .from(table.name)
+            .from(table.name as any)
             .select('updated_at, created_at')
             .order('updated_at', { ascending: false, nullsFirst: false })
             .limit(1);
 
           if (lastError) throw lastError;
 
-          stats.push({
-            table_name: table.name,
-            total_records: totalCount || 0,
-            recent_records: recentCount || 0,
-            last_updated: lastRecord?.[0]?.updated_at || lastRecord?.[0]?.created_at
-          });
+           const record = Array.isArray(lastRecord) && lastRecord.length > 0 ? lastRecord[0] : null;
+           stats.push({
+             table_name: table.name,
+             total_records: totalCount || 0,
+             recent_records: recentCount || 0,
+             last_updated: record ? 
+               ((record as any).updated_at || (record as any).created_at || undefined)
+               : undefined
+           });
         } catch (error) {
           console.error(`Error fetching stats for ${table.name}:`, error);
           stats.push({
@@ -146,7 +149,7 @@ const AdminBusinessData = () => {
       setDataLoading(true);
       
       let query = supabase
-        .from(tableName)
+        .from(tableName as any)
         .select(`
           *,
           organizations(name)
@@ -162,10 +165,14 @@ const AdminBusinessData = () => {
 
       if (error) throw error;
 
-      const transformedData = data?.map(record => ({
-        ...record,
-        organization_name: record.organizations?.name
-      })) || [];
+      const transformedData = Array.isArray(data) ? data.map(record => {
+        if (!record || typeof record !== 'object') return { id: '', organization_name: '', created_at: '' };
+        const safeRecord = record as any;
+        return {
+          ...safeRecord,
+          organization_name: safeRecord.organizations?.name
+        };
+      }) : [];
 
       setTableData(transformedData);
     } catch (error) {
