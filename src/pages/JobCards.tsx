@@ -279,7 +279,7 @@ export default function JobCards() {
   }, [jobCards]);
 
   return (
-    <div className="container mx-auto p-6 space-y-8 max-w-7xl">
+    <div className="container mx-auto p-4 space-y-6 max-w-[1600px]">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
@@ -303,9 +303,9 @@ export default function JobCards() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-5">
         <Card className="lg:col-span-1">
-          <CardContent className="p-6">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-600">Total Cards</p>
@@ -319,7 +319,7 @@ export default function JobCards() {
         </Card>
 
         <Card className="lg:col-span-1">
-          <CardContent className="p-6">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-600">Completed</p>
@@ -333,7 +333,7 @@ export default function JobCards() {
         </Card>
 
         <Card className="lg:col-span-1">
-          <CardContent className="p-6">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-600">In Progress</p>
@@ -347,7 +347,7 @@ export default function JobCards() {
         </Card>
 
         <Card className="lg:col-span-1">
-          <CardContent className="p-6">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-600">Total Revenue</p>
@@ -361,7 +361,7 @@ export default function JobCards() {
         </Card>
 
         <Card className="lg:col-span-1">
-          <CardContent className="p-6">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-600">Today</p>
@@ -375,7 +375,7 @@ export default function JobCards() {
         </Card>
 
         <Card className="lg:col-span-1">
-          <CardContent className="p-6">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-600">Completion Rate</p>
@@ -394,7 +394,7 @@ export default function JobCards() {
 
       {/* Filters */}
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-4">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">

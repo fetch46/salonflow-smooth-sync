@@ -279,7 +279,7 @@ export default function JobCardsList({ onRefresh }: JobCardsListProps) {
       <div className="space-y-4">
         {[1, 2, 3, 4, 5].map((i) => (
           <Card key={i} className="animate-pulse">
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 bg-slate-200 rounded-full"></div>
                 <div className="flex-1 space-y-2">
@@ -329,10 +329,10 @@ export default function JobCardsList({ onRefresh }: JobCardsListProps) {
       </div>
 
       {/* Job Cards Grid */}
-      <div className="grid grid-cols-responsive-cards gap-4 sm:gap-6">
+      <div className="grid grid-cols-responsive-cards gap-3 sm:gap-4">
         {filteredJobCards.length === 0 ? (
           <Card>
-            <CardContent className="p-12 text-center">
+            <CardContent className="p-8 text-center">
               <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
                 <Calendar className="w-8 h-8 text-slate-400" />
               </div>
@@ -347,7 +347,7 @@ export default function JobCardsList({ onRefresh }: JobCardsListProps) {
         ) : (
           filteredJobCards.map((card) => (
             <Card key={card.id} className="hover:shadow-lg transition-all duration-200 min-w-0">
-              <CardContent className="p-6">
+              <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 space-y-4">
                     {/* Header */}
