@@ -257,7 +257,7 @@ export const EnhancedJobCardForm: React.FC<EnhancedJobCardFormProps> = ({
     }]);
   };
 
-  const updateService = (index: number, field: string, value: any) => {
+  const updateService = async (index: number, field: string, value: any) => {
     const updated = [...selectedServices];
     updated[index] = { ...updated[index], [field]: value };
 
@@ -266,6 +266,22 @@ export const EnhancedJobCardForm: React.FC<EnhancedJobCardFormProps> = ({
       if (service) {
         updated[index].unit_price = service.price || 0;
         updated[index].duration_minutes = service.duration_minutes || null;
+        // Auto-populate commission from service
+        updated[index].commission_percentage = service.commission_percentage || 0;
+      }
+    }
+
+    // Auto-calculate commission when staff changes (if no service commission)
+    if (field === 'staff_id' && value && updated[index].commission_percentage === 0) {
+      try {
+        const { data: staffData } = await supabase
+          .from('staff')
+          .select('commission_rate')
+          .eq('id', value)
+          .single();
+        updated[index].commission_percentage = staffData?.commission_rate || 0;
+      } catch (error) {
+        console.error('Error fetching staff commission rate:', error);
       }
     }
 

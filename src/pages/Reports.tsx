@@ -1327,36 +1327,36 @@ const Reports = () => {
                     <div className="grid gap-6 md:grid-cols-3 mt-6">
                       <div>
                         <div className="font-semibold mb-2">Assets</div>
-                        <Table>
-                          <TableHeader><TableRow><TableHead>Account</TableHead><TableHead className="text-right">Balance</TableHead></TableRow></TableHeader>
-                          <TableBody>
-                            {Object.entries(bs.breakdown.assets).map(([k,v]) => (
-                              <TableRow key={k}><TableCell>{k}</TableCell><TableCell className="text-right">{formatMoney(Number(v), { decimals: 2 })}</TableCell></TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                         <Table>
+                           <TableHeader><TableRow><TableHead>Account Name</TableHead><TableHead className="text-right">Balance</TableHead></TableRow></TableHeader>
+                           <TableBody>
+                             {Object.entries(bs.breakdown.assets).map(([k,v]) => (
+                               <TableRow key={k}><TableCell className="font-medium">{k}</TableCell><TableCell className="text-right">{formatMoney(Number(v), { decimals: 2 })}</TableCell></TableRow>
+                             ))}
+                           </TableBody>
+                         </Table>
                       </div>
                       <div>
                         <div className="font-semibold mb-2">Liabilities</div>
-                        <Table>
-                          <TableHeader><TableRow><TableHead>Account</TableHead><TableHead className="text-right">Balance</TableHead></TableRow></TableHeader>
-                          <TableBody>
-                            {Object.entries(bs.breakdown.liabilities).map(([k,v]) => (
-                              <TableRow key={k}><TableCell>{k}</TableCell><TableCell className="text-right">{formatMoney(Number(v), { decimals: 2 })}</TableCell></TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                         <Table>
+                           <TableHeader><TableRow><TableHead>Account Name</TableHead><TableHead className="text-right">Balance</TableHead></TableRow></TableHeader>
+                           <TableBody>
+                             {Object.entries(bs.breakdown.liabilities).map(([k,v]) => (
+                               <TableRow key={k}><TableCell className="font-medium">{k}</TableCell><TableCell className="text-right">{formatMoney(Number(v), { decimals: 2 })}</TableCell></TableRow>
+                             ))}
+                           </TableBody>
+                         </Table>
                       </div>
                       <div>
-                        <div className="font-semibold mb-2">Equity</div>
-                        <Table>
-                          <TableHeader><TableRow><TableHead>Account</TableHead><TableHead className="text-right">Balance</TableHead></TableRow></TableHeader>
-                          <TableBody>
-                            {Object.entries(bs.breakdown.equity).map(([k,v]) => (
-                              <TableRow key={k}><TableCell>{k}</TableCell><TableCell className="text-right">{formatMoney(Number(v), { decimals: 2 })}</TableCell></TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                         <div className="font-semibold mb-2">Equity</div>
+                         <Table>
+                           <TableHeader><TableRow><TableHead>Account Name</TableHead><TableHead className="text-right">Balance</TableHead></TableRow></TableHeader>
+                           <TableBody>
+                             {Object.entries(bs.breakdown.equity).map(([k,v]) => (
+                               <TableRow key={k}><TableCell className="font-medium">{k}</TableCell><TableCell className="text-right">{formatMoney(Number(v), { decimals: 2 })}</TableCell></TableRow>
+                             ))}
+                           </TableBody>
+                         </Table>
                       </div>
                     </div>
                   )}
