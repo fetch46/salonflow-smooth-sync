@@ -174,7 +174,11 @@ export const EnhancedJobCardForm: React.FC<EnhancedJobCardFormProps> = ({
           .from('job_card_services')
           .insert(serviceData);
 
-        if (servicesError) throw servicesError;
+        if (servicesError) {
+          console.error('Failed to save job card services:', servicesError);
+          toast.error('Failed to save job card services: ' + servicesError.message);
+          throw servicesError;
+        }
       }
 
       // Insert products and update inventory

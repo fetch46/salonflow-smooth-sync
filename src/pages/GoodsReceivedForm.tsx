@@ -305,30 +305,29 @@ export default function GoodsReceivedForm() {
             }
           }
 
-          // 2b) By warehouse (required so it appears in warehouse stock views)
-          {
-            const { data: whRows, error: whErr } = await supabase
-              .from("inventory_levels")
-              .select("id, quantity")
-              .eq("item_id", itemId)
-              .eq("warehouse_id", warehouseId)
-              .limit(1);
-            if (whErr) throw whErr;
-            const existingWh = (whRows || [])[0] as { id: string; quantity: number } | undefined;
-            if (existingWh) {
-              const { error: updWhErr } = await supabase
-                .from("inventory_levels")
-                .update({ quantity: Number(existingWh.quantity || 0) + addQty })
-                .eq("id", existingWh.id);
-              if (updWhErr) throw updWhErr;
-            } else {
-              // warehouse_id-only inserts need a dummy location_id since it's required
-              const { error: insWhErr } = await supabase
-                .from("inventory_levels")
-                .insert([{ item_id: itemId, warehouse_id: warehouseId, location_id: derivedLocationId, quantity: addQty }]);
-              if (insWhErr) throw insWhErr;
-            }
-          }
+      // 2b) By warehouse (required so it appears in warehouse stock views)
+      if (warehouseId) {
+        const { data: whRows, error: whErr } = await supabase
+          .from("inventory_levels")
+          .select("id, quantity")
+          .eq("item_id", itemId)
+          .eq("warehouse_id", warehouseId)
+          .limit(1);
+        if (whErr) throw whErr;
+        const existingWh = (whRows || [])[0] as { id: string; quantity: number } | undefined;
+        if (existingWh) {
+          const { error: updWhErr } = await supabase
+            .from("inventory_levels")
+            .update({ quantity: Number(existingWh.quantity || 0) + addQty })
+            .eq("id", existingWh.id);
+          if (updWhErr) throw updWhErr;
+        } else {
+          const { error: insWhErr } = await supabase
+            .from("inventory_levels")
+            .insert([{ item_id: itemId, warehouse_id: warehouseId, location_id: derivedLocationId, quantity: addQty }]);
+          if (insWhErr) throw insWhErr;
+        }
+      }
         }
 
         // 3) Attempt to persist a goods_received header and items so the receipt appears in the list

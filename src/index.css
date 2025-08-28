@@ -12,6 +12,9 @@ All colors MUST be HSL.
     --background: 210 40% 98%;
     --foreground: 215 25% 27%;
     color-scheme: light;
+    
+    /* Base font family */
+    font-family: 'Puvi', system-ui, sans-serif;
 
     --card: 0 0% 100%;
     --card-foreground: 215 25% 27%;

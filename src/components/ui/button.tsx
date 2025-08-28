@@ -21,6 +21,9 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
         gradient:
           "bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700",
+        solid: "bg-primary text-white shadow-md hover:bg-primary/90 transition-all duration-200",
+        "solid-destructive": "bg-red-600 text-white shadow-md hover:bg-red-700 transition-all duration-200",
+        "solid-secondary": "bg-gray-600 text-white shadow-md hover:bg-gray-700 transition-all duration-200",
       },
       size: {
         default: "h-9 px-4 py-2 text-responsive-sm",

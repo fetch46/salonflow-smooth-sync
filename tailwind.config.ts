@@ -27,7 +27,8 @@ export default {
 		},
 		extend: {
 			fontFamily: {
-				sans: ['Inter', 'system-ui', 'sans-serif'],
+				sans: ['Puvi', 'system-ui', 'sans-serif'],
+				'puvi': ['Puvi', 'system-ui', 'sans-serif'],
 			},
 			fontSize: {
 				'responsive-xs': 'var(--text-xs)',
