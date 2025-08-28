@@ -245,7 +245,7 @@ export default function GoodsReceived() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => navigate("/goods-received/new")} className="bg-gradient-to-r from-emerald-600 to-green-600"> <Plus className="h-4 w-4 mr-2"/> New Receipt</Button>
+          <Button onClick={() => navigate("/goods-received/new")} variant="solid" className="bg-gradient-to-r from-emerald-600 to-green-600"> <Plus className="h-4 w-4 mr-2"/> New Receipt</Button>
           <Button variant="outline" onClick={load}><RefreshCw className="h-4 w-4 mr-2"/>Refresh</Button>
         </div>
       </div>
@@ -292,7 +292,7 @@ export default function GoodsReceived() {
                     <TableCell>
                       <div className="flex gap-2">
                         <Button variant="outline" size="sm" onClick={() => navigate(`/goods-received/${r.id}/edit`)}>Edit</Button>
-                        <Button variant="destructive" size="sm" onClick={() => handleDelete(r.id)}>Delete</Button>
+                        <Button variant="solid-destructive" size="sm" onClick={() => handleDelete(r.id)}>Delete</Button>
                       </div>
                     </TableCell>
                   </TableRow>

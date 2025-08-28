@@ -1722,6 +1722,7 @@ export type Database = {
       }
       job_card_services: {
         Row: {
+          commission_amount: number | null
           commission_percentage: number | null
           created_at: string
           duration_minutes: number | null
@@ -1735,6 +1736,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          commission_amount?: number | null
           commission_percentage?: number | null
           created_at?: string
           duration_minutes?: number | null
@@ -1748,6 +1750,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          commission_amount?: number | null
           commission_percentage?: number | null
           created_at?: string
           duration_minutes?: number | null

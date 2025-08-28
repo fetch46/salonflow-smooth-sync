@@ -166,6 +166,7 @@ export const EnhancedJobCardForm: React.FC<EnhancedJobCardFormProps> = ({
           quantity: service.quantity,
           unit_price: service.unit_price,
           commission_percentage: service.commission_percentage || 0,
+          commission_amount: ((service.unit_price * service.quantity) * (service.commission_percentage || 0)) / 100,
           duration_minutes: service.duration_minutes || null,
           notes: service.notes || null,
         }));
