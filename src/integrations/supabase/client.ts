@@ -3,12 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import type { Database } from './types'
 import { withTimeout, withRetry } from '@/lib/saas/utils'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables. Please check your .env file.')
-}
+const supabaseUrl = "https://eoxeoyyunhsdvjiwkttx.supabase.co"
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVveGVveXl1bmhzZHZqaXdrdHR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5NzI3NDUsImV4cCI6MjA2OTU0ODc0NX0.d3uazVxwI1_kPoF-QAGChcbfKS9PxwB536HrrlCXUrE"
 
 console.log('Supabase URL:', supabaseUrl)
 console.log('Supabase Anon Key exists:', !!supabaseAnonKey)
