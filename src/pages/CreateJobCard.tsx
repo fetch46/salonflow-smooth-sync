@@ -619,21 +619,36 @@ export default function CreateJobCard() {
         }
       }
 
+      // Validate that all services have assigned technicians (mandatory)
+      const unassignedServices = selectedServices.filter(service => !serviceStaffMap[service.id]);
+      if (unassignedServices.length > 0) {
+        toast.error(`Please assign technicians to all services: ${unassignedServices.map(s => s.name).join(', ')}`);
+        return;
+      }
+
       // Save service assignments to job_card_services
       if (selectedServices.length > 0) {
         try {
           const overrideMap: Record<string, number | null> = (window as any).__appointmentServiceCommission || {};
-          const rows = selectedServices.map(svc => ({
-            job_card_id: jobCard.id,
-            service_id: svc.id,
-            staff_id: serviceStaffMap[svc.id],
-            quantity: 1,
-            unit_price: svc.price,
-            duration_minutes: svc.duration_minutes,
-            commission_percentage: typeof overrideMap[svc.id] === 'number' ? overrideMap[svc.id] : (svc as any).commission_percentage ?? null,
-            // Add commission calculation
-            commission_amount: 0, // Will be calculated by the commission calculator
-          }));
+          const rows = selectedServices.map(svc => {
+            const staffId = serviceStaffMap[svc.id];
+            const assignedStaff = staff.find(s => s.id === staffId);
+            const commissionRate = typeof overrideMap[svc.id] === 'number' 
+              ? overrideMap[svc.id] 
+              : (svc as any).commission_percentage ?? assignedStaff?.commission_rate ?? 0;
+            const commissionAmount = (svc.price * commissionRate) / 100;
+
+            return {
+              job_card_id: jobCard.id,
+              service_id: svc.id,
+              staff_id: staffId, // Now guaranteed to exist due to validation above
+              quantity: 1,
+              unit_price: svc.price,
+              duration_minutes: svc.duration_minutes,
+              commission_percentage: commissionRate,
+              commission_amount: commissionAmount,
+            };
+          });
           const { error: jcsError } = await supabase.from("job_card_services").insert(rows as any);
           if (jcsError) throw jcsError;
         } catch (svcErr) {
