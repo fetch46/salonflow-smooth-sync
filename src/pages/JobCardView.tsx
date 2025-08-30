@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
+import JobCardStatusManager from "@/components/JobCardStatusManager";
 import {
   Calendar,
   Clock,
@@ -267,7 +268,11 @@ export default function JobCardView() {
                 <span>Primary Staff: {staff?.full_name || "—"}</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
-                <Badge variant="outline">Status: {card.status}</Badge>
+                <JobCardStatusManager 
+                  jobCardId={card.id} 
+                  currentStatus={card.status} 
+                  onStatusChange={(newStatus) => setCard(prev => prev ? {...prev, status: newStatus} : null)}
+                />
               </div>
             </div>
 

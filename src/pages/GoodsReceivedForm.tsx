@@ -229,6 +229,7 @@ export default function GoodsReceivedForm() {
                   warehouse_id: warehouseId,
                   location_id: derivedLocationId,
                   notes: notes || null,
+                  grn_number: 'GRN-' + Date.now(),
                 },
               ])
               .select("id")
@@ -239,13 +240,61 @@ export default function GoodsReceivedForm() {
                 return {
                   goods_received_id: header.id,
                   purchase_item_id,
-                  item_id: it?.item_id || purchase_item_id, // fallback
+                  item_id: it?.item_id || purchase_item_id,
                   quantity: Number(qty) || 0,
                   unit_cost: it?.unit_cost || 0
                 };
               });
               if (itemsPayload.length > 0) {
                 await supabase.from("goods_received_items").insert(itemsPayload);
+              }
+              
+              // Update inventory levels for both location and warehouse
+              for (const [purchase_item_id, qty] of entriesParam) {
+                const it = byId[purchase_item_id];
+                if (!it) continue;
+                
+                // Update by location
+                if (derivedLocationId) {
+                  const { data: existingLevel } = await supabase
+                    .from('inventory_levels')
+                    .select('id, quantity')
+                    .eq('item_id', it.item_id)
+                    .eq('location_id', derivedLocationId)
+                    .maybeSingle();
+                    
+                  if (existingLevel) {
+                    await supabase
+                      .from('inventory_levels')
+                      .update({ quantity: (existingLevel.quantity || 0) + Number(qty) })
+                      .eq('id', existingLevel.id);
+                  } else {
+                    await supabase
+                      .from('inventory_levels')
+                      .insert({ item_id: it.item_id, location_id: derivedLocationId, quantity: Number(qty) });
+                  }
+                }
+                
+                // Update by warehouse
+                if (warehouseId) {
+                  const { data: existingWh } = await supabase
+                    .from('inventory_levels')
+                    .select('id, quantity')
+                    .eq('item_id', it.item_id)
+                    .eq('warehouse_id', warehouseId)
+                    .maybeSingle();
+                    
+                  if (existingWh) {
+                    await supabase
+                      .from('inventory_levels')
+                      .update({ quantity: (existingWh.quantity || 0) + Number(qty) })
+                      .eq('id', existingWh.id);
+                  } else {
+                    await supabase
+                      .from('inventory_levels')
+                      .insert({ item_id: it.item_id, warehouse_id: warehouseId, location_id: derivedLocationId, quantity: Number(qty) });
+                  }
+                }
               }
             }
           } catch (ignore) {
