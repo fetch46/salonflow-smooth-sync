@@ -59,6 +59,8 @@ const InvoiceCreate = lazyWithRetry(() => import("./pages/InvoiceCreate"));
 const InvoiceEdit = lazyWithRetry(() => import("./pages/InvoiceEdit"));
 const Expenses = lazyWithRetry(() => import("./pages/Expenses"));
 const Payments = lazyWithRetry(() => import("./pages/Payments"));
+const PaymentsReceived = lazyWithRetry(() => import("./pages/PaymentsReceived"));
+const PaymentsMade = lazyWithRetry(() => import("./pages/PaymentsMade"));
 const PaymentReceivedNew = lazyWithRetry(() => import("./pages/PaymentReceivedNew"));
 const JobCards = lazyWithRetry(() => import("./pages/JobCards"));
 const CreateJobCard = lazyWithRetry(() => import("./pages/CreateJobCard"));
@@ -245,6 +247,7 @@ const AppRoutes = () => {
           <Route path="invoices/new" element={<ModuleGate moduleId="sales"><InvoiceCreate /></ModuleGate>} />
           <Route path="invoices/:id/edit" element={<ModuleGate moduleId="sales"><InvoiceEdit /></ModuleGate>} />
           <Route path="payments" element={<ModuleGate moduleId="sales"><Payments /></ModuleGate>} />
+          <Route path="payments-received" element={<ModuleGate moduleId="sales"><PaymentsReceived /></ModuleGate>} />
           <Route path="payments/received/new" element={<ModuleGate moduleId="sales"><PaymentReceivedNew /></ModuleGate>} />
           
           {/* POS Module */}
@@ -269,6 +272,7 @@ const AppRoutes = () => {
           <Route path="expenses" element={<ModuleGate moduleId="purchases"><Expenses /></ModuleGate>} />
           <Route path="expenses/new" element={<ModuleGate moduleId="purchases"><ExpenseForm /></ModuleGate>} />
           <Route path="expenses/:id/edit" element={<ModuleGate moduleId="purchases"><ExpenseForm /></ModuleGate>} />
+          <Route path="payments-made" element={<ModuleGate moduleId="purchases"><PaymentsMade /></ModuleGate>} />
           
           {/* Services Module */}
           <Route path="services" element={<ModuleGate moduleId="services"><Services /></ModuleGate>} />

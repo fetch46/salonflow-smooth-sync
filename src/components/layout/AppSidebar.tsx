@@ -96,8 +96,8 @@ const menuItems: MenuItem[] = [
         feature: "accounting",
       },
       {
-        title: "Payments",
-        url: "/payments",
+        title: "Payments Received",
+        url: "/payments-received",
         icon: DollarSign,
         feature: "accounting",
       },
@@ -136,6 +136,12 @@ const menuItems: MenuItem[] = [
         title: "Expenses",
         url: "/expenses",
         icon: Receipt,
+        feature: "expenses",
+      },
+      {
+        title: "Payments Made",
+        url: "/payments-made",
+        icon: CreditCard,
         feature: "expenses",
       },
     ],
@@ -283,7 +289,8 @@ export function AppSidebar() {
       case 'Sales': return 'text-rose-600';
       case 'Clients': return 'text-cyan-600';
       case 'Invoices': return 'text-amber-600';
-      case 'Payments': return 'text-emerald-600';
+      case 'Payments Received': return 'text-emerald-600';
+      case 'Payments Made': return 'text-red-600';
       case 'Job Cards': return 'text-indigo-600';
       case 'Purchases': return 'text-orange-600';
       case 'Suppliers': return 'text-sky-600';

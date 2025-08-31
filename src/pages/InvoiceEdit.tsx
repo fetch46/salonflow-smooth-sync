@@ -319,7 +319,7 @@ export default function InvoiceEdit() {
               <CardTitle className="text-sm text-purple-800">Add Item</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 lg:grid-cols-7 gap-3">
+              <div className="grid grid-cols-1 lg:grid-cols-9 gap-3">
                 <div className="lg:col-span-2">
                   <Label className="text-sm">Description *</Label>
                   <Input className="h-9" value={newItem.description} onChange={(e) => setNewItem({ ...newItem, description: e.target.value })} />
@@ -335,6 +335,23 @@ export default function InvoiceEdit() {
                 <div className="lg:col-span-1">
                   <Label className="text-sm">Discount %</Label>
                   <Input className="h-9" type="number" min="0" max="100" value={newItem.discount_percentage} onChange={(e) => setNewItem({ ...newItem, discount_percentage: parseFloat(e.target.value) || 0 })} />
+                </div>
+                <div className="lg:col-span-1">
+                  <Label className="text-sm">Staff</Label>
+                  <Select value={newItem.staff_id} onValueChange={(value) => setNewItem({ ...newItem, staff_id: value })}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {staff.map((s: any) => (
+                        <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="lg:col-span-1">
+                  <Label className="text-sm">Commission %</Label>
+                  <Input className="h-9" type="number" min="0" max="100" step="0.1" value={newItem.commission_percentage} onChange={(e) => setNewItem({ ...newItem, commission_percentage: parseFloat(e.target.value) || 0 })} />
                 </div>
                 <div className="lg:col-span-1 flex items-end">
                   <Button type="button" size="sm" className="w-full h-9 bg-violet-600 hover:bg-violet-700" onClick={addItemToInvoice}>

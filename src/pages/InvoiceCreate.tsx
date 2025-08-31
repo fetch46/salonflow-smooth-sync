@@ -418,7 +418,7 @@ export default function InvoiceCreate() {
               <CardTitle className="text-sm text-purple-800">Add Item</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 lg:grid-cols-7 gap-3">
+              <div className="grid grid-cols-1 lg:grid-cols-9 gap-3">
                 <div className="lg:col-span-1">
                   <Label className="text-sm">Service</Label>
                   <Select value={newItem.service_id} onValueChange={(value) => {
@@ -456,6 +456,23 @@ export default function InvoiceCreate() {
                   <Label className="text-sm">Discount %</Label>
                   <Input className="h-9" type="number" min="0" max="100" value={newItem.discount_percentage} onChange={(e) => setNewItem({ ...newItem, discount_percentage: parseFloat(e.target.value) || 0 })} />
                 </div>
+                <div className="lg:col-span-1">
+                  <Label className="text-sm">Staff</Label>
+                  <Select value={newItem.staff_id} onValueChange={(value) => setNewItem({ ...newItem, staff_id: value })}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {staff.map(s => (
+                        <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="lg:col-span-1">
+                  <Label className="text-sm">Commission %</Label>
+                  <Input className="h-9" type="number" min="0" max="100" step="0.1" value={newItem.commission_percentage} onChange={(e) => setNewItem({ ...newItem, commission_percentage: parseFloat(e.target.value) || 0 })} />
+                </div>
                 <div className="lg:col-span-1 flex items-end">
                   <Button type="button" size="sm" className="w-full h-9 bg-violet-600 hover:bg-violet-700" onClick={addItemToInvoice}>
                     <Plus className="w-4 h-4 mr-1" /> Add
@@ -478,6 +495,8 @@ export default function InvoiceCreate() {
                       <TableHead>Qty</TableHead>
                       <TableHead>Price</TableHead>
                       <TableHead>Discount</TableHead>
+                      <TableHead>Staff</TableHead>
+                      <TableHead>Commission</TableHead>
                       <TableHead>Total</TableHead>
                       <TableHead className="w-12"></TableHead>
                     </TableRow>
@@ -489,6 +508,8 @@ export default function InvoiceCreate() {
                         <TableCell>{item.quantity}</TableCell>
                         <TableCell>{symbol}{parseFloat(String(item.unit_price)).toFixed(2)}</TableCell>
                         <TableCell>{item.discount_percentage}%</TableCell>
+                        <TableCell>{item.staff_id ? (staff.find(s => s.id === item.staff_id)?.full_name || '—') : '—'}</TableCell>
+                        <TableCell>{item.commission_percentage}%</TableCell>
                         <TableCell className="font-semibold">{symbol}{Number(item.total_price).toFixed(2)}</TableCell>
                         <TableCell>
                           <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => removeItemFromInvoice(idx)}>
