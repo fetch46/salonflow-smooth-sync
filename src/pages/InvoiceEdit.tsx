@@ -24,6 +24,7 @@ export default function InvoiceEdit() {
   const [loading, setLoading] = useState(true);
   const [customers, setCustomers] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
   const [locations, setLocations] = useState<Array<{ id: string; name: string; is_default?: boolean; is_active?: boolean }>>([]);
   const [defaultLocationIdForUser, setDefaultLocationIdForUser] = useState<string | null>(null);
 
@@ -84,12 +85,14 @@ export default function InvoiceEdit() {
   useEffect(() => {
     (async () => {
       try {
-        const [{ data: cust }, { data: svc }] = await Promise.all([
+        const [{ data: cust }, { data: svc }, { data: stf }] = await Promise.all([
           supabase.from("clients").select("id, full_name, email, phone").eq("is_active", true).order("full_name"),
           supabase.from("services").select("id, name, price").eq("is_active", true).eq('organization_id', organization?.id || '').order("name"),
+          supabase.from("staff").select("id, full_name, commission_rate").eq("is_active", true).eq('organization_id', organization?.id || '').order("full_name"),
         ]);
         setCustomers(cust || []);
         setServices(svc || []);
+        setStaff(stf || []);
       } catch {}
       await fetchLocations();
       const locId = await resolveUserDefaultLocation();
