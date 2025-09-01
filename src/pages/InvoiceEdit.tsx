@@ -341,7 +341,14 @@ export default function InvoiceEdit() {
                 </div>
                 <div className="lg:col-span-1">
                   <Label className="text-sm">Staff</Label>
-                  <Select value={newItem.staff_id} onValueChange={(value) => setNewItem({ ...newItem, staff_id: value })}>
+                  <Select value={newItem.staff_id} onValueChange={(value) => {
+                    const selectedStaff = staff.find(s => s.id === value);
+                    setNewItem({ 
+                      ...newItem, 
+                      staff_id: value,
+                      commission_percentage: selectedStaff?.commission_rate || newItem.commission_percentage
+                    });
+                  }}>
                     <SelectTrigger className="h-9">
                       <SelectValue placeholder="Select" />
                     </SelectTrigger>

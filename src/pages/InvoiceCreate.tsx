@@ -16,7 +16,7 @@ import { createInvoiceWithFallback, getInvoiceItemsWithFallback, getInvoicesWith
 
 interface Customer { id: string; full_name: string; email: string | null; phone: string | null }
 interface Service { id: string; name: string; price: number }
-interface Staff { id: string; full_name: string }
+interface Staff { id: string; full_name: string; commission_rate?: number }
 
 export default function InvoiceCreate() {
   const navigate = useNavigate();
@@ -77,7 +77,7 @@ export default function InvoiceCreate() {
         const [{ data: cust }, { data: svc }, { data: stf }] = await Promise.all([
           supabase.from("clients").select("id, full_name, email, phone").eq("is_active", true).order("full_name"),
           supabase.from("services").select("id, name, price").eq("is_active", true).eq('organization_id', organization?.id || '').order("name"),
-          supabase.from("staff").select("id, full_name").eq("is_active", true).order("full_name"),
+          supabase.from("staff").select("id, full_name, commission_rate").eq("is_active", true).eq('organization_id', organization?.id || '').order("full_name"),
         ]);
         setCustomers(cust || []);
         setServices(svc || []);
@@ -458,7 +458,14 @@ export default function InvoiceCreate() {
                 </div>
                 <div className="lg:col-span-1">
                   <Label className="text-sm">Staff</Label>
-                  <Select value={newItem.staff_id} onValueChange={(value) => setNewItem({ ...newItem, staff_id: value })}>
+                  <Select value={newItem.staff_id} onValueChange={(value) => {
+                    const selectedStaff = staff.find(s => s.id === value);
+                    setNewItem({ 
+                      ...newItem, 
+                      staff_id: value,
+                      commission_percentage: selectedStaff?.commission_rate || newItem.commission_percentage
+                    });
+                  }}>
                     <SelectTrigger className="h-9">
                       <SelectValue placeholder="Select" />
                     </SelectTrigger>
