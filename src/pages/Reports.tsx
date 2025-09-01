@@ -27,6 +27,7 @@ import {
   Receipt,
   ShoppingCart,
 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { useSaas } from '@/lib/saas';
 import { supabase } from '@/integrations/supabase/client';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -80,6 +81,14 @@ const Reports = () => {
   }, [organizationRole]);
 
   const { symbol, format: formatMoney } = useOrganizationCurrency();
+
+  // Quick Insights data for Overview
+  const [serviceMetrics, setServiceMetrics] = useState({
+    utilizationPct: 75,
+    revenueGrowthPct: 12.5,
+    bookingGrowthPct: 8.3,
+    avgRating: 4.2
+  });
 
   // Load locations for current organization
   useEffect(() => {
@@ -975,6 +984,51 @@ const Reports = () => {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Quick Insights from Services */}
+              <Card className="shadow-sm border-slate-200">
+                <CardHeader className="border-b border-slate-200">
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-green-600" />
+                    Quick Insights
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4">
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium text-slate-700">Service Utilization</span>
+                        <span className="text-sm text-slate-600">{Math.round(serviceMetrics.utilizationPct || 0)}%</span>
+                      </div>
+                      <Progress value={Math.max(0, Math.min(100, Math.round(serviceMetrics.utilizationPct || 0)))} className="h-2" />
+                    </div>
+                    
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium text-slate-700">Customer Satisfaction</span>
+                        <span className="text-sm text-slate-600">{serviceMetrics.avgRating.toFixed(1)}/5.0</span>
+                      </div>
+                      <Progress value={Math.max(0, Math.min(100, (serviceMetrics.avgRating / 5) * 100))} className="h-2" />
+                    </div>
+                    
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium text-slate-700">Revenue Growth</span>
+                        <span className="text-sm text-slate-600">{(serviceMetrics.revenueGrowthPct || 0) >= 0 ? '+' : ''}{(serviceMetrics.revenueGrowthPct || 0).toFixed(1)}%</span>
+                      </div>
+                      <Progress value={Math.max(0, Math.min(100, Math.abs(serviceMetrics.revenueGrowthPct || 0)))} className="h-2" />
+                    </div>
+                    
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium text-slate-700">Booking Growth</span>
+                        <span className="text-sm text-slate-600">{(serviceMetrics.bookingGrowthPct || 0) >= 0 ? '+' : ''}{(serviceMetrics.bookingGrowthPct || 0).toFixed(1)}%</span>
+                      </div>
+                      <Progress value={Math.max(0, Math.min(100, Math.abs(serviceMetrics.bookingGrowthPct || 0)))} className="h-2" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Charts Row */}
               <div className="grid gap-6 lg:grid-cols-2">

@@ -802,12 +802,14 @@ export default function Services() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this service?")) {
+    if (confirm("Are you sure you want to delete this service? This will also remove related service kits and update related records.")) {
       try {
-        const { error } = await supabase.from("services").delete().eq("id", id);
-        if (error) throw error;
-        toast.success("Service deleted successfully");
-        fetchServices();
+        const { deletionPatterns } = await import("@/utils/crudHelpers");
+        const result = await deletionPatterns.service(id);
+        if (result.success) {
+          toast.success("Service deleted successfully");
+          fetchServices();
+        }
       } catch (error) {
         console.error("Error deleting service:", error);
         toast.error("Failed to delete service");
@@ -1055,124 +1057,6 @@ export default function Services() {
         </Card>
       </div>
 
-      {/* Analytics Section */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Best Selling Services */}
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader className="border-b border-slate-200">
-            <CardTitle className="flex items-center gap-2">
-              <Crown className="w-5 h-5 text-amber-600" />
-              Top Performers
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="space-y-1">
-              {dashboard.bestSelling.map((service, index) => (
-                <div key={service.service_id} className="flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                      index === 0 ? 'bg-gradient-to-br from-amber-500 to-yellow-500' :
-                      index === 1 ? 'bg-gradient-to-br from-gray-400 to-gray-500' :
-                      'bg-gradient-to-br from-orange-600 to-red-600'
-                    }`}>
-                      {index + 1}
-                    </div>
-                    <div>
-                      <div className="font-medium text-sm">{service.service_name}</div>
-                      <div className="text-xs text-slate-500">{service.total_bookings} bookings</div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-semibold text-sm">{formatPrice(service.total_revenue)}</div>
-                    <div className="flex items-center text-xs text-slate-500">
-                      <Star className="w-3 h-3 text-amber-500 mr-1" />
-                      {service.avg_rating.toFixed(1)}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Service Categories */}
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader className="border-b border-slate-200">
-            <CardTitle className="flex items-center gap-2">
-              <Package className="w-5 h-5 text-purple-600" />
-              Categories
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="space-y-3">
-              {dashboard.categoriesStats.slice(0, 5).map((category) => {
-                const IconComponent = category.icon;
-                return (
-                  <div key={category.name} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg bg-gradient-to-br ${category.color}`}>
-                        <IconComponent className="w-4 h-4 text-white" />
-                      </div>
-                      <div>
-                        <div className="font-medium text-sm">{category.name}</div>
-                        <div className="text-xs text-slate-500">{category.count} services</div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-sm">{formatPrice(category.revenue)}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Stats */}
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader className="border-b border-slate-200">
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-green-600" />
-              Quick Insights
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-slate-700">Service Utilization</span>
-                  <span className="text-sm text-slate-600">{Math.round(serviceMetrics.utilizationPct || 0)}%</span>
-                </div>
-                <Progress value={Math.max(0, Math.min(100, Math.round(serviceMetrics.utilizationPct || 0)))} className="h-2" />
-              </div>
-              
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-slate-700">Customer Satisfaction</span>
-                  <span className="text-sm text-slate-600">{dashboard.avgRating.toFixed(1)}/5.0</span>
-                </div>
-                <Progress value={Math.max(0, Math.min(100, (dashboard.avgRating / 5) * 100))} className="h-2" />
-              </div>
-              
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-slate-700">Revenue Growth</span>
-                  <span className="text-sm text-slate-600">{(serviceMetrics.revenueGrowthPct || 0) >= 0 ? '+' : ''}{(serviceMetrics.revenueGrowthPct || 0).toFixed(1)}%</span>
-                </div>
-                <Progress value={Math.max(0, Math.min(100, Math.abs(serviceMetrics.revenueGrowthPct || 0)))} className="h-2" />
-              </div>
-              
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-slate-700">Booking Growth</span>
-                  <span className="text-sm text-slate-600">{(serviceMetrics.bookingGrowthPct || 0) >= 0 ? '+' : ''}{(serviceMetrics.bookingGrowthPct || 0).toFixed(1)}%</span>
-                </div>
-                <Progress value={Math.max(0, Math.min(100, Math.abs(serviceMetrics.bookingGrowthPct || 0)))} className="h-2" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Services List */}
       <Card className="shadow-sm border-slate-200">
