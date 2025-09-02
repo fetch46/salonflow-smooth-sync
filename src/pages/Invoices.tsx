@@ -82,6 +82,7 @@ import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { useOrganizationTaxRate } from "@/lib/saas/hooks";
 import { Database } from "@/integrations/supabase/types";
 import { useNavigate } from "react-router-dom";
+import { downloadInvoicePDF } from "@/utils/invoicePdf";
 
 interface Invoice {
   id: string;
@@ -610,7 +611,7 @@ export default function Invoices() {
             </DropdownMenuContent>
           </DropdownMenu>
           
-          <Button onClick={() => navigate('/invoices/new')} className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-lg">
+          <Button onClick={() => navigate('/invoices/new')} className="shadow-lg">
             <Plus className="w-4 h-4 mr-2" />
             New Invoice
           </Button>
@@ -658,18 +659,6 @@ export default function Invoices() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-700">Collection Rate</CardTitle>
-            <Target className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-700">{collectionRate.toFixed(1)}%</div>
-            <p className="text-xs text-purple-600">
-              Avg: {formatMoney(Number(averageInvoiceValue.toFixed(0)))}
-            </p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Filters & Tabs */}
@@ -866,9 +855,23 @@ export default function Invoices() {
                               <Edit2 className="w-4 h-4 mr-2" />
                               Edit
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              fetchInvoiceItems(invoice.id);
+                              setTimeout(() => {
+                                downloadInvoicePDF(invoice, invoiceItems);
+                              }, 100);
+                            }}>
                               <Download className="w-4 h-4 mr-2" />
                               Download PDF
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              fetchInvoiceItems(invoice.id);
+                              setTimeout(() => {
+                                downloadInvoicePDF(invoice, invoiceItems, true);
+                              }, 100);
+                            }}>
+                              <Download className="w-4 h-4 mr-2" />
+                              Download 80mm PDF
                             </DropdownMenuItem>
                             <DropdownMenuItem>
                               <Mail className="w-4 h-4 mr-2" />
@@ -1107,9 +1110,21 @@ export default function Invoices() {
                   <Printer className="w-4 h-4 mr-2" />
                   Print
                 </Button>
-                <Button variant="outline">
+                <Button variant="outline" onClick={() => {
+                  if (selectedInvoice) {
+                    downloadInvoicePDF(selectedInvoice, invoiceItems);
+                  }
+                }}>
                   <Download className="w-4 h-4 mr-2" />
                   Download PDF
+                </Button>
+                <Button variant="outline" onClick={() => {
+                  if (selectedInvoice) {
+                    downloadInvoicePDF(selectedInvoice, invoiceItems, true);
+                  }
+                }}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Download 80mm
                 </Button>
                 <Button variant="outline">
                   <MessageSquare className="w-4 h-4 mr-2" />

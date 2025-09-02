@@ -245,7 +245,7 @@ export default function GoodsReceived() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => navigate("/goods-received/new")} variant="solid" className="bg-gradient-to-r from-emerald-600 to-green-600"> <Plus className="h-4 w-4 mr-2"/> New Receipt</Button>
+          <Button onClick={() => navigate("/goods-received/new")} variant="solid"> <Plus className="h-4 w-4 mr-2"/> New Receipt</Button>
           <Button variant="outline" onClick={load}><RefreshCw className="h-4 w-4 mr-2"/>Refresh</Button>
         </div>
       </div>

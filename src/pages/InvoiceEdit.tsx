@@ -243,7 +243,7 @@ export default function InvoiceEdit() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
-          <Button onClick={handleSubmit} className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">Save Changes</Button>
+          <Button onClick={handleSubmit}>Save Changes</Button>
         </div>
       </div>
 
@@ -420,7 +420,7 @@ export default function InvoiceEdit() {
 
         <div className="flex justify-end gap-3 pt-4 border-t">
           <Button type="button" variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
-          <Button type="submit" className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">Save Changes</Button>
+          <Button type="submit">Save Changes</Button>
         </div>
       </form>
     </div>

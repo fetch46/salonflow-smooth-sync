@@ -328,7 +328,7 @@ export default function InvoiceCreate() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
-          <Button onClick={handleSubmit} className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">Create Invoice</Button>
+          <Button onClick={handleSubmit}>Create Invoice</Button>
         </div>
       </div>
 
@@ -541,7 +541,7 @@ export default function InvoiceCreate() {
 
         <div className="flex justify-end gap-3 pt-4 border-t">
           <Button type="button" variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
-          <Button type="submit" className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">Create Invoice</Button>
+          <Button type="submit">Create Invoice</Button>
         </div>
       </form>
     </div>

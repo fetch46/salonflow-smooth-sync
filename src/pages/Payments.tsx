@@ -20,6 +20,7 @@ import { getInvoicesWithBalanceWithFallback, getAllInvoicePaymentsWithFallback, 
 import { useNavigate } from "react-router-dom";
 import type { DateRange } from "react-day-picker";
 import { DollarSign } from "lucide-react";
+import { downloadInvoicePDF } from "@/utils/invoicePdf";
 import { useOrganizationCurrency, useOrganization } from "@/lib/saas/hooks";
 import { deleteTransactionsByReference } from "@/utils/ledger";
 
@@ -78,6 +79,7 @@ export default function Payments() {
   const [payments, setPayments] = useState<InvoicePayment[]>([]);
   const [invoicesById, setInvoicesById] = useState<Record<string, InvoiceLite>>({});
   const [clientsById, setClientsById] = useState<Record<string, ClientLite>>({});
+  const [invoiceItems, setInvoiceItems] = useState<any[]>([]);
   const [searchReceived, setSearchReceived] = useState("");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [methodFilter, setMethodFilter] = useState<string>("all");
@@ -218,13 +220,15 @@ export default function Payments() {
         setClientsById({});
       }
 
-      // Payments made: expenses and purchases
-      const [{ data: expData }, { data: purData }] = await Promise.all([
+      // Payments made: expenses and purchases  
+      const [{ data: expData }, { data: purData }, { data: itemsData }] = await Promise.all([
         supabase.from('expenses').select('id, expense_number, vendor_name, amount, expense_date, payment_method, status, receipt_url').order('created_at', { ascending: false }),
         supabase.from('purchases').select('id, purchase_number, vendor_name, total_amount, purchase_date, status').order('created_at', { ascending: false }),
+        supabase.from('invoice_items').select('*').order('created_at', { ascending: false }),
       ]);
       setExpenses((expData || []) as any);
       setPurchases((purData || []) as any);
+      setInvoiceItems((itemsData || []) as any);
     } catch (err) {
       console.error(err);
       toast.error('Failed to load payments');
@@ -713,175 +717,6 @@ export default function Payments() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="made" className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Search</CardTitle></CardHeader>
-              <CardContent>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input className="pl-9" placeholder="Search expenses & purchases..." value={searchMade} onChange={(e) => setSearchMade(e.target.value)} />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Summary</CardTitle></CardHeader>
-              <CardContent>
-                <div className="text-sm grid grid-cols-2 gap-2">
-                  <div className="text-muted-foreground">Expenses</div>
-                  <div className="text-right">{filteredExpenses.length}</div>
-                  <div className="text-muted-foreground">Purchases</div>
-                  <div className="text-right">{filteredPurchases.length}</div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Expenses (Payments Made)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table className={`w-full ${compact ? 'text-sm' : ''}`}>
-                  <TableHeader className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                    <TableRow>
-                      <TableHead className={compact ? 'py-2' : ''}>Expense #</TableHead>
-                      <TableHead className={compact ? 'py-2' : ''}>Vendor</TableHead>
-                      <TableHead className={compact ? 'py-2' : ''}>Date</TableHead>
-                      <TableHead className={compact ? 'py-2' : ''}>Amount</TableHead>
-                      <TableHead className={compact ? 'py-2' : ''}>Method</TableHead>
-                      <TableHead className={compact ? 'py-2' : ''}>Status</TableHead>
-                      <TableHead className={`text-right ${compact ? 'py-2' : ''}`}>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredExpenses.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={7} className={`text-center text-muted-foreground ${compact ? 'py-6' : 'h-24'}`}>No expenses found.</TableCell>
-                      </TableRow>
-                    )}
-                    {filteredExpenses.map((e) => (
-                      <TableRow key={e.id} className="hover:bg-muted/50">
-                        <TableCell className={`font-medium ${compact ? 'py-2' : ''}`}>{e.expense_number}</TableCell>
-                        <TableCell className={compact ? 'py-2' : ''}>{e.vendor_name}</TableCell>
-                        <TableCell className={compact ? 'py-2' : ''}>{format(new Date(e.expense_date), 'MMM dd, yyyy')}</TableCell>
-                                                 <TableCell className={compact ? 'py-2' : ''}>{formatCurrency(Number(e.amount || 0))}</TableCell>
-                        <TableCell className={compact ? 'py-2' : ''}>{e.payment_method || '—'}</TableCell>
-                        <TableCell className={compact ? 'py-2' : ''}>
-                          <Badge className={e.status === 'paid' ? 'bg-green-100 text-green-800' : e.status === 'approved' ? 'bg-blue-100 text-blue-800' : e.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}>
-                            {e.status.toUpperCase()}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className={`text-right ${compact ? 'py-2' : ''}`}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem onClick={() => { if (e.receipt_url) window.open(e.receipt_url, '_blank'); }} disabled={!e.receipt_url}>
-                                <ReceiptText className="mr-2 h-4 w-4" /> View Invoice
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => navigate('/expenses')}>
-                                <Edit className="mr-2 h-4 w-4" /> Edit Payment
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="text-red-600" onClick={async () => {
-                                if (!confirm('Delete this expense?')) return;
-                                try {
-                                  try { await deleteTransactionsByReference('expense_payment', e.id); } catch {}
-                                  await supabase.from('expenses').delete().eq('id', e.id);
-                                  toast.success('Expense deleted');
-                                  loadData();
-                                } catch {
-                                  toast.error('Failed to delete expense');
-                                }
-                              }}>
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete Payment
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Supplier Payments (from Purchases)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table className={`w-full ${compact ? 'text-sm' : ''}`}>
-                  <TableHeader className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                    <TableRow>
-                      <TableHead className={compact ? 'py-2' : ''}>Purchase #</TableHead>
-                      <TableHead className={compact ? 'py-2' : ''}>Vendor</TableHead>
-                      <TableHead className={compact ? 'py-2' : ''}>Date</TableHead>
-                      <TableHead className={compact ? 'py-2' : ''}>Amount</TableHead>
-                      <TableHead className={compact ? 'py-2' : ''}>Status</TableHead>
-                      <TableHead className={`text-right ${compact ? 'py-2' : ''}`}>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredPurchases.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={6} className={`text-center text-muted-foreground ${compact ? 'py-6' : 'h-24'}`}>No purchases found.</TableCell>
-                      </TableRow>
-                    )}
-                    {filteredPurchases.map((p) => (
-                      <TableRow key={p.id} className="hover:bg-muted/50">
-                        <TableCell className={`font-medium ${compact ? 'py-2' : ''}`}>{p.purchase_number}</TableCell>
-                        <TableCell className={compact ? 'py-2' : ''}>{p.vendor_name}</TableCell>
-                        <TableCell className={compact ? 'py-2' : ''}>{format(new Date(p.purchase_date || p.created_at || new Date()), 'MMM dd, yyyy')}</TableCell>
-                                                 <TableCell className={compact ? 'py-2' : ''}>{formatCurrency(Number(p.total_amount || 0))}</TableCell>
-                        <TableCell className={compact ? 'py-2' : ''}>
-                          <Badge className={p.status === 'received' ? 'bg-green-100 text-green-800' : p.status === 'partial' ? 'bg-blue-100 text-blue-800' : p.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}>
-                            {p.status.toUpperCase()}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className={`text-right ${compact ? 'py-2' : ''}`}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem disabled>
-                                <ReceiptText className="mr-2 h-4 w-4" /> View Invoice
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => navigate('/purchases')}>
-                                <Edit className="mr-2 h-4 w-4" /> Edit Payment
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="text-red-600" onClick={async () => {
-                                if (!confirm('Delete this purchase?')) return;
-                                try {
-                                  try { await deleteTransactionsByReference('purchase_payment', p.id); } catch {}
-                                  await supabase.from('purchases').delete().eq('id', p.id);
-                                  toast.success('Purchase deleted');
-                                  loadData();
-                                } catch {
-                                  toast.error('Failed to delete purchase');
-                                }
-                              }}>
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete Payment
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
 

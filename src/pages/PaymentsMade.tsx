@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { CalendarRange, Download, Edit, MoreVertical, RefreshCw, Search, CreditCard, DollarSign } from "lucide-react";
+import { CalendarRange, Download, Edit, MoreVertical, RefreshCw, Search, CreditCard, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -120,10 +120,43 @@ export default function PaymentsMade() {
   }, [allPayments, searchMade, typeFilter, statusFilter]);
 
   const totalsMade = useMemo(() => {
-    const total = filteredPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-    const count = filteredPayments.length;
-    const avg = count ? total / count : 0;
-    return { total, count, avg };
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+    // Current month data
+    const currentMonthPayments = filteredPayments.filter(p => {
+      const paymentDate = new Date(p.date);
+      return paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear;
+    });
+
+    // Previous month data  
+    const previousMonthPayments = filteredPayments.filter(p => {
+      const paymentDate = new Date(p.date);
+      return paymentDate.getMonth() === lastMonth && paymentDate.getFullYear() === lastMonthYear;
+    });
+
+    const currentTotal = currentMonthPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const previousTotal = previousMonthPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const currentCount = currentMonthPayments.length;
+    const previousCount = previousMonthPayments.length;
+    const currentAvg = currentCount ? currentTotal / currentCount : 0;
+    const previousAvg = previousCount ? previousTotal / previousCount : 0;
+
+    const totalChange = previousTotal ? ((currentTotal - previousTotal) / previousTotal) * 100 : 0;
+    const countChange = previousCount ? ((currentCount - previousCount) / previousCount) * 100 : 0;
+    const avgChange = previousAvg ? ((currentAvg - previousAvg) / previousAvg) * 100 : 0;
+
+    return { 
+      total: currentTotal, 
+      count: currentCount, 
+      avg: currentAvg,
+      totalChange,
+      countChange, 
+      avgChange
+    };
   }, [filteredPayments]);
 
   const totalPages = Math.max(1, Math.ceil(filteredPayments.length / pageSize));
@@ -180,7 +213,7 @@ export default function PaymentsMade() {
           </Button>
           <Button 
             onClick={() => navigate('/expenses/new')}
-            className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 gap-2"
+            className="gap-2"
           >
             <CreditCard className="w-4 h-4" />
             Record Expense
@@ -194,8 +227,18 @@ export default function PaymentsMade() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600">Total Paid</p>
+                <p className="text-sm text-slate-600">Total Paid This Month</p>
                 <p className="text-2xl font-bold text-red-600">{formatCurrency(totalsMade.total)}</p>
+                <div className="flex items-center gap-1 mt-1">
+                  {totalsMade.totalChange >= 0 ? (
+                    <TrendingUp className="h-3 w-3 text-green-500" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3 text-red-500" />
+                  )}
+                  <span className={`text-xs ${totalsMade.totalChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {Math.abs(totalsMade.totalChange).toFixed(1)}% vs last month
+                  </span>
+                </div>
               </div>
               <CreditCard className="h-8 w-8 text-red-500" />
             </div>
@@ -205,8 +248,18 @@ export default function PaymentsMade() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600">Payment Count</p>
+                <p className="text-sm text-slate-600">Payment Count This Month</p>
                 <p className="text-2xl font-bold text-slate-900">{totalsMade.count}</p>
+                <div className="flex items-center gap-1 mt-1">
+                  {totalsMade.countChange >= 0 ? (
+                    <TrendingUp className="h-3 w-3 text-green-500" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3 text-red-500" />
+                  )}
+                  <span className={`text-xs ${totalsMade.countChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {Math.abs(totalsMade.countChange).toFixed(1)}% vs last month
+                  </span>
+                </div>
               </div>
               <CalendarRange className="h-8 w-8 text-blue-500" />
             </div>
@@ -216,8 +269,18 @@ export default function PaymentsMade() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600">Average Payment</p>
+                <p className="text-sm text-slate-600">Average Payment This Month</p>
                 <p className="text-2xl font-bold text-slate-900">{formatCurrency(totalsMade.avg)}</p>
+                <div className="flex items-center gap-1 mt-1">
+                  {totalsMade.avgChange >= 0 ? (
+                    <TrendingUp className="h-3 w-3 text-green-500" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3 text-red-500" />
+                  )}
+                  <span className={`text-xs ${totalsMade.avgChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {Math.abs(totalsMade.avgChange).toFixed(1)}% vs last month
+                  </span>
+                </div>
               </div>
               <DollarSign className="h-8 w-8 text-violet-500" />
             </div>
