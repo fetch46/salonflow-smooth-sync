@@ -927,6 +927,16 @@ export async function updateInvoiceWithFallback(supabase: any, id: string, updat
     if (typeof updates.due_date !== 'undefined') allowed.due_date = updates.due_date;
     if (typeof updates.notes !== 'undefined') allowed.notes = updates.notes;
     if (typeof updates.location_id !== 'undefined') allowed.location_id = updates.location_id;
+    if (typeof updates.customer_id !== 'undefined') allowed.client_id = updates.customer_id;
+    if (typeof updates.customer_name !== 'undefined') allowed.customer_name = updates.customer_name;
+    if (typeof updates.customer_email !== 'undefined') allowed.customer_email = updates.customer_email;
+    if (typeof updates.customer_phone !== 'undefined') allowed.customer_phone = updates.customer_phone;
+    if (typeof updates.payment_method !== 'undefined') allowed.payment_method = updates.payment_method;
+    if (typeof updates.subtotal !== 'undefined') allowed.subtotal = updates.subtotal;
+    if (typeof updates.tax_amount !== 'undefined') allowed.tax_amount = updates.tax_amount;
+    if (typeof updates.total_amount !== 'undefined') allowed.total_amount = updates.total_amount;
+    if (typeof updates.issue_date !== 'undefined') allowed.issue_date = updates.issue_date;
+    if (typeof updates.organization_id !== 'undefined') allowed.organization_id = updates.organization_id;
 
     const { error } = await supabase
       .from('invoices')
