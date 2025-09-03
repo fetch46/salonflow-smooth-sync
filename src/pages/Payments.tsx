@@ -716,8 +716,6 @@ export default function Payments() {
             </CardContent>
           </Card>
         </TabsContent>
-
-        </TabsContent>
       </Tabs>
 
       <Dialog open={savePresetOpen} onOpenChange={setSavePresetOpen}>
