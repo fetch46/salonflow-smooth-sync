@@ -777,10 +777,7 @@ export async function recordInvoicePaymentWithFallback(
     } catch {}
 
     setStorage(storage);
-    return { success: true, payment_id };
-  } catch (err) {
-    console.error('Error in mock database payment recording:', err);
-    return { success: false, error: 'Failed to record payment' };
+    return { success: true, payment_id: localPay.id };
   }
 }
 

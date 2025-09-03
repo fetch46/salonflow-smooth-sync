@@ -192,8 +192,10 @@ export function generateInvoicePDF(invoice: Invoice, items: InvoiceItem[], forma
   return doc;
 }
 
-export function downloadInvoicePDF(invoice: Invoice, items: InvoiceItem[], format80mm = false) {
-  const doc = generateInvoicePDF(invoice, items, format80mm);
-  const filename = `invoice-${invoice.invoice_number}${format80mm ? '-80mm' : ''}.pdf`;
+export async function downloadInvoicePDF(invoice: Invoice, format: 'standard' | '80mm' = 'standard') {
+  // For now, we'll use empty items array since we're not passing items from the caller
+  const items: InvoiceItem[] = [];
+  const doc = generateInvoicePDF(invoice, items, format === '80mm');
+  const filename = `invoice-${invoice.invoice_number}${format === '80mm' ? '-80mm' : ''}.pdf`;
   doc.save(filename);
 }

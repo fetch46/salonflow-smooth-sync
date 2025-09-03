@@ -856,19 +856,13 @@ export default function Invoices() {
                               Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => {
-                              fetchInvoiceItems(invoice.id);
-                              setTimeout(() => {
-                                downloadInvoicePDF(invoice, invoiceItems);
-                              }, 100);
+                              downloadInvoicePDF(invoice, 'standard');
                             }}>
                               <Download className="w-4 h-4 mr-2" />
                               Download PDF
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => {
-                              fetchInvoiceItems(invoice.id);
-                              setTimeout(() => {
-                                downloadInvoicePDF(invoice, invoiceItems, true);
-                              }, 100);
+                              downloadInvoicePDF(invoice, '80mm');
                             }}>
                               <Download className="w-4 h-4 mr-2" />
                               Download 80mm PDF
@@ -1112,7 +1106,7 @@ export default function Invoices() {
                 </Button>
                 <Button variant="outline" onClick={() => {
                   if (selectedInvoice) {
-                    downloadInvoicePDF(selectedInvoice, invoiceItems);
+                    downloadInvoicePDF(selectedInvoice, 'standard');
                   }
                 }}>
                   <Download className="w-4 h-4 mr-2" />
@@ -1120,7 +1114,7 @@ export default function Invoices() {
                 </Button>
                 <Button variant="outline" onClick={() => {
                   if (selectedInvoice) {
-                    downloadInvoicePDF(selectedInvoice, invoiceItems, true);
+                    downloadInvoicePDF(selectedInvoice, '80mm');
                   }
                 }}>
                   <Download className="w-4 h-4 mr-2" />
