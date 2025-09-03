@@ -1,36 +1,36 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-import { Calendar } from "@/components/ui/calendar";
-import { CalendarRange, Download, Edit, Filter, List, MoreVertical, ReceiptText, RefreshCw, Search, Trash2, Bookmark, BookmarkPlus, Banknote } from "lucide-react";
-import { format } from "date-fns";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
+import { Calendar, Download, Edit, MoreVertical, Plus, RefreshCw, Trash2, TrendingDown, TrendingUp, DollarSign, Receipt, Banknote, CreditCard } from "lucide-react";
+import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { toast } from "sonner";
-import { getInvoicesWithBalanceWithFallback, getAllInvoicePaymentsWithFallback, updateInvoicePaymentWithFallback, deleteInvoicePaymentWithFallback } from "@/utils/mockDatabase";
+import { 
+  getAllInvoicePaymentsWithFallback, 
+  updateInvoicePaymentWithFallback, 
+  deleteInvoicePaymentWithFallback,
+  recordInvoicePaymentWithFallback,
+  getInvoicesWithBalanceWithFallback 
+} from "@/utils/mockDatabase";
 import { useNavigate } from "react-router-dom";
-import type { DateRange } from "react-day-picker";
-import { DollarSign } from "lucide-react";
 import { downloadInvoicePDF } from "@/utils/invoicePdf";
 import { useOrganizationCurrency, useOrganization } from "@/lib/saas/hooks";
-import { deleteTransactionsByReference } from "@/utils/ledger";
 
 interface InvoicePayment {
   id: string;
   invoice_id: string;
   amount: number;
-  method: string;
-  reference_number: string | null;
-  payment_date: string; // yyyy-mm-dd
+  payment_method: string;
+  reference: string | null;
+  payment_date: string;
   created_at?: string;
 }
 
@@ -44,165 +44,96 @@ interface InvoiceLite {
   status?: string;
 }
 
-interface ClientLite { id: string; full_name: string }
-
-interface ExpenseLite {
-  id: string;
-  expense_number: string;
-  vendor_name: string;
-  amount: number;
-  expense_date: string;
-  payment_method: string | null;
-  status: string;
-  receipt_url: string | null;
+interface ClientLite { 
+  id: string; 
+  full_name: string;
 }
 
-interface PurchaseLite {
-  id: string;
-  purchase_number: string;
-  vendor_name: string;
-  total_amount: number;
-  purchase_date: string;
-  created_at?: string;
-  status: string;
+interface ExpenseMetrics {
+  totalExpenses: number;
+  expenseCount: number;
+  avgExpense: number;
+  previousMonthExpenses: number;
+  expensesTrend: number;
 }
 
-export default function Payments() {
+interface PaymentMetrics {
+  totalReceived: number;
+  paymentCount: number;
+  avgPayment: number;
+  previousMonthReceived: number;
+  receivedTrend: number;
+}
+
+export default function PaymentsNew() {
   const navigate = useNavigate();
   const { format: formatCurrency } = useOrganizationCurrency();
   const { organization } = useOrganization();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
-  // Received
+  
+  // Received payments
   const [payments, setPayments] = useState<InvoicePayment[]>([]);
   const [invoicesById, setInvoicesById] = useState<Record<string, InvoiceLite>>({});
   const [clientsById, setClientsById] = useState<Record<string, ClientLite>>({});
-  const [invoiceItems, setInvoiceItems] = useState<any[]>([]);
   const [searchReceived, setSearchReceived] = useState("");
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [methodFilter, setMethodFilter] = useState<string>("all");
-  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
-  const [locationFilter, setLocationFilter] = useState<string>("all");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState<number>(10);
-  const [compact, setCompact] = useState<boolean>(false);
-  type FilterPreset = { id: string; name: string; search: string; method: string; from?: string; to?: string; pageSize: number };
-  const [presets, setPresets] = useState<FilterPreset[]>([]);
-  const [savePresetOpen, setSavePresetOpen] = useState(false);
-  const [newPresetName, setNewPresetName] = useState("");
-
-  // Made
-  const [expenses, setExpenses] = useState<ExpenseLite[]>([]);
-  const [purchases, setPurchases] = useState<PurchaseLite[]>([]);
+  
+  // Payment made data (expenses)
+  const [expenses, setExpenses] = useState<any[]>([]);
   const [searchMade, setSearchMade] = useState("");
+  
+  // Metrics
+  const [paymentMetrics, setPaymentMetrics] = useState<PaymentMetrics>({
+    totalReceived: 0,
+    paymentCount: 0,
+    avgPayment: 0,
+    previousMonthReceived: 0,
+    receivedTrend: 0,
+  });
+  
+  const [expenseMetrics, setExpenseMetrics] = useState<ExpenseMetrics>({
+    totalExpenses: 0,
+    expenseCount: 0,
+    avgExpense: 0,
+    previousMonthExpenses: 0,
+    expensesTrend: 0,
+  });
 
-  // Edit payment dialog (received)
-  const [editOpen, setEditOpen] = useState(false);
-  const [editing, setEditing] = useState<InvoicePayment | null>(null);
-  const [editForm, setEditForm] = useState({ amount: "", method: "cash", reference_number: "", payment_date: "" });
-
-  // Full-page form lives at /payments/received/new; modal state removed
+  // Payment creation
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>("");
   const [invoiceOptions, setInvoiceOptions] = useState<Array<{ id: string; invoice_number: string; total_amount: number; amount_paid?: number }>>([]);
-  const [createStatus, setCreateStatus] = useState<string>("unpaid");
-  const [createForm, setCreateForm] = useState<{ amount: string; method: string; reference: string; payment_date: string; account_id: string }>({ amount: "", method: "cash", reference: "", payment_date: new Date().toISOString().slice(0,10), account_id: "" });
-  const [assetAccounts, setAssetAccounts] = useState<Array<{ id: string; account_code: string; account_name: string; account_subtype?: string | null }>>([]);
+  const [createForm, setCreateForm] = useState<{ amount: string; method: string; reference: string; payment_date: string; account_id: string }>({ 
+    amount: "", 
+    method: "cash", 
+    reference: "", 
+    payment_date: new Date().toISOString().slice(0,10), 
+    account_id: "" 
+  });
+  const [assetAccounts, setAssetAccounts] = useState<Array<{ id: string; account_code: string; account_name: string }>>([]);
 
-  // Auto-open create dialog when navigated with invoiceId
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const invoiceId = params.get('invoiceId');
-    const action = params.get('action');
-    if (invoiceId) {
-      setCreateOpen(true);
-      setSelectedInvoiceId(invoiceId);
-      // Ensure default form values are reset
-      setCreateStatus("unpaid");
-      setCreateForm({ amount: "", method: "cash", reference: "", payment_date: new Date().toISOString().slice(0,10), account_id: "" });
-      // Remove params from URL to prevent re-trigger on state changes
-      const url = new URL(window.location.href);
-      url.searchParams.delete('invoiceId');
-      url.searchParams.delete('action');
-      window.history.replaceState({}, '', url.toString());
-    } else if (action === 'record') {
-      setCreateOpen(true);
-    }
-  }, []);
-
-  // When options load and an invoice is preselected, auto-fill amount
-  useEffect(() => {
-    if (createOpen && selectedInvoiceId && invoiceOptions.length) {
-      const r = invoiceOptions.find(x => x.id === selectedInvoiceId);
-      if (r) {
-        const outstanding = Math.max(0, Number(r.total_amount || 0) - Number(r.amount_paid || 0));
-        setCreateForm(prev => ({ ...prev, amount: String(outstanding > 0 ? outstanding.toFixed(2) : "") }));
-      }
-    }
-  }, [createOpen, selectedInvoiceId, invoiceOptions]);
-
-  // If dialog opened (e.g. via URL) and options not loaded yet, fetch them
-  useEffect(() => {
-    (async () => {
-      if (createOpen && invoiceOptions.length === 0) {
-        try {
-          const invs = (await getInvoicesWithBalanceWithFallback(supabase)) as any[];
-          setInvoiceOptions(invs as any);
-        } catch {
-          setInvoiceOptions([]);
-        }
-        try {
-          if (organization?.id) {
-            let data: any[] | null = null;
-            let error: any = null;
-            try {
-              const res = await supabase
-                .from("accounts")
-                .select("id, account_code, account_name, account_type, account_subtype")
-                .eq("organization_id", organization.id)
-                .eq("account_type", "Asset")
-                .order("account_code", { ascending: true });
-              data = res.data as any[] | null;
-              error = res.error;
-            } catch (err: any) {
-              error = err;
-            }
-            if (error) {
-              const res = await supabase
-                .from("accounts")
-                .select("id, account_code, account_name, account_type")
-                .eq("organization_id", organization.id)
-                .order("account_code", { ascending: true });
-              data = res.data as any[] | null;
-            }
-            const filtered = (data || []).filter((a: any) => (a.account_type === "Asset") && (!a.account_subtype || ["Cash","Bank"].includes(a.account_subtype)));
-            setAssetAccounts(filtered.map((a: any) => ({ id: a.id, account_code: a.account_code, account_name: a.account_name, account_subtype: (a as any).account_subtype || null })));
-          } else {
-            setAssetAccounts([]);
-          }
-        } catch {
-          setAssetAccounts([]);
-        }
-      }
-    })();
-  }, [createOpen]);
+  // Edit payment
+  const [editOpen, setEditOpen] = useState(false);
+  const [editing, setEditing] = useState<InvoicePayment | null>(null);
+  const [editForm, setEditForm] = useState({ amount: "", method: "cash", reference: "", payment_date: "" });
 
   const loadData = async () => {
     try {
       setLoading(true);
-      // Payments received
+      
+      // Load payments received
       const [pays, invs] = await Promise.all([
         getAllInvoicePaymentsWithFallback(supabase),
         getInvoicesWithBalanceWithFallback(supabase),
       ]);
+      
       setPayments(pays as any);
       const byId: Record<string, InvoiceLite> = {};
       (invs as any[]).forEach(r => { byId[r.id] = r; });
       setInvoicesById(byId);
 
-      // Clients used in those receipts
+      // Load clients
       const clientIds = Array.from(new Set((invs as any[]).map(r => r.customer_id).filter(Boolean)));
       if (clientIds.length) {
         try {
@@ -216,19 +147,18 @@ export default function Payments() {
         } catch {
           setClientsById({});
         }
-      } else {
-        setClientsById({});
       }
 
-      // Payments made: expenses and purchases  
-      const [{ data: expData }, { data: purData }, { data: itemsData }] = await Promise.all([
-        supabase.from('expenses').select('id, expense_number, vendor_name, amount, expense_date, payment_method, status, receipt_url').order('created_at', { ascending: false }),
-        supabase.from('purchases').select('id, purchase_number, vendor_name, total_amount, purchase_date, status').order('created_at', { ascending: false }),
-        supabase.from('invoice_items').select('*').order('created_at', { ascending: false }),
-      ]);
-      setExpenses((expData || []) as any);
-      setPurchases((purData || []) as any);
-      setInvoiceItems((itemsData || []) as any);
+      // Load expenses (payments made)
+      const { data: expData } = await supabase
+        .from('expenses')
+        .select('id, expense_number, vendor_name, amount, expense_date, payment_method, status')
+        .order('created_at', { ascending: false });
+      setExpenses(expData || []);
+
+      // Calculate metrics
+      calculateMetrics(pays as any[], expData || []);
+
     } catch (err) {
       console.error(err);
       toast.error('Failed to load payments');
@@ -237,85 +167,152 @@ export default function Payments() {
     }
   };
 
-  useEffect(() => { loadData(); }, []);
-  useEffect(() => {
+  const calculateMetrics = (receivedPayments: InvoicePayment[], expenseData: any[]) => {
+    const currentMonth = new Date();
+    const previousMonth = subMonths(currentMonth, 1);
+    
+    const currentStart = startOfMonth(currentMonth);
+    const currentEnd = endOfMonth(currentMonth);
+    const previousStart = startOfMonth(previousMonth);
+    const previousEnd = endOfMonth(previousMonth);
+
+    // Received payments metrics
+    const currentReceivedPayments = receivedPayments.filter(p => {
+      const paymentDate = new Date(p.payment_date);
+      return paymentDate >= currentStart && paymentDate <= currentEnd;
+    });
+    
+    const previousReceivedPayments = receivedPayments.filter(p => {
+      const paymentDate = new Date(p.payment_date);
+      return paymentDate >= previousStart && paymentDate <= previousEnd;
+    });
+
+    const totalReceived = currentReceivedPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const previousMonthReceived = previousReceivedPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const receivedTrend = previousMonthReceived > 0 ? ((totalReceived - previousMonthReceived) / previousMonthReceived) * 100 : 0;
+
+    setPaymentMetrics({
+      totalReceived,
+      paymentCount: currentReceivedPayments.length,
+      avgPayment: currentReceivedPayments.length ? totalReceived / currentReceivedPayments.length : 0,
+      previousMonthReceived,
+      receivedTrend,
+    });
+
+    // Expense metrics
+    const currentExpenses = expenseData.filter(e => {
+      const expenseDate = new Date(e.expense_date);
+      return expenseDate >= currentStart && expenseDate <= currentEnd;
+    });
+    
+    const previousExpenses = expenseData.filter(e => {
+      const expenseDate = new Date(e.expense_date);
+      return expenseDate >= previousStart && expenseDate <= previousEnd;
+    });
+
+    const totalExpenses = currentExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const previousMonthExpenses = previousExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const expensesTrend = previousMonthExpenses > 0 ? ((totalExpenses - previousMonthExpenses) / previousMonthExpenses) * 100 : 0;
+
+    setExpenseMetrics({
+      totalExpenses,
+      expenseCount: currentExpenses.length,
+      avgExpense: currentExpenses.length ? totalExpenses / currentExpenses.length : 0,
+      previousMonthExpenses,
+      expensesTrend,
+    });
+  };
+
+  const loadCreateFormData = async () => {
+    if (!createOpen) return;
+
     try {
-      const raw = localStorage.getItem('payments_filter_presets_v1');
-      if (raw) setPresets(JSON.parse(raw));
-      const savedCompact = localStorage.getItem('payments_density_compact');
-      if (savedCompact) setCompact(savedCompact === '1');
-    } catch {}
-    (async () => {
-      try {
-        const { data } = await supabase
-          .from('business_locations')
-          .select('id, name')
-          .eq('organization_id', organization?.id || '')
-          .order('name');
-        setLocations((data || []) as any);
-      } catch {
-        setLocations([]);
+      // Load invoice options
+      const invs = await getInvoicesWithBalanceWithFallback(supabase);
+      setInvoiceOptions(invs as any);
+
+      // Load asset accounts
+      if (organization?.id) {
+        let data: any[] | null = null;
+        try {
+          const res = await supabase
+            .from("accounts")
+            .select("id, account_code, account_name, account_type, account_subtype")
+            .eq("organization_id", organization.id)
+            .eq("account_type", "Asset")
+            .order("account_code", { ascending: true });
+          data = res.data as any[] | null;
+        } catch {}
+        
+        const filtered = (data || []).filter((a: any) => 
+          a.account_type === "Asset" && 
+          (!a.account_subtype || ["Cash","Bank"].includes(a.account_subtype))
+        );
+        setAssetAccounts(filtered);
       }
-    })();
-  }, [organization?.id]);
-
-  useEffect(() => {
-    localStorage.setItem('payments_density_compact', compact ? '1' : '0');
-  }, [compact]);
-
-  const persistPresets = (next: FilterPreset[]) => {
-    setPresets(next);
-    try { localStorage.setItem('payments_filter_presets_v1', JSON.stringify(next)); } catch {}
-  };
-
-  const saveCurrentAsPreset = () => {
-    if (!newPresetName.trim()) { toast.error('Enter a preset name'); return; }
-    const next: FilterPreset = {
-      id: `${Date.now()}`,
-      name: newPresetName.trim(),
-      search: searchReceived,
-      method: methodFilter,
-      from: dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : undefined,
-      to: dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : undefined,
-      pageSize,
-    };
-    const updated = [next, ...presets].slice(0, 20);
-    persistPresets(updated);
-    setNewPresetName("");
-    setSavePresetOpen(false);
-    toast.success('Preset saved');
-  };
-
-  const applyPreset = (p: FilterPreset) => {
-    setSearchReceived(p.search || "");
-    setMethodFilter(p.method || 'all');
-    if (p.from || p.to) {
-      setDateRange({
-        from: p.from ? new Date(`${p.from}T00:00:00`) : undefined,
-        to: p.to ? new Date(`${p.to}T00:00:00`) : undefined,
-      });
-    } else {
-      setDateRange(undefined);
+    } catch (err) {
+      console.error('Failed to load form data:', err);
     }
-    if (p.pageSize) setPageSize(p.pageSize);
-    setPage(1);
-    toast.success(`Applied preset: ${p.name}`);
   };
 
-  const deletePreset = (id: string) => {
-    const updated = presets.filter(p => p.id !== id);
-    persistPresets(updated);
-    toast.success('Preset deleted');
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadCreateFormData(); }, [createOpen, organization?.id]);
+
+  // Auto-fill amount when invoice is selected
+  useEffect(() => {
+    if (createOpen && selectedInvoiceId && invoiceOptions.length) {
+      const invoice = invoiceOptions.find(x => x.id === selectedInvoiceId);
+      if (invoice) {
+        const outstanding = Math.max(0, Number(invoice.total_amount || 0) - Number(invoice.amount_paid || 0));
+        setCreateForm(prev => ({ ...prev, amount: outstanding > 0 ? outstanding.toFixed(2) : "" }));
+      }
+    }
+  }, [createOpen, selectedInvoiceId, invoiceOptions]);
+
+  const refresh = async () => { 
+    setRefreshing(true); 
+    await loadData(); 
+    setRefreshing(false); 
   };
 
-  const refresh = async () => { setRefreshing(true); await loadData(); setRefreshing(false); };
+  const submitCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedInvoiceId) { toast.error('Select an invoice'); return; }
+    const amt = parseFloat(createForm.amount) || 0;
+    if (amt <= 0) { toast.error('Invalid amount'); return; }
+    if (!createForm.account_id) { toast.error('Select a deposit account'); return; }
+    
+    try {
+      const result = await recordInvoicePaymentWithFallback(supabase, {
+        invoice_id: selectedInvoiceId,
+        amount: amt,
+        method: createForm.method,
+        reference_number: createForm.reference || null,
+        payment_date: createForm.payment_date,
+        account_id: createForm.account_id,
+      });
+      
+      if (result.success) {
+        toast.success('Payment recorded successfully');
+        setCreateOpen(false);
+        setSelectedInvoiceId("");
+        setCreateForm({ amount: "", method: "cash", reference: "", payment_date: new Date().toISOString().slice(0,10), account_id: "" });
+        await loadData();
+      } else {
+        toast.error(result.error || 'Failed to record payment');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to record payment');
+    }
+  };
 
   const openEdit = (p: InvoicePayment) => {
     setEditing(p);
     setEditForm({
       amount: String(p.amount ?? ''),
-      method: p.method || 'cash',
-      reference_number: p.reference_number || '',
+      method: p.payment_method || 'cash',
+      reference: p.reference || '',
       payment_date: p.payment_date || new Date().toISOString().slice(0,10),
     });
     setEditOpen(true);
@@ -326,11 +323,12 @@ export default function Payments() {
     if (!editing) return;
     const amt = parseFloat(editForm.amount) || 0;
     if (amt <= 0) { toast.error('Invalid amount'); return; }
+    
     try {
       await updateInvoicePaymentWithFallback(supabase, editing.id, {
         amount: amt,
         method: editForm.method,
-        reference_number: editForm.reference_number || null,
+        reference_number: editForm.reference || null,
         payment_date: editForm.payment_date,
       });
       toast.success('Payment updated');
@@ -345,98 +343,58 @@ export default function Payments() {
 
   const deletePayment = async (p: InvoicePayment) => {
     if (!confirm('Delete this payment? This cannot be undone.')) return;
-          try {
-        await deleteInvoicePaymentWithFallback(supabase, p.id);
-        toast.success('Payment deleted');
-        await loadData();
-      } catch (err) {
+    try {
+      await deleteInvoicePaymentWithFallback(supabase, p.id);
+      toast.success('Payment deleted');
+      await loadData();
+    } catch (err) {
       console.error(err);
       toast.error('Failed to delete payment');
     }
   };
 
-  const filteredReceived = useMemo(() => {
-    const s = searchReceived.toLowerCase();
-    return payments.filter(p => {
-      const r = invoicesById[p.invoice_id];
-      const clientName = r?.customer_id ? (clientsById[r.customer_id]?.full_name || '') : '';
-      const matchesQuery = (
-        (r?.invoice_number || '').toLowerCase().includes(s) ||
-        clientName.toLowerCase().includes(s) ||
-        (p.method || '').toLowerCase().includes(s) ||
-        (p.reference_number || '').toLowerCase().includes(s)
-      );
-
-      const paymentDate = new Date(p.payment_date || r?.created_at || new Date());
-      const inDateRange = dateRange?.from && dateRange?.to
-        ? paymentDate >= new Date(dateRange.from.setHours(0,0,0,0)) && paymentDate <= new Date(dateRange.to.setHours(23,59,59,999))
-        : true;
-
-      const matchesMethod = methodFilter === 'all' ? true : (p.method || '').toLowerCase() === methodFilter.toLowerCase();
-      const matchesLocation = locationFilter === 'all' ? true : ((r as any)?.location_id === locationFilter);
-
-      return matchesQuery && inDateRange && matchesMethod && matchesLocation;
-    });
-  }, [payments, invoicesById, clientsById, searchReceived, dateRange, methodFilter, locationFilter]);
-
-  useEffect(() => { setPage(1); }, [searchReceived, dateRange, methodFilter]);
-
-  const totalsReceived = useMemo(() => {
-    const total = filteredReceived.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-    const count = filteredReceived.length;
-    const avg = count ? total / count : 0;
-    return { total, count, avg };
-  }, [filteredReceived]);
-
-  const filteredExpenses = useMemo(() => {
-    const s = searchMade.toLowerCase();
-    return expenses.filter(e => (
-      (e.expense_number || '').toLowerCase().includes(s) ||
-      (e.vendor_name || '').toLowerCase().includes(s) ||
-      (e.payment_method || '').toLowerCase().includes(s)
-    ));
-  }, [expenses, searchMade]);
-
-  const filteredPurchases = useMemo(() => {
-    const s = searchMade.toLowerCase();
-    return purchases.filter(p => (
-      (p.purchase_number || '').toLowerCase().includes(s) ||
-      (p.vendor_name || '').toLowerCase().includes(s) ||
-      (p.status || '').toLowerCase().includes(s)
-    ));
-  }, [purchases, searchMade]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredReceived.length / pageSize));
-  const paginatedReceived = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredReceived.slice(start, start + pageSize);
-  }, [filteredReceived, page, pageSize]);
-
-  const exportCsv = () => {
+  const handleDownloadInvoice = async (invoiceId: string, format: 'standard' | '80mm' = 'standard') => {
     try {
-      const headers = ["Invoice #", "Client", "Location", "Payment Date", "Amount", "Method", "Reference"];
-      const rows = filteredReceived.map(p => {
-        const r = invoicesById[p.invoice_id];
-        const clientName = r?.customer_id ? (clientsById[r.customer_id]?.full_name || '—') : '—';
-        const locationName = (() => { const lid = (r as any)?.location_id; return lid ? (locations.find(l => l.id === lid)?.name || '—') : '—'; })();
-        const dateStr = format(new Date(p.payment_date || r?.created_at || new Date()), 'yyyy-MM-dd');
-        return [r?.invoice_number || '—', clientName, locationName, dateStr, String(Number(p.amount || 0).toFixed(2)), (p.method || '').toUpperCase(), p.reference_number || '—'];
-      });
-      const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `payments_${Date.now()}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      toast.error('Failed to export CSV');
+      const invoice = invoicesById[invoiceId];
+      if (!invoice) return;
+      
+      await downloadInvoicePDF({
+        id: invoiceId,
+        invoice_number: invoice.invoice_number,
+        client_id: invoice.customer_id,
+        total_amount: invoice.total_amount,
+        issue_date: invoice.created_at,
+        status: invoice.status || 'sent'
+      }, format);
+      
+      toast.success(`Invoice downloaded (${format})`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to download invoice');
     }
   };
 
+  // Filter data
+  const filteredReceived = payments.filter(p => {
+    const invoice = invoicesById[p.invoice_id];
+    const clientName = invoice?.customer_id ? (clientsById[invoice.customer_id]?.full_name || '') : '';
+    const s = searchReceived.toLowerCase();
+    return (
+      (invoice?.invoice_number || '').toLowerCase().includes(s) ||
+      clientName.toLowerCase().includes(s) ||
+      (p.payment_method || '').toLowerCase().includes(s) ||
+      (p.reference || '').toLowerCase().includes(s)
+    );
+  });
+
+  const filteredMade = expenses.filter(e => {
+    const s = searchMade.toLowerCase();
+    return (
+      (e.expense_number || '').toLowerCase().includes(s) ||
+      (e.vendor_name || '').toLowerCase().includes(s) ||
+      (e.payment_method || '').toLowerCase().includes(s)
+    );
+  });
 
   if (loading) {
     return (
@@ -450,328 +408,420 @@ export default function Payments() {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <h2 className="text-2xl font-bold">Payments</h2>
-        <div className="flex items-center gap-2 flex-wrap">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="default">
-                Create
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem onClick={() => navigate('/payments/received/new')}>
-                <DollarSign className="w-4 h-4 mr-2" /> Create Payment Received
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/expenses/new')}>
-                <Banknote className="w-4 h-4 mr-2" /> Create Payments Made
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button variant="outline" onClick={refresh} disabled={refreshing}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          <Button variant="outline" onClick={exportCsv}>
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
-          </Button>
-        </div>
-      </div>
-
-      <Tabs defaultValue="received" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:w-auto h-9 overflow-x-hidden">
-          <TabsTrigger
-            value="received"
-            className="px-3 py-2 text-sm text-green-700 data-[state=active]:!bg-green-600 data-[state=active]:!text-white data-[state=active]:shadow-sm"
-          >
-            Payments Received
-          </TabsTrigger>
-          <TabsTrigger
-            value="made"
-            className="px-3 py-2 text-sm text-red-700 data-[state=active]:!bg-red-600 data-[state=active]:!text-white data-[state=active]:shadow-sm"
-          >
-            Payments Made
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="received" className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Total Received</CardTitle></CardHeader>
-              <CardContent className="text-2xl font-semibold">{formatCurrency(totalsReceived.total)}</CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Payments Count</CardTitle></CardHeader>
-              <CardContent className="text-2xl font-semibold">{totalsReceived.count}</CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Average Amount</CardTitle></CardHeader>
-              <CardContent className="text-2xl font-semibold">{formatCurrency(totalsReceived.avg)}</CardContent>
-            </Card>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto p-4 md:p-6 space-y-6">
+        {/* Header */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-bold tracking-tight">Payments</h1>
+            <p className="text-muted-foreground">Manage payments received and made</p>
           </div>
-
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Filters</CardTitle></CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
-                <div className="relative md:w-[340px] w-full">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    className="pl-9"
-                    placeholder="Search by invoice, client, method, reference..."
-                    value={searchReceived}
-                    onChange={(e) => setSearchReceived(e.target.value)}
-                  />
-                </div>
-
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="justify-start w-full md:w-[260px]">
-                      <CalendarRange className="mr-2 h-4 w-4" />
-                      {dateRange?.from && dateRange?.to ? (
-                        <span>{format(dateRange.from, 'MMM d, yyyy')} - {format(dateRange.to, 'MMM d, yyyy')}</span>
-                      ) : (
-                        <span>Select date range</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="range"
-                      initialFocus
-                      defaultMonth={dateRange?.from}
-                      selected={dateRange}
-                      onSelect={setDateRange}
-                      numberOfMonths={2}
+          <div className="flex items-center gap-3">
+            <Button variant="outline" onClick={refresh} disabled={refreshing}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Record Payment
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Record Payment Received</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={submitCreate} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Invoice</Label>
+                    <Select value={selectedInvoiceId} onValueChange={setSelectedInvoiceId} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select invoice" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {invoiceOptions.map(inv => (
+                          <SelectItem key={inv.id} value={inv.id}>
+                            {inv.invoice_number} - {formatCurrency(inv.total_amount - (inv.amount_paid || 0))} outstanding
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Amount</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={createForm.amount}
+                      onChange={(e) => setCreateForm(prev => ({ ...prev, amount: e.target.value }))}
+                      required
                     />
-                    <div className="flex items-center justify-end gap-2 p-3 pt-0">
-                      <Button variant="ghost" size="sm" onClick={() => setDateRange(undefined)}>Clear</Button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-
-                <div className="flex items-center gap-2 w-full md:w-auto">
-                  <Filter className="h-4 w-4 text-muted-foreground" />
-                  <Select value={methodFilter} onValueChange={setMethodFilter}>
-                    <SelectTrigger className="w-full md:w-[180px]">
-                      <SelectValue placeholder="Method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Methods</SelectItem>
-                      <SelectItem value="cash">Cash</SelectItem>
-                      <SelectItem value="card">Card</SelectItem>
-                      <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                      <SelectItem value="mpesa">M-Pesa</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="w-full md:w-[220px]">
-                  <Select value={locationFilter} onValueChange={setLocationFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All Locations" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Locations</SelectItem>
-                      {locations.map(l => (
-                        <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button variant="ghost" onClick={() => { setSearchReceived(''); setDateRange(undefined); setMethodFilter('all'); }}>
-                  Clear filters
-                </Button>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-full md:w-auto">
-                      <Bookmark className="h-4 w-4 mr-2" /> Presets
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Payment Method</Label>
+                    <Select value={createForm.method} onValueChange={(v) => setCreateForm(prev => ({ ...prev, method: v }))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cash">Cash</SelectItem>
+                        <SelectItem value="card">Card</SelectItem>
+                        <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                        <SelectItem value="mpesa">M-Pesa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Deposit to Account</Label>
+                    <Select value={createForm.account_id} onValueChange={(v) => setCreateForm(prev => ({ ...prev, account_id: v }))} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select account" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {assetAccounts.map(acc => (
+                          <SelectItem key={acc.id} value={acc.id}>
+                            {acc.account_code} - {acc.account_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Reference</Label>
+                    <Input
+                      value={createForm.reference}
+                      onChange={(e) => setCreateForm(prev => ({ ...prev, reference: e.target.value }))}
+                      placeholder="Optional reference number"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Payment Date</Label>
+                    <Input
+                      type="date"
+                      value={createForm.payment_date}
+                      onChange={(e) => setCreateForm(prev => ({ ...prev, payment_date: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="flex justify-end gap-3">
+                    <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+                      Cancel
                     </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-64">
-                    <DropdownMenuItem onClick={() => setSavePresetOpen(true)}>
-                      <BookmarkPlus className="h-4 w-4 mr-2" /> Save current as preset
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    {presets.length === 0 && (
-                      <DropdownMenuLabel className="text-muted-foreground">No presets saved</DropdownMenuLabel>
-                    )}
-                    {presets.map(p => (
-                      <DropdownMenuItem key={p.id} onClick={() => applyPreset(p)} className="flex items-center justify-between">
-                        <span className="truncate">{p.name}</span>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7"
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); deletePreset(p.id); }}
-                          aria-label={`Delete ${p.name}`}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-600" />
-                        </Button>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                    <Button type="submit">Record Payment</Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
 
-                <Button variant="outline" className="ml-auto" onClick={() => setCompact(c => !c)}>
-                  <List className="h-4 w-4 mr-2" /> {compact ? 'Comfortable' : 'Compact'}
-                </Button>
-
-                <div className="ml-auto flex items-center gap-2">
-                  <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-                    <SelectTrigger className="w-[110px]"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="10">10 / page</SelectItem>
-                      <SelectItem value="25">25 / page</SelectItem>
-                      <SelectItem value="50">50 / page</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
+        {/* Metrics Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
-            <CardHeader>
-              <CardTitle>All Payments Received</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Received</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <Table className={`w-full ${compact ? 'text-sm' : ''}`}>
-                  <TableHeader className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                    <TableRow>
-                      <TableHead className={compact ? 'py-2' : ''}>Invoice #</TableHead>
-                      <TableHead className={compact ? 'py-2' : ''}>Client</TableHead>
-                      <TableHead className={compact ? 'py-2' : ''}>Location</TableHead>
-                      <TableHead className={compact ? 'py-2' : ''}>Payment Date</TableHead>
-                      <TableHead className={compact ? 'py-2' : ''}>Amount</TableHead>
-                      <TableHead className={compact ? 'py-2' : ''}>Method</TableHead>
-                      <TableHead className={compact ? 'py-2' : ''}>Reference</TableHead>
-                      <TableHead className={`text-right ${compact ? 'py-2' : ''}`}>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedReceived.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={9} className={`text-center text-muted-foreground ${compact ? 'py-6' : 'h-24'}`}>
-                          No payments found. Adjust filters or try a different search.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                    {paginatedReceived.map((p) => {
-                      const r = invoicesById[p.invoice_id];
-                      const clientName = r?.customer_id ? (clientsById[r.customer_id]?.full_name || '—') : 'Walk-in';
-                      return (
-                        <TableRow key={p.id} className="hover:bg-muted/50">
-                          <TableCell className={`font-medium ${compact ? 'py-2' : ''}`}>{r?.invoice_number || '—'}</TableCell>
-                          <TableCell className={compact ? 'py-2' : ''}>{clientName}</TableCell>
-                          <TableCell className={compact ? 'py-2' : ''}>{(() => { const lid = (r as any)?.location_id; return lid ? (locations.find(l => l.id === lid)?.name || '—') : '—'; })()}</TableCell>
-                          <TableCell className={compact ? 'py-2' : ''}>{format(new Date(p.payment_date || r?.created_at || new Date()), 'MMM dd, yyyy')}</TableCell>
-                          <TableCell className={compact ? 'py-2' : ''}>{formatCurrency(Number(p.amount || 0))}</TableCell>
-                          <TableCell className={compact ? 'py-2' : ''}>{(p.method || '').toUpperCase()}</TableCell>
-                          <TableCell className={compact ? 'py-2' : ''}>{p.reference_number || '—'}</TableCell>
-                          <TableCell className={`text-right ${compact ? 'py-2' : ''}`}>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuItem disabled>
-                                  <ReceiptText className="mr-2 h-4 w-4" /> View Invoice
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => openEdit(p)}>
-                                  <Edit className="mr-2 h-4 w-4" /> Edit Payment
-                                </DropdownMenuItem>
-                                <DropdownMenuItem className="text-red-600" onClick={() => deletePayment(p)}>
-                                  <Trash2 className="mr-2 h-4 w-4" /> Delete Payment
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className="mt-4">
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious onClick={() => setPage(p => Math.max(1, p - 1))} />
-                    </PaginationItem>
-                    <span className="px-2 text-sm text-muted-foreground">Page {page} of {totalPages}</span>
-                    <PaginationItem>
-                      <PaginationNext onClick={() => setPage(p => Math.min(totalPages, p + 1))} />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
+              <div className="text-2xl font-bold">{formatCurrency(paymentMetrics.totalReceived)}</div>
+              <div className="flex items-center text-xs text-muted-foreground">
+                {paymentMetrics.receivedTrend > 0 ? (
+                  <TrendingUp className="h-3 w-3 mr-1 text-green-600" />
+                ) : (
+                  <TrendingDown className="h-3 w-3 mr-1 text-red-600" />
+                )}
+                <span className={paymentMetrics.receivedTrend > 0 ? "text-green-600" : "text-red-600"}>
+                  {Math.abs(paymentMetrics.receivedTrend).toFixed(1)}%
+                </span>
+                <span className="ml-1">vs last month</span>
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Payments Count</CardTitle>
+              <Receipt className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{paymentMetrics.paymentCount}</div>
+              <p className="text-xs text-muted-foreground">
+                Avg: {formatCurrency(paymentMetrics.avgPayment)}
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+              <TrendingDown className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatCurrency(expenseMetrics.totalExpenses)}</div>
+              <div className="flex items-center text-xs text-muted-foreground">
+                {expenseMetrics.expensesTrend > 0 ? (
+                  <TrendingUp className="h-3 w-3 mr-1 text-red-600" />
+                ) : (
+                  <TrendingDown className="h-3 w-3 mr-1 text-green-600" />
+                )}
+                <span className={expenseMetrics.expensesTrend > 0 ? "text-red-600" : "text-green-600"}>
+                  {Math.abs(expenseMetrics.expensesTrend).toFixed(1)}%
+                </span>
+                <span className="ml-1">vs last month</span>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Net Cash Flow</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatCurrency(paymentMetrics.totalReceived - expenseMetrics.totalExpenses)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                This month
+              </p>
+            </CardContent>
+          </Card>
+        </div>
 
-      <Dialog open={savePresetOpen} onOpenChange={setSavePresetOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Save filter preset</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Preset name</Label>
-              <Input value={newPresetName} onChange={(e) => setNewPresetName(e.target.value)} placeholder="e.g. Last 30 days - Card" />
+        {/* Payments Received Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Banknote className="h-5 w-5 text-green-600" />
+              Payments Received
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center">
+              <Input
+                placeholder="Search by invoice, client, method..."
+                value={searchReceived}
+                onChange={(e) => setSearchReceived(e.target.value)}
+                className="md:max-w-sm"
+              />
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setSavePresetOpen(false)}>Cancel</Button>
-              <Button onClick={saveCurrentAsPreset}>Save</Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit Payment</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={submitEdit} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Amount</Label>
-              <Input type="number" step="0.01" value={editForm.amount} onChange={(e) => setEditForm(prev => ({ ...prev, amount: e.target.value }))} />
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Invoice</TableHead>
+                    <TableHead>Client</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Method</TableHead>
+                    <TableHead>Reference</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredReceived.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                        No payments found
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {filteredReceived.map((payment) => {
+                    const invoice = invoicesById[payment.invoice_id];
+                    const clientName = invoice?.customer_id ? (clientsById[invoice.customer_id]?.full_name || '—') : 'Walk-in';
+                    
+                    return (
+                      <TableRow key={payment.id} className="hover:bg-muted/50">
+                        <TableCell className="font-medium">{invoice?.invoice_number || '—'}</TableCell>
+                        <TableCell>{clientName}</TableCell>
+                        <TableCell>{format(new Date(payment.payment_date), 'MMM dd, yyyy')}</TableCell>
+                        <TableCell>{formatCurrency(Number(payment.amount || 0))}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">
+                            {(payment.payment_method || 'cash').toUpperCase()}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{payment.reference || '—'}</TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => handleDownloadInvoice(payment.invoice_id)}>
+                                <Download className="mr-2 h-4 w-4" /> Download Invoice
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openEdit(payment)}>
+                                <Edit className="mr-2 h-4 w-4" /> Edit Payment
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-red-600" onClick={() => deletePayment(payment)}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete Payment
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
-            <div className="space-y-2">
-              <Label>Method</Label>
-              <select className="border rounded px-3 py-2 w-full" value={editForm.method} onChange={(e) => setEditForm(prev => ({ ...prev, method: e.target.value }))}>
-                <option value="cash">Cash</option>
-                <option value="card">Card</option>
-                <option value="bank_transfer">Bank Transfer</option>
-                <option value="mpesa">M-Pesa</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label>Reference (optional)</Label>
-              <Input value={editForm.reference_number} onChange={(e) => setEditForm(prev => ({ ...prev, reference_number: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Payment Date</Label>
-              <Input type="date" value={editForm.payment_date} onChange={(e) => setEditForm(prev => ({ ...prev, payment_date: e.target.value }))} />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
-              <Button type="submit">Save</Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+          </CardContent>
+        </Card>
 
-      {/* Full-page form lives at /payments/received/new */}
+        {/* Payments Made Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-red-600" />
+              Payments Made (Expenses)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center">
+              <Input
+                placeholder="Search expenses..."
+                value={searchMade}
+                onChange={(e) => setSearchMade(e.target.value)}
+                className="md:max-w-sm"
+              />
+              <Button variant="outline" onClick={() => navigate('/expenses/new')}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Expense
+              </Button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Expense #</TableHead>
+                    <TableHead>Vendor</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Method</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredMade.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                        No expenses found
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {filteredMade.map((expense) => (
+                    <TableRow key={expense.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium">{expense.expense_number}</TableCell>
+                      <TableCell>{expense.vendor_name}</TableCell>
+                      <TableCell>{format(new Date(expense.expense_date), 'MMM dd, yyyy')}</TableCell>
+                      <TableCell>{formatCurrency(Number(expense.amount || 0))}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">
+                          {(expense.payment_method || 'cash').toUpperCase()}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={expense.status === 'paid' ? 'default' : 'secondary'}>
+                          {expense.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => navigate(`/expenses/${expense.id}`)}>
+                              <Edit className="mr-2 h-4 w-4" /> View/Edit
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Edit Payment Dialog */}
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Payment</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={submitEdit} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Amount</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={editForm.amount}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, amount: e.target.value }))}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Payment Method</Label>
+                <Select value={editForm.method} onValueChange={(v) => setEditForm(prev => ({ ...prev, method: v }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="card">Card</SelectItem>
+                    <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                    <SelectItem value="mpesa">M-Pesa</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Reference</Label>
+                <Input
+                  value={editForm.reference}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, reference: e.target.value }))}
+                  placeholder="Optional reference number"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Payment Date</Label>
+                <Input
+                  type="date"
+                  value={editForm.payment_date}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, payment_date: e.target.value }))}
+                  required
+                />
+              </div>
+              
+              <div className="flex justify-end gap-3">
+                <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">Update Payment</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }

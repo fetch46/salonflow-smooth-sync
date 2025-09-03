@@ -664,19 +664,27 @@ export async function getInvoicesWithBalanceWithFallback(supabase: any): Promise
 // New: Invoice payments helpers
 export async function recordInvoicePaymentWithFallback(
   supabase: any,
-  payment: { invoice_id: string; amount: number; method: string; reference_number?: string | null; payment_date?: string; location_id?: string | null }
-): Promise<boolean> {
+  payment: { invoice_id: string; amount: number; method: string; reference_number?: string | null; payment_date?: string; location_id?: string | null; account_id?: string }
+): Promise<{ success: boolean; payment_id?: string; error?: string }> {
   try {
     const payload: any = {
       invoice_id: payment.invoice_id,
       amount: payment.amount,
-      method: payment.method,
-      reference_number: payment.reference_number || null,
-      payment_date: payment.payment_date || new Date().toISOString().slice(0, 10),
-      location_id: payment.location_id || null,
+      payment_method: payment.method, // Use correct column name
+      reference: payment.reference_number || null,
+      payment_date: payment.payment_date ? new Date(payment.payment_date).toISOString() : new Date().toISOString(),
+      notes: null,
     };
-    const { error } = await supabase.from('invoice_payments').insert([payload]);
+    
+    const { data: insertedPayment, error } = await supabase
+      .from('invoice_payments')
+      .insert([payload])
+      .select('id')
+      .single();
+    
     if (error) throw error;
+
+    const payment_id = insertedPayment?.id;
 
     // After inserting payment, recalc invoice paid status and persist
     try {
@@ -698,9 +706,41 @@ export async function recordInvoicePaymentWithFallback(
       if ((inv as any)?.status !== nextStatus) {
         await supabase.from('invoices').update({ status: nextStatus }).eq('id', invId);
       }
-    } catch {}
+    } catch (statusError) {
+      console.error('Error updating invoice status:', statusError);
+    }
 
-    return true;
+    // Create accounting entries if account_id is provided
+    if (payment.account_id) {
+      try {
+        const accountTransactions = [
+          {
+            account_id: payment.account_id,
+            transaction_date: payment.payment_date || new Date().toISOString().slice(0, 10),
+            debit_amount: payment.amount,
+            credit_amount: 0,
+            description: `Payment received for invoice ${payment.invoice_id}`,
+            reference_type: 'invoice_payment',
+            reference_id: payment_id,
+          },
+          {
+            account_id: await getAccountsReceivableId(supabase),
+            transaction_date: payment.payment_date || new Date().toISOString().slice(0, 10),
+            debit_amount: 0,
+            credit_amount: payment.amount,
+            description: `Payment received for invoice ${payment.invoice_id}`,
+            reference_type: 'invoice_payment',
+            reference_id: payment_id,
+          }
+        ];
+
+        await supabase.from('account_transactions').insert(accountTransactions);
+      } catch (accountingError) {
+        console.error('Error creating accounting entries:', accountingError);
+      }
+    }
+
+    return { success: true, payment_id };
   } catch (err) {
     console.log('Using mock database for invoice payments');
     const storage = getStorage();
@@ -737,7 +777,25 @@ export async function recordInvoicePaymentWithFallback(
     } catch {}
 
     setStorage(storage);
-    return true;
+    return { success: true, payment_id };
+  } catch (err) {
+    console.error('Error in mock database payment recording:', err);
+    return { success: false, error: 'Failed to record payment' };
+  }
+}
+
+// Helper function to get Accounts Receivable account ID
+async function getAccountsReceivableId(supabase: any): Promise<string> {
+  try {
+    const { data } = await supabase
+      .from('accounts')
+      .select('id')
+      .eq('account_code', '1100')
+      .eq('account_name', 'Accounts Receivable')
+      .maybeSingle();
+    return data?.id || '';
+  } catch {
+    return '';
   }
 }
 

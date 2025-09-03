@@ -11,13 +11,16 @@ interface InvoiceItem {
 interface Invoice {
   id: string;
   invoice_number: string;
-  customer_name: string;
+  client_id?: string | null;
+  customer_name?: string;
   customer_email?: string | null;
   customer_phone?: string | null;
-  subtotal: number;
-  tax_amount: number;
+  subtotal?: number;
+  tax_amount?: number;
   total_amount: number;
-  created_at: string;
+  issue_date?: string;
+  created_at?: string;
+  status?: string;
   due_date?: string | null;
   notes?: string | null;
 }
