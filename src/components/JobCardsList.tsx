@@ -31,6 +31,7 @@ import {
 import { format, differenceInMinutes } from "date-fns";
 import { toast } from "sonner";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { useRegionalSettings } from "@/hooks/useRegionalSettings";
 
 interface JobCard {
   id: string;
@@ -73,7 +74,7 @@ interface JobCardsListProps {
 }
 
 export default function JobCardsList({ onRefresh }: JobCardsListProps) {
-  const { format: formatMoney } = useOrganizationCurrency();
+  const { formatCurrency } = useRegionalSettings();
   const [jobCards, setJobCards] = useState<JobCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -329,7 +330,7 @@ export default function JobCardsList({ onRefresh }: JobCardsListProps) {
       </div>
 
       {/* Job Cards Grid */}
-      <div className="grid grid-cols-responsive-cards gap-3 sm:gap-4">
+      <div className="grid grid-cols-responsive-cards gap-2 sm:gap-3">
         {filteredJobCards.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
@@ -347,7 +348,7 @@ export default function JobCardsList({ onRefresh }: JobCardsListProps) {
         ) : (
           filteredJobCards.map((card) => (
             <Card key={card.id} className="hover:shadow-lg transition-all duration-200 min-w-0">
-              <CardContent className="p-4">
+              <CardContent className="p-3 sm:p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 space-y-4">
                     {/* Header */}
@@ -360,7 +361,7 @@ export default function JobCardsList({ onRefresh }: JobCardsListProps) {
                       </div>
                       <div className="text-right">
                         <div className="text-responsive-lg sm:text-responsive-xl font-semibold text-slate-900">
-                          {formatMoney(card.total_amount)}
+                          {formatCurrency(card.total_amount)}
                         </div>
                         <div className="text-responsive-xs text-slate-500">
                           {format(new Date(card.created_at), 'MMM dd, yyyy')}

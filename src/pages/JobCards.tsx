@@ -32,6 +32,7 @@ import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, is
 import { toast } from "sonner";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { getReceiptsWithFallback } from "@/utils/mockDatabase";
+import { useRegionalSettings } from "@/hooks/useRegionalSettings";
 
 interface JobCard {
   id: string;
@@ -95,7 +96,7 @@ const DATE_FILTERS = [
 ];
 
 export default function JobCards() {
-  const { format: formatMoney, symbol } = useOrganizationCurrency();
+  const { formatCurrency, formatNumber } = useRegionalSettings();
   const [jobCards, setJobCards] = useState<JobCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -279,7 +280,7 @@ export default function JobCards() {
   }, [jobCards]);
 
   return (
-    <div className="container mx-auto p-4 space-y-6 max-w-[1600px]">
+    <div className="container mx-auto p-2 sm:p-3 space-y-4 max-w-[1600px]">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
@@ -351,7 +352,7 @@ export default function JobCards() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-600">Total Revenue</p>
-                <p className="text-2xl font-bold text-slate-900">{formatMoney(stats.totalRevenue)}</p>
+                <p className="text-2xl font-bold text-slate-900">{formatCurrency(stats.totalRevenue)}</p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                 <DollarSign className="w-6 h-6 text-green-600" />

@@ -83,6 +83,7 @@ import { useOrganizationTaxRate } from "@/lib/saas/hooks";
 import { Database } from "@/integrations/supabase/types";
 import { useNavigate } from "react-router-dom";
 import { downloadInvoicePDF } from "@/utils/invoicePdf";
+import { useRegionalSettings } from "@/hooks/useRegionalSettings";
 
 interface Invoice {
   id: string;
@@ -181,7 +182,7 @@ const DATE_FILTERS = [
 ];
 
 export default function Invoices() {
-  const { symbol, format: formatMoney } = useOrganizationCurrency();
+  const { formatCurrency, formatNumber } = useRegionalSettings();
   const orgTaxRate = useOrganizationTaxRate();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -639,7 +640,7 @@ export default function Invoices() {
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-700">{formatMoney(totalRevenue)}</div>
+            <div className="text-2xl font-bold text-green-700">{formatCurrency(totalRevenue)}</div>
             <p className="text-xs text-green-600">
               From {paidInvoices} paid invoices
             </p>
@@ -652,7 +653,7 @@ export default function Invoices() {
             <Clock className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-700">{formatMoney(pendingRevenue)}</div>
+            <div className="text-2xl font-bold text-orange-700">{formatCurrency(pendingRevenue)}</div>
             <p className="text-xs text-orange-600">
               {pendingInvoices + overdueInvoices} pending
             </p>
@@ -804,9 +805,9 @@ export default function Invoices() {
                     </TableCell>
                     
                     <TableCell>
-                      <div className="font-semibold">{symbol}{invoice.total_amount.toFixed(2)}</div>
+                      <div className="font-semibold">{formatCurrency(invoice.total_amount)}</div>
                       <div className="text-xs text-slate-500">
-                        Tax: {symbol}{invoice.tax_amount.toFixed(2)}
+                        Tax: {formatCurrency(invoice.tax_amount)}
                       </div>
                     </TableCell>
                     
@@ -858,14 +859,14 @@ export default function Invoices() {
                             <DropdownMenuItem onClick={() => {
                               downloadInvoicePDF(invoice, 'standard');
                             }}>
-                              <Download className="w-4 h-4 mr-2" />
-                              Download PDF
+                              <FileText className="w-4 h-4 mr-2" />
+                              Download PDF (A4)
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => {
                               downloadInvoicePDF(invoice, '80mm');
                             }}>
-                              <Download className="w-4 h-4 mr-2" />
-                              Download 80mm PDF
+                              <Receipt className="w-4 h-4 mr-2" />
+                              Download 80mm Receipt
                             </DropdownMenuItem>
                             <DropdownMenuItem>
                               <Mail className="w-4 h-4 mr-2" />
@@ -913,7 +914,7 @@ export default function Invoices() {
 
       {/* View Invoice Window */}
       <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
-        <DialogContent className="max-w-[100vw] w-screen h-screen max-h-[100vh] overflow-y-auto sm:rounded-none">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader className="pb-4 border-b">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
@@ -1044,8 +1045,8 @@ export default function Invoices() {
                           <TableRow key={item.id}>
                             <TableCell className="font-medium">{item.description}</TableCell>
                             <TableCell>{item.quantity}</TableCell>
-                            <TableCell>{symbol}{item.unit_price.toFixed(2)}</TableCell>
-                            <TableCell className="font-semibold">{symbol}{item.total_price.toFixed(2)}</TableCell>
+                            <TableCell>{formatCurrency(item.unit_price)}</TableCell>
+                            <TableCell className="font-semibold">{formatCurrency(item.total_price)}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -1061,11 +1062,11 @@ export default function Invoices() {
                     <div className="w-64 space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Subtotal:</span>
-                        <span className="font-semibold">{symbol}{selectedInvoice.subtotal.toFixed(2)}</span>
+                        <span className="font-semibold">{formatCurrency(selectedInvoice.subtotal)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Tax ({selectedInvoice.tax_amount > 0 ? (Number(orgTaxRate) || 0) : 0}%):</span>
-                        <span className="font-semibold">{symbol}{selectedInvoice.tax_amount.toFixed(2)}</span>
+                        <span className="font-semibold">{formatCurrency(selectedInvoice.tax_amount)}</span>
                       </div>
                       {selectedInvoice.tax_amount === 0 && (
                         <div className="text-xs text-muted-foreground">No VAT applied</div>
@@ -1073,13 +1074,13 @@ export default function Invoices() {
                       {selectedInvoice.discount_amount > 0 && (
                         <div className="flex justify-between text-sm text-red-600">
                           <span>Discount:</span>
-                          <span className="font-semibold">-{symbol}{selectedInvoice.discount_amount.toFixed(2)}</span>
+                          <span className="font-semibold">-{formatCurrency(selectedInvoice.discount_amount)}</span>
                         </div>
                       )}
                       <Separator />
                       <div className="flex justify-between text-lg font-bold">
                         <span>Total:</span>
-                        <span className="text-violet-600">{symbol}{selectedInvoice.total_amount.toFixed(2)}</span>
+                        <span className="text-violet-600">{formatCurrency(selectedInvoice.total_amount)}</span>
                       </div>
                     </div>
                   </div>
@@ -1104,22 +1105,33 @@ export default function Invoices() {
                   <Printer className="w-4 h-4 mr-2" />
                   Print
                 </Button>
-                <Button variant="outline" onClick={() => {
-                  if (selectedInvoice) {
-                    downloadInvoicePDF(selectedInvoice, 'standard');
-                  }
-                }}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Download PDF
-                </Button>
-                <Button variant="outline" onClick={() => {
-                  if (selectedInvoice) {
-                    downloadInvoicePDF(selectedInvoice, '80mm');
-                  }
-                }}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Download 80mm
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                      <Download className="w-4 h-4 mr-2" />
+                      Download Invoice
+                      <ChevronDown className="w-3 h-3 ml-2" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => {
+                      if (selectedInvoice) {
+                        downloadInvoicePDF(selectedInvoice, 'standard');
+                      }
+                    }}>
+                      <FileText className="w-4 h-4 mr-2" />
+                      Standard PDF
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      if (selectedInvoice) {
+                        downloadInvoicePDF(selectedInvoice, '80mm');
+                      }
+                    }}>
+                      <Receipt className="w-4 h-4 mr-2" />
+                      80mm Receipt
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button variant="outline">
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Send WhatsApp
