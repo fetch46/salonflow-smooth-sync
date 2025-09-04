@@ -948,17 +948,17 @@ export default function Appointments() {
                     : appointment.service_name) || "—";
 
                   return (
-                    <div
-                      key={appointment.id}
-                      className="group relative w-full rounded-xl border bg-card p-3 md:p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all text-sm"
-                    >
-                      <div className="absolute top-3 right-3">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="hover:bg-slate-100 dark:hover:bg-slate-800">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
+                     <div
+                       key={appointment.id}
+                       className="group relative w-full rounded-xl border bg-gradient-to-br from-card to-card/80 p-4 md:p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200 text-sm ring-1 ring-border/50 hover:ring-primary/20"
+                     >
+                       <div className="absolute top-3 right-3">
+                         <DropdownMenu>
+                           <DropdownMenuTrigger asChild>
+                             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted/80 rounded-lg">
+                               <MoreHorizontal className="h-4 w-4" />
+                             </Button>
+                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="z-50 bg-background">
                             <DropdownMenuItem onClick={() => handleView(appointment)}>
                               <Eye className="mr-2 h-4 w-4" />
@@ -998,68 +998,90 @@ export default function Appointments() {
                         </DropdownMenu>
                       </div>
 
-                      <div className="flex items-center justify-start gap-2">
-                        <Badge className={`${getStatusColor(appointment.status || 'scheduled')} capitalize px-1.5 py-0.5 text-xs`}>
-                          {String(appointment.status || 'scheduled').replace('_', ' ')}
-                        </Badge>
-                      </div>
-                      <div className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
-                        <CalendarDays className="w-3 h-3" />
-                        <span>{appointment.appointment_date}</span>
-                        <span>•</span>
-                        <Clock className="w-3 h-3" />
-                        <span>
-                          {appointment.appointment_time} ({Number(appointment.duration_minutes ?? 0)}min)
-                        </span>
-                      </div>
+                       <div className="flex items-center justify-between mb-3">
+                         <Badge className={`${getStatusColor(appointment.status || 'scheduled')} capitalize px-2.5 py-1 text-xs font-medium rounded-full`}>
+                           {String(appointment.status || 'scheduled').replace('_', ' ')}
+                         </Badge>
+                         <div className="text-xs text-muted-foreground flex items-center gap-2">
+                           <div className="flex items-center gap-1">
+                             <CalendarDays className="w-3 h-3" />
+                             <span className="font-medium">{appointment.appointment_date}</span>
+                           </div>
+                           <span className="text-muted-foreground/50">•</span>
+                           <div className="flex items-center gap-1">
+                             <Clock className="w-3 h-3" />
+                             <span className="font-medium">
+                               {appointment.appointment_time} ({Number(appointment.duration_minutes ?? 0)}min)
+                             </span>
+                           </div>
+                         </div>
+                       </div>
 
-                      <div className="mt-2 flex items-start justify-start gap-3">
-                        <div>
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <User className="w-3 h-3 text-muted-foreground" />
-                            <span className="font-medium text-foreground text-lg">{appointment.customer_name}</span>
-                          </div>
-                          <div className="mt-1 flex flex-col sm:flex-row sm:flex-wrap gap-2 text-xs text-muted-foreground">
-                            {appointment.customer_email && (
-                              <span className="inline-flex items-center gap-1.5"><Mail className="w-3 h-3" />{appointment.customer_email}</span>
-                            )}
-                            {appointment.customer_phone && (
-                              <span className="inline-flex items-center gap-1.5"><Phone className="w-3 h-3" />{appointment.customer_phone}</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-2 text-left">
-                        <div className="text-xs text-muted-foreground">Amount</div>
-                        <div className="text-sm font-semibold">
-                          {Number(appointment.price || 0) > 0 ? formatMoney(Number(appointment.price || 0)) : '—'}
-                        </div>
-                      </div>
+                       <div className="space-y-3">
+                         <div className="flex items-start justify-between">
+                           <div className="flex-1">
+                             <div className="flex items-center gap-2 mb-1">
+                               <div className="w-8 h-8 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center">
+                                 <User className="w-4 h-4 text-primary" />
+                               </div>
+                               <h3 className="font-semibold text-foreground text-lg leading-tight">{appointment.customer_name}</h3>
+                             </div>
+                             <div className="flex flex-col gap-2 text-sm text-muted-foreground ml-10">
+                               {appointment.customer_email && (
+                                 <div className="inline-flex items-center gap-2">
+                                   <Mail className="w-4 h-4 text-muted-foreground/70" />
+                                   <span>{appointment.customer_email}</span>
+                                 </div>
+                               )}
+                               {appointment.customer_phone && (
+                                 <div className="inline-flex items-center gap-2">
+                                   <Phone className="w-4 h-4 text-muted-foreground/70" />
+                                   <span className="font-medium">{appointment.customer_phone}</span>
+                                 </div>
+                               )}
+                             </div>
+                           </div>
+                           <div className="text-right">
+                             <div className="text-xs text-muted-foreground">Amount</div>
+                             <div className="text-lg font-bold text-primary">
+                               {Number(appointment.price || 0) > 0 ? formatMoney(Number(appointment.price || 0)) : '—'}
+                             </div>
+                           </div>
+                         </div>
+                       </div>
 
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {items.length ? (
-                          items.map((it, idx) => {
-                            const srvName = services.find(s => s.id === it.service_id)?.name || 'Service';
-                            const stfName = staff.find(s => s.id === it.staff_id)?.full_name || 'Unassigned';
-                            return (
-                              <span key={idx} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-muted text-foreground/80 text-sm">
-                                {srvName}
-                                <span className="text-muted-foreground">→</span>
-                                {stfName}
-                              </span>
-                            );
-                          })
-                        ) : (
-                          <span className="text-base text-muted-foreground">{serviceNames}</span>
-                        )}
-                      </div>
+                       <div className="mt-3 flex flex-wrap gap-2">
+                         {items.length ? (
+                           items.map((it, idx) => {
+                             const srvName = services.find(s => s.id === it.service_id)?.name || 'Service';
+                             const stfName = staff.find(s => s.id === it.staff_id)?.full_name || 'Unassigned';
+                             return (
+                               <div key={idx} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border border-blue-200 dark:border-blue-800">
+                                 <div className="flex items-center gap-1">
+                                   <span className="text-sm font-medium text-blue-700 dark:text-blue-300">{srvName}</span>
+                                   <span className="text-blue-500 dark:text-blue-400">•</span>
+                                   <span className="text-xs text-blue-600 dark:text-blue-400">{stfName}</span>
+                                 </div>
+                               </div>
+                             );
+                           })
+                         ) : (
+                           <div className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-950/20 dark:to-gray-950/20 border border-slate-200 dark:border-slate-800">
+                             <span className="text-sm text-slate-600 dark:text-slate-400">{serviceNames}</span>
+                           </div>
+                         )}
+                       </div>
 
-                      {appointment.location_id ? (
-                        <div className="mt-2 text-xs text-muted-foreground inline-flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {locations.find((l: any) => l.id === appointment.location_id)?.name || 'Location'}
-                        </div>
-                      ) : null}
+                       {appointment.location_id && (
+                         <div className="mt-3 pt-3 border-t border-border/50">
+                           <div className="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-muted/50">
+                             <MapPin className="w-3 h-3 text-muted-foreground" />
+                             <span className="text-xs font-medium text-muted-foreground">
+                               {locations.find((l: any) => l.id === appointment.location_id)?.name || 'Location'}
+                             </span>
+                           </div>
+                         </div>
+                       )}
                     </div>
                   );
                 })}

@@ -27,8 +27,9 @@ export default {
 		},
 		extend: {
 			fontFamily: {
-				sans: ['Puvi', 'system-ui', 'sans-serif'],
-				'puvi': ['Puvi', 'system-ui', 'sans-serif'],
+				sans: ['Noto Sans', 'Zoho Purvi', 'system-ui', 'sans-serif'],
+				'zoho': ['Noto Sans', 'Zoho Purvi', 'system-ui', 'sans-serif'],
+				'heading': ['Noto Sans', 'Zoho Purvi', 'system-ui', 'sans-serif'],
 			},
 			fontSize: {
 				'responsive-xs': 'var(--text-xs)',

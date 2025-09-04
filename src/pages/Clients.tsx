@@ -235,10 +235,26 @@ export default function Clients() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Enforce unique mobile number if provided
+      // Import text utilities
+      const { toSentenceCase, isValidPhoneNumber } = await import('@/utils/textUtils');
+      
+      // Enforce mobile number is required for all clients
       const trimmedPhone = (formData.phone || '').trim();
-      if (!editingClient && !trimmedPhone) {
+      if (!trimmedPhone) {
         toast.error('Mobile number is required');
+        return;
+      }
+      
+      // Validate phone number format
+      if (!isValidPhoneNumber(trimmedPhone)) {
+        toast.error('Please enter a valid mobile number');
+        return;
+      }
+      
+      // Auto sentence case for client name
+      const formattedName = toSentenceCase(formData.full_name.trim());
+      if (!formattedName) {
+        toast.error('Client name is required');
         return;
       }
       if (trimmedPhone) {
@@ -261,9 +277,9 @@ export default function Clients() {
       }
 
       const basePayload = {
-        full_name: formData.full_name,
+        full_name: formattedName,
         email: formData.email || null,
-        phone: trimmedPhone || null,
+        phone: trimmedPhone,
         address: formData.address || null,
         notes: formData.notes || null,
       };
@@ -636,15 +652,19 @@ export default function Clients() {
                       />
                     </div>
                     
-                    <div>
-                      <Label htmlFor="phone">Phone</Label>
-                      <Input 
-                        id="phone" 
-                        value={formData.phone} 
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })} 
-                        placeholder="+1 (555) 123-4567"
-                      />
-                    </div>
+                     <div>
+                       <Label htmlFor="phone">Mobile Number *</Label>
+                       <Input 
+                         id="phone" 
+                         value={formData.phone} 
+                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })} 
+                         placeholder="+1 (555) 123-4567"
+                         required
+                       />
+                       <p className="text-xs text-muted-foreground mt-1">
+                         Mobile number is required for all clients
+                       </p>
+                     </div>
                     
                     {editingClient && (
                       <div>
