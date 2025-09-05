@@ -159,15 +159,15 @@ export function SuperAdminSidebar() {
         <SidebarHeader className="px-2 pt-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-purple-800">
-              <Crown className="h-5 w-5" />
-              <span className="font-semibold group-data-[collapsible=icon]:hidden">Admin Panel</span>
+              <Crown className="h-6 w-6" />
+              <span className="font-semibold group-data-[collapsible=icon]:hidden text-responsive-base">Admin Panel</span>
             </div>
-            <SidebarTrigger className="hidden md:inline-flex text-purple-700" />
+            <SidebarTrigger className="hidden md:inline-flex text-purple-700 h-7 w-7" />
           </div>
         </SidebarHeader>
         <SidebarGroup>
           <SidebarGroupLabel className="flex items-center gap-2 text-purple-700 font-semibold">
-            <Crown className="h-4 w-4" />
+            <Crown className="h-5 w-5" />
             Super Admin Panel
             <Badge variant="outline" className="ml-auto bg-purple-100 text-purple-700 border-purple-300">
               System
@@ -184,17 +184,17 @@ export function SuperAdminSidebar() {
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         onClick={() => toggleSubmenu(item.title)}
-                        className="hover:bg-purple-100 text-slate-700 hover:text-purple-800 text-base"
+                        className="hover:bg-purple-100 text-slate-700 hover:text-purple-800 text-responsive-base h-12 px-3"
                         tooltip={state === 'collapsed' ? item.title : undefined}
                         size="lg"
                       >
-                        <item.icon className="w-5 h-5" />
+                        <item.icon className="w-6 h-6" />
                         <span className="flex-1">{item.title}</span>
                         <div className="group-data-[collapsible=icon]:hidden">
                           {isOpen ? (
-                            <ChevronDown className="w-5 h-5" />
+                            <ChevronDown className="w-6 h-6" />
                           ) : (
-                            <ChevronRight className="w-5 h-5" />
+                            <ChevronRight className="w-6 h-6" />
                           )}
                         </div>
                       </SidebarMenuButton>
@@ -204,7 +204,7 @@ export function SuperAdminSidebar() {
                             <SidebarMenuSubItem key={subItem.title}>
                               <SidebarMenuSubButton 
                                 asChild
-                                className="hover:bg-purple-100 h-9 text-[15px]"
+                                className="hover:bg-purple-100 h-10 text-responsive-sm px-3"
                                 isActive={location.pathname === subItem.url}
                               >
                                 <NavLink
@@ -218,7 +218,7 @@ export function SuperAdminSidebar() {
                                   }
                                   onClick={handleNavClick}
                                 >
-                                  <subItem.icon className="w-5 h-5" />
+                                  <subItem.icon className="w-6 h-6" />
                                   <span>{subItem.title}</span>
                                 </NavLink>
                               </SidebarMenuSubButton>
@@ -234,7 +234,7 @@ export function SuperAdminSidebar() {
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton 
                       asChild
-                      className="hover:bg-purple-100 text-base"
+                      className="hover:bg-purple-100 text-responsive-base h-12 px-3"
                       isActive={location.pathname === item.url}
                       tooltip={state === 'collapsed' ? item.title : undefined}
                       size="lg"
@@ -250,7 +250,7 @@ export function SuperAdminSidebar() {
                         }
                         onClick={handleNavClick}
                       >
-                        <item.icon className="w-5 h-5" />
+                        <item.icon className="w-6 h-6" />
                         <span>{item.title}</span>
                       </NavLink>
                     </SidebarMenuButton>
