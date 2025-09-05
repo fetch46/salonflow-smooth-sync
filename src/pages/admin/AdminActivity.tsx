@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, subDays } from "date-fns";
 import { Activity, Building, CreditCard, Search } from "lucide-react";
 import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
@@ -105,15 +106,16 @@ export default function AdminActivity() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-500">Range:</span>
-              <select
-                value={rangeDays}
-                onChange={(e) => setRangeDays(Number(e.target.value))}
-                className="p-2 border rounded-md"
-              >
-                <option value={7}>7 days</option>
-                <option value={14}>14 days</option>
-                <option value={30}>30 days</option>
-              </select>
+              <Select value={String(rangeDays)} onValueChange={(v) => setRangeDays(Number(v))}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">7 days</SelectItem>
+                  <SelectItem value="14">14 days</SelectItem>
+                  <SelectItem value="30">30 days</SelectItem>
+                </SelectContent>
+              </Select>
               <Button variant="outline" onClick={fetchActivity}>Refresh</Button>
             </div>
           </div>

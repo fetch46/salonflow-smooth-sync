@@ -197,26 +197,29 @@ const Login = () => {
                     required
                     className="h-11 pr-10"
                   />
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? "Hide password" : "Show password"}
                     aria-pressed={showPassword}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
+                  </Button>
                 </div>
               </div>
 
               <div className="flex items-center justify-between">
-                <button
+                <Button
                   type="button"
+                  variant="link"
                   onClick={handleForgotPassword}
-                  className="text-sm text-pink-600 hover:text-pink-700 hover:underline"
+                  className="p-0 h-auto text-sm text-pink-600 hover:text-pink-700 hover:underline"
                 >
                   Forgot password?
-                </button>
+                </Button>
               </div>
 
               <Button

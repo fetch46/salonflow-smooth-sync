@@ -467,9 +467,9 @@ export default function Suppliers() {
               {filteredSuppliers.map((supplier) => (
                 <TableRow key={supplier.id}>
                   <TableCell className="font-medium">
-                    <button className="text-primary hover:underline" onClick={() => navigate(`/suppliers/${supplier.id}`)}>
+                    <Button variant="link" className="px-0 h-auto text-primary hover:underline" onClick={() => navigate(`/suppliers/${supplier.id}`)}>
                       {supplier.name}
-                    </button>
+                    </Button>
                   </TableCell>
                   <TableCell>{supplier.contact_person || "-"}</TableCell>
                   <TableCell>

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
 import { useSaas } from "@/lib/saas";
 
@@ -156,31 +157,46 @@ export default function AccountForm({ accountId }: AccountFormProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Type</Label>
-                <select className="border rounded px-3 py-2 w-full" value={form.account_type} onChange={(e) => handleTypeChange(e.target.value)}>
-                  <option>Asset</option>
-                  <option>Income</option>
-                  <option>Liability</option>
-                  <option>Expense</option>
-                  <option>Equity</option>
-                </select>
+                <Select value={form.account_type} onValueChange={(v) => handleTypeChange(v)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Asset">Asset</SelectItem>
+                    <SelectItem value="Income">Income</SelectItem>
+                    <SelectItem value="Liability">Liability</SelectItem>
+                    <SelectItem value="Expense">Expense</SelectItem>
+                    <SelectItem value="Equity">Equity</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label>Subtype</Label>
-                <select className="border rounded px-3 py-2 w-full" value={form.account_subtype} onChange={(e) => setForm({ ...form, account_subtype: e.target.value })}>
-                  {(subtypeOptionsByType[form.account_type] || []).map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
+                <Select value={form.account_subtype} onValueChange={(v) => setForm({ ...form, account_subtype: v })}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(subtypeOptionsByType[form.account_type] || []).map(opt => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Normal Balance</Label>
-                <select className="border rounded px-3 py-2 w-full" value={form.normal_balance} onChange={(e) => setForm({ ...form, normal_balance: e.target.value })}>
-                  <option value="debit">debit</option>
-                  <option value="credit">credit</option>
-                </select>
+                <Select value={form.normal_balance} onValueChange={(v) => setForm({ ...form, normal_balance: v })}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="debit">debit</SelectItem>
+                    <SelectItem value="credit">credit</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label>Parent Account (optional)</Label>

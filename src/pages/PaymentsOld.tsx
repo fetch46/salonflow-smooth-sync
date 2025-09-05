@@ -781,12 +781,17 @@ export default function PaymentsOld() {
             </div>
             <div className="space-y-2">
               <Label>Method</Label>
-              <select className="border rounded px-3 py-2 w-full" value={editForm.method} onChange={(e) => setEditForm(prev => ({ ...prev, method: e.target.value }))}>
-                <option value="cash">Cash</option>
-                <option value="card">Card</option>
-                <option value="bank_transfer">Bank Transfer</option>
-                <option value="mpesa">M-Pesa</option>
-              </select>
+              <Select value={editForm.method} onValueChange={(v) => setEditForm(prev => ({ ...prev, method: v }))}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="card">Card</SelectItem>
+                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                  <SelectItem value="mpesa">M-Pesa</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Reference (optional)</Label>

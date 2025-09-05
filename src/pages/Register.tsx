@@ -369,7 +369,9 @@ const Register = () => {
     <div className="flex items-center justify-center mb-8">
       {[1, 2, 3].map((step) => (
         <div key={step} className="flex items-center">
-                      <button
+                      <Button
+              type="button"
+              variant="ghost"
               onClick={() => goToStep(step)}
               className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
                 step === currentStep
@@ -389,7 +391,7 @@ const Register = () => {
             ) : (
               step
             )}
-          </button>
+          </Button>
           {step < 3 && (
             <div className={`w-16 h-1 mx-2 rounded-full transition-colors duration-300 ${
               completedSteps.includes(step) ? 'bg-success' : 'bg-muted'
@@ -524,13 +526,15 @@ const Register = () => {
                   }}
                   className={`h-12 pl-10 pr-10 transition-colors ${fieldErrors.password ? 'border-destructive focus:border-destructive' : ''}`}
                 />
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+                </Button>
               </div>,
               'Password'
             )}
@@ -551,13 +555,15 @@ const Register = () => {
                   }}
                   className={`h-12 pl-10 pr-10 transition-colors ${fieldErrors.confirmPassword ? 'border-destructive focus:border-destructive' : ''}`}
                 />
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+                </Button>
               </div>,
               'Confirm Password'
             )}

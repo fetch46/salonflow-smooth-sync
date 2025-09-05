@@ -9,6 +9,7 @@ import { Plus, Minus, BookOpen, RefreshCw } from "lucide-react";
 import { useSaas } from "@/lib/saas";
 import { supabase } from "@/integrations/supabase/client";
 import { postMultiLineEntry } from "@/utils/ledger";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface AccountOption {
   id: string;
@@ -251,16 +252,17 @@ export default function Journal() {
                   {lines.map((l, idx) => (
                     <TableRow key={idx}>
                       <TableCell>
-                        <select
-                          className="border rounded px-2 py-2 w-full"
-                          value={l.accountId}
-                          onChange={(e) => updateLine(idx, { accountId: e.target.value })}
-                        >
-                          <option value="">Select account…</option>
-                          {filteredAccounts.map((a) => (
-                            <option key={a.id} value={a.id}>{`${a.code} — ${a.name}`}</option>
-                          ))}
-                        </select>
+                        <Select value={l.accountId} onValueChange={(v) => updateLine(idx, { accountId: v })}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select account…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Select account…</SelectItem>
+                            {filteredAccounts.map((a) => (
+                              <SelectItem key={a.id} value={a.id}>{`${a.code} — ${a.name}`}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>
                         <Input
