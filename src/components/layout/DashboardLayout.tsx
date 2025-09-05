@@ -1,5 +1,5 @@
 import { Outlet } from "react-router-dom";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { AppTopbar } from "./Topbar";
 import { useSaas } from "@/lib/saas";
@@ -81,37 +81,34 @@ export default function DashboardLayout({ children }: DashboardLayoutProps = {})
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background overflow-x-hidden text-foreground">
-        <AppSidebar />
-        
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Skip link for keyboard users */}
-          <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute left-2 top-2 z-[60] rounded bg-primary text-primary-foreground px-3 py-2">
-            Skip to content
-          </a>
-          <AppTopbar />
+      <AppSidebar />
+      <SidebarInset>
+        {/* Skip link for keyboard users */}
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute left-2 top-2 z-[60] rounded bg-primary text-primary-foreground px-3 py-2">
+          Skip to content
+        </a>
+        <AppTopbar />
 
-          {systemSettings && (systemSettings as any).maintenance_mode && (
-            <div className="px-3 md:px-4 lg:px-6 py-2 bg-amber-50 text-amber-900 text-sm border-b border-amber-200">
-              The system is currently in maintenance mode. Some features may be limited.
-            </div>
-          )}
+        {systemSettings && (systemSettings as any).maintenance_mode && (
+          <div className="px-3 md:px-4 lg:px-6 py-2 bg-amber-50 text-amber-900 text-sm border-b border-amber-200">
+            The system is currently in maintenance mode. Some features may be limited.
+          </div>
+        )}
 
-          {/* Main Content */}
-          <main id="main-content" className="flex-1 min-w-0 px-1 md:px-1.5 lg:px-2 pb-1 md:pb-1.5 lg:pb-2 pt-0.5 md:pt-[3px] lg:pt-1">
-            <React.Suspense fallback={
-              <div className="flex items-center justify-center min-h-[400px]" role="status" aria-live="polite" aria-busy="true">
-                <div className="text-center space-y-4">
-                  <div className="motion-safe:animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600 mx-auto"></div>
-                  <p className="text-sm text-muted-foreground">Loading...</p>
-                </div>
+        {/* Main Content */}
+        <main id="main-content" className="flex-1 min-w-0 px-1 md:px-1.5 lg:px-2 pb-1 md:pb-1.5 lg:pb-2 pt-0.5 md:pt-[3px] lg:pt-1">
+          <React.Suspense fallback={
+            <div className="flex items-center justify-center min-h-[400px]" role="status" aria-live="polite" aria-busy="true">
+              <div className="text-center space-y-4">
+                <div className="motion-safe:animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600 mx-auto"></div>
+                <p className="text-sm text-muted-foreground">Loading...</p>
               </div>
-            }>
-              {children || <Outlet />}
-            </React.Suspense>
-          </main>
-        </div>
-      </div>
+            </div>
+          }>
+            {children || <Outlet />}
+          </React.Suspense>
+        </main>
+      </SidebarInset>
     </SidebarProvider>
   );
 }
