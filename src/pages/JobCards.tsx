@@ -280,23 +280,23 @@ export default function JobCards() {
   }, [jobCards]);
 
   return (
-    <div className="container mx-auto p-2 sm:p-3 space-y-4 max-w-[1600px]">
+    <div className="container mx-auto p-1 sm:p-2 space-y-3 max-w-[1600px]">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Job Cards</h1>
-          <p className="text-slate-600 mt-1">Manage and track service job cards</p>
+          <h1 className="text-responsive-2xl font-bold text-foreground">Job Cards</h1>
+          <p className="text-responsive-sm text-muted-foreground mt-1">Manage and track service job cards</p>
         </div>
         
-        <div className="flex flex-wrap gap-3">
-          <Button variant="outline" onClick={refreshData} disabled={refreshing}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={refreshData} disabled={refreshing} className="btn-compact">
+            <RefreshCw className={`icon-responsive-sm mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           
           <CreateButtonGate feature="jobcards" onClick={() => navigate("/job-cards/new")}>
-            <Button className="bg-primary hover:bg-primary/90">
-              <Plus className="w-4 h-4 mr-2" />
+            <Button className="bg-primary hover:bg-primary/90 btn-compact">
+              <Plus className="icon-responsive-sm mr-2" />
               New Job Card
             </Button>
           </CreateButtonGate>
@@ -304,16 +304,16 @@ export default function JobCards() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-5">
-        <Card className="lg:col-span-1">
-          <CardContent className="p-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
+        <Card className="lg:col-span-1 freshsales-card-compact">
+          <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600">Total Cards</p>
-                <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
+                <p className="text-responsive-xs font-medium text-muted-foreground">Total Cards</p>
+                <p className="text-responsive-lg font-bold text-foreground">{stats.total}</p>
               </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-blue-600" />
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                <Calendar className="icon-responsive-sm text-primary" />
               </div>
             </div>
           </CardContent>

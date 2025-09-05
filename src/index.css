@@ -8,52 +8,54 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Fresha-inspired salon colors - calming blues and professional whites */
-    --background: 210 40% 98%;
-    --foreground: 215 25% 27%;
+    /* Freshsales-inspired clean modern colors */
+    --background: 251 100% 99%;
+    --foreground: 225 15% 20%;
     color-scheme: light;
     
-    /* Base font family - Zoho Purvi inspired (using Noto Sans as web-safe alternative) */
-    font-family: 'Noto Sans', 'Zoho Purvi', system-ui, sans-serif;
+    /* Clean modern font family */
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 27%;
+    --card-foreground: 225 15% 20%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 27%;
+    --popover-foreground: 225 15% 20%;
 
-    /* Primary: Professional salon blue */
-    --primary: 211 100% 50%;
+    /* Primary: Freshsales-style professional blue */
+    --primary: 215 90% 52%;
     --primary-foreground: 0 0% 100%;
-    --primary-light: 211 100% 85%;
+    --primary-light: 215 90% 85%;
 
-    /* Secondary: Soft accent */
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 215 25% 27%;
+    /* Secondary: Clean secondary colors */
+    --secondary: 250 20% 97%;
+    --secondary-foreground: 225 15% 25%;
 
     /* Muted: Subtle backgrounds */
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 250 20% 97%;
+    --muted-foreground: 225 10% 55%;
 
-    /* Accent: Gentle highlights */
-    --accent: 195 100% 95%;
-    --accent-foreground: 215 25% 27%;
+    /* Accent: Fresh accent color */
+    --accent: 172 85% 45%;
+    --accent-foreground: 0 0% 100%;
 
-    /* Success and warning colors */
-    --success: 142 76% 36%;
+    /* Clean status colors */
+    --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
+    --warning-foreground: 38 30% 15%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders and inputs */
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 211 100% 50%;
+    /* Minimal borders */
+    --border: 250 20% 94%;
+    --input: 250 20% 96%;
+    --ring: 215 90% 52%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
 
@@ -71,77 +73,136 @@ All colors MUST be HSL.
 
     --sidebar-ring: 217.2 91.2% 59.8%;
 
-    /* Responsive Typography Scale */
-    --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
-    --text-sm: clamp(0.875rem, 0.8rem + 0.375vw, 1rem);
-    --text-base: clamp(1rem, 0.9rem + 0.5vw, 1.125rem);
-    --text-lg: clamp(1.125rem, 1rem + 0.625vw, 1.25rem);
-    --text-xl: clamp(1.25rem, 1.1rem + 0.75vw, 1.5rem);
-    --text-2xl: clamp(1.5rem, 1.3rem + 1vw, 1.875rem);
-    --text-3xl: clamp(1.875rem, 1.6rem + 1.375vw, 2.25rem);
-    --text-4xl: clamp(2.25rem, 1.9rem + 1.75vw, 3rem);
+    /* Compact, clean text sizes for dense layouts */
+    --text-xs: clamp(0.68rem, 1.5vw, 0.72rem);
+    --text-sm: clamp(0.78rem, 2vw, 0.82rem);
+    --text-base: clamp(0.88rem, 2.5vw, 0.92rem);
+    --text-lg: clamp(1rem, 3vw, 1.05rem);
+    --text-xl: clamp(1.1rem, 3.5vw, 1.18rem);
+    --text-2xl: clamp(1.3rem, 4.5vw, 1.4rem);
+    --text-3xl: clamp(1.6rem, 5.5vw, 1.8rem);
+    --text-4xl: clamp(2rem, 7vw, 2.25rem);
 
-    /* Responsive Icon Sizes */
-    --icon-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
-    --icon-sm: clamp(1rem, 0.9rem + 0.5vw, 1.125rem);
-    --icon-md: clamp(1.25rem, 1.1rem + 0.75vw, 1.5rem);
-    --icon-lg: clamp(1.5rem, 1.3rem + 1vw, 2rem);
-    --icon-xl: clamp(2rem, 1.7rem + 1.5vw, 2.5rem);
+    /* Smaller, cleaner icons */
+    --icon-xs: clamp(0.7rem, 1.5vw, 0.85rem);
+    --icon-sm: clamp(0.85rem, 2vw, 1rem);
+    --icon-md: clamp(1rem, 2.5vw, 1.2rem);
+    --icon-lg: clamp(1.2rem, 3.5vw, 1.5rem);
+    --icon-xl: clamp(1.5rem, 4.5vw, 1.8rem);
 
-    /* Responsive Spacing */
-    --space-xs: clamp(0.25rem, 0.2rem + 0.25vw, 0.375rem);
-    --space-sm: clamp(0.5rem, 0.4rem + 0.5vw, 0.75rem);
-    --space-md: clamp(1rem, 0.8rem + 1vw, 1.5rem);
-    --space-lg: clamp(1.5rem, 1.2rem + 1.5vw, 2.25rem);
-    --space-xl: clamp(2rem, 1.6rem + 2vw, 3rem);
+    /* Tighter spacing for denser layout */
+    --space-xs: clamp(0.3rem, 1vw, 0.5rem);
+    --space-sm: clamp(0.5rem, 1.5vw, 0.75rem);
+    --space-md: clamp(0.75rem, 2.5vw, 1rem);
+    --space-lg: clamp(1rem, 3.5vw, 1.5rem);
+    --space-xl: clamp(1.5rem, 5vw, 2rem);
 
     /* Fixed footer height */
     --footer-height: 3.5rem; /* 56px */
 }
 
 @layer components {
-  /* Responsive Typography Classes */
-  .text-responsive-xs { font-size: var(--text-xs); }
-  .text-responsive-sm { font-size: var(--text-sm); }
-  .text-responsive-base { font-size: var(--text-base); }
-  .text-responsive-lg { font-size: var(--text-lg); }
-  .text-responsive-xl { font-size: var(--text-xl); }
-  .text-responsive-2xl { font-size: var(--text-2xl); }
-  .text-responsive-3xl { font-size: var(--text-3xl); }
-  .text-responsive-4xl { font-size: var(--text-4xl); }
+  /* Freshsales-style compact text sizing */
+  .text-responsive-xs { font-size: var(--text-xs); line-height: 1.3; }
+  .text-responsive-sm { font-size: var(--text-sm); line-height: 1.35; }
+  .text-responsive-base { font-size: var(--text-base); line-height: 1.4; }
+  .text-responsive-lg { font-size: var(--text-lg); line-height: 1.45; }
+  .text-responsive-xl { font-size: var(--text-xl); line-height: 1.5; }
+  .text-responsive-2xl { font-size: var(--text-2xl); line-height: 1.3; }
+  .text-responsive-3xl { font-size: var(--text-3xl); line-height: 1.2; }
+  .text-responsive-4xl { font-size: var(--text-4xl); line-height: 1.1; }
 
-  /* Responsive Icon Classes */
+  /* Clean, responsive icons */
   .icon-responsive-xs { width: var(--icon-xs); height: var(--icon-xs); }
   .icon-responsive-sm { width: var(--icon-sm); height: var(--icon-sm); }
   .icon-responsive-md { width: var(--icon-md); height: var(--icon-md); }
   .icon-responsive-lg { width: var(--icon-lg); height: var(--icon-lg); }
   .icon-responsive-xl { width: var(--icon-xl); height: var(--icon-xl); }
 
+  /* Freshsales-style card styling */
+  .freshsales-card {
+    @apply bg-card border border-border rounded-lg shadow-sm transition-all duration-200;
+    @apply hover:shadow-md hover:border-primary/20;
+  }
+
+  .freshsales-card-compact {
+    @apply freshsales-card;
+    padding: var(--space-sm);
+  }
+
+  /* Compact button styles */
+  .btn-compact {
+    @apply h-8 px-3 text-responsive-sm;
+  }
+
+  .btn-compact-icon {
+    @apply h-8 w-8 p-0;
+  }
+
+  /* Clean table styles */
+  .table-compact {
+    @apply text-responsive-sm;
+  }
+
+  .table-compact th {
+    @apply py-2 text-responsive-xs font-medium text-muted-foreground;
+  }
+
+  .table-compact td {
+    @apply py-2.5;
+  }
+
+  /* Status badges - compact */
+  .status-badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-responsive-xs font-medium;
+  }
+
   /* Responsive Card Classes */
   .card-responsive {
-    @apply rounded-lg border bg-card text-card-foreground shadow-sm;
+    @apply freshsales-card;
     padding: var(--space-md);
   }
 
   .card-responsive-sm {
-    @apply rounded-lg border bg-card text-card-foreground shadow-sm;
+    @apply freshsales-card;
     padding: var(--space-sm);
   }
 
   .card-responsive-lg {
-    @apply rounded-lg border bg-card text-card-foreground shadow-sm;
+    @apply freshsales-card;
     padding: var(--space-lg);
   }
 
-  /* Responsive Grid Classes */
+  /* Denser grid for cards */
   .grid-responsive-cards {
-    @apply grid gap-4;
-    grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+    @apply grid gap-3;
+    grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  }
+
+  @media (min-width: 640px) {
+    .grid-responsive-cards {
+      grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+      gap: 1rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .grid-responsive-cards {
+      grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr));
+      gap: 1.25rem;
+    }
   }
 
   .grid-responsive-stats {
-    @apply grid gap-4;
-    grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+    @apply grid gap-3;
+    grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  }
+
+  @media (min-width: 640px) {
+    .grid-responsive-stats {
+      grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+      gap: 1rem;
+    }
   }
 }
 

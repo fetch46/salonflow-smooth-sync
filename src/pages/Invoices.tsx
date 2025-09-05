@@ -1155,10 +1155,10 @@ export default function Invoices() {
                   </>
                                  ) : (
                    <div className="flex gap-2">
-                     <Button variant="default" onClick={() => { if (selectedInvoice) navigate(`/payments?invoiceId=${selectedInvoice.id}&action=record`); }}>
-                       <DollarSign className="w-4 h-4 mr-2" />
-                       Record Payment
-                     </Button>
+                      <Button variant="default" onClick={() => { if (selectedInvoice) navigate(`/payments-received?invoiceId=${selectedInvoice.id}&action=record`); }}>
+                        <DollarSign className="w-4 h-4 mr-2" />
+                        Record Payment
+                      </Button>
                      <Button className="bg-violet-600 hover:bg-violet-700" onClick={() => { if (selectedInvoice) navigate(`/invoices/${selectedInvoice.id}/edit`); }}>
                        <Edit2 className="w-4 h-4 mr-2" />
                        Edit Invoice
