@@ -160,16 +160,16 @@ export function SuperAdminSidebar() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-purple-800">
               <Crown className="h-5 w-5" />
-              <span className="font-semibold group-data-[collapsible=icon]:hidden">Admin Panel</span>
+              <span className="font-semibold text-responsive-base group-data-[collapsible=icon]:hidden">Admin Panel</span>
             </div>
             <SidebarTrigger className="hidden md:inline-flex text-purple-700" />
           </div>
         </SidebarHeader>
         <SidebarGroup>
-          <SidebarGroupLabel className="flex items-center gap-2 text-purple-700 font-semibold">
+          <SidebarGroupLabel className="flex items-center gap-2 text-purple-700 font-semibold text-responsive-sm">
             <Crown className="h-4 w-4" />
             Super Admin Panel
-            <Badge variant="outline" className="ml-auto bg-purple-100 text-purple-700 border-purple-300">
+            <Badge variant="outline" className="ml-auto bg-purple-100 text-purple-700 border-purple-300 text-responsive-xs">
               System
             </Badge>
           </SidebarGroupLabel>
@@ -184,7 +184,7 @@ export function SuperAdminSidebar() {
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         onClick={() => toggleSubmenu(item.title)}
-                        className="hover:bg-purple-100 text-slate-700 hover:text-purple-800 text-base"
+                        className="hover:bg-purple-100 text-slate-700 hover:text-purple-800 text-responsive-base"
                         tooltip={state === 'collapsed' ? item.title : undefined}
                         size="lg"
                       >
@@ -204,7 +204,7 @@ export function SuperAdminSidebar() {
                             <SidebarMenuSubItem key={subItem.title}>
                               <SidebarMenuSubButton 
                                 asChild
-                                className="hover:bg-purple-100 h-9 text-[15px]"
+                                className="hover:bg-purple-100 h-9 text-responsive-sm"
                                 isActive={location.pathname === subItem.url}
                               >
                                 <NavLink
@@ -234,7 +234,7 @@ export function SuperAdminSidebar() {
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton 
                       asChild
-                      className="hover:bg-purple-100 text-base"
+                      className="hover:bg-purple-100 text-responsive-base"
                       isActive={location.pathname === item.url}
                       tooltip={state === 'collapsed' ? item.title : undefined}
                       size="lg"
@@ -262,24 +262,24 @@ export function SuperAdminSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-purple-700">Quick Actions</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-purple-700 text-responsive-sm">Quick Actions</SidebarGroupLabel>
           <SidebarGroupContent>
             <div className="px-2 py-3 space-y-2">
               <NavLink
                 to="/admin/organizations"
-                className="block w-full text-left p-2 rounded-md bg-purple-100 hover:bg-purple-200 text-purple-800 text-sm font-medium transition-colors"
+                className="block w-full text-left p-2 rounded-md bg-purple-100 hover:bg-purple-200 text-purple-800 text-responsive-sm font-medium transition-colors"
               >
                 Create Organization
               </NavLink>
               <NavLink
                 to="/admin/super-admins"
-                className="block w-full text-left p-2 rounded-md bg-purple-100 hover:bg-purple-200 text-purple-800 text-sm font-medium transition-colors"
+                className="block w-full text-left p-2 rounded-md bg-purple-100 hover:bg-purple-200 text-purple-800 text-responsive-sm font-medium transition-colors"
               >
                 Grant Super Admin
               </NavLink>
               <NavLink
                 to="/admin/activity"
-                className="block w-full text-left p-2 rounded-md bg-purple-100 hover:bg-purple-200 text-purple-800 text-sm font-medium transition-colors"
+                className="block w-full text-left p-2 rounded-md bg-purple-100 hover:bg-purple-200 text-purple-800 text-responsive-sm font-medium transition-colors"
               >
                 View Activity Log
               </NavLink>
