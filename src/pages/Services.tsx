@@ -106,13 +106,13 @@ interface BookingService {
 // Removed mock bookings; best sellers now computed from invoice_items
 
 const DEFAULT_SERVICE_CATEGORIES = [
-  { name: "Hair Services", icon: Scissors, color: "from-pink-500 to-rose-500" },
-  { name: "Nail Services", icon: Sparkles, color: "from-purple-500 to-violet-500" },
+  { name: "Hair Services", icon: Scissors, color: "from-amber-500 to-orange-500" },
+  { name: "Nail Services", icon: Sparkles, color: "from-yellow-500 to-amber-500" },
   { name: "Facial Treatments", icon: Heart, color: "from-emerald-500 to-teal-500" },
   { name: "Body Treatments", icon: User, color: "from-blue-500 to-cyan-500" },
   { name: "Massage Therapy", icon: Activity, color: "from-amber-500 to-orange-500" },
-  { name: "Makeup Services", icon: Palette, color: "from-indigo-500 to-purple-500" },
-  { name: "Special Treatments", icon: Crown, color: "from-violet-500 to-purple-500" },
+  { name: "Makeup Services", icon: Palette, color: "from-yellow-500 to-amber-500" },
+  { name: "Special Treatments", icon: Crown, color: "from-amber-500 to-yellow-500" },
 ];
 
 const DURATION_OPTIONS = [
@@ -921,7 +921,7 @@ export default function Services() {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center space-y-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           <p className="text-slate-600">Loading services...</p>
         </div>
       </div>
@@ -934,7 +934,7 @@ export default function Services() {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl shadow-lg">
+            <div className="p-2.5 bg-gradient-to-br from-yellow-600 to-amber-600 rounded-xl shadow-lg">
               <Scissors className="h-6 w-6 text-white" />
             </div>
             <div>
@@ -979,7 +979,7 @@ export default function Services() {
           {/* Replaced modal trigger with navigation to full page */}
           <Button 
             onClick={() => navigate('/services/new')}
-            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg"
+            className="bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-700 hover:to-amber-700 text-foreground shadow-lg"
           >
             <Plus className="w-4 h-4 mr-2" />
             New Service
@@ -1163,7 +1163,7 @@ export default function Services() {
               {!searchTerm && categoryFilter === "all" && (
                 <Button 
                   onClick={() => navigate('/services/new')}
-                  className="bg-purple-600 hover:bg-purple-700"
+                  className="bg-amber-600 hover:bg-amber-700 text-foreground"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Create First Service

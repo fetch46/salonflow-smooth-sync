@@ -828,9 +828,9 @@ export default function CreateJobCard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-amber-50 flex items-center justify-center">
         <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="text-slate-600 font-medium">Loading job card form...</p>
         </div>
       </div>
@@ -912,9 +912,9 @@ export default function CreateJobCard() {
                         isCompleted 
                           ? 'bg-emerald-500 border-emerald-500 text-white' 
                           : isActive 
-                          ? 'bg-violet-600 border-violet-600 text-white' 
+                          ? 'bg-amber-600 border-amber-600 text-white' 
                           : canAccess
-                          ? 'border-slate-300 text-slate-600 hover:border-violet-300'
+                          ? 'border-slate-300 text-slate-600 hover:border-amber-300'
                           : 'border-slate-200 text-slate-400'
                       }`}
                     >
@@ -926,7 +926,7 @@ export default function CreateJobCard() {
                     </div>
                     <div className="mt-2 text-center">
                       <div className={`text-sm font-medium ${
-                        isActive ? 'text-violet-600' : isCompleted ? 'text-emerald-600' : 'text-slate-600'
+                        isActive ? 'text-amber-600' : isCompleted ? 'text-emerald-600' : 'text-slate-600'
                       }`}>
                         {step.title}
                       </div>
@@ -1153,8 +1153,8 @@ function StepAppointmentClient({
 
         {/* Client Selection */}
         <Card className="shadow-lg border-slate-200">
-          <CardHeader className="bg-gradient-to-r from-violet-50 to-purple-50 border-b">
-            <CardTitle className="flex items-center gap-2 text-violet-800">
+          <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50 border-b">
+            <CardTitle className="flex items-center gap-2 text-amber-800">
               <Users className="w-5 h-5" />
               Select Client
             </CardTitle>
@@ -1181,13 +1181,13 @@ function StepAppointmentClient({
                       onClick={() => onClientSelect(client)}
                       className={`p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
                         isSelected 
-                          ? 'border-violet-500 bg-violet-50' 
-                          : 'border-slate-200 hover:border-violet-300 hover:bg-violet-25'
+                          ? 'border-amber-500 bg-amber-50' 
+                          : 'border-slate-200 hover:border-amber-300 hover:bg-amber-25'
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <Avatar className="w-8 h-8">
-                          <AvatarFallback className="bg-violet-100 text-violet-600 text-sm">
+                          <AvatarFallback className="bg-amber-100 text-amber-600 text-sm">
                             {client.full_name.split(' ').map(n => n[0]).join('')}
                           </AvatarFallback>
                         </Avatar>
@@ -1334,8 +1334,8 @@ function StepServicesStaff({
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Services Selection */}
         <Card className="shadow-lg border-slate-200">
-          <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b">
-            <CardTitle className="flex items-center gap-2 text-purple-800">
+          <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50 border-b">
+            <CardTitle className="flex items-center gap-2 text-amber-800">
               <Scissors className="w-5 h-5" />
               Select Services
             </CardTitle>
@@ -1362,15 +1362,15 @@ function StepServicesStaff({
                       onClick={() => toggleService(service)}
                       className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
                         isSelected 
-                          ? 'border-purple-500 bg-purple-50' 
-                          : 'border-slate-200 hover:border-purple-300 hover:bg-purple-25'
+                          ? 'border-amber-500 bg-amber-50' 
+                          : 'border-slate-200 hover:border-amber-300 hover:bg-amber-25'
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-3">
                             <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                              isSelected ? 'bg-purple-500 border-purple-500' : 'border-slate-300'
+                              isSelected ? 'bg-amber-500 border-amber-500' : 'border-slate-300'
                             }`}>
                               {isSelected && <Check className="w-3 h-3 text-white" />}
                             </div>
@@ -1892,8 +1892,8 @@ function StepServiceCompletion({
 
         {/* Service Notes */}
         <Card className="shadow-lg border-slate-200">
-          <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b">
-            <CardTitle className="flex items-center gap-2 text-purple-800">
+          <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50 border-b">
+            <CardTitle className="flex items-center gap-2 text-amber-800">
               <Edit3 className="w-5 h-5" />
               Service Notes & Observations
             </CardTitle>
@@ -1986,7 +1986,7 @@ function StepServiceCompletion({
           <ArrowLeft className="w-4 h-4 mr-2" />
           Previous
         </Button>
-        <Button onClick={onNext} className="bg-purple-600 hover:bg-purple-700">
+        <Button onClick={onNext} className="bg-amber-600 hover:bg-amber-700">
           Continue to Payment
           <ArrowRight className="w-4 h-4 ml-2" />
         </Button>

@@ -610,7 +610,7 @@ export default function Staff() {
       <div className="flex-1 space-y-6 p-6 bg-slate-50/30 min-h-screen">
         <div className="flex items-center justify-center py-12">
           <div className="text-center space-y-3">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
             <p className="text-slate-600">Loading staff...</p>
           </div>
         </div>
@@ -739,7 +739,7 @@ export default function Staff() {
                 {/* Professional Details */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                    <Award className="w-4 h-4 text-purple-600" />
+                    <Award className="w-4 h-4 text-amber-600" />
                     Professional Details
                   </h3>
                   
@@ -873,14 +873,14 @@ export default function Staff() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200">
+        <Card className="bg-gradient-to-br from-yellow-50 to-amber-50 border-amber-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-700">Avg Commission</CardTitle>
-            <TrendingUp className="h-4 w-4 text-purple-600" />
+            <CardTitle className="text-sm font-medium text-amber-700">Avg Commission</CardTitle>
+            <TrendingUp className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-700">{dashboardStats.avgCommissionRate.toFixed(1)}%</div>
-            <p className="text-xs text-purple-600">
+            <div className="text-2xl font-bold text-amber-700">{dashboardStats.avgCommissionRate.toFixed(1)}%</div>
+            <p className="text-xs text-amber-600">
               Average team rate
             </p>
           </CardContent>

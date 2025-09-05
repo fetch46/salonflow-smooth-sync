@@ -204,11 +204,11 @@ export default function ServiceView() {
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back
               </Button>
-              <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-purple-600 rounded-xl flex items-center justify-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-amber-600 rounded-xl flex items-center justify-center">
                 <Scissors className="w-8 h-8 text-white" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent truncate">
+                <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-yellow-600 to-amber-600 bg-clip-text text-transparent truncate">
                   {service.name}
                 </h1>
                 <p className="text-muted-foreground text-lg">
@@ -224,7 +224,7 @@ export default function ServiceView() {
             </div>
             <div className="flex flex-col items-start md:items-end space-y-2">
               <div className="flex gap-2 w-full md:w-auto">
-                <Button onClick={() => navigate(`/services/${id}/edit`)} className="bg-gradient-to-r from-pink-500 to-purple-600 w-full md:w-auto">
+                <Button onClick={() => navigate(`/services/${id}/edit`)} className="bg-gradient-to-r from-yellow-500 to-amber-600 text-foreground w-full md:w-auto">
                   <Edit className="w-4 h-4 mr-2" />
                   Edit Service
                 </Button>
@@ -272,14 +272,14 @@ export default function ServiceView() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200">
+        <Card className="bg-gradient-to-br from-yellow-50 to-amber-50 border-amber-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-700">Kit Items</CardTitle>
-            <Package className="h-4 w-4 text-purple-600" />
+            <CardTitle className="text-sm font-medium text-amber-700">Kit Items</CardTitle>
+            <Package className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-700">{serviceKits.length}</div>
-            <p className="text-xs text-purple-600">
+            <div className="text-2xl font-bold text-amber-700">{serviceKits.length}</div>
+            <p className="text-xs text-amber-600">
               {serviceKits.length === 0 ? "No kit items" : "product items"}
             </p>
           </CardContent>
@@ -460,7 +460,7 @@ export default function ServiceView() {
                     </TableBody>
                   </Table>
 
-                  <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg p-4 border border-pink-200">
+                  <div className="bg-gradient-to-r from-yellow-50 to-amber-50 rounded-lg p-4 border border-amber-200">
                     <div className="flex justify-between items-center">
                       <div>
                         <p className="text-sm font-medium text-muted-foreground">Total Material Cost</p>
@@ -469,7 +469,7 @@ export default function ServiceView() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-2xl font-bold text-pink-600">{formatPrice(totalKitCost)}</p>
+                        <p className="text-2xl font-bold text-amber-600">{formatPrice(totalKitCost)}</p>
                       </div>
                     </div>
                   </div>

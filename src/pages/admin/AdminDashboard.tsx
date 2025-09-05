@@ -59,7 +59,7 @@ const AdminDashboard = () => {
   const businessTables = useMemo(() => [
     { name: 'clients', label: 'Clients', icon: Users, color: 'text-blue-600' },
     { name: 'staff', label: 'Staff', icon: Users, color: 'text-green-600' },
-    { name: 'services', label: 'Services', icon: Briefcase, color: 'text-purple-600' },
+    { name: 'services', label: 'Services', icon: Briefcase, color: 'text-amber-600' },
     { name: 'appointments', label: 'Appointments', icon: Calendar, color: 'text-orange-600' },
     { name: 'inventory_items', label: 'Inventory', icon: Package, color: 'text-indigo-600' },
     { name: 'sales', label: 'Sales', icon: ShoppingCart, color: 'text-emerald-600' },
@@ -333,20 +333,20 @@ const AdminDashboard = () => {
           </Link>
 
           <Link to="/admin/subscription-plans">
-            <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200 dark:from-violet-950 dark:to-violet-900 dark:border-violet-800 hover:shadow-lg transition-shadow cursor-pointer">
+            <Card className="bg-gradient-to-br from-yellow-50 to-amber-50 border-amber-200 dark:from-amber-900 dark:to-yellow-900 dark:border-amber-800 hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-purple-700 dark:text-violet-300">Subscriptions</CardTitle>
-                <CreditCard className="h-4 w-4 text-purple-600 dark:text-violet-400" />
+                <CardTitle className="text-sm font-medium text-amber-700 dark:text-yellow-300">Subscriptions</CardTitle>
+                <CreditCard className="h-4 w-4 text-amber-600 dark:text-yellow-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-purple-700 dark:text-violet-200">
+                <div className="text-2xl font-bold text-amber-700 dark:text-yellow-200">
                   {loading ? '...' : stats.subscriptions.active.toLocaleString()}
                 </div>
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-purple-600 dark:text-violet-400">
+                  <span className="text-xs text-amber-600 dark:text-yellow-400">
                     {stats.subscriptions.trial} trial
                   </span>
-                  <Badge variant="outline" className="text-xs bg-purple-100/60 text-purple-800 border-purple-200 dark:bg-violet-900/40 dark:text-violet-200 dark:border-violet-800">
+                  <Badge variant="outline" className="text-xs bg-amber-100/60 text-amber-800 border-amber-200 dark:bg-yellow-900/40 dark:text-yellow-200 dark:border-yellow-800">
                     {formatCurrency(stats.subscriptions.revenue)}/mo
                   </Badge>
                 </div>

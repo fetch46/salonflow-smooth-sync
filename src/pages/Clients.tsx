@@ -117,7 +117,7 @@ const LOYALTY_TIERS = [
   { name: "Bronze", color: "from-orange-600 to-orange-700", textColor: "text-orange-700", minSpent: 0 },
   { name: "Silver", color: "from-gray-400 to-gray-500", textColor: "text-gray-700", minSpent: 300 },
   { name: "Gold", color: "from-yellow-400 to-yellow-500", textColor: "text-yellow-700", minSpent: 600 },
-  { name: "Platinum", color: "from-purple-500 to-purple-600", textColor: "text-purple-700", minSpent: 1200 },
+  { name: "Platinum", color: "from-amber-500 to-yellow-600", textColor: "text-amber-700", minSpent: 1200 },
   { name: "VIP", color: "from-pink-500 to-rose-500", textColor: "text-pink-700", minSpent: 2000 }
 ];
 
@@ -543,7 +543,7 @@ export default function Clients() {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center space-y-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           <p className="text-slate-600">Loading clients...</p>
         </div>
       </div>
@@ -798,14 +798,14 @@ export default function Clients() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200">
+        <Card className="bg-gradient-to-br from-yellow-50 to-amber-50 border-amber-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-700">Avg Spent</CardTitle>
-            <Target className="h-4 w-4 text-purple-600" />
+            <CardTitle className="text-sm font-medium text-amber-700">Avg Spent</CardTitle>
+            <Target className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-700">{formatMoney(stats.averageSpent)}</div>
-            <p className="text-xs text-purple-600">
+            <div className="text-2xl font-bold text-amber-700">{formatMoney(stats.averageSpent)}</div>
+            <p className="text-xs text-amber-600">
               Per client
             </p>
           </CardContent>
