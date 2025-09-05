@@ -90,7 +90,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps = {})
         <AppTopbar />
 
         {systemSettings && (systemSettings as any).maintenance_mode && (
-          <div className="px-3 md:px-4 lg:px-6 py-2 bg-amber-50 text-amber-900 text-sm border-b border-amber-200">
+          <div className="px-3 md:px-4 lg:px-6 py-2 bg-primary/10 text-foreground text-sm border-b border-primary/20">
             The system is currently in maintenance mode. Some features may be limited.
           </div>
         )}

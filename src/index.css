@@ -260,6 +260,7 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
     padding-bottom: calc(var(--footer-height) + env(safe-area-inset-bottom));
+    accent-color: hsl(var(--primary));
   }
 
   html {
