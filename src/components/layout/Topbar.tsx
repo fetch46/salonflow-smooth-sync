@@ -156,29 +156,29 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <header className="sticky top-0 z-50 bg-background border-b border-border px-6 py-4">
-      <div className="flex items-center justify-between">
+    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border px-3 md:px-4 lg:px-6 py-2.5">
+      <div className="flex items-center justify-between gap-2">
         {/* Left side */}
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={onMenuClick} className="lg:hidden">
             <Menu className="h-5 w-5" />
           </Button>
           
-          <div className="hidden md:flex items-center gap-2 max-w-md">
+          <div className="hidden md:flex items-center gap-2 max-w-md px-2 py-1.5 rounded-md border bg-card">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="border-0 shadow-none focus-visible:ring-0"
+              className="h-7 border-0 shadow-none focus-visible:ring-0 p-0"
             />
           </div>
         </div>
 
         {/* Right side */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-3">
           <ThemeToggle />
-          <Button onClick={() => navigate('/pos')} className="hidden sm:inline-flex gap-2">
+          <Button onClick={() => navigate('/pos')} className="hidden sm:inline-flex gap-2 btn-compact">
             <CreditCard className="h-4 w-4" />
             POS
           </Button>
@@ -186,7 +186,7 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
           {organizations.length > 1 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="flex items-center gap-2">
+                <Button variant="outline" className="flex items-center gap-2 btn-compact">
                   <Building2 className="h-4 w-4" />
                   <span className="hidden sm:inline-block max-w-32 truncate">
                     {organization?.name || 'Select Organization'}
@@ -228,7 +228,7 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
           {/* Notifications */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative">
+              <Button variant="ghost" size="icon" className="relative btn-compact-icon">
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
                   <Badge 
@@ -286,7 +286,7 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-2 px-2">
+              <Button variant="ghost" className="flex items-center gap-2 px-2 btn-compact">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={user?.user_metadata?.avatar_url} />
                   <AvatarFallback>

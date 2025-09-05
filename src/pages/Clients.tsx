@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import PageHeader from "@/components/layout/PageHeader";
 import ClientsTable from "@/components/clients/ClientsTable";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -551,66 +552,57 @@ export default function Clients() {
 
   return (
     <div className="flex-1 space-y-6 p-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen">
-      {/* Modern Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-xl shadow-lg">
-              <Users className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">Client Management</h1>
-              <p className="text-slate-600">Manage client relationships and track customer analytics</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <Button 
-            variant="outline" 
-            onClick={refreshData}
-            disabled={refreshing}
-            className="border-slate-300 hover:bg-slate-50"
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="border-slate-300 hover:bg-slate-50">
-                <Download className="w-4 h-4 mr-2" />
-                Export
-                <ChevronRight className="w-4 h-4 ml-2 rotate-90" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Export Options</DropdownMenuLabel>
-              <DropdownMenuItem>
-                <BarChart3 className="w-4 h-4 mr-2" />
-                Client Report
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <PieChart className="w-4 h-4 mr-2" />
-                Analytics Report
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Mail className="w-4 h-4 mr-2" />
-                Mailing List
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
-          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                onClick={resetForm}
-                className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                New Client
-              </Button>
-            </DialogTrigger>
+      <PageHeader
+        title="Client Management"
+        subtitle="Manage client relationships and track customer analytics"
+        icon={<Users className="h-5 w-5" />}
+        actions={
+          <>
+            <Button 
+              variant="outline"
+              onClick={refreshData}
+              disabled={refreshing}
+              className="btn-compact"
+            >
+              <RefreshCw className={`w-4 h-4 mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="btn-compact">
+                  <Download className="w-4 h-4 mr-1.5" />
+                  Export
+                  <ChevronRight className="w-4 h-4 ml-1 rotate-90" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>Export Options</DropdownMenuLabel>
+                <DropdownMenuItem>
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  Client Report
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <PieChart className="w-4 h-4 mr-2" />
+                  Analytics Report
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Mail className="w-4 h-4 mr-2" />
+                  Mailing List
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button 
+              onClick={() => { resetForm(); setIsModalOpen(true); }}
+              className="btn-compact"
+            >
+              <Plus className="w-4 h-4 mr-1.5" />
+              New Client
+            </Button>
+          </>
+        }
+      />
+
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
             <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
               <DialogHeader className="pb-4 border-b">
                 <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -777,8 +769,6 @@ export default function Clients() {
               </form>
             </DialogContent>
           </Dialog>
-        </div>
-      </div>
 
       {/* Enhanced Statistics Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">

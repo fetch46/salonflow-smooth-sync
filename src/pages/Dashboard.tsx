@@ -48,6 +48,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSaas } from "@/lib/saas";
 import { subDays, startOfDay, endOfDay, format as formatDate, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import React from "react";
+import PageHeader from "@/components/layout/PageHeader";
 
 // Utility helpers for safe percentage and averages
 const safePercent = (current: number, previous: number) => {
@@ -535,50 +536,39 @@ const Dashboard = () => {
   return (
     <div className="flex-1 space-y-6 p-4 sm:p-6 pb-24 sm:pb-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen overflow-x-hidden">
 
-
-      {/* Modern Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-violet-600 to-purple-600 rounded-xl shadow-lg">
-              <BarChart3 className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-              <p className="text-slate-600">Welcome back! Here's your salon overview for today.</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex w-full lg:w-auto flex-wrap items-center gap-2 sm:gap-3">
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-full sm:w-36">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="week">This Week</SelectItem>
-              <SelectItem value="month">This Month</SelectItem>
-              <SelectItem value="year">This Year</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Button 
-            variant="outline" 
-            onClick={refreshData}
-            disabled={loading}
-            className="border-slate-300 hover:bg-slate-50 px-2 sm:px-4"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''} sm:mr-2`} />
-            <span className="hidden sm:inline">Refresh</span>
-          </Button>
-          
-          <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg px-2 sm:px-4" onClick={() => navigate('/appointments/new')}>
-            <Plus className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">New Appointment</span>
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        subtitle="Welcome back! Here's your salon overview for today."
+        icon={<BarChart3 className="h-5 w-5" />}
+        actions={
+          <>
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger className="w-full sm:w-36 btn-compact">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="week">This Week</SelectItem>
+                <SelectItem value="month">This Month</SelectItem>
+                <SelectItem value="year">This Year</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button 
+              variant="outline" 
+              onClick={refreshData}
+              disabled={loading}
+              className="btn-compact"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''} sm:mr-1.5`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
+            <Button className="btn-compact" onClick={() => navigate('/appointments/new')}>
+              <Plus className="w-4 h-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">New Appointment</span>
+            </Button>
+          </>
+        }
+      />
 
       {/* Enhanced Statistics Grid */}
       <div className="grid grid-cols-responsive-compact gap-3 sm:gap-4">
