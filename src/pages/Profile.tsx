@@ -145,7 +145,7 @@ const Profile = () => {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-violet-600 to-purple-600 rounded-xl shadow-lg">
+            <div className="p-2.5 bg-gradient-to-br from-yellow-600 to-amber-600 rounded-xl shadow-lg">
               <User className="h-6 w-6 text-white" />
             </div>
             <div>

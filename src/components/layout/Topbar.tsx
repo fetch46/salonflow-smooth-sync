@@ -264,7 +264,7 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
                           </p>
                         </div>
                         {!notification.read && (
-                          <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                          <div className="w-2 h-2 bg-primary rounded-full" />
                         )}
                       </div>
                       <span className="text-xs text-muted-foreground mt-2">

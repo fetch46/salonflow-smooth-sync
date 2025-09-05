@@ -101,10 +101,10 @@ const AdminLandingCMS = lazyWithRetry(() => import("./pages/admin/AdminLandingCM
 
 // Loading component
 const LoadingFallback = () => (
-  <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+  <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(ellipse_at_top_left,hsl(var(--primary)/0.08),hsl(var(--background)))]">
     <div className="text-center space-y-4">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto"></div>
-      <p className="text-slate-600 font-medium">Loading...</p>
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+      <p className="text-muted-foreground font-medium">Loading...</p>
     </div>
   </div>
 );

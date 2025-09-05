@@ -22,10 +22,10 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 225 15% 20%;
 
-    /* Primary: Freshsales-style professional blue */
-    --primary: 215 90% 52%;
-    --primary-foreground: 0 0% 100%;
-    --primary-light: 215 90% 85%;
+    /* Primary: Shadcn Yellow theme */
+    --primary: 47 95% 53%;
+    --primary-foreground: 26 83% 14%;
+    --primary-light: 47 95% 85%;
 
     /* Secondary: Clean secondary colors */
     --secondary: 250 20% 97%;
@@ -53,7 +53,7 @@ All colors MUST be HSL.
     /* Minimal borders */
     --border: 250 20% 94%;
     --input: 250 20% 96%;
-    --ring: 215 90% 52%;
+    --ring: 47 95% 53%;
 
     --radius: 0.5rem;
 
@@ -217,9 +217,9 @@ All colors MUST be HSL.
     --popover: 220 22% 15%;
     --popover-foreground: 210 33% 96%;
 
-    --primary: 211 100% 58%;
-    --primary-foreground: 0 0% 100%;
-    --primary-light: 211 100% 80%;
+    --primary: 47 100% 50%;
+    --primary-foreground: 26 83% 14%;
+    --primary-light: 47 100% 75%;
 
     --secondary: 220 16% 22%;
     --secondary-foreground: 210 33% 96%;
@@ -240,7 +240,7 @@ All colors MUST be HSL.
 
     --border: 220 15% 28%;
     --input: 220 15% 28%;
-    --ring: 211 100% 60%;
+    --ring: 47 100% 50%;
     --sidebar-background: var(--background);
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -260,6 +260,7 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
     padding-bottom: calc(var(--footer-height) + env(safe-area-inset-bottom));
+    accent-color: hsl(var(--primary));
   }
 
   html {

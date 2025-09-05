@@ -285,7 +285,7 @@ export function AppSidebar() {
   const getIconColorForTitle = (title: string) => {
     switch (title) {
       case 'Dashboard': return 'text-blue-600';
-      case 'Appointments': return 'text-violet-600';
+      case 'Appointments': return 'text-amber-600';
       case 'Sales': return 'text-rose-600';
       case 'Clients': return 'text-cyan-600';
       case 'Invoices': return 'text-amber-600';
@@ -319,7 +319,7 @@ export function AppSidebar() {
       case 'Profile': return 'text-rose-600';
       case 'Staff': return 'text-indigo-600';
       case 'Help & Support': return 'text-cyan-600';
-      case 'Super Admin': return 'text-violet-700';
+      case 'Super Admin': return 'text-amber-700';
       case 'Landing CMS': return 'text-fuchsia-600';
       default: return 'text-slate-600';
     }

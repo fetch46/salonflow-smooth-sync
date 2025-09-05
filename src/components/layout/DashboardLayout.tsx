@@ -66,7 +66,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps = {})
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'owner': return 'text-amber-600';
-      case 'admin': return 'text-purple-600';
+      case 'admin': return 'text-amber-600';
       case 'manager': return 'text-blue-600';
       default: return 'text-slate-600';
     }
@@ -90,7 +90,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps = {})
         <AppTopbar />
 
         {systemSettings && (systemSettings as any).maintenance_mode && (
-          <div className="px-3 md:px-4 lg:px-6 py-2 bg-amber-50 text-amber-900 text-sm border-b border-amber-200">
+          <div className="px-3 md:px-4 lg:px-6 py-2 bg-primary/10 text-foreground text-sm border-b border-primary/20">
             The system is currently in maintenance mode. Some features may be limited.
           </div>
         )}
@@ -100,7 +100,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps = {})
           <React.Suspense fallback={
             <div className="flex items-center justify-center min-h-[400px]" role="status" aria-live="polite" aria-busy="true">
               <div className="text-center space-y-4">
-                <div className="motion-safe:animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600 mx-auto"></div>
+                <div className="motion-safe:animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                 <p className="text-sm text-muted-foreground">Loading...</p>
               </div>
             </div>

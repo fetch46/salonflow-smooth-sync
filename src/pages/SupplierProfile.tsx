@@ -205,7 +205,7 @@ export default function SupplierProfile() {
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="flex items-center space-x-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-violet-600 rounded-full flex items-center justify-center">
+            <div className="w-20 h-20 bg-gradient-to-br from-yellow-500 to-amber-600 rounded-full flex items-center justify-center">
               <Building className="w-10 h-10 text-white" />
             </div>
             <div className="flex-1">
@@ -222,7 +222,7 @@ export default function SupplierProfile() {
                   }}
                 />
               ) : (
-                <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent">
+                <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-yellow-600 to-amber-600 bg-clip-text text-transparent">
                   {supplier.name}
                 </h1>
               )}
@@ -242,7 +242,7 @@ export default function SupplierProfile() {
                     </Button>
                   </>
                 ) : (
-                  <Button size="sm" onClick={handleEdit} className="bg-gradient-to-r from-blue-500 to-violet-600">
+                  <Button size="sm" onClick={handleEdit} className="bg-gradient-to-r from-yellow-500 to-amber-600 text-foreground">
                     Edit
                   </Button>
                 )}
@@ -281,16 +281,16 @@ export default function SupplierProfile() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200">
+        <Card className="bg-gradient-to-br from-yellow-50 to-amber-50 border-amber-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-700">Last Purchase</CardTitle>
-            <Calendar className="h-4 w-4 text-purple-600" />
+            <CardTitle className="text-sm font-medium text-amber-700">Last Purchase</CardTitle>
+            <Calendar className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-700">
+            <div className="text-2xl font-bold text-amber-700">
               {lastPurchaseDate ? format(new Date(lastPurchaseDate), "MMM dd, yyyy") : "—"}
             </div>
-            <p className="text-xs text-purple-600">Most recent order date</p>
+            <p className="text-xs text-amber-600">Most recent order date</p>
           </CardContent>
         </Card>
 

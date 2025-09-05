@@ -160,7 +160,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({
               size="sm" 
               variant="outline"
               onClick={() => navigate('/settings?tab=subscription')}
-              className="w-full mt-3 border-violet-300 text-violet-700 hover:bg-violet-50"
+              className="w-full mt-3 border-amber-300 text-amber-700 hover:bg-amber-50"
             >
               <Crown className="w-3 h-3 mr-1" />
               Upgrade Plan
@@ -235,7 +235,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({
                       size="sm" 
                       variant="outline"
                       onClick={() => navigate('/settings?tab=subscription')}
-                      className="border-violet-300 text-violet-700 hover:bg-violet-50"
+                      className="border-amber-300 text-amber-700 hover:bg-amber-50"
                     >
                       Upgrade
                     </Button>
@@ -316,19 +316,19 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({
           )}
 
           {disabledFeatures.length > 0 && showUpgrade && (
-            <div className="p-4 bg-violet-500/10 border border-violet-300 rounded-lg">
+            <div className="p-4 bg-amber-500/10 border border-amber-300 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
-                <Zap className="w-4 h-4 text-violet-600" />
-                <h4 className="font-medium text-violet-800">Unlock More Features</h4>
+                <Zap className="w-4 h-4 text-amber-600" />
+                <h4 className="font-medium text-amber-800">Unlock More Features</h4>
               </div>
-              <p className="text-sm text-violet-700 mb-3">
+              <p className="text-sm text-amber-700 mb-3">
                 {disabledFeatures.length} feature{disabledFeatures.length > 1 ? 's' : ''} 
                 {' '}available with upgrade: {disabledFeatures.map(f => FEATURE_LABELS[f] || f).join(', ')}
               </p>
               <Button 
                 size="sm"
                 onClick={() => navigate('/settings?tab=subscription')}
-                className="bg-violet-600 hover:bg-violet-700"
+                className="bg-amber-600 hover:bg-amber-700"
               >
                 <Crown className="w-3 h-3 mr-1" />
                 See Plans

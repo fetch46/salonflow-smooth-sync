@@ -341,11 +341,11 @@ const Dashboard = () => {
       previousValue: metrics.newClientsYesterday,
       change: safePercent(metrics.newClientsToday, metrics.newClientsYesterday),
       icon: Users,
-      bgClass: "bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200",
-      textColor: "text-purple-700",
-      valueColor: "text-purple-700",
-      subtextColor: "text-purple-600",
-      iconColor: "text-purple-600",
+      bgClass: "bg-gradient-to-br from-yellow-50 to-amber-50 border-amber-200",
+      textColor: "text-amber-700",
+      valueColor: "text-amber-700",
+      subtextColor: "text-amber-600",
+      iconColor: "text-amber-600",
       trend: metrics.newClientsToday >= metrics.newClientsYesterday ? "up" : "down"
     },
     {
@@ -478,7 +478,7 @@ const Dashboard = () => {
       title: "View Reports",
       description: "Analytics & insights",
       icon: BarChart3,
-      color: "bg-purple-50 text-purple-600 hover:bg-purple-100",
+      color: "bg-amber-50 text-amber-600 hover:bg-amber-100",
       action: () => navigate("/reports")
     }
   ];
@@ -695,7 +695,7 @@ const Dashboard = () => {
                   <div key={index} className="flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors">
                     <div className="flex items-center gap-3 flex-1">
                       <div className="relative">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-medium text-xs">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-500 to-amber-500 flex items-center justify-center text-white font-medium text-xs">
                           {staff.avatar}
                         </div>
                         {index === 0 && (
@@ -735,7 +735,7 @@ const Dashboard = () => {
           <Card className="shadow-sm border-slate-200">
             <CardHeader className="border-b border-slate-200">
               <CardTitle className="flex items-center gap-2">
-                <Zap className="w-5 h-5 text-violet-600" />
+                <Zap className="w-5 h-5 text-primary" />
                 Quick Actions
               </CardTitle>
             </CardHeader>
@@ -847,7 +847,7 @@ const Dashboard = () => {
             <CreditCard className="w-5 h-5" />
             <span className="text-[10px]">POS</span>
           </Button>
-          <Button className="flex flex-col gap-1 py-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white" onClick={() => navigate('/appointments/new')}>
+          <Button className="flex flex-col gap-1 py-2 bg-gradient-to-r from-yellow-500 to-amber-500 text-foreground" onClick={() => navigate('/appointments/new')}>
             <Plus className="w-5 h-5" />
             <span className="text-[10px]">New</span>
           </Button>

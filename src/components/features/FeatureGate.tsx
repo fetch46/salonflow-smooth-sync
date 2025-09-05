@@ -59,7 +59,7 @@ export const FeatureGate: React.FC<FeatureGateProps> = ({
             </p>
             <Button 
               onClick={() => navigate('/settings?tab=subscription')}
-              className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
+              className="bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-700 hover:to-amber-700 text-foreground"
             >
               <Crown className="w-4 h-4 mr-2" />
               Upgrade Plan
