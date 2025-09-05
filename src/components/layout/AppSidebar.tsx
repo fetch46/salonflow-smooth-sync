@@ -386,29 +386,29 @@ export function AppSidebar() {
   }, [location.pathname, location.search]);
 
   return (
-    <Sidebar role="navigation" aria-label="Primary" variant="inset" collapsible="icon" className="border-r max-w-[260px] md:max-w-[280px]">
-      <SidebarContent>
-        <SidebarHeader className="px-2 pt-3">
+    <Sidebar role="navigation" aria-label="Primary" variant="inset" collapsible="icon" className="border-r border-sidebar-border bg-sidebar-background min-w-[240px] max-w-[240px] data-[collapsible=icon]:min-w-[52px] data-[collapsible=icon]:max-w-[52px]">
+      <SidebarContent className="px-0">
+        <SidebarHeader className="px-3 py-2 border-b border-sidebar-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-md bg-gradient-to-br from-blue-500 to-violet-600" />
-              <span className="font-semibold group-data-[collapsible=icon]:hidden text-sidebar-foreground">SalonFlow</span>
+              <div className="h-6 w-6 rounded-md bg-gradient-to-br from-primary to-accent flex-shrink-0" />
+              <span className="font-medium text-responsive-sm group-data-[collapsible=icon]:hidden text-sidebar-foreground truncate">SalonFlow</span>
             </div>
-            <SidebarTrigger className="hidden md:inline-flex" />
+            <SidebarTrigger className="h-6 w-6 hidden md:inline-flex" />
           </div>
         </SidebarHeader>
-        <SidebarGroup>
-          <SidebarGroupLabel className="flex items-center justify-between">
-            <span>Menu</span>
+        <SidebarGroup className="px-2 py-1">
+          <SidebarGroupLabel className="flex items-center justify-between px-1 py-1 text-responsive-xs font-medium text-sidebar-foreground/70 uppercase tracking-wide">
+            <span>Navigation</span>
             {(isTrialing && daysLeftInTrial !== null && daysLeftInTrial <= 7) && (
-              <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
-                <Crown className="w-2 h-2 mr-1" />
-                {daysLeftInTrial}d trial
+              <Badge variant="outline" className="text-[10px] h-4 px-1 bg-amber-50 text-amber-700 border-amber-200">
+                <Crown className="w-2 h-2 mr-0.5" />
+                {daysLeftInTrial}d
               </Badge>
             )}
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu className="gap-2">
+            <SidebarMenu className="gap-0.5">
               {menuItems.map((item) => {
                 const isAvailable = isMenuItemAvailable(item);
                 const hasSubItems = item.subItems && item.subItems.length > 0;
@@ -423,23 +423,22 @@ export function AppSidebar() {
                         aria-expanded={isOpen}
                         aria-controls={`submenu-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
                         aria-disabled={!isAvailable || undefined}
-                        className={`text-base ${!isAvailable ? 'opacity-50' : ''}`}
+                        className={`h-8 text-responsive-sm font-medium px-2 hover:bg-sidebar-accent/50 data-[active=true]:bg-sidebar-accent ${!isAvailable ? 'opacity-50' : ''}`}
                         tooltip={state === 'collapsed' ? item.title : undefined}
-                        size="lg"
                       >
-                        <item.icon className={`w-5 h-5 ${getIconColorForTitle(item.title)}`} />
-                        <span className="flex-1">{item.title}</span>
-                        <div className="flex items-center gap-1 group-data-[collapsible=icon]:hidden">
-                          {!isAvailable && <Lock className="w-3 h-3 text-slate-400" />}
+                        <item.icon className="icon-responsive-sm flex-shrink-0 text-sidebar-primary/70" />
+                        <span className="flex-1 text-left truncate">{item.title}</span>
+                        <div className="flex items-center gap-1 group-data-[collapsible=icon]:hidden flex-shrink-0">
+                          {!isAvailable && <Lock className="w-3 h-3 text-sidebar-primary/40" />}
                           {isOpen ? (
-                            <ChevronDown className="w-5 h-5" />
+                            <ChevronDown className="w-3 h-3 text-sidebar-primary/60" />
                           ) : (
-                            <ChevronRight className="w-5 h-5" />
+                            <ChevronRight className="w-3 h-3 text-sidebar-primary/60" />
                           )}
                         </div>
                       </SidebarMenuButton>
                       {isOpen && (
-                        <SidebarMenuSub id={`submenu-${item.title.toLowerCase().replace(/\s+/g, '-')}`} className="gap-2">
+                        <SidebarMenuSub id={`submenu-${item.title.toLowerCase().replace(/\s+/g, '-')}`} className="gap-0.5 ml-2 pl-2 border-l border-sidebar-border/50">
                           {item.subItems?.map((subItem) => {
                             // Owner and Admin roles have access to all sub-items
                             const subItemAvailable = ['owner', 'admin'].includes(organizationRole || '') || hasFeature(subItem.feature);
@@ -449,22 +448,22 @@ export function AppSidebar() {
                               <SidebarMenuSubItem key={subItem.title}>
                                 <SidebarMenuSubButton 
                                   asChild
-                                  className={`h-9 text-[15px] ${!subItemAvailable ? 'opacity-50 pointer-events-none' : ''}`}
+                                  className={`h-7 text-responsive-xs px-2 hover:bg-sidebar-accent/30 ${!subItemAvailable ? 'opacity-50 pointer-events-none' : ''}`}
                                   isActive={(item.title === 'Reports') ? (location.pathname === '/reports' && subItem.url.includes(`tab=${new URLSearchParams(location.search).get('tab') || 'overview'}`)) : (location.pathname === subItem.url)}
                                 >
                                   <NavLink
                                     to={subItem.url}
                                     className={({ isActive }) =>
-                                      `flex items-center gap-2 ${
-                                        isActive ? "bg-accent text-accent-foreground" : ""
+                                      `flex items-center gap-2 w-full ${
+                                        isActive ? "bg-sidebar-accent text-sidebar-primary font-medium" : "text-sidebar-foreground/80"
                                       }`
                                     }
                                     onClick={handleNavClick}
                                   >
-                                    <subItem.icon className={`w-5 h-5 ${getIconColorForTitle(subItem.title)}`} />
-                                    <span className="flex-1">{subItem.title}</span>
-                                    <div className="flex items-center gap-1">
-                                      {!subItemAvailable && <Lock className="w-3 h-3 text-slate-400" />}
+                                    <subItem.icon className="icon-responsive-xs flex-shrink-0 text-sidebar-primary/60" />
+                                    <span className="flex-1 text-left truncate">{subItem.title}</span>
+                                    <div className="flex items-center gap-1 flex-shrink-0">
+                                      {!subItemAvailable && <Lock className="w-2.5 h-2.5 text-sidebar-primary/40" />}
                                     </div>
                                   </NavLink>
                                 </SidebarMenuSubButton>
@@ -481,23 +480,21 @@ export function AppSidebar() {
                   <SidebarMenuItem key={item.title}>
                      <SidebarMenuButton 
                        asChild
-                       className={`text-base ${(!isAvailable && item.title !== 'Services') ? 'opacity-50 pointer-events-none' : ''}`}
+                       className={`h-8 text-responsive-sm font-medium px-2 hover:bg-sidebar-accent/50 ${(!isAvailable && item.title !== 'Services') ? 'opacity-50 pointer-events-none' : ''}`}
                                    tooltip={state === 'collapsed' ? item.title : undefined}
                                    isActive={location.pathname === item.url}
-                                   size="lg"
                                  >
                       <NavLink
                         to={item.url!}
                         className={({ isActive }) =>
-                          `flex items-center gap-2 ${
-                            isActive ? "bg-accent text-accent-foreground" : ""
+                          `flex items-center gap-2 w-full ${
+                            isActive ? "bg-sidebar-accent text-sidebar-primary font-medium" : "text-sidebar-foreground"
                           }`
                         }
                         onClick={handleNavClick}
                       >
-                        <item.icon className={`w-5 h-5 ${getIconColorForTitle(item.title)}`} />
-                        <span className="flex-1">{item.title}</span>
-                        <div className="flex items-center gap-1"></div>
+                        <item.icon className="icon-responsive-sm flex-shrink-0 text-sidebar-primary/70" />
+                        <span className="flex-1 text-left truncate">{item.title}</span>
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -508,26 +505,25 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {isSuperAdmin && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-violet-700">System Admin</SidebarGroupLabel>
+          <SidebarGroup className="px-2 py-1">
+            <SidebarGroupLabel className="px-1 py-1 text-responsive-xs font-medium text-accent/80 uppercase tracking-wide">System Admin</SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu className="gap-2">
+              <SidebarMenu className="gap-0.5">
                 <SidebarMenuItem>
                   <SidebarMenuButton 
                     asChild 
                     isActive={location.pathname === superAdminMenuItem.url}
-                    className="hover:bg-violet-50 data-[active=true]:bg-violet-100 data-[active=true]:text-violet-900 text-base"
+                    className="h-8 text-responsive-sm font-medium px-2 hover:bg-accent/30 data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
                     tooltip={state === 'collapsed' ? superAdminMenuItem.title : undefined}
-                    size="lg"
                   >
-                    <NavLink to={superAdminMenuItem.url} className={({ isActive }) => `flex items-center gap-2 ${isActive ? 'bg-accent text-accent-foreground' : ''}`} onClick={handleNavClick}>
-                      <superAdminMenuItem.icon className={`h-5 w-5 ${getIconColorForTitle(superAdminMenuItem.title)}`} />
-                      <span>{superAdminMenuItem.title}</span>
+                    <NavLink to={superAdminMenuItem.url} className={({ isActive }) => `flex items-center gap-2 w-full ${isActive ? 'text-accent-foreground' : 'text-sidebar-foreground'}`} onClick={handleNavClick}>
+                      <superAdminMenuItem.icon className="icon-responsive-sm flex-shrink-0 text-accent/70" />
+                      <span className="flex-1 text-left truncate">{superAdminMenuItem.title}</span>
                       <Badge 
                         variant="outline" 
-                        className="ml-auto bg-violet-50 text-violet-700 border-violet-200"
+                        className="h-4 px-1 text-[10px] bg-accent/10 text-accent border-accent/20 flex-shrink-0"
                       >
-                        <Crown className="w-2 h-2 mr-1" />
+                        <Crown className="w-2 h-2 mr-0.5" />
                         Admin
                       </Badge>
                     </NavLink>
@@ -537,13 +533,12 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     asChild
                     isActive={location.pathname === '/admin/cms'}
-                    className="hover:bg-violet-50 data-[active=true]:bg-violet-100 data-[active=true]:text-violet-900 text-base"
+                    className="h-8 text-responsive-sm font-medium px-2 hover:bg-accent/30 data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
                     tooltip={state === 'collapsed' ? 'Landing CMS' : undefined}
-                    size="lg"
                   >
-                    <NavLink to="/admin/cms" className={({ isActive }) => `flex items-center gap-2 ${isActive ? 'bg-accent text-accent-foreground' : ''}`} onClick={handleNavClick}>
-                      <Sparkles className={`h-5 w-5 ${getIconColorForTitle('Landing CMS')}`} />
-                      <span>Landing CMS</span>
+                    <NavLink to="/admin/cms" className={({ isActive }) => `flex items-center gap-2 w-full ${isActive ? 'text-accent-foreground' : 'text-sidebar-foreground'}`} onClick={handleNavClick}>
+                      <Sparkles className="icon-responsive-sm flex-shrink-0 text-accent/70" />
+                      <span className="flex-1 text-left truncate">Landing CMS</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -552,15 +547,15 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Subscription</SidebarGroupLabel>
+        <SidebarGroup className="px-2 py-1 mt-auto">
+          <SidebarGroupLabel className="px-1 py-1 text-responsive-xs font-medium text-sidebar-foreground/70 uppercase tracking-wide">Subscription</SidebarGroupLabel>
           <SidebarGroupContent>
-            <div className="px-2 py-3 space-y-2">
+            <div className="px-1 py-2 space-y-1.5">
               {subscriptionPlan && (
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Current Plan</span>
+                  <span className="text-responsive-xs text-sidebar-foreground/70">Plan</span>
                   <Badge 
-                    className={`text-xs ${
+                    className={`text-[10px] h-4 px-1 ${
                       subscriptionPlan.slug === 'enterprise' 
                         ? 'bg-amber-100 text-amber-800 border-amber-200'
                         : subscriptionPlan.slug === 'professional'
@@ -575,22 +570,22 @@ export function AppSidebar() {
               
               {isTrialing && daysLeftInTrial !== null && (
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Trial</span>
+                  <span className="text-responsive-xs text-sidebar-foreground/70">Trial</span>
                   <Badge 
                     variant="outline" 
-                    className={`text-xs ${
+                    className={`text-[10px] h-4 px-1 ${
                       daysLeftInTrial <= 3 
-                        ? 'bg-red-50 text-red-700 border-red-200'
-                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                        ? 'bg-destructive/10 text-destructive border-destructive/20'
+                        : 'bg-warning/10 text-warning border-warning/20'
                     }`}
                   >
-                    {daysLeftInTrial} days left
+                    {daysLeftInTrial}d left
                   </Badge>
                 </div>
               )}
 
               {/* Quick usage overview */}
-              <div className="space-y-1 pt-2 border-t">
+              <div className="space-y-1 pt-1.5 border-t border-sidebar-border/50">
                 {['clients', 'staff', 'services'].map((feature) => {
                   const access = getFeatureAccess(feature);
                   if (!access.enabled || access.unlimited) return null;
@@ -600,9 +595,9 @@ export function AppSidebar() {
                   
                   if (isNearLimit) {
                     return (
-                      <div key={feature} className="flex items-center justify-between text-xs">
-                        <span className="text-slate-600 capitalize">{feature}</span>
-                        <span className={`${percentage >= 100 ? 'text-red-600' : 'text-amber-600'}`}>
+                      <div key={feature} className="flex items-center justify-between text-[10px]">
+                        <span className="text-sidebar-foreground/60 capitalize">{feature}</span>
+                        <span className={`${percentage >= 100 ? 'text-destructive' : 'text-warning'}`}>
                           {access.usage}/{access.limit}
                         </span>
                       </div>
@@ -615,8 +610,8 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarFooter className="mt-auto">
-          <div className="text-xs text-muted-foreground px-2 py-2">v1.0.0</div>
+        <SidebarFooter className="p-2 border-t border-sidebar-border/50">
+          <div className="text-[10px] text-sidebar-foreground/50 px-1">v1.0.0</div>
         </SidebarFooter>
       </SidebarContent>
       <SidebarRail />
