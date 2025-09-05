@@ -84,6 +84,7 @@ import { Database } from "@/integrations/supabase/types";
 import { useNavigate } from "react-router-dom";
 import { downloadInvoicePDF } from "@/utils/invoicePdf";
 import { useRegionalSettings } from "@/hooks/useRegionalSettings";
+import PageHeader from "@/components/layout/PageHeader";
 
 interface Invoice {
   id: string;
@@ -562,62 +563,52 @@ export default function Invoices() {
 
   return (
     <div className="flex-1 space-y-6 p-6 bg-slate-50/30 min-h-screen">
-      {/* Modern Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-xl shadow-lg">
-              <Receipt className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">Invoice Management</h1>
-              <p className="text-slate-600">Create, track and manage all your invoices</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <Button 
-            variant="outline" 
-            onClick={refreshData}
-            disabled={refreshing}
-            className="border-slate-300 hover:bg-slate-50"
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="border-slate-300 hover:bg-slate-50">
-                <Download className="w-4 h-4 mr-2" />
-                Export
-                <ChevronDown className="w-4 h-4 ml-2" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Export Options</DropdownMenuLabel>
-              <DropdownMenuItem>
-                <FileText className="w-4 h-4 mr-2" />
-                Export to PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <FileCheck className="w-4 h-4 mr-2" />
-                Export to Excel
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <BarChart3 className="w-4 h-4 mr-2" />
-                Export Report
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
-          <Button onClick={() => navigate('/invoices/new')} className="shadow-lg">
-            <Plus className="w-4 h-4 mr-2" />
-            New Invoice
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Invoice Management"
+        subtitle="Create, track and manage all your invoices"
+        icon={<Receipt className="h-5 w-5" />}
+        actions={
+          <>
+            <Button 
+              variant="outline"
+              onClick={refreshData}
+              disabled={refreshing}
+              className="btn-compact"
+            >
+              <RefreshCw className={`w-4 h-4 mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="btn-compact">
+                  <Download className="w-4 h-4 mr-1.5" />
+                  Export
+                  <ChevronDown className="w-4 h-4 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>Export Options</DropdownMenuLabel>
+                <DropdownMenuItem>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Export to PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <FileCheck className="w-4 h-4 mr-2" />
+                  Export to Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  Export Report
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button onClick={() => navigate('/invoices/new')} className="btn-compact">
+              <Plus className="w-4 h-4 mr-1.5" />
+              New Invoice
+            </Button>
+          </>
+        }
+      />
 
       {/* Statistics Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
