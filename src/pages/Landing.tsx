@@ -489,18 +489,22 @@ const Landing = () => {
 
           <div className="flex justify-center mb-8">
             <div className="inline-flex rounded-lg border bg-card p-1">
-              <button
+              <Button
+                type="button"
+                variant="ghost"
                 className={`px-4 py-2 text-sm rounded-md ${billing === 'monthly' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
                 onClick={() => setBilling('monthly')}
               >
                 {settings?.billing_monthly_label || 'Monthly'}
-              </button>
-              <button
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
                 className={`px-4 py-2 text-sm rounded-md ${billing === 'yearly' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
                 onClick={() => setBilling('yearly')}
               >
                 {settings?.billing_yearly_label || 'Yearly'}
-              </button>
+              </Button>
             </div>
           </div>
           

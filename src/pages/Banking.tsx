@@ -434,17 +434,31 @@ export default function Banking() {
             <form onSubmit={doTransfer} className="space-y-3">
               <div className="space-y-1">
                 <div className="text-sm text-slate-600">From</div>
-                <select className="border rounded px-3 py-2 w-full" value={transferFromId} onChange={(e) => setTransferFromId(e.target.value)}>
-                  <option value="">Select account</option>
-                  {accounts.map(a => (<option key={a.id} value={a.id}>{a.account_code} · {a.account_name}</option>))}
-                </select>
+                <Select value={transferFromId} onValueChange={(v) => setTransferFromId(v)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Select account</SelectItem>
+                    {accounts.map(a => (
+                      <SelectItem key={a.id} value={a.id}>{a.account_code} · {a.account_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1">
                 <div className="text-sm text-slate-600">To</div>
-                <select className="border rounded px-3 py-2 w-full" value={transferToId} onChange={(e) => setTransferToId(e.target.value)}>
-                  <option value="">Select account</option>
-                  {accounts.map(a => (<option key={a.id} value={a.id}>{a.account_code} · {a.account_name}</option>))}
-                </select>
+                <Select value={transferToId} onValueChange={(v) => setTransferToId(v)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Select account</SelectItem>
+                    {accounts.map(a => (
+                      <SelectItem key={a.id} value={a.id}>{a.account_code} · {a.account_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -501,7 +515,7 @@ export default function Banking() {
                     unreconciled.map((p) => (
                       <TableRow key={p.id}>
                         <TableCell>
-                          <input type="checkbox" checked={selectedPaymentIds.includes(p.id)} onChange={() => togglePayment(p.id)} />
+                          <Checkbox checked={selectedPaymentIds.includes(p.id)} onCheckedChange={() => togglePayment(p.id)} />
                         </TableCell>
                         <TableCell className="whitespace-nowrap">{String(p.date || '').slice(0,10)}</TableCell>
                         <TableCell className="max-w-[420px] truncate">{p.referenceType ? `${p.referenceType} #${p.referenceId || ''}` : 'Payment'}</TableCell>

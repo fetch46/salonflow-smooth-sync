@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "./button";
 
 export type Step = {
 	id: string;
@@ -23,7 +24,9 @@ export function Stepper({ steps, currentStepId, className, onStepClick }: Steppe
 				const isComplete = steps.findIndex(s => s.id === currentStepId) > index;
 				return (
 					<li key={step.id} className="flex items-start gap-3">
-						<button
+						<Button
+							variant="ghost"
+							size="icon"
 							onClick={() => onStepClick?.(step.id)}
 							className={cn(
 								"flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs transition-colors",
@@ -33,7 +36,7 @@ export function Stepper({ steps, currentStepId, className, onStepClick }: Steppe
 							aria-label={`Step ${index + 1}: ${step.title}`}
 						>
 							{isComplete ? <Check className="h-4 w-4" /> : index + 1}
-						</button>
+						</Button>
 						<div className="space-y-0.5">
 							<div className={cn("text-sm font-medium leading-none", isActive ? "text-foreground" : "text-muted-foreground")}>{step.title}</div>
 							{step.description ? (

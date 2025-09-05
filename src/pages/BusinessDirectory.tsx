@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Star, MapPin, Search } from 'lucide-react';
 
 interface BusinessListing {
@@ -73,12 +74,17 @@ export default function BusinessDirectory() {
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Search by name, service, or location" className="pl-9" value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
-            <select className="border rounded-md px-3 py-2 bg-background" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-              <option value="">All categories</option>
-              {uniqueCategories.map((c) => (
-                <option key={c} value={c!}>{c}</option>
-              ))}
-            </select>
+            <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v)}>
+              <SelectTrigger className="bg-background">
+                <SelectValue placeholder="All categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All categories</SelectItem>
+                {uniqueCategories.map((c) => (
+                  <SelectItem key={c} value={String(c)}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Input placeholder="Filter by location (e.g., New York)" value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} />
           </div>
         </div>

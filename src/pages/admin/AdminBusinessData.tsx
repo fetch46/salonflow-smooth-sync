@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Users, Calendar, Briefcase, Package, ShoppingCart, DollarSign, 
   FileText, Truck, Calculator, TrendingUp, BarChart3, Building, Search 
@@ -351,34 +352,35 @@ const AdminBusinessData = () => {
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
                   <label className="text-sm font-medium mb-2 block">Select Table</label>
-                  <select 
-                    className="w-full p-2 border rounded-md"
-                    value={selectedTable}
-                    onChange={(e) => setSelectedTable(e.target.value)}
-                  >
-                    <option value="">Choose a table...</option>
-                    {businessTables.map(table => (
-                      <option key={table.name} value={table.name}>
-                        {table.label}
-                      </option>
-                    ))}
-                  </select>
+                  <Select value={selectedTable} onValueChange={(v) => setSelectedTable(v)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Choose a table..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {businessTables.map(table => (
+                        <SelectItem key={table.name} value={table.name}>
+                          {table.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <div className="flex-1">
                   <label className="text-sm font-medium mb-2 block">Filter by Organization</label>
-                  <select 
-                    className="w-full p-2 border rounded-md"
-                    value={selectedOrganization}
-                    onChange={(e) => setSelectedOrganization(e.target.value)}
-                  >
-                    <option value="">All Organizations</option>
-                    {organizations.map(org => (
-                      <option key={org.id} value={org.id}>
-                        {org.name}
-                      </option>
-                    ))}
-                  </select>
+                  <Select value={selectedOrganization} onValueChange={(v) => setSelectedOrganization(v)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="All Organizations" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All Organizations</SelectItem>
+                      {organizations.map(org => (
+                        <SelectItem key={org.id} value={org.id}>
+                          {org.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="flex-1">

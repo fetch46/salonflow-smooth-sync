@@ -831,12 +831,17 @@ export default function Purchases() {
           <form onSubmit={submitPay} className="space-y-4">
             <div className="space-y-2">
               <Label>Account</Label>
-              <select className="border rounded px-3 py-2 w-full" value={selectedAccountId} onChange={(e) => setSelectedAccountId(e.target.value)}>
-                <option value="">Select account</option>
-                {accounts.map(acc => (
-                  <option key={acc.id} value={acc.id}>{acc.account_code} · {acc.account_name}</option>
-                ))}
-              </select>
+              <Select value={selectedAccountId} onValueChange={(v) => setSelectedAccountId(v)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select account" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Select account</SelectItem>
+                  {accounts.map(acc => (
+                    <SelectItem key={acc.id} value={acc.id}>{acc.account_code} · {acc.account_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">

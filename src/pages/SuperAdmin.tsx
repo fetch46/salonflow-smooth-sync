@@ -1132,7 +1132,7 @@ export default function SuperAdmin() {
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="new-staff-confirm">Confirm Email</Label>
                     <div className="flex items-center gap-2">
-                      <input id="new-staff-confirm" type="checkbox" checked={newStaffConfirm} onChange={(e) => setNewStaffConfirm(e.target.checked)} />
+                      <Checkbox id="new-staff-confirm" checked={newStaffConfirm} onCheckedChange={(checked) => setNewStaffConfirm(Boolean(checked))} />
                       <span className="text-sm text-muted-foreground">Mark as confirmed</span>
                     </div>
                   </div>

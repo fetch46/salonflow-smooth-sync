@@ -306,8 +306,9 @@ const SidebarRail = React.forwardRef<
   const { toggleSidebar } = useSidebar()
 
   return (
-    <button
+    <Button
       ref={ref}
+      variant="ghost"
       data-sidebar="rail"
       aria-label="Toggle Sidebar"
       tabIndex={-1}

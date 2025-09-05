@@ -1062,19 +1062,21 @@ phone: "",
                   </div>
                   <div className="space-y-1">
                     {filteredRoles.map((r) => (
-                      <button
+                      <Button
+                        type="button"
+                        variant="outline"
                         key={r.id}
                         onClick={() => setSelectedRoleId(r.id)}
-                        className={`w-full text-left rounded-md border px-3 py-2 hover:bg-muted ${selectedRoleId === r.id ? 'bg-muted' : ''}`}
+                        className={`w-full justify-start text-left px-3 py-2 hover:bg-muted ${selectedRoleId === r.id ? 'bg-muted' : ''}`}
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between w-full">
                           <div className="flex items-center gap-2">
                             {getRoleIcon(r.name)}
                             <span className="font-medium">{r.name}</span>
                           </div>
                           <Badge variant="outline">{r.users_count} users</Badge>
                         </div>
-                      </button>
+                      </Button>
                     ))}
                     {filteredRoles.length === 0 && (
                       <div className="text-sm text-muted-foreground">No roles found</div>

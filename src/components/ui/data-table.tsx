@@ -54,10 +54,10 @@ export function DataTable<T>({ columns, data, pageSize = 10, className }: DataTa
 						<TableRow>
 							{columns.map(col => (
 								<TableHead key={col.id} className={col.className}>
-									<button className="inline-flex items-center gap-1" onClick={() => toggleSort(col.id)}>
+									<Button variant="ghost" size="sm" className="inline-flex items-center gap-1 h-7 px-2" onClick={() => toggleSort(col.id)}>
 										{col.header}
 										<ArrowUpDown className="ml-1 h-3 w-3 opacity-60" />
-									</button>
+									</Button>
 								</TableHead>
 							))}
 						</TableRow>
