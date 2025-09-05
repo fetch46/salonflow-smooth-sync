@@ -423,10 +423,10 @@ export function AppSidebar() {
                         aria-expanded={isOpen}
                         aria-controls={`submenu-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
                         aria-disabled={!isAvailable || undefined}
-                        className={`h-8 text-responsive-sm font-medium px-2 hover:bg-sidebar-accent/50 data-[active=true]:bg-sidebar-accent ${!isAvailable ? 'opacity-50' : ''}`}
+                        className={`h-9 text-responsive-base font-medium px-3 hover:bg-sidebar-accent/50 data-[active=true]:bg-sidebar-accent ${!isAvailable ? 'opacity-50' : ''}`}
                         tooltip={state === 'collapsed' ? item.title : undefined}
                       >
-                        <item.icon className="icon-responsive-sm flex-shrink-0 text-sidebar-primary/70" />
+                        <item.icon className="icon-responsive-md flex-shrink-0 text-sidebar-primary/70" />
                         <span className="flex-1 text-left truncate">{item.title}</span>
                         <div className="flex items-center gap-1 group-data-[collapsible=icon]:hidden flex-shrink-0">
                           {!isAvailable && <Lock className="w-3 h-3 text-sidebar-primary/40" />}
@@ -448,7 +448,7 @@ export function AppSidebar() {
                               <SidebarMenuSubItem key={subItem.title}>
                                 <SidebarMenuSubButton 
                                   asChild
-                                  className={`h-7 text-responsive-xs px-2 hover:bg-sidebar-accent/30 ${!subItemAvailable ? 'opacity-50 pointer-events-none' : ''}`}
+                                  className={`h-8 text-responsive-sm px-3 hover:bg-sidebar-accent/30 ${!subItemAvailable ? 'opacity-50 pointer-events-none' : ''}`}
                                   isActive={(item.title === 'Reports') ? (location.pathname === '/reports' && subItem.url.includes(`tab=${new URLSearchParams(location.search).get('tab') || 'overview'}`)) : (location.pathname === subItem.url)}
                                 >
                                   <NavLink
@@ -460,7 +460,7 @@ export function AppSidebar() {
                                     }
                                     onClick={handleNavClick}
                                   >
-                                    <subItem.icon className="icon-responsive-xs flex-shrink-0 text-sidebar-primary/60" />
+                                    <subItem.icon className="icon-responsive-sm flex-shrink-0 text-sidebar-primary/60" />
                                     <span className="flex-1 text-left truncate">{subItem.title}</span>
                                     <div className="flex items-center gap-1 flex-shrink-0">
                                       {!subItemAvailable && <Lock className="w-2.5 h-2.5 text-sidebar-primary/40" />}
@@ -480,7 +480,7 @@ export function AppSidebar() {
                   <SidebarMenuItem key={item.title}>
                      <SidebarMenuButton 
                        asChild
-                       className={`h-8 text-responsive-sm font-medium px-2 hover:bg-sidebar-accent/50 ${(!isAvailable && item.title !== 'Services') ? 'opacity-50 pointer-events-none' : ''}`}
+                       className={`h-9 text-responsive-base font-medium px-3 hover:bg-sidebar-accent/50 ${(!isAvailable && item.title !== 'Services') ? 'opacity-50 pointer-events-none' : ''}`}
                                    tooltip={state === 'collapsed' ? item.title : undefined}
                                    isActive={location.pathname === item.url}
                                  >
@@ -493,7 +493,7 @@ export function AppSidebar() {
                         }
                         onClick={handleNavClick}
                       >
-                        <item.icon className="icon-responsive-sm flex-shrink-0 text-sidebar-primary/70" />
+                        <item.icon className="icon-responsive-md flex-shrink-0 text-sidebar-primary/70" />
                         <span className="flex-1 text-left truncate">{item.title}</span>
                       </NavLink>
                     </SidebarMenuButton>
@@ -513,11 +513,11 @@ export function AppSidebar() {
                   <SidebarMenuButton 
                     asChild 
                     isActive={location.pathname === superAdminMenuItem.url}
-                    className="h-8 text-responsive-sm font-medium px-2 hover:bg-accent/30 data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
+                    className="h-9 text-responsive-base font-medium px-3 hover:bg-accent/30 data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
                     tooltip={state === 'collapsed' ? superAdminMenuItem.title : undefined}
                   >
                     <NavLink to={superAdminMenuItem.url} className={({ isActive }) => `flex items-center gap-2 w-full ${isActive ? 'text-accent-foreground' : 'text-sidebar-foreground'}`} onClick={handleNavClick}>
-                      <superAdminMenuItem.icon className="icon-responsive-sm flex-shrink-0 text-accent/70" />
+                      <superAdminMenuItem.icon className="icon-responsive-md flex-shrink-0 text-accent/70" />
                       <span className="flex-1 text-left truncate">{superAdminMenuItem.title}</span>
                       <Badge 
                         variant="outline" 
@@ -533,11 +533,11 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     asChild
                     isActive={location.pathname === '/admin/cms'}
-                    className="h-8 text-responsive-sm font-medium px-2 hover:bg-accent/30 data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
+                    className="h-9 text-responsive-base font-medium px-3 hover:bg-accent/30 data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
                     tooltip={state === 'collapsed' ? 'Landing CMS' : undefined}
                   >
                     <NavLink to="/admin/cms" className={({ isActive }) => `flex items-center gap-2 w-full ${isActive ? 'text-accent-foreground' : 'text-sidebar-foreground'}`} onClick={handleNavClick}>
-                      <Sparkles className="icon-responsive-sm flex-shrink-0 text-accent/70" />
+                      <Sparkles className="icon-responsive-md flex-shrink-0 text-accent/70" />
                       <span className="flex-1 text-left truncate">Landing CMS</span>
                     </NavLink>
                   </SidebarMenuButton>
