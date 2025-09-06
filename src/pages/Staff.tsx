@@ -1117,7 +1117,67 @@ export default function Staff() {
                                       }}
                                     >
                                       <Send className="w-4 h-4 mr-2" />
-                                      Send Invitation
+                                      Send Login Invitation
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={async () => {
+                                        if (!member.email) {
+                                          toast({ title: "Email required", description: "Staff must have an email to create user account.", variant: "destructive" });
+                                          return;
+                                        }
+                                        const password = prompt('Set initial password for ' + member.full_name + ' (minimum 8 characters)');
+                                        if (!password || password.length < 8) {
+                                          toast({ title: "Invalid password", description: "Password must be at least 8 characters long.", variant: "destructive" });
+                                          return;
+                                        }
+
+                                        try {
+                                          // Create user account
+                                          const { data: authData, error: authError } = await supabase.auth.signUp({
+                                            email: member.email,
+                                            password,
+                                            options: {
+                                              emailRedirectTo: `${window.location.origin}/`,
+                                              data: {
+                                                full_name: member.full_name,
+                                                role: 'staff',
+                                              }
+                                            }
+                                          });
+
+                                          if (authError) throw authError;
+
+                                          if (authData.user && organization?.id) {
+                                            // Add user to organization
+                                            const { error: orgError } = await supabase
+                                              .from("organization_users")
+                                              .insert({
+                                                organization_id: organization.id,
+                                                user_id: authData.user.id,
+                                                role: 'staff',
+                                                is_active: true,
+                                              });
+
+                                            if (orgError) throw orgError;
+
+                                            toast({ 
+                                              title: "User account created", 
+                                              description: `${member.full_name} can now log in with their email and password.` 
+                                            });
+                                            fetchStaffRoles();
+                                          }
+                                        } catch (error: any) {
+                                          console.error("Error creating user:", error);
+                                          if (error.message?.includes('User already registered')) {
+                                            toast({ title: "User exists", description: "A user with this email already exists.", variant: "destructive" });
+                                          } else {
+                                            toast({ title: "Error", description: "Failed to create user account", variant: "destructive" });
+                                          }
+                                        }
+                                      }}
+                                    >
+                                      <KeyRound className="w-4 h-4 mr-2" />
+                                      Create User Account
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={async () => {

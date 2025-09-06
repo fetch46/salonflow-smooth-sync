@@ -231,7 +231,7 @@ const menuItems: MenuItem[] = [
         feature: "reports",
       },
       {
-        title: "Staff",
+        title: "Users",
         url: "/staff",
         icon: Users,
         feature: "staff",
@@ -317,7 +317,7 @@ export function AppSidebar() {
       case 'General': return 'text-slate-600';
       case 'Regional': return 'text-purple-600';
       case 'Profile': return 'text-rose-600';
-      case 'Staff': return 'text-indigo-600';
+      case 'Users': return 'text-indigo-600';
       case 'Help & Support': return 'text-cyan-600';
       case 'Super Admin': return 'text-amber-700';
       case 'Landing CMS': return 'text-fuchsia-600';
