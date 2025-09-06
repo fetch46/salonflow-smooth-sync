@@ -149,7 +149,7 @@ export function JobCardForm({ clientId, appointmentId, onSuccess }: JobCardFormP
         })
       };
 
-      const { data: created, error } = await supabase.from("job_cards").insert(jobCardData).select().single();
+      const { data: created, error } = await supabase.from("job_cards").insert(jobCardData).select().maybeSingle();
       
       if (error) throw error;
 

@@ -152,7 +152,7 @@ export default function ProductForm() {
           type: 'good',
         })
         .select('id')
-        .single();
+         .maybeSingle();
       if (error) {
         const code = (error as any)?.code;
         const message = (error as any)?.message || String(error);
@@ -201,7 +201,7 @@ export default function ProductForm() {
             .from('warehouses')
             .select('location_id')
             .eq('id', formData.opening_stock_warehouse_id)
-            .single();
+            .maybeSingle();
           const locationId = warehouseData?.location_id || '00000000-0000-0000-0000-000000000000';
           await supabase.from('inventory_levels').upsert({
             item_id: newItemId,

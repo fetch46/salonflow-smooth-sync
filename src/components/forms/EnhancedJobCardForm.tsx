@@ -153,7 +153,7 @@ export const EnhancedJobCardForm: React.FC<EnhancedJobCardFormProps> = ({
         .from('job_cards')
         .insert(jobCardData)
         .select('*, job_number')
-        .single();
+        .maybeSingle();
 
       if (jobCardError) throw jobCardError;
 

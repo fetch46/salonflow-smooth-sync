@@ -220,7 +220,7 @@ export default function ExpenseForm() {
           .update(expenseData)
           .eq("id", id)
           .select("*")
-          .single();
+          .maybeSingle();
         if (error) throw error;
         saved = (updated as any) as ExpenseRecord;
       } else {
@@ -228,7 +228,7 @@ export default function ExpenseForm() {
           .from("expenses")
           .insert([expenseData])
           .select("*")
-          .single();
+          .maybeSingle();
         if (error) throw error;
         saved = (created as any) as ExpenseRecord;
       }

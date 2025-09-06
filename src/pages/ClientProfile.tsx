@@ -93,7 +93,7 @@ export default function ClientProfile() {
           preferred_technician:preferred_technician_id (full_name)
         `)
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
       if (clientError) throw clientError;
       setClient(clientData);

@@ -639,13 +639,13 @@ export default function Inventory() {
               if (is_activeParsed !== null) updatePayload.is_active = is_activeParsed;
               updatePayload.type = 'good';
             }
-            const { data, error } = await supabase.from('inventory_items').update(updatePayload).eq('id', existing.id).select('id').single();
+            const { data, error } = await supabase.from('inventory_items').update(updatePayload).eq('id', existing.id).select('id').maybeSingle();
             if (error) throw error;
             itemId = data.id;
             changed++;
           } else {
             // Create new item
-            const { data, error } = await supabase.from('inventory_items').insert(baseCreatePayload).select('id').single();
+            const { data, error } = await supabase.from('inventory_items').insert(baseCreatePayload).select('id').maybeSingle();
             if (error) throw error;
             itemId = data.id;
             created++;
@@ -704,7 +704,7 @@ export default function Inventory() {
             .from('warehouses')
             .select('location_id')
             .eq('id', whId)
-            .single();
+             .maybeSingle();
           const locationId = warehouseData?.location_id || '00000000-0000-0000-0000-000000000000';
           await supabase.from('inventory_levels').upsert({
             item_id: itemId,

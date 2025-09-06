@@ -46,7 +46,7 @@ export default function ProductEdit() {
 				.from("inventory_items")
 				.select("id, name, description, sku, unit, reorder_point, cost_price, selling_price")
 				.eq("id", id)
-				.single();
+				.maybeSingle();
 			if (error) throw error;
 			if (item) {
 				setFormData((prev) => ({
