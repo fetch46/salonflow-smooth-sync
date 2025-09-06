@@ -386,7 +386,7 @@ export function AppSidebar() {
   }, [location.pathname, location.search]);
 
   return (
-    <Sidebar role="navigation" aria-label="Primary" variant="inset" collapsible="icon" className="border-r border-sidebar-border bg-sidebar-background min-w-[300px] max-w-[300px] data-[collapsible=icon]:min-w-[52px] data-[collapsible=icon]:max-w-[52px]">
+    <Sidebar role="navigation" aria-label="Primary" variant="inset" collapsible="icon" className="border-r border-sidebar-border bg-sidebar-background min-w-[240px] max-w-[240px] data-[collapsible=icon]:min-w-[52px] data-[collapsible=icon]:max-w-[52px]">
       <SidebarContent className="px-0">
         <SidebarHeader className="px-3 py-2 border-b border-sidebar-border">
           <div className="flex items-center justify-between">
