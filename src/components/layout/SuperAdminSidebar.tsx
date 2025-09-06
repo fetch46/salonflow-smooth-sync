@@ -154,7 +154,7 @@ export function SuperAdminSidebar() {
   }, [location.pathname]);
 
   return (
-    <Sidebar variant="inset" collapsible="icon" className="border-r max-w-[260px] md:max-w-[280px]">
+    <Sidebar variant="inset" collapsible="icon" className="border-r min-w-[300px] max-w-[300px] data-[collapsible=icon]:min-w-[52px] data-[collapsible=icon]:max-w-[52px]">
       <SidebarContent>
         <SidebarHeader className="px-2 pt-3">
           <div className="flex items-center justify-between">
