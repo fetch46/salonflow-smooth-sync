@@ -31,7 +31,12 @@ router.get('/trial-balance', requirePermission('REPORTS','VIEW'), async (req, re
 
     const rows = accounts.map((a: any) => {
       const s = map.get(a.id) || { debit: 0, credit: 0 };
-      const balance = s.debit - s.credit;
+      // Balance formula by category:
+      // Assets/Expenses: balance = debits - credits
+      // Liabilities/Equity/Income: balance = credits - debits
+      const cat = a.category as string;
+      const isDebitNature = cat === 'ASSET' || cat === 'EXPENSE';
+      const balance = isDebitNature ? (s.debit - s.credit) : (s.credit - s.debit);
       return { accountId: a.id, accountCode: a.code, accountName: a.name, debit: s.debit, credit: s.credit, balance };
     });
 
@@ -93,10 +98,20 @@ router.get('/balance-sheet', requirePermission('REPORTS','VIEW'), async (req, re
     let equity = 0;
 
     for (const a of accounts as any[]) {
-      const bal = balances.get(a.id) || 0;
+      const s = { debit: 0, credit: 0 };
+      // Accumulate sums for this account
+      for (const l of lines as any[]) {
+        if (l.accountId === a.id) {
+          s.debit += Number(l.debit || 0);
+          s.credit += Number(l.credit || 0);
+        }
+      }
+      const cat = a.category as string;
+      const isDebitNature = cat === 'ASSET' || cat === 'EXPENSE';
+      const bal = isDebitNature ? (s.debit - s.credit) : (s.credit - s.debit);
       if (a.category === 'ASSET') assets += bal;
-      if (a.category === 'LIABILITY') liabilities += -bal;
-      if (a.category === 'EQUITY') equity += -bal;
+      if (a.category === 'LIABILITY') liabilities += bal;
+      if (a.category === 'EQUITY' || a.category === 'INCOME') equity += bal; // treat income as increasing equity
     }
 
     res.json({ assets, liabilities, equity, balanced: Math.abs(assets - liabilities - equity) < 1e-6 });

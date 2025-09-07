@@ -1140,7 +1140,7 @@ export default function Invoices() {
                   </>
                                  ) : (
                    <div className="flex gap-2">
-                      <Button variant="default" onClick={() => { if (selectedInvoice) navigate(`/payments-received?invoiceId=${selectedInvoice.id}&action=record`); }}>
+                      <Button variant="default" onClick={() => { if (selectedInvoice) navigate(`/payments/received/new?invoiceId=${selectedInvoice.id}`); }}>
                         <DollarSign className="w-4 h-4 mr-2" />
                         Record Payment
                       </Button>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ interface InvoiceLiteOption {
   id: string;
   invoice_number: string;
   customer_id: string | null;
+  customer_name?: string;
   total_amount: number;
   amount_paid: number;
   status: string;
@@ -28,6 +29,7 @@ interface InvoiceLiteOption {
 
 export default function PaymentReceivedNew() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { organization } = useSaas();
   const { format: formatCurrency } = useOrganizationCurrency();
 
@@ -47,6 +49,7 @@ export default function PaymentReceivedNew() {
     reference: "",
     payment_date: new Date().toISOString().slice(0, 10),
     account_id: "",
+    customer_name: "",
   });
 
   useEffect(() => {
@@ -128,7 +131,10 @@ export default function PaymentReceivedNew() {
   const onSelectInvoice = (id: string) => {
     setSelectedInvoiceId(id);
     const outstanding = outstandingById[id] || 0;
-    setForm((prev) => ({ ...prev, amount: String(outstanding > 0 ? outstanding.toFixed(2) : "") }));
+    // Prefill amount and customer name if available
+    const selected = invoiceOptions.find((x) => x.id === id);
+    const customerName = (selected as any)?.customer_name || '';
+    setForm((prev) => ({ ...prev, amount: String(outstanding > 0 ? outstanding.toFixed(2) : ""), customer_name: customerName }));
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -142,6 +148,11 @@ export default function PaymentReceivedNew() {
     const amt = parseFloat(form.amount) || 0;
     if (amt <= 0 || (outstanding > 0 && amt > outstanding + 0.0001)) {
       toast.error("Invalid amount");
+      return;
+    }
+    // Enforce M-Pesa reference
+    if (String(form.method).toLowerCase() === 'mpesa' && !form.reference.trim()) {
+      toast.error('Reference is required for M-Pesa payments');
       return;
     }
     try {
@@ -284,6 +295,10 @@ export default function PaymentReceivedNew() {
           </CardHeader>
           <CardContent>
             <form onSubmit={submit} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Customer</Label>
+                <Input value={form.customer_name} onChange={(e) => setForm((prev) => ({ ...prev, customer_name: e.target.value }))} placeholder="Customer name" />
+              </div>
               <div className="space-y-2">
                 <Label>Amount</Label>
                 <Input
