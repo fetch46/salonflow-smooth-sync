@@ -422,12 +422,12 @@ export default function InvoiceCreate() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
               <div className="space-y-2">
                 <Label htmlFor="due_date">Invoice Date</Label>
-                <Input className="w-48" id="due_date" type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} />
+                <Input className="w-full" id="due_date" type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="location_id">Location *</Label>
                 <Select value={formData.location_id} onValueChange={(v) => setFormData({ ...formData, location_id: v })}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder={locations.length ? 'Select a location' : 'No locations found'} />
                   </SelectTrigger>
                   <SelectContent>
