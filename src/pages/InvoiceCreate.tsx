@@ -582,7 +582,7 @@ export default function InvoiceCreate() {
               <div className="space-y-2">
                 <Label className="flex items-center space-x-2">
                   <input type="checkbox" checked={applyTax} onChange={(e) => setApplyTax(e.target.checked)} />
-                  <span>Apply Tax ({(orgTaxRate * 100).toFixed(1)}%)</span>
+                  <span>Apply Tax ({Number(orgTaxRate || 0).toFixed(2)}%)</span>
                 </Label>
               </div>
             </div>
@@ -661,7 +661,7 @@ export default function InvoiceCreate() {
                     </div>
                     {applyTax && (
                       <div className="flex justify-between">
-                        <span>Tax ({(orgTaxRate * 100).toFixed(1)}%):</span>
+                        <span>Tax ({Number(orgTaxRate || 0).toFixed(2)}%):</span>
                         <span>{symbol}{totals.taxAmount.toFixed(2)}</span>
                       </div>
                     )}

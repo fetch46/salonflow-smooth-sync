@@ -559,7 +559,7 @@ export default function InvoiceEdit() {
                     </div>
                     {applyTax && (
                       <div className="flex justify-between">
-                        <span>Tax ({orgTaxRate}%):</span>
+                        <span>Tax ({Number(orgTaxRate || 0).toFixed(2)}%):</span>
                         <span>{symbol}{totals.taxAmount.toFixed(2)}</span>
                       </div>
                     )}

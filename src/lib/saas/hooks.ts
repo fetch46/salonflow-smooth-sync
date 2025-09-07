@@ -329,9 +329,12 @@ export const useOrganizationCurrency = () => {
  */
 export const useOrganizationTaxRate = () => {
   const { organization } = useSaas()
-  
+  const raw = (organization?.settings as any)?.tax_rate_percent
+  const parsed = typeof raw === 'number' ? raw : typeof raw === 'string' ? parseFloat(raw) : 0
+
   return {
-    taxRate: 0.1, // 10% default
+    // Return tax rate as a percent value (e.g., 8.5 for 8.5%)
+    taxRate: Number.isFinite(parsed) ? parsed : 0,
     loading: false,
   }
 }
