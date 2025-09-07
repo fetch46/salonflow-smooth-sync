@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Users, Receipt, Trash2, Plus, DollarSign } from "lucide-react";
+import { Users, Receipt, Trash2, Plus } from "lucide-react";
+import { createInvoiceWithFallback, getInvoicesWithFallback, getInvoiceItemsWithFallback } from "@/utils/mockDatabase";
 import { useOrganizationCurrency, useOrganizationTaxRate, useOrganization } from "@/lib/saas/hooks";
 import { useTransactionNumbers } from "@/hooks/useTransactionNumbers";
 
@@ -72,14 +73,7 @@ export default function InvoiceCreate() {
 
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
   const [applyTax, setApplyTax] = useState<boolean>(true);
-  const [receivePayment, setReceivePayment] = useState<boolean>(false);
-  const [paymentForm, setPaymentForm] = useState<{ method: string; account_id: string; reference: string; amount: string }>({
-    method: "cash",
-    account_id: "",
-    reference: "",
-    amount: "",
-  });
-  const [assetAccounts, setAssetAccounts] = useState<Array<{ id: string; account_code?: string; account_name: string }>>([]);
+  
 
   useEffect(() => {
     (async () => {
@@ -256,32 +250,7 @@ export default function InvoiceCreate() {
     })();
   }, [searchParams]);
 
-  // Load deposit accounts for payment receive form
-  useEffect(() => {
-    (async () => {
-      try {
-        if (!organization?.id) { setAssetAccounts([]); return; }
-        const { data } = await supabase
-          .from("accounts")
-          .select("id, account_code, account_name, account_type, account_subtype")
-          .eq("organization_id", organization.id)
-          .eq("account_type", "Asset")
-          .order("account_code", { ascending: true });
-        const filtered = (data || []).filter((a: any) => a.account_type === "Asset" && (!a.account_subtype || ["Cash", "Bank"].includes(a.account_subtype)));
-        setAssetAccounts(filtered as any);
-      } catch {
-        setAssetAccounts([]);
-      }
-    })();
-  }, [organization?.id]);
-
-  // When toggling receive payment on, default amount to invoice total
-  useEffect(() => {
-    if (!receivePayment) return;
-    const totals = calculateTotals();
-    setPaymentForm(prev => ({ ...prev, amount: totals.total.toFixed(2) }));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [receivePayment, selectedItems, applyTax, orgTaxRate]);
+  
 
   const calculateTotals = useMemo(() => {
     return () => {
@@ -319,18 +288,10 @@ export default function InvoiceCreate() {
 
   const removeItemFromInvoice = (idx: number) => setSelectedItems(selectedItems.filter((_, i) => i !== idx));
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (selectedItems.length === 0) return toast.error('Please add at least one item to the invoice');
     if (!formData.location_id) return toast.error('Please select a location');
-    // Validate payment form if receiving payment now
-    if (receivePayment) {
-      const amt = parseFloat(paymentForm.amount) || 0;
-      if (!paymentForm.method) return toast.error('Select a payment method');
-      if (!paymentForm.account_id) return toast.error('Select a deposit account');
-      if (paymentForm.method === 'mpesa' && !paymentForm.reference?.trim()) return toast.error('Reference is required for M-PESA');
-      if (amt <= 0) return toast.error('Enter a valid amount to receive');
-    }
     try {
       // Generate next invoice number from configured series
       const invoiceNumber = await getNextNumber('invoice');
@@ -353,24 +314,6 @@ export default function InvoiceCreate() {
         location_id: formData.location_id || null,
       };
       const created = await createInvoiceWithFallback(supabase, invoiceData, selectedItems);
-      // Optionally record a payment immediately
-      if (receivePayment && created?.id) {
-        const amt = parseFloat(paymentForm.amount) || 0;
-        const res = await recordInvoicePaymentWithFallback(supabase, {
-          invoice_id: created.id,
-          amount: amt,
-          method: paymentForm.method,
-          reference_number: paymentForm.reference || null,
-          payment_date: new Date().toISOString().slice(0,10),
-          account_id: paymentForm.account_id,
-          location_id: formData.location_id || null,
-        });
-        if (!res.success) {
-          toast.error(res.error || 'Failed to record payment');
-        } else {
-          toast.success('Payment recorded');
-        }
-      }
       toast.success('Invoice created');
       navigate('/invoices');
     } catch (e) {
@@ -418,10 +361,6 @@ export default function InvoiceCreate() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate('/payments/received/new')}>
-              <DollarSign className="w-4 h-4 mr-2" />
-              Record Payment
-            </Button>
             <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
             <Button onClick={handleSubmit}>Create Invoice</Button>
           </div>
@@ -480,12 +419,12 @@ export default function InvoiceCreate() {
               <Receipt className="w-4 h-4 text-purple-600" />
               Invoice Details
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
               <div className="space-y-2">
-                <Label htmlFor="due_date">Due Date</Label>
-                <Input id="due_date" type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} />
+                <Label htmlFor="due_date">Invoice Date</Label>
+                <Input className="w-48" id="due_date" type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} />
               </div>
-              <div className="space-y-2 md:col-span-2">
+              <div className="space-y-2">
                 <Label htmlFor="location_id">Location *</Label>
                 <Select value={formData.location_id} onValueChange={(v) => setFormData({ ...formData, location_id: v })}>
                   <SelectTrigger>
@@ -631,105 +570,7 @@ export default function InvoiceCreate() {
             )}
           </div>
 
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-slate-900">Additional Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="payment_method">Payment Method</Label>
-                <Select value={formData.payment_method} onValueChange={(v) => setFormData({ ...formData, payment_method: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select payment method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="mpesa">M-PESA</SelectItem>
-                    <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                    <SelectItem value="card">Card</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {taxEnabled !== false && (
-                <div className="space-y-2">
-                  <Label className="flex items-center space-x-2">
-                    <input type="checkbox" checked={applyTax} onChange={(e) => setApplyTax(e.target.checked)} />
-                    <span>Apply Tax ({(orgTaxRate).toFixed(1)}%)</span>
-                  </Label>
-                </div>
-              )}
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea id="notes" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
-            </div>
-
-            {/* Receive Payment Now */}
-            <Separator />
-            <div className="space-y-3">
-              <Label className="flex items-center space-x-2">
-                <input type="checkbox" checked={receivePayment} onChange={(e) => setReceivePayment(e.target.checked)} />
-                <span>I have Received Payment</span>
-              </Label>
-              {receivePayment && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm">Payment Received</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Payment Method</Label>
-                        <Select value={paymentForm.method} onValueChange={(v) => setPaymentForm(prev => ({ ...prev, method: v }))}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="cash">Cash</SelectItem>
-                            <SelectItem value="card">Card</SelectItem>
-                            <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                            <SelectItem value="mpesa">M-Pesa</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Deposit to Account</Label>
-                        <Select value={paymentForm.account_id} onValueChange={(v) => setPaymentForm(prev => ({ ...prev, account_id: v }))}>
-                          <SelectTrigger>
-                            <SelectValue placeholder={assetAccounts.length ? 'Select account' : 'No accounts found'} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {assetAccounts.map(acc => (
-                              <SelectItem key={acc.id} value={acc.id}>
-                                {(acc as any).account_code ? `${(acc as any).account_code} - ${acc.account_name}` : acc.account_name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Reference{paymentForm.method === 'mpesa' ? ' *' : ''}</Label>
-                        <Input
-                          value={paymentForm.reference}
-                          onChange={(e) => setPaymentForm(prev => ({ ...prev, reference: e.target.value }))}
-                          placeholder={paymentForm.method === 'mpesa' ? 'Enter M-Pesa reference' : 'Optional reference'}
-                          required={paymentForm.method === 'mpesa'}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Amount Received *</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={paymentForm.amount}
-                          onChange={(e) => setPaymentForm(prev => ({ ...prev, amount: e.target.value }))}
-                          required
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </div>
+          
         </form>
       </div>
 
