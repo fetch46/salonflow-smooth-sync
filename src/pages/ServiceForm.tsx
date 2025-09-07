@@ -587,7 +587,7 @@ export default function ServiceForm() {
                   <Label htmlFor="description">Description</Label>
                   <Textarea id="description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={3} placeholder="Describe what this service includes..." />
                 </div>
-                <div className="md:col-span-2">
+                <div>
                   <Label>Income Account *</Label>
                   <Select value={formData.income_account_id || ''} onValueChange={(v) => setFormData({ ...formData, income_account_id: v })}>
                     <SelectTrigger>
@@ -599,6 +599,10 @@ export default function ServiceForm() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div>
+                  <Label htmlFor="commission_percentage">Commission %</Label>
+                  <Input id="commission_percentage" type="number" min="0" max="100" step="0.1" value={formData.commission_percentage} onChange={(e) => setFormData({ ...formData, commission_percentage: parseFloat(e.target.value) || 0 })} placeholder="10.0" />
                 </div>
                 <div>
                   <Label htmlFor="category">Category</Label>
@@ -649,10 +653,6 @@ export default function ServiceForm() {
                 <div>
                   <Label htmlFor="price">Price *</Label>
                   <Input id="price" type="number" min="0" step="0.01" value={formData.price} onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })} placeholder="0.00" required />
-                </div>
-                <div>
-                  <Label htmlFor="commission_percentage">Commission %</Label>
-                  <Input id="commission_percentage" type="number" min="0" max="100" step="0.1" value={formData.commission_percentage} onChange={(e) => setFormData({ ...formData, commission_percentage: parseFloat(e.target.value) || 0 })} placeholder="10.0" />
                 </div>
                 <div className="md:col-span-2">
                   <div className="flex items-center space-x-2">
