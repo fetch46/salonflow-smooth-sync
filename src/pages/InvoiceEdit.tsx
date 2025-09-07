@@ -18,7 +18,7 @@ export default function InvoiceEdit() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { symbol } = useOrganizationCurrency();
-  const { taxRate: orgTaxRate } = useOrganizationTaxRate();
+  const { taxRate: orgTaxRate, taxEnabled } = useOrganizationTaxRate() as any;
   const { organization } = useOrganization();
 
   const [loading, setLoading] = useState(true);
@@ -150,7 +150,8 @@ export default function InvoiceEdit() {
   const calculateTotals = useMemo(() => {
     return () => {
       const subtotal = selectedItems.reduce((sum, item: any) => Number(sum) + (Number(item.total_price) || 0), 0);
-      const taxAmount = applyTax ? Number(subtotal) * ((Number(orgTaxRate) || 0) / 100) : 0;
+      const canApply = taxEnabled !== false && applyTax;
+      const taxAmount = canApply ? Number(subtotal) * ((Number(orgTaxRate) || 0) / 100) : 0;
       const total = Number(subtotal) + Number(taxAmount);
       return { subtotal, taxAmount, total };
     };
@@ -557,7 +558,7 @@ export default function InvoiceEdit() {
                       <span>Subtotal:</span>
                       <span>{symbol}{totals.subtotal.toFixed(2)}</span>
                     </div>
-                    {applyTax && (
+                    {taxEnabled !== false && applyTax && (
                       <div className="flex justify-between">
                         <span>Tax ({orgTaxRate}%):</span>
                         <span>{symbol}{totals.taxAmount.toFixed(2)}</span>

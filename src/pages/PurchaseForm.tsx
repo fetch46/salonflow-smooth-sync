@@ -48,7 +48,7 @@ export default function PurchaseForm() {
 
   const { organization } = useSaas();
   const { format: formatMoney } = useOrganizationCurrency();
-  const orgTaxRate = useOrganizationTaxRate();
+  const orgTax = useOrganizationTaxRate() as any;
   const { toast } = useToast();
 
   const [loading, setLoading] = useState<boolean>(false);
@@ -75,7 +75,9 @@ export default function PurchaseForm() {
 
   const calculateTotals = useCallback(() => {
     const subtotal = purchaseItems.reduce((sum, item) => Number(sum) + Number(item.total_cost || 0), 0);
-    const computedTax = applyTax ? Number(subtotal) * ((Number(orgTaxRate) || 0) / 100) : 0;
+    const rate = Number((orgTax?.taxRate ?? 0) || 0)
+    const enabled = orgTax?.taxEnabled !== false
+    const computedTax = (applyTax && enabled) ? Number(subtotal) * ((rate || 0) / 100) : 0;
     const total = Number(subtotal) + Number(computedTax);
     setFormData((prev) => ({
       ...prev,
@@ -83,7 +85,7 @@ export default function PurchaseForm() {
       tax_amount: computedTax.toFixed(2),
       total_amount: total.toFixed(2),
     }));
-  }, [purchaseItems, orgTaxRate, applyTax]);
+  }, [purchaseItems, orgTax, applyTax]);
 
   useEffect(() => {
     calculateTotals();
@@ -201,7 +203,9 @@ export default function PurchaseForm() {
         return;
       }
       const subtotalNow = purchaseItems.reduce((sum, item) => Number(sum) + (Number(item.total_cost) || 0), 0);
-      const taxNow = applyTax ? Number(subtotalNow) * ((Number(orgTaxRate) || 0) / 100) : 0;
+      const rate2 = Number((orgTax?.taxRate ?? 0) || 0)
+      const enabled2 = orgTax?.taxEnabled !== false
+      const taxNow = (applyTax && enabled2) ? Number(subtotalNow) * ((rate2 || 0) / 100) : 0;
       const totalNow = Number(subtotalNow) + Number(taxNow);
       const purchaseData = {
         ...formData,
@@ -251,10 +255,12 @@ export default function PurchaseForm() {
 
   const stats = useMemo(() => {
     const subtotal = purchaseItems.reduce((sum, it) => Number(sum) + Number(it.total_cost || 0), 0);
-    const tax = applyTax ? Number(subtotal) * ((Number(orgTaxRate) || 0) / 100) : 0;
+    const rate3 = Number((orgTax?.taxRate ?? 0) || 0)
+    const enabled3 = orgTax?.taxEnabled !== false
+    const tax = (applyTax && enabled3) ? Number(subtotal) * ((rate3 || 0) / 100) : 0;
     const total = Number(subtotal) + Number(tax);
     return { subtotal, tax, total };
-  }, [purchaseItems, applyTax, orgTaxRate]);
+  }, [purchaseItems, applyTax, orgTax]);
 
   return (
     <div className="flex-1 space-y-6 p-4 sm:p-6 pb-24 sm:pb-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen overflow-x-hidden">
@@ -400,11 +406,15 @@ export default function PurchaseForm() {
                   <div className="space-y-2">
                     <Label htmlFor="tax_amount">Tax Amount</Label>
                     <Input id="tax_amount" type="number" step="0.01" placeholder="0.00" value={formData.tax_amount} readOnly />
-                    <div className="flex items-center gap-2">
-                      <Switch checked={applyTax} onCheckedChange={setApplyTax} />
-                      <span className="text-sm">Apply Tax ({(Number(orgTaxRate) || 0)}%)</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Auto-calculated when enabled.</p>
+                    {orgTax?.taxEnabled !== false && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Switch checked={applyTax} onCheckedChange={setApplyTax} />
+                          <span className="text-sm">Apply Tax ({Number(orgTax?.taxRate || 0)}%)</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Auto-calculated when enabled.</p>
+                      </>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="total_amount">Total Amount</Label>

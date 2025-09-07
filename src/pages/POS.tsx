@@ -88,7 +88,7 @@ export default function POS() {
   const [currentSale, setCurrentSale] = useState<Sale | null>(null);
 
   const { format: formatMoney } = useOrganizationCurrency();
-  const orgTaxRate = useOrganizationTaxRate();
+  const orgTax = useOrganizationTaxRate();
   const { organization } = useOrganization();
   const { systemSettings } = useSaas();
   const appName = (systemSettings as any)?.app_name || 'AURA OS';
@@ -104,8 +104,9 @@ export default function POS() {
   const [applyTax, setApplyTax] = useState<boolean>(false);
 
   useEffect(() => {
-    setPaymentData(prev => ({ ...prev, tax_percentage: typeof orgTaxRate === 'number' ? orgTaxRate : prev.tax_percentage }))
-  }, [orgTaxRate])
+    const rate = typeof (orgTax as any)?.taxRate === 'number' ? (orgTax as any).taxRate : (orgTax as any)?.taxRate?.taxRate
+    setPaymentData(prev => ({ ...prev, tax_percentage: typeof rate === 'number' ? rate : prev.tax_percentage }))
+  }, [orgTax])
 
   useEffect(() => {
     fetchCustomers();
@@ -344,7 +345,9 @@ export default function POS() {
     const subtotal = cart.reduce((sum, item) => sum + item.total, 0);
     const globalDiscount = subtotal * (paymentData.discount_percentage / 100);
     const discountedSubtotal = subtotal - globalDiscount;
-    const taxAmount = applyTax ? (discountedSubtotal * (paymentData.tax_percentage / 100)) : 0;
+    const taxEnabled = (orgTax as any)?.taxEnabled !== false;
+    const shouldApply = applyTax && taxEnabled;
+    const taxAmount = shouldApply ? (discountedSubtotal * (paymentData.tax_percentage / 100)) : 0;
     const total = discountedSubtotal + taxAmount;
 
     return {
@@ -770,15 +773,17 @@ export default function POS() {
                     <span>-{formatMoney(totals.globalDiscount)}</span>
                   </div>
                 )}
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    Tax ({applyTax ? paymentData.tax_percentage : 0}%):
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <Switch checked={applyTax} onCheckedChange={setApplyTax} />
-                    <span>{formatMoney(totals.taxAmount)}</span>
+                {(orgTax as any)?.taxEnabled !== false && (
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      Tax ({applyTax ? paymentData.tax_percentage : 0}%):
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Switch checked={applyTax} onCheckedChange={setApplyTax} />
+                      <span>{formatMoney(totals.taxAmount)}</span>
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className="flex justify-between font-bold text-lg border-t pt-2">
                   <span>Total:</span>
                   <span>{formatMoney(totals.total)}</span>
@@ -831,20 +836,22 @@ export default function POS() {
                           onChange={(e) => setPaymentData({...paymentData, discount_percentage: parseFloat(e.target.value) || 0})}
                         />
                       </div>
-                      <div>
-                        <Label htmlFor="tax_percentage">Tax (%)</Label>
-                        <Input
-                          id="tax_percentage"
-                          type="number"
-                          step="0.1"
-                          value={paymentData.tax_percentage}
-                          onChange={(e) => setPaymentData({...paymentData, tax_percentage: parseFloat(e.target.value) || 0})}
-                        />
-                        <div className="flex items-center gap-2 mt-2">
-                          <Switch checked={applyTax} onCheckedChange={setApplyTax} />
-                          <span className="text-sm">Apply Tax</span>
+                      {(orgTax as any)?.taxEnabled !== false && (
+                        <div>
+                          <Label htmlFor="tax_percentage">Tax (%)</Label>
+                          <Input
+                            id="tax_percentage"
+                            type="number"
+                            step="0.1"
+                            value={paymentData.tax_percentage}
+                            onChange={(e) => setPaymentData({...paymentData, tax_percentage: parseFloat(e.target.value) || 0})}
+                          />
+                          <div className="flex items-center gap-2 mt-2">
+                            <Switch checked={applyTax} onCheckedChange={setApplyTax} />
+                            <span className="text-sm">Apply Tax</span>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
 
                     {paymentData.payment_method === "Cash" && (
@@ -900,15 +907,17 @@ export default function POS() {
                             <span>-{formatMoney(totals.globalDiscount)}</span>
                           </div>
                         )}
-                        <div className="flex items-center justify-between">
-                          <span className="flex items-center gap-2">
-                            Tax:
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <Switch checked={applyTax} onCheckedChange={setApplyTax} />
-                            <span>{formatMoney(totals.taxAmount)}</span>
+                        {(orgTax as any)?.taxEnabled !== false && (
+                          <div className="flex items-center justify-between">
+                            <span className="flex items-center gap-2">
+                              Tax:
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <Switch checked={applyTax} onCheckedChange={setApplyTax} />
+                              <span>{formatMoney(totals.taxAmount)}</span>
+                            </div>
                           </div>
-                        </div>
+                        )}
                         <div className="flex justify-between font-bold text-lg border-t pt-1">
                           <span>Total:</span>
                           <span>{formatMoney(totals.total)}</span>
