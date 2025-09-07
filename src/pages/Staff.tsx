@@ -108,7 +108,7 @@ export default function Staff() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards');
   const { toast } = useToast();
   const { hasFeature, getFeatureAccess, enforceLimit } = useFeatureGating();
   const navigate = useNavigate();
@@ -528,6 +528,12 @@ export default function Staff() {
     };
   }, [staff]);
 
+  const staffUtilization = useMemo(() => {
+    const activeCount = staff.filter(s => s.is_active).length;
+    const utilizedCount = new Set(todayAppts.map(a => a.staff_id).filter(Boolean)).size;
+    return activeCount > 0 ? Math.round((utilizedCount / activeCount) * 100) : 0;
+  }, [staff, todayAppts]);
+
   const getTabStaff = (tab: string) => {
     switch (tab) {
       case "active":
@@ -862,13 +868,13 @@ export default function Staff() {
 
         <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-orange-700">New Hires</CardTitle>
-            <Clock className="h-4 w-4 text-orange-600" />
+            <CardTitle className="text-sm font-medium text-orange-700">Staff Utilization</CardTitle>
+            <TrendingUp className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-700">{dashboardStats.newHires}</div>
+            <div className="text-2xl font-bold text-orange-700">{staffUtilization}%</div>
             <p className="text-xs text-orange-600">
-              Joined in last 30 days
+              Active staff utilized today
             </p>
           </CardContent>
         </Card>
