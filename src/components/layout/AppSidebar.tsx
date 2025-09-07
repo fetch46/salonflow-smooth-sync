@@ -408,7 +408,7 @@ export function AppSidebar() {
             )}
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu className="gap-0.5">
+            <SidebarMenu className="gap-2">
               {menuItems.map((item) => {
                 const isAvailable = isMenuItemAvailable(item);
                 const hasSubItems = item.subItems && item.subItems.length > 0;

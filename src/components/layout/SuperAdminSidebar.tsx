@@ -174,7 +174,7 @@ export function SuperAdminSidebar() {
             </Badge>
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu className="gap-2">
+            <SidebarMenu className="gap-3">
               {superAdminMenuItems.map((item) => {
                 const hasSubItems = item.subItems && item.subItems.length > 0;
                 const isOpen = openSubmenus.includes(item.title);
