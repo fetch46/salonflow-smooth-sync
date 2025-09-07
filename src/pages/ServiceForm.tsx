@@ -151,6 +151,13 @@ export default function ServiceForm() {
     loadAccounts();
   }, [organization?.id]);
 
+  // Auto-select the only available income account when creating
+  useEffect(() => {
+    if (!isEdit && !formData.income_account_id && incomeAccounts.length === 1) {
+      setFormData((prev) => ({ ...prev, income_account_id: incomeAccounts[0].id }));
+    }
+  }, [isEdit, formData.income_account_id, incomeAccounts]);
+
   const fetchAvailableProducts = useCallback(async () => {
     try {
       if (organization?.id) {
@@ -747,7 +754,7 @@ export default function ServiceForm() {
 
             <div className="flex justify-end gap-3 pt-4 border-t">
               <Button type="button" variant="outline" onClick={() => navigate("/services")}>Cancel</Button>
-              <Button type="submit" disabled={loading} className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+              <Button type="submit" disabled={loading || (!isEdit && !formData.income_account_id)} className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
                 {loading ? (isEdit ? "Updating..." : "Creating...") : (isEdit ? "Update Service" : "Create Service")}
               </Button>
             </div>
