@@ -421,104 +421,10 @@ export default function PaymentsNew() {
               <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Record Payment
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Record Payment Received</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={submitCreate} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Invoice</Label>
-                    <Select value={selectedInvoiceId} onValueChange={setSelectedInvoiceId} required>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select invoice" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {invoiceOptions.map(inv => (
-                          <SelectItem key={inv.id} value={inv.id}>
-                            {inv.invoice_number} - {formatCurrency(inv.total_amount - (inv.amount_paid || 0))} outstanding
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Amount</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={createForm.amount}
-                      onChange={(e) => setCreateForm(prev => ({ ...prev, amount: e.target.value }))}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Payment Method</Label>
-                    <Select value={createForm.method} onValueChange={(v) => setCreateForm(prev => ({ ...prev, method: v }))}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cash">Cash</SelectItem>
-                        <SelectItem value="card">Card</SelectItem>
-                        <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                        <SelectItem value="mpesa">M-Pesa</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Deposit to Account</Label>
-                    <Select value={createForm.account_id} onValueChange={(v) => setCreateForm(prev => ({ ...prev, account_id: v }))} required>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select account" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {assetAccounts.map(acc => (
-                          <SelectItem key={acc.id} value={acc.id}>
-                            {acc.account_code} - {acc.account_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Reference</Label>
-                    <Input
-                      value={createForm.reference}
-                      onChange={(e) => setCreateForm(prev => ({ ...prev, reference: e.target.value }))}
-                      placeholder="Optional reference number"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Payment Date</Label>
-                    <Input
-                      type="date"
-                      value={createForm.payment_date}
-                      onChange={(e) => setCreateForm(prev => ({ ...prev, payment_date: e.target.value }))}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="flex justify-end gap-3">
-                    <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit">Record Payment</Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
+            <Button onClick={() => navigate('/payments/received/new')}>
+              <Plus className="w-4 h-4 mr-2" />
+              Record Payment
+            </Button>
           </div>
         </div>
 

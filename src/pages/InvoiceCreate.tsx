@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Users, Receipt, Trash2, Plus } from "lucide-react";
+import { Users, Receipt, Trash2, Plus, DollarSign } from "lucide-react";
 import { useOrganizationCurrency, useOrganizationTaxRate, useOrganization } from "@/lib/saas/hooks";
 import { createInvoiceWithFallback, getInvoiceItemsWithFallback, getInvoicesWithFallback } from "@/utils/mockDatabase";
 
@@ -354,6 +354,10 @@ export default function InvoiceCreate() {
             </div>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate('/payments/received/new')}>
+              <DollarSign className="w-4 h-4 mr-2" />
+              Record Payment
+            </Button>
             <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
             <Button onClick={handleSubmit}>Create Invoice</Button>
           </div>
