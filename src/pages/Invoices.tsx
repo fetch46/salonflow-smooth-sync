@@ -848,16 +848,10 @@ export default function Invoices() {
                               Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => {
-                              downloadInvoicePDF(invoice, 'standard');
-                            }}>
-                              <FileText className="w-4 h-4 mr-2" />
-                              Download PDF (A4)
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => {
                               downloadInvoicePDF(invoice, '80mm');
                             }}>
                               <Receipt className="w-4 h-4 mr-2" />
-                              Download 80mm Receipt
+                              Download Receipt
                             </DropdownMenuItem>
                             <DropdownMenuItem>
                               <Mail className="w-4 h-4 mr-2" />
