@@ -304,6 +304,7 @@ phone: "",
   const [defaultJobcardWarehouseId, setDefaultJobcardWarehouseId] = useState<string>("")
   const [defaultJobcardLocationId, setDefaultJobcardLocationId] = useState<string>("")
   const [defaultAppointmentsLocationId, setDefaultAppointmentsLocationId] = useState<string>("")
+  const [defaultServicesLocationId, setDefaultServicesLocationId] = useState<string>("")
 
   const openNewLocation = () => {
     setEditingLocation(null)
@@ -390,6 +391,7 @@ phone: "",
       setDefaultJobcardWarehouseId(s.jobcards_default_warehouse_id || "")
       setDefaultJobcardLocationId(s.jobcards_default_location_id || "")
       setDefaultAppointmentsLocationId(s.appointments_default_location_id || "")
+      setDefaultServicesLocationId(s.services_default_location_id || "")
       // Initialize deposit account mapping from org settings
       const map = (s.default_deposit_accounts_by_method as Record<string, string>) || {}
       setDepositAccountMap(map)
@@ -765,6 +767,22 @@ phone: "",
     } catch (e) {
       console.error(e);
       toast.error('Failed to save default appointment location');
+    }
+  }
+
+  const handleSaveDefaultServicesLocation = async () => {
+    if (!organization) return toast.error('No organization selected');
+    try {
+      await updateOrganization(organization.id, {
+        settings: {
+          ...(organization.settings as any),
+          services_default_location_id: defaultServicesLocationId || null,
+        },
+      } as any)
+      toast.success('Default services location saved');
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to save default services location');
     }
   }
 
@@ -1491,7 +1509,7 @@ phone: "",
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="mb-6 p-4 border rounded-md bg-slate-50">
+                <div className="mb-6 p-4 border rounded-md bg-slate-50 space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:items-end">
                     <div>
                       <Label>Default Location for Appointments</Label>
@@ -1508,6 +1526,24 @@ phone: "",
                       </Select>
                     </div>
                     <div className="flex md:justify-start"><Button type="button" variant="outline" onClick={handleSaveDefaultAppointmentsLocation}>Save</Button></div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:items-end">
+                    <div>
+                      <Label>Default Location for Services</Label>
+                      <Select value={defaultServicesLocationId || "__none__"} onValueChange={(v) => setDefaultServicesLocationId(v === "__none__" ? "" : v)}>
+                        <SelectTrigger className="w-full md:w-80">
+                          <SelectValue placeholder="Select default services location" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">— None —</SelectItem>
+                          {stockLocations.map(l => (
+                            <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex md:justify-start"><Button type="button" variant="outline" onClick={handleSaveDefaultServicesLocation}>Save</Button></div>
                   </div>
                 </div>
                 <Table>

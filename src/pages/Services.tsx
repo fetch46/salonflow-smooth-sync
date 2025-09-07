@@ -437,11 +437,15 @@ export default function Services() {
     if (!isModalOpen) return;
     if (editingService) return;
     if (formData.location_id) return;
-    const preferred = locations.find(l => (l as any).is_default) || locations[0];
+    const settings = (organization?.settings as any) || {};
+    const configuredId = settings.services_default_location_id as string | undefined;
+    const preferred = (configuredId && locations.find(l => l.id === configuredId))
+      || locations.find(l => (l as any).is_default)
+      || locations[0];
     if (preferred?.id) {
       setFormData(prev => ({ ...prev, location_id: preferred.id }));
     }
-  }, [isModalOpen, editingService, locations, formData.location_id]);
+  }, [isModalOpen, editingService, locations, formData.location_id, organization?.settings]);
 
   const fetchServiceCategories = useCallback(async () => {
     try {
