@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { Users, Receipt, Trash2, Plus, DollarSign } from "lucide-react";
 import { useOrganizationCurrency, useOrganizationTaxRate, useOrganization } from "@/lib/saas/hooks";
+import { useTransactionNumbers } from "@/hooks/useTransactionNumbers";
 
 
 interface Customer { id: string; full_name: string; email: string | null; phone: string | null }
