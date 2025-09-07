@@ -22,22 +22,20 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    /* Primary: Modern blue */
-    --primary: 221.2 83.2% 53.3%;
+    /* Custom theme colors */
+    --primary: 217.2 91.2% 59.8%; /* blue-600 */
     --primary-foreground: 210 40% 98%;
-    --primary-light: 221.2 83.2% 85%;
+    --primary-light: 217.2 91.2% 69.8%;
 
-    /* Secondary: Clean secondary colors */
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
+    --secondary: 174.2 84.3% 40%; /* teal-500 */
+    --secondary-foreground: 210 40% 98%;
 
     /* Muted: Subtle backgrounds */
     --muted: 210 40% 96%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    /* Accent: Fresh accent color */
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
+    --accent: 346.8 77.2% 49.8%; /* rose-500 */
+    --accent-foreground: 210 40% 98%;
 
     /* Clean status colors */
     --success: 142 71% 45%;
@@ -55,7 +53,8 @@ All colors MUST be HSL.
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
 
-    --radius: 0.5rem;
+    /* ~rounded-2xl */
+    --radius: 1rem;
 
     --sidebar-background: 0 0% 98%;
 
@@ -261,6 +260,7 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
     padding-bottom: calc(var(--footer-height) + env(safe-area-inset-bottom));
     accent-color: hsl(var(--primary));
+    font-family: Inter, sans-serif;
   }
 
   html {
