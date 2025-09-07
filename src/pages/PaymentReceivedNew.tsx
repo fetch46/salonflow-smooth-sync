@@ -103,6 +103,21 @@ export default function PaymentReceivedNew() {
     init();
   }, [organization?.id]);
 
+  // Auto-select deposit account from settings when payment method changes
+  useEffect(() => {
+    if (!organization?.id) return;
+    const methodKey = String(form.method || '').toLowerCase();
+    const settings = (organization as any)?.settings || {};
+    const map = settings?.default_deposit_accounts_by_method || {};
+    const candidateId: string | undefined = map?.[methodKey];
+    if (candidateId) {
+      const exists = assetAccounts.some((a) => a.id === candidateId);
+      if (exists && form.account_id !== candidateId) {
+        setForm((prev) => ({ ...prev, account_id: candidateId }));
+      }
+    }
+  }, [organization?.id, form.method, assetAccounts]);
+
   const outstandingById = useMemo(() => {
     const map: Record<string, number> = {};
     (invoiceOptions || []).forEach((r) => {
@@ -142,6 +157,11 @@ export default function PaymentReceivedNew() {
     const amt = parseFloat(form.amount) || 0;
     if (amt <= 0 || (outstanding > 0 && amt > outstanding + 0.0001)) {
       toast.error("Invalid amount");
+      return;
+    }
+    // Enforce M-Pesa reference
+    if (String(form.method).toLowerCase() === 'mpesa' && !form.reference.trim()) {
+      toast.error('Reference is required for M-Pesa payments');
       return;
     }
     try {
