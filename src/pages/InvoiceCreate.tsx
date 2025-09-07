@@ -15,14 +15,14 @@ import { useOrganizationCurrency, useOrganizationTaxRate, useOrganization } from
 import { createInvoiceWithFallback, getInvoiceItemsWithFallback, getInvoicesWithFallback } from "@/utils/mockDatabase";
 
 interface Customer { id: string; full_name: string; email: string | null; phone: string | null }
-interface Service { id: string; name: string; price: number }
+interface Service { id: string; name: string; price: number; commission_percentage?: number }
 interface Staff { id: string; full_name: string; commission_rate?: number }
 
 export default function InvoiceCreate() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { symbol } = useOrganizationCurrency();
-  const orgTaxRate = useOrganizationTaxRate();
+  const { taxRate: orgTaxRate } = useOrganizationTaxRate();
   const { organization } = useOrganization();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -76,7 +76,7 @@ export default function InvoiceCreate() {
       try {
         const [{ data: cust }, { data: svc }, { data: stf }] = await Promise.all([
           supabase.from("clients").select("id, full_name, email, phone").eq("is_active", true).order("full_name"),
-          supabase.from("services").select("id, name, price").eq("is_active", true).eq('organization_id', organization?.id || '').order("name"),
+          supabase.from("services").select("id, name, price, commission_percentage").eq("is_active", true).eq('organization_id', organization?.id || '').order("name"),
           supabase.from("staff").select("id, full_name, commission_rate").eq("is_active", true).eq('organization_id', organization?.id || '').order("full_name"),
         ]);
         setCustomers(cust || []);
@@ -84,7 +84,7 @@ export default function InvoiceCreate() {
         setStaff(stf || []);
       } catch {}
     })();
-  }, []);
+  }, [organization?.id]);
 
   const fetchLocations = async () => {
     try {
@@ -255,8 +255,8 @@ export default function InvoiceCreate() {
   }, [selectedItems, applyTax, orgTaxRate]);
 
   const addItemToInvoice = () => {
-    if (!newItem.description || !newItem.unit_price) {
-      toast.error("Please fill in all required fields");
+    if (!newItem.service_id || !newItem.staff_id || !newItem.description || !newItem.unit_price) {
+      toast.error("Service and Staff are mandatory fields");
       return;
     }
     const unit = parseFloat(newItem.unit_price) || 0;
@@ -314,236 +314,398 @@ export default function InvoiceCreate() {
     }
   };
 
+  // Calculate commission summary
+  const commissionSummary = useMemo(() => {
+    const staffCommissions = new Map();
+    selectedItems.forEach(item => {
+      if (item.staff_id && item.commission_percentage > 0) {
+        const staffName = staff.find(s => s.id === item.staff_id)?.full_name || 'Unknown Staff';
+        const commissionAmount = (item.total_price * item.commission_percentage) / 100;
+        
+        if (staffCommissions.has(item.staff_id)) {
+          const existing = staffCommissions.get(item.staff_id);
+          existing.amount += commissionAmount;
+          existing.items.push(item.description);
+        } else {
+          staffCommissions.set(item.staff_id, {
+            name: staffName,
+            amount: commissionAmount,
+            items: [item.description]
+          });
+        }
+      }
+    });
+    return Array.from(staffCommissions.values());
+  }, [selectedItems, staff]);
+
   return (
-    <div className="flex-1 space-y-6 p-6 bg-slate-50/30 min-h-screen">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-xl shadow-lg">
-            <Receipt className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Create Invoice</h1>
-            <p className="text-slate-600">Full-page invoice creation</p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
-          <Button onClick={handleSubmit}>Create Invoice</Button>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-            <Users className="w-4 h-4 text-blue-600" />
-            Customer Information
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="customer_id">Existing Customer</Label>
-              <Select value={formData.customer_id} onValueChange={(value) => {
-                const customer = customers.find(c => c.id === value);
-                setFormData({
-                  ...formData,
-                  customer_id: value,
-                  customer_name: customer?.full_name || "",
-                  customer_email: customer?.email || "",
-                  customer_phone: customer?.phone || "",
-                });
-              }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select existing customer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+    <div className="flex gap-6 p-6 bg-slate-50/30 min-h-screen">
+      {/* Main Form */}
+      <div className="flex-1 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-xl shadow-lg">
+              <Receipt className="h-6 w-6 text-white" />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="customer_name">Customer Name *</Label>
-              <Input id="customer_name" value={formData.customer_name} onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })} required />
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Create Invoice</h1>
+              <p className="text-slate-600">Full-page invoice creation</p>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="customer_email">Email</Label>
-              <Input id="customer_email" type="email" value={formData.customer_email} onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="customer_phone">Phone</Label>
-              <Input id="customer_phone" value={formData.customer_phone} onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })} />
-            </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
+            <Button onClick={handleSubmit}>Create Invoice</Button>
           </div>
         </div>
 
-        <Separator />
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+              <Users className="w-4 h-4 text-blue-600" />
+              Customer Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="customer_id">Existing Customer</Label>
+                <Select value={formData.customer_id} onValueChange={(value) => {
+                  const customer = customers.find(c => c.id === value);
+                  setFormData({
+                    ...formData,
+                    customer_id: value,
+                    customer_name: customer?.full_name || "",
+                    customer_email: customer?.email || "",
+                    customer_phone: customer?.phone || "",
+                  });
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select existing customer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customers.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="customer_name">Customer Name *</Label>
+                <Input id="customer_name" value={formData.customer_name} onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })} required />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="customer_email">Email</Label>
+                <Input id="customer_email" type="email" value={formData.customer_email} onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="customer_phone">Phone</Label>
+                <Input id="customer_phone" value={formData.customer_phone} onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })} />
+              </div>
+            </div>
+          </div>
 
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-            <Receipt className="w-4 h-4 text-purple-600" />
-            Invoice Details
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="due_date">Due Date</Label>
-              <Input id="due_date" type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} />
+          <Separator />
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-purple-600" />
+              Invoice Details
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="due_date">Due Date</Label>
+                <Input id="due_date" type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="location_id">Location *</Label>
+                <Select value={formData.location_id} onValueChange={(v) => setFormData({ ...formData, location_id: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={locations.length ? 'Select a location' : 'No locations found'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {uniqueLocations.map((loc) => (
+                      <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-green-600" />
+              Invoice Items
+            </h3>
+            <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm text-purple-800">Add Item</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 lg:grid-cols-9 gap-3">
+                  <div className="lg:col-span-2">
+                    <Label className="text-sm">Service *</Label>
+                    <Select value={newItem.service_id} onValueChange={async (value) => {
+                      const service = services.find(s => s.id === value);
+                      // Use service commission rate or fallback to current
+                      const commissionRate = service?.commission_percentage || newItem.commission_percentage;
+                      
+                      setNewItem({
+                        ...newItem,
+                        service_id: value,
+                        description: service?.name || "",
+                        unit_price: service?.price?.toString() || "",
+                        commission_percentage: commissionRate,
+                      });
+                    }}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Select service *" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {services.map((s: any) => (
+                          <SelectItem key={s.id} value={s.id}>{s.name} - {symbol}{s.price}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="lg:col-span-1">
+                    <Label className="text-sm">Qty *</Label>
+                    <Input className="h-9" type="number" min="1" value={newItem.quantity} onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })} />
+                  </div>
+                  <div className="lg:col-span-1">
+                    <Label className="text-sm">Price *</Label>
+                    <Input className="h-9" type="number" step="0.01" value={newItem.unit_price} onChange={(e) => setNewItem({ ...newItem, unit_price: e.target.value })} />
+                  </div>
+                  <div className="lg:col-span-1">
+                    <Label className="text-sm">Discount %</Label>
+                    <Input className="h-9" type="number" min="0" max="100" value={newItem.discount_percentage} onChange={(e) => setNewItem({ ...newItem, discount_percentage: parseFloat(e.target.value) || 0 })} />
+                  </div>
+                  <div className="lg:col-span-1">
+                    <Label className="text-sm">Staff *</Label>
+                    <Select value={newItem.staff_id} onValueChange={(value) => {
+                      const selectedStaff = staff.find(s => s.id === value);
+                      // Use staff commission rate only if service doesn't have one
+                      const commissionRate = newItem.commission_percentage > 0 
+                        ? newItem.commission_percentage 
+                        : selectedStaff?.commission_rate || 0;
+                      setNewItem({ 
+                        ...newItem, 
+                        staff_id: value,
+                        commission_percentage: commissionRate
+                      });
+                    }}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Select staff *" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {staff.map((s: any) => (
+                          <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="lg:col-span-1">
+                    <Label className="text-sm">Commission %</Label>
+                    <Input className="h-9" type="number" min="0" max="100" step="0.1" value={newItem.commission_percentage} onChange={(e) => setNewItem({ ...newItem, commission_percentage: parseFloat(e.target.value) || 0 })} />
+                  </div>
+                  <div className="lg:col-span-1 flex items-end">
+                    <Button type="button" size="sm" className="w-full h-9 bg-violet-600 hover:bg-violet-700" onClick={addItemToInvoice}>
+                      <Plus className="w-4 h-4 mr-1" /> Add
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {selectedItems.length > 0 && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Invoice Items ({selectedItems.length})</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Qty</TableHead>
+                        <TableHead>Price</TableHead>
+                        <TableHead>Discount</TableHead>
+                        <TableHead>Staff</TableHead>
+                        <TableHead>Commission</TableHead>
+                        <TableHead>Total</TableHead>
+                        <TableHead className="w-12"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedItems.map((item, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell>{item.description}</TableCell>
+                          <TableCell>{item.quantity}</TableCell>
+                          <TableCell>{symbol}{item.unit_price}</TableCell>
+                          <TableCell>{item.discount_percentage}%</TableCell>
+                          <TableCell>{staff.find(s => s.id === item.staff_id)?.full_name || '-'}</TableCell>
+                          <TableCell>{item.commission_percentage}%</TableCell>
+                          <TableCell>{symbol}{item.total_price}</TableCell>
+                          <TableCell>
+                            <Button type="button" variant="ghost" size="sm" onClick={() => removeItemFromInvoice(idx)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-slate-900">Additional Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="payment_method">Payment Method</Label>
+                <Select value={formData.payment_method} onValueChange={(v) => setFormData({ ...formData, payment_method: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select payment method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="mpesa">M-PESA</SelectItem>
+                    <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                    <SelectItem value="card">Card</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center space-x-2">
+                  <input type="checkbox" checked={applyTax} onChange={(e) => setApplyTax(e.target.checked)} />
+                  <span>Apply Tax ({(orgTaxRate * 100).toFixed(1)}%)</span>
+                </Label>
+              </div>
             </div>
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="location_id">Location *</Label>
-              <Select value={formData.location_id} onValueChange={(v) => setFormData({ ...formData, location_id: v })}>
-                <SelectTrigger>
-                  <SelectValue placeholder={locations.length ? 'Select a location' : 'No locations found'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {uniqueLocations.map((loc) => (
-                    <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea id="notes" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
             </div>
           </div>
-        </div>
+        </form>
+      </div>
 
-        <Separator />
+      {/* Invoice Preview Sidebar */}
+      <div className="w-80 space-y-4">
+        {/* Invoice Preview */}
+        <Card className="bg-white border border-slate-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-semibold text-slate-900">Invoice Preview</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-sm text-slate-600">
+              <div className="flex justify-between">
+                <span>Invoice #:</span>
+                <span className="font-medium">TBD</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Customer:</span>
+                <span className="font-medium">{formData.customer_name || 'Not selected'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Date:</span>
+                <span className="font-medium">{new Date().toLocaleDateString()}</span>
+              </div>
+              {formData.due_date && (
+                <div className="flex justify-between">
+                  <span>Due:</span>
+                  <span className="font-medium">{new Date(formData.due_date).toLocaleDateString()}</span>
+                </div>
+              )}
+            </div>
 
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-            <Receipt className="w-4 h-4 text-green-600" />
-            Invoice Items
-          </h3>
-          <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+            <Separator />
+
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-slate-900">Items ({selectedItems.length})</div>
+              {selectedItems.length === 0 ? (
+                <p className="text-sm text-slate-500 italic">No items added yet</p>
+              ) : (
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {selectedItems.map((item, idx) => (
+                    <div key={idx} className="text-xs bg-slate-50 p-2 rounded">
+                      <div className="font-medium">{item.description}</div>
+                      <div className="text-slate-600">
+                        {item.quantity} × {symbol}{item.unit_price} = {symbol}{item.total_price.toFixed(2)}
+                      </div>
+                      {item.staff_id && (
+                        <div className="text-blue-600">
+                          Staff: {staff.find(s => s.id === item.staff_id)?.full_name}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            <div className="space-y-1 text-sm">
+              {(() => {
+                const totals = calculateTotals();
+                return (
+                  <>
+                    <div className="flex justify-between">
+                      <span>Subtotal:</span>
+                      <span>{symbol}{totals.subtotal.toFixed(2)}</span>
+                    </div>
+                    {applyTax && (
+                      <div className="flex justify-between">
+                        <span>Tax ({(orgTaxRate * 100).toFixed(1)}%):</span>
+                        <span>{symbol}{totals.taxAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-semibold border-t pt-1">
+                      <span>Total:</span>
+                      <span>{symbol}{totals.total.toFixed(2)}</span>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Commission Summary */}
+        {commissionSummary.length > 0 && (
+          <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm text-purple-800">Add Item</CardTitle>
+              <CardTitle className="text-sm font-semibold text-green-800 flex items-center gap-2">
+                💰 Commission Summary
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 lg:grid-cols-9 gap-3">
-                <div className="lg:col-span-1">
-                  <Label className="text-sm">Service</Label>
-                  <Select value={newItem.service_id} onValueChange={(value) => {
-                    const service = services.find(s => s.id === value);
-                    setNewItem({ 
-                      ...newItem, 
-                      service_id: value,
-                      description: service?.name || "",
-                      unit_price: service?.price.toString() || ""
-                    });
-                  }}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {services.map(s => (
-                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+            <CardContent className="space-y-3">
+              {commissionSummary.map((commission, idx) => (
+                <div key={idx} className="bg-white/60 p-3 rounded-lg">
+                  <div className="font-medium text-green-900">{commission.name}</div>
+                  <div className="text-lg font-bold text-green-700">
+                    {symbol}{commission.amount.toFixed(2)}
+                  </div>
+                  <div className="text-xs text-green-600 mt-1">
+                    {commission.items.join(', ')}
+                  </div>
                 </div>
-                <div className="lg:col-span-2">
-                  <Label className="text-sm">Description *</Label>
-                  <Input className="h-9" value={newItem.description} onChange={(e) => setNewItem({ ...newItem, description: e.target.value })} />
-                </div>
-                <div className="lg:col-span-1">
-                  <Label className="text-sm">Qty *</Label>
-                  <Input className="h-9" type="number" min="1" value={newItem.quantity} onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })} />
-                </div>
-                <div className="lg:col-span-1">
-                  <Label className="text-sm">Price *</Label>
-                  <Input className="h-9" type="number" step="0.01" value={newItem.unit_price} onChange={(e) => setNewItem({ ...newItem, unit_price: e.target.value })} />
-                </div>
-                <div className="lg:col-span-1">
-                  <Label className="text-sm">Discount %</Label>
-                  <Input className="h-9" type="number" min="0" max="100" value={newItem.discount_percentage} onChange={(e) => setNewItem({ ...newItem, discount_percentage: parseFloat(e.target.value) || 0 })} />
-                </div>
-                <div className="lg:col-span-1">
-                  <Label className="text-sm">Staff</Label>
-                  <Select value={newItem.staff_id} onValueChange={(value) => {
-                    const selectedStaff = staff.find(s => s.id === value);
-                    setNewItem({ 
-                      ...newItem, 
-                      staff_id: value,
-                      commission_percentage: selectedStaff?.commission_rate || newItem.commission_percentage
-                    });
-                  }}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {staff.map(s => (
-                        <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="lg:col-span-1">
-                  <Label className="text-sm">Commission %</Label>
-                  <Input className="h-9" type="number" min="0" max="100" step="0.1" value={newItem.commission_percentage} onChange={(e) => setNewItem({ ...newItem, commission_percentage: parseFloat(e.target.value) || 0 })} />
-                </div>
-                <div className="lg:col-span-1 flex items-end">
-                  <Button type="button" size="sm" className="w-full h-9 bg-violet-600 hover:bg-violet-700" onClick={addItemToInvoice}>
-                    <Plus className="w-4 h-4 mr-1" /> Add
-                  </Button>
+              ))}
+              <div className="border-t border-green-200 pt-2">
+                <div className="flex justify-between font-semibold text-green-800">
+                  <span>Total Commission:</span>
+                  <span>{symbol}{commissionSummary.reduce((sum, c) => sum + c.amount, 0).toFixed(2)}</span>
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          {selectedItems.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Invoice Items ({selectedItems.length})</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Qty</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Discount</TableHead>
-                      <TableHead>Staff</TableHead>
-                      <TableHead>Commission</TableHead>
-                      <TableHead>Total</TableHead>
-                      <TableHead className="w-12"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedItems.map((item, idx) => (
-                      <TableRow key={idx}>
-                        <TableCell className="font-medium">{item.description}</TableCell>
-                        <TableCell>{item.quantity}</TableCell>
-                        <TableCell>{symbol}{parseFloat(String(item.unit_price)).toFixed(2)}</TableCell>
-                        <TableCell>{item.discount_percentage}%</TableCell>
-                        <TableCell>{item.staff_id ? (staff.find(s => s.id === item.staff_id)?.full_name || '—') : '—'}</TableCell>
-                        <TableCell>{item.commission_percentage}%</TableCell>
-                        <TableCell className="font-semibold">{symbol}{Number(item.total_price).toFixed(2)}</TableCell>
-                        <TableCell>
-                          <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => removeItemFromInvoice(idx)}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        <Separator />
-
-        <div className="space-y-2">
-          <Label htmlFor="notes">Additional Notes</Label>
-          <Textarea id="notes" rows={3} value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder="Add any additional notes or special instructions..." />
-        </div>
-
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <Button type="button" variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
-          <Button type="submit">Create Invoice</Button>
-        </div>
-      </form>
+        )}
+      </div>
     </div>
   );
 }

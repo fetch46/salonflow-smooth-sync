@@ -18,7 +18,7 @@ export default function InvoiceEdit() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { symbol } = useOrganizationCurrency();
-  const orgTaxRate = useOrganizationTaxRate();
+  const { taxRate: orgTaxRate } = useOrganizationTaxRate();
   const { organization } = useOrganization();
 
   const [loading, setLoading] = useState(true);
@@ -157,8 +157,8 @@ export default function InvoiceEdit() {
   }, [selectedItems, applyTax, orgTaxRate]);
 
   const addItemToInvoice = () => {
-    if (!newItem.description || !newItem.unit_price) {
-      toast.error("Please fill in all required fields");
+    if (!newItem.service_id || !newItem.staff_id || !newItem.description || !newItem.unit_price) {
+      toast.error("Service and Staff are mandatory fields");
       return;
     }
     const unit = parseFloat(newItem.unit_price) || 0;
@@ -229,8 +229,34 @@ export default function InvoiceEdit() {
     }
   };
 
+  // Calculate commission summary
+  const commissionSummary = useMemo(() => {
+    const staffCommissions = new Map();
+    selectedItems.forEach(item => {
+      if (item.staff_id && item.commission_percentage > 0) {
+        const staffName = staff.find(s => s.id === item.staff_id)?.full_name || 'Unknown Staff';
+        const commissionAmount = (item.total_price * item.commission_percentage) / 100;
+        
+        if (staffCommissions.has(item.staff_id)) {
+          const existing = staffCommissions.get(item.staff_id);
+          existing.amount += commissionAmount;
+          existing.items.push(item.description);
+        } else {
+          staffCommissions.set(item.staff_id, {
+            name: staffName,
+            amount: commissionAmount,
+            items: [item.description]
+          });
+        }
+      }
+    });
+    return Array.from(staffCommissions.values());
+  }, [selectedItems, staff]);
+
   return (
-    <div className="flex-1 space-y-6 p-6 bg-slate-50/30 min-h-screen">
+    <div className="flex gap-6 p-6 bg-slate-50/30 min-h-screen">
+      {/* Main Form */}
+      <div className="flex-1 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-xl shadow-lg">
@@ -328,6 +354,43 @@ export default function InvoiceEdit() {
                   <Input className="h-9" value={newItem.description} onChange={(e) => setNewItem({ ...newItem, description: e.target.value })} />
                 </div>
                 <div className="lg:col-span-1">
+                  <Label className="text-sm">Service *</Label>
+                  <Select value={newItem.service_id} onValueChange={async (value) => {
+                    const service = services.find(s => s.id === value);
+                    // Get service commission rate
+                    let commissionRate = 0;
+                    if (service) {
+                      try {
+                        const { data: serviceData } = await supabase
+                          .from('services')
+                          .select('commission_percentage')
+                          .eq('id', value)
+                          .maybeSingle();
+                        commissionRate = serviceData?.commission_percentage || 0;
+                      } catch (error) {
+                        console.error('Error fetching service commission:', error);
+                      }
+                    }
+                    
+                    setNewItem({
+                      ...newItem,
+                      service_id: value,
+                      description: service?.name || "",
+                      unit_price: service?.price?.toString() || "",
+                      commission_percentage: commissionRate || newItem.commission_percentage,
+                    });
+                  }}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Select service *" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {services.map((s: any) => (
+                        <SelectItem key={s.id} value={s.id}>{s.name} - {symbol}{s.price}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="lg:col-span-1">
                   <Label className="text-sm">Qty *</Label>
                   <Input className="h-9" type="number" min="1" value={newItem.quantity} onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })} />
                 </div>
@@ -340,17 +403,21 @@ export default function InvoiceEdit() {
                   <Input className="h-9" type="number" min="0" max="100" value={newItem.discount_percentage} onChange={(e) => setNewItem({ ...newItem, discount_percentage: parseFloat(e.target.value) || 0 })} />
                 </div>
                 <div className="lg:col-span-1">
-                  <Label className="text-sm">Staff</Label>
+                  <Label className="text-sm">Staff *</Label>
                   <Select value={newItem.staff_id} onValueChange={(value) => {
                     const selectedStaff = staff.find(s => s.id === value);
+                    // Use staff commission rate only if service doesn't have one
+                    const commissionRate = newItem.commission_percentage > 0 
+                      ? newItem.commission_percentage 
+                      : selectedStaff?.commission_rate || 0;
                     setNewItem({ 
                       ...newItem, 
                       staff_id: value,
-                      commission_percentage: selectedStaff?.commission_rate || newItem.commission_percentage
+                      commission_percentage: commissionRate
                     });
                   }}>
                     <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Select" />
+                      <SelectValue placeholder="Select staff *" />
                     </SelectTrigger>
                     <SelectContent>
                       {staff.map((s: any) => (
@@ -423,6 +490,120 @@ export default function InvoiceEdit() {
           <Button type="submit">Save Changes</Button>
         </div>
       </form>
+      </div>
+
+      {/* Invoice Preview Sidebar */}
+      <div className="w-80 space-y-4">
+        {/* Invoice Preview */}
+        <Card className="bg-white border border-slate-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-semibold text-slate-900">Invoice Preview</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-sm text-slate-600">
+              <div className="flex justify-between">
+                <span>Invoice #:</span>
+                <span className="font-medium">{id?.slice(-6) || 'TBD'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Customer:</span>
+                <span className="font-medium">{formData.customer_name || 'Not selected'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Date:</span>
+                <span className="font-medium">{new Date().toLocaleDateString()}</span>
+              </div>
+              {formData.due_date && (
+                <div className="flex justify-between">
+                  <span>Due:</span>
+                  <span className="font-medium">{new Date(formData.due_date).toLocaleDateString()}</span>
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-slate-900">Items ({selectedItems.length})</div>
+              {selectedItems.length === 0 ? (
+                <p className="text-sm text-slate-500 italic">No items added yet</p>
+              ) : (
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {selectedItems.map((item, idx) => (
+                    <div key={idx} className="text-xs bg-slate-50 p-2 rounded">
+                      <div className="font-medium">{item.description}</div>
+                      <div className="text-slate-600">
+                        {item.quantity} × {symbol}{item.unit_price} = {symbol}{item.total_price.toFixed(2)}
+                      </div>
+                      {item.staff_id && (
+                        <div className="text-blue-600">
+                          Staff: {staff.find(s => s.id === item.staff_id)?.full_name}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            <div className="space-y-1 text-sm">
+              {(() => {
+                const totals = calculateTotals();
+                return (
+                  <>
+                    <div className="flex justify-between">
+                      <span>Subtotal:</span>
+                      <span>{symbol}{totals.subtotal.toFixed(2)}</span>
+                    </div>
+                    {applyTax && (
+                      <div className="flex justify-between">
+                        <span>Tax ({orgTaxRate}%):</span>
+                        <span>{symbol}{totals.taxAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-semibold border-t pt-1">
+                      <span>Total:</span>
+                      <span>{symbol}{totals.total.toFixed(2)}</span>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Commission Summary */}
+        {commissionSummary.length > 0 && (
+          <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold text-green-800 flex items-center gap-2">
+                💰 Commission Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {commissionSummary.map((commission, idx) => (
+                <div key={idx} className="bg-white/60 p-3 rounded-lg">
+                  <div className="font-medium text-green-900">{commission.name}</div>
+                  <div className="text-lg font-bold text-green-700">
+                    {symbol}{commission.amount.toFixed(2)}
+                  </div>
+                  <div className="text-xs text-green-600 mt-1">
+                    {commission.items.join(', ')}
+                  </div>
+                </div>
+              ))}
+              <div className="border-t border-green-200 pt-2">
+                <div className="flex justify-between font-semibold text-green-800">
+                  <span>Total Commission:</span>
+                  <span>{symbol}{commissionSummary.reduce((sum, c) => sum + c.amount, 0).toFixed(2)}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
