@@ -1,22 +1,36 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DataTable, ColumnDef } from "@/components/ui/data-table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Search, 
   Filter, 
+  MoreHorizontal, 
+  Eye, 
+  Edit, 
+  Trash2, 
+  Receipt,
   Clock,
   CheckCircle,
   PlayCircle,
   PauseCircle,
   StopCircle,
+  AlertTriangle,
   Calendar,
+  User,
+  DollarSign,
+  MapPin,
   Phone
 } from "lucide-react";
+import { format, differenceInMinutes } from "date-fns";
 import { toast } from "sonner";
+import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { useRegionalSettings } from "@/hooks/useRegionalSettings";
 
 interface JobCard {
@@ -65,6 +79,7 @@ export default function JobCardsList({ onRefresh }: JobCardsListProps) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const navigate = useNavigate();
 
   const fetchJobCards = useCallback(async () => {
     try {
@@ -127,71 +142,100 @@ export default function JobCardsList({ onRefresh }: JobCardsListProps) {
     fetchJobCards();
   }, [fetchJobCards]);
 
-  // Table columns for listing view
-  const columns = useMemo<ColumnDef<JobCard>[]>(() => [
-    {
-      id: 'job_number',
-      header: 'Job Card Number',
-      accessor: (row) => (
-        <Badge variant="outline" className="font-mono text-responsive-xs">{row.job_number}</Badge>
-      ),
-      sortAccessor: (row) => row.job_number,
-    },
-    {
-      id: 'status',
-      header: 'Status',
-      accessor: (row) => getStatusBadge(row.status),
-      sortAccessor: (row) => row.status,
-      className: 'whitespace-nowrap',
-    },
-    {
-      id: 'client',
-      header: 'Client Details',
-      accessor: (row) => (
-        <div className="min-w-0">
-          <div className="font-medium text-slate-900 truncate text-responsive-sm">{row.client?.full_name || 'Unknown Client'}</div>
-          {row.client?.phone && (
-            <div className="flex items-center gap-1 text-responsive-xs text-slate-500">
-              <Phone className="w-3 h-3" />
-              <span className="truncate">{row.client.phone}</span>
-            </div>
-          )}
-        </div>
-      ),
-      sortAccessor: (row) => row.client?.full_name || '',
-      className: 'max-w-[280px]'
-    },
-    {
-      id: 'services',
-      header: 'Services Details',
-      accessor: (row) => (
-        <div className="text-responsive-sm text-slate-700 truncate">
-          {(row.services && row.services.length > 0)
-            ? row.services.map((s) => s.name).join(', ')
-            : '—'}
-        </div>
-      ),
-      className: 'max-w-[380px]'
-    },
-    {
-      id: 'staff',
-      header: 'Staff',
-      accessor: (row) => (
-        <div className="text-responsive-sm text-slate-900">{row.staff?.full_name || 'Unassigned'}</div>
-      ),
-      sortAccessor: (row) => row.staff?.full_name || '',
-      className: 'whitespace-nowrap'
-    },
-    {
-      id: 'amount',
-      header: 'Amount',
-      accessor: (row) => (
-        <div className="text-right font-medium">{formatCurrency(row.total_amount)}</div>
-      ),
-      sortAccessor: (row) => row.total_amount,
-      className: 'text-right'
-    },
-  ], [formatCurrency]);
+  const handleDeleteJobCard = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this job card?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('job_cards')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      setJobCards(prev => prev.filter(card => card.id !== id));
+      toast.success("Job card deleted successfully");
+      onRefresh?.();
+    } catch (error) {
+      console.error('Error deleting job card:', error);
+      toast.error("Failed to delete job card");
+    }
+  };
+
+  const handleStatusUpdate = async (id: string, newStatus: string) => {
+    try {
+      const updateData: { status: string; start_time?: string; end_time?: string } = { status: newStatus };
+
+      if (newStatus === 'in_progress' && !jobCards.find(jc => jc.id === id)?.start_time) {
+        updateData.start_time = new Date().toISOString();
+      } else if (newStatus === 'completed' && !jobCards.find(jc => jc.id === id)?.end_time) {
+        updateData.end_time = new Date().toISOString();
+      }
+
+      const { error } = await supabase
+        .from('job_cards')
+        .update(updateData)
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      toast.success('Job card status updated');
+      await fetchJobCards();
+      onRefresh?.();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Failed to update status');
+    }
+  };
+
+  const createInvoiceFromJobCard = async (card: JobCard) => {
+    try {
+      const invoiceNumber = `INV-${Date.now()}`;
+      const { data: invoice, error } = await supabase
+        .from('invoices')
+        .insert([
+          {
+            invoice_number: invoiceNumber,
+            client_id: card.client?.id || null,
+            issue_date: new Date().toISOString().split('T')[0],
+            subtotal: card.total_amount,
+            tax_amount: 0,
+            total_amount: card.total_amount,
+            status: 'sent',
+            notes: `Invoice for ${card.job_number}`,
+            organization_id: null, // Will be set by RLS
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Create invoice items from job card services
+      if (card.services && card.services.length > 0) {
+        const items = card.services.map((service) => ({
+          invoice_id: invoice.id,
+          service_id: service.id,
+          description: service.name,
+          quantity: 1,
+          unit_price: service.price,
+          total_price: service.price,
+        }));
+
+        const { error: itemsError } = await supabase
+          .from('invoice_items')
+          .insert(items);
+
+        if (itemsError) throw itemsError;
+      }
+
+      toast.success('Invoice created successfully');
+      onRefresh?.();
+    } catch (e: any) {
+      console.error('Error creating invoice from job card:', e);
+      toast.error(e?.message || 'Failed to create invoice');
+    }
+  };
 
   const filteredJobCards = useMemo(() => {
     return jobCards.filter(card => {
@@ -219,7 +263,17 @@ export default function JobCardsList({ onRefresh }: JobCardsListProps) {
     );
   };
 
-  // No duration display in table view
+  const getDuration = (startTime: string | null, endTime: string | null) => {
+    if (!startTime) return null;
+    const end = endTime ? new Date(endTime) : new Date();
+    const start = new Date(startTime);
+    const minutes = differenceInMinutes(end, start);
+    
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+  };
 
   if (loading) {
     return (
@@ -275,24 +329,179 @@ export default function JobCardsList({ onRefresh }: JobCardsListProps) {
         </div>
       </div>
 
-      {/* Job Cards Table */}
-      {filteredJobCards.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
-              <Calendar className="w-8 h-8 text-slate-400" />
-            </div>
-            <h3 className="text-lg font-medium text-slate-900 mb-2">No job cards found</h3>
-            <p className="text-slate-600 mb-4">
-              {searchTerm || statusFilter !== "all" 
-                ? "Try adjusting your search or filters" 
-                : "Create your first job card to get started"}
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <DataTable<JobCard> columns={columns} data={filteredJobCards} pageSize={10} />
-      )}
+      {/* Job Cards Grid */}
+      <div className="grid grid-cols-responsive-cards gap-2 sm:gap-3">
+        {filteredJobCards.length === 0 ? (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
+                <Calendar className="w-8 h-8 text-slate-400" />
+              </div>
+              <h3 className="text-lg font-medium text-slate-900 mb-2">No job cards found</h3>
+              <p className="text-slate-600 mb-4">
+                {searchTerm || statusFilter !== "all" 
+                  ? "Try adjusting your search or filters" 
+                  : "Create your first job card to get started"}
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          filteredJobCards.map((card) => (
+            <Card key={card.id} className="hover:shadow-lg transition-all duration-200 min-w-0">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 space-y-4">
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <Badge variant="outline" className="font-mono text-responsive-xs">
+                          {card.job_number}
+                        </Badge>
+                        {getStatusBadge(card.status)}
+                      </div>
+                      <div className="text-right">
+                        <div className="text-responsive-lg sm:text-responsive-xl font-semibold text-slate-900">
+                          {formatCurrency(card.total_amount)}
+                        </div>
+                        <div className="text-responsive-xs text-slate-500">
+                          {format(new Date(card.created_at), 'MMM dd, yyyy')}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Client & Staff Info */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                      {/* Client */}
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <Avatar className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
+                          <AvatarFallback className="bg-blue-100 text-blue-600 text-responsive-xs">
+                            {card.client?.full_name.split(' ').map(n => n[0]).join('') || 'C'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-slate-900 truncate text-responsive-sm">
+                            {card.client?.full_name || 'Unknown Client'}
+                          </div>
+                          {card.client?.phone && (
+                            <div className="flex items-center gap-1 text-responsive-xs text-slate-500">
+                              <Phone className="w-3 h-3 flex-shrink-0" />
+                              <span className="truncate">{card.client.phone}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Staff */}
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <Avatar className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
+                          <AvatarFallback className="bg-orange-100 text-orange-600 text-responsive-xs">
+                            {card.staff?.full_name.split(' ').map(n => n[0]).join('') || 'S'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-slate-900 truncate text-responsive-sm">
+                            {card.staff?.full_name || 'Unassigned'}
+                          </div>
+                          <div className="text-responsive-xs text-slate-500">Staff Member</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Services */}
+                    {card.services && card.services.length > 0 && (
+                      <div className="space-y-1 sm:space-y-2">
+                        <div className="text-responsive-sm font-medium text-slate-600">Services</div>
+                        <div className="flex flex-wrap gap-1 sm:gap-2">
+                          {card.services.map((service) => (
+                            <Badge key={service.id} variant="secondary" className="text-responsive-xs">
+                              {service.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Timing */}
+                    {(card.start_time || card.end_time) && (
+                      <div className="flex items-center gap-4 text-xs text-slate-500">
+                        {card.start_time && (
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            Started: {format(new Date(card.start_time), 'h:mm a')}
+                          </div>
+                        )}
+                        {card.end_time && (
+                          <div className="flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            Completed: {format(new Date(card.end_time), 'h:mm a')}
+                          </div>
+                        )}
+                        {getDuration(card.start_time, card.end_time) && (
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            Duration: {getDuration(card.start_time, card.end_time)}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Notes */}
+                    {card.notes && (
+                      <div className="text-sm text-slate-600 line-clamp-2">
+                        {card.notes}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="ml-4">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => navigate(`/job-cards/${card.id}`)}>
+                          <Eye className="w-4 h-4 mr-2" />
+                          View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => navigate(`/job-cards/${card.id}/edit`)}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        {card.status !== 'completed' && (
+                          <>
+                            <DropdownMenuItem onClick={() => handleStatusUpdate(card.id, 'in_progress')}>
+                              <PlayCircle className="w-4 h-4 mr-2" />
+                              Start
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusUpdate(card.id, 'completed')}>
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Complete
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        <DropdownMenuItem onClick={() => createInvoiceFromJobCard(card)}>
+                          <Receipt className="w-4 h-4 mr-2" />
+                          Create Invoice
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleDeleteJobCard(card.id)}
+                          className="text-red-600"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
     </div>
   );
 }
