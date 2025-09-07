@@ -106,26 +106,6 @@ export default function PaymentReceivedNew() {
     init();
   }, [organization?.id]);
 
-  // If navigated with invoiceId, preselect it and prefill amount and customer name
-  useEffect(() => {
-    const invoiceId = searchParams.get('invoiceId');
-    if (!invoiceId) return;
-    setSelectedInvoiceId(invoiceId);
-  }, [searchParams]);
-
-  // When selected invoice changes (including via URL), prefill amount and customer
-  useEffect(() => {
-    if (!selectedInvoiceId) return;
-    const outstanding = outstandingById[selectedInvoiceId] || 0;
-    const selected = invoiceOptions.find((x) => x.id === selectedInvoiceId) as any;
-    const customerName = selected?.customer_name || '';
-    setForm((prev) => ({
-      ...prev,
-      amount: prev.amount || (outstanding > 0 ? outstanding.toFixed(2) : ''),
-      customer_name: prev.customer_name || customerName,
-    }));
-  }, [selectedInvoiceId, invoiceOptions, outstandingById]);
-
   const outstandingById = useMemo(() => {
     const map: Record<string, number> = {};
     (invoiceOptions || []).forEach((r) => {
@@ -168,6 +148,11 @@ export default function PaymentReceivedNew() {
     const amt = parseFloat(form.amount) || 0;
     if (amt <= 0 || (outstanding > 0 && amt > outstanding + 0.0001)) {
       toast.error("Invalid amount");
+      return;
+    }
+    // Enforce M-Pesa reference
+    if (String(form.method).toLowerCase() === 'mpesa' && !form.reference.trim()) {
+      toast.error('Reference is required for M-Pesa payments');
       return;
     }
     try {

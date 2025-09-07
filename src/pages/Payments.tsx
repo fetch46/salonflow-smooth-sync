@@ -20,6 +20,7 @@ import {
   recordInvoicePaymentWithFallback,
   getInvoicesWithBalanceWithFallback 
 } from "@/utils/mockDatabase";
+import { postInvoicePaymentWithAccount, postInvoicePaymentToLedger } from "@/utils/ledger";
 import { useNavigate } from "react-router-dom";
 import { downloadInvoicePDF } from "@/utils/invoicePdf";
 import { useOrganizationCurrency, useOrganization } from "@/lib/saas/hooks";
@@ -257,6 +258,22 @@ export default function PaymentsNew() {
 
   useEffect(() => { loadData(); }, []);
   useEffect(() => { loadCreateFormData(); }, [createOpen, organization?.id]);
+  // Auto-select deposit account from settings when payment method changes
+  useEffect(() => {
+    if (!organization?.id) return;
+    const methodKey = String(createForm.method || '').toLowerCase();
+    const settings = (organization as any)?.settings || {};
+    const map = settings?.default_deposit_accounts_by_method || {};
+    const candidateId: string | undefined = map?.[methodKey];
+    if (candidateId) {
+      // Only set if candidate is in the loaded asset accounts list
+      const exists = assetAccounts.some((a) => a.id === candidateId);
+      if (exists && createForm.account_id !== candidateId) {
+        setCreateForm((prev) => ({ ...prev, account_id: candidateId }));
+      }
+    }
+  }, [organization?.id, createForm.method, assetAccounts]);
+
 
   // Auto-fill amount when invoice is selected
   useEffect(() => {
@@ -281,6 +298,10 @@ export default function PaymentsNew() {
     const amt = parseFloat(createForm.amount) || 0;
     if (amt <= 0) { toast.error('Invalid amount'); return; }
     if (!createForm.account_id) { toast.error('Select a deposit account'); return; }
+    if (String(createForm.method).toLowerCase() === 'mpesa' && !createForm.reference.trim()) {
+      toast.error('Reference is required for M-Pesa payments');
+      return;
+    }
     
     try {
       const result = await recordInvoicePaymentWithFallback(supabase, {
@@ -293,6 +314,33 @@ export default function PaymentsNew() {
       });
       
       if (result.success) {
+        // Post to ledger according to selected account/method
+        try {
+          if (organization?.id) {
+            const inv = invoiceOptions.find(x => x.id === selectedInvoiceId);
+            if (createForm.account_id) {
+              await postInvoicePaymentWithAccount({
+                organizationId: organization.id,
+                amount: amt,
+                depositAccountId: createForm.account_id,
+                invoiceId: selectedInvoiceId,
+                invoiceNumber: inv?.invoice_number,
+                paymentDate: createForm.payment_date,
+              });
+            } else {
+              await postInvoicePaymentToLedger({
+                organizationId: organization.id,
+                amount: amt,
+                method: createForm.method,
+                invoiceId: selectedInvoiceId,
+                invoiceNumber: inv?.invoice_number,
+                paymentDate: createForm.payment_date,
+              });
+            }
+          }
+        } catch (ledgerErr) {
+          console.warn('Ledger posting failed', ledgerErr);
+        }
         toast.success('Payment recorded successfully');
         setCreateOpen(false);
         setSelectedInvoiceId("");
@@ -323,6 +371,10 @@ export default function PaymentsNew() {
     if (!editing) return;
     const amt = parseFloat(editForm.amount) || 0;
     if (amt <= 0) { toast.error('Invalid amount'); return; }
+    if (String(editForm.method).toLowerCase() === 'mpesa' && !editForm.reference.trim()) {
+      toast.error('Reference is required for M-Pesa payments');
+      return;
+    }
     
     try {
       await updateInvoicePaymentWithFallback(supabase, editing.id, {

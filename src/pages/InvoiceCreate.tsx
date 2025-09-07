@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Users, Receipt, Trash2, Plus, DollarSign } from "lucide-react";
 import { useOrganizationCurrency, useOrganizationTaxRate, useOrganization } from "@/lib/saas/hooks";
 import { createInvoiceWithFallback, getInvoiceItemsWithFallback, getInvoicesWithFallback } from "@/utils/mockDatabase";
+import { useTransactionNumbers } from "@/hooks/useTransactionNumbers";
 
 interface Customer { id: string; full_name: string; email: string | null; phone: string | null }
 interface Service { id: string; name: string; price: number; commission_percentage?: number }
@@ -24,6 +25,7 @@ export default function InvoiceCreate() {
   const { symbol } = useOrganizationCurrency();
   const { taxRate: orgTaxRate, taxEnabled } = useOrganizationTaxRate() as any;
   const { organization } = useOrganization();
+  const { getNextNumber } = useTransactionNumbers();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -281,16 +283,16 @@ export default function InvoiceCreate() {
 
   const removeItemFromInvoice = (idx: number) => setSelectedItems(selectedItems.filter((_, i) => i !== idx));
 
-  const generateInvoiceNumber = () => `INV-${Date.now().toString().slice(-6)}`;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedItems.length === 0) return toast.error('Please add at least one item to the invoice');
     if (!formData.location_id) return toast.error('Please select a location');
     try {
+      // Generate next invoice number from configured series
+      const invoiceNumber = await getNextNumber('invoice');
       const totals = calculateTotals();
       const invoiceData = {
-        invoice_number: generateInvoiceNumber(),
+        invoice_number: invoiceNumber,
         customer_id: formData.customer_id || null,
         customer_name: formData.customer_name,
         customer_email: formData.customer_email || null,
