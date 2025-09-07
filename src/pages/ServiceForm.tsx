@@ -24,6 +24,7 @@ interface ServiceFormState {
   is_active: boolean;
   commission_percentage: number;
   location_id: string;
+  income_account_id?: string;
 }
 
 interface ServiceKitItem {
@@ -77,6 +78,8 @@ export default function ServiceForm() {
   const [serviceOrgId, setServiceOrgId] = useState<string | null>(null);
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [incomeAccounts, setIncomeAccounts] = useState<Array<{ id: string; account_code?: string; account_name: string }>>([]);
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -99,6 +102,54 @@ export default function ServiceForm() {
     };
     loadCategories();
   }, [organization?.id, formData.category]);
+
+  // Load Income accounts
+  useEffect(() => {
+    const loadAccounts = async () => {
+      try {
+        if (!organization?.id) { setIncomeAccounts([]); return; }
+        setAccountsLoading(true);
+        let accs: any[] | null = null;
+        let err: any = null;
+        try {
+          const res = await supabase
+            .from('accounts')
+            .select('id, account_code, account_name, account_type, account_subtype')
+            .eq('organization_id', organization.id)
+            .eq('account_type', 'Income')
+            .order('account_code', { ascending: true });
+          accs = res.data as any[] | null;
+          err = res.error;
+        } catch (inner: any) {
+          err = inner;
+        }
+        if (err) {
+          const msg = String(err?.message || '').toLowerCase();
+          const isMissingSubtype = msg.includes('account_subtype') && msg.includes('does not exist');
+          const isColMissing = msg.includes('column') && msg.includes('does not exist');
+          if (isMissingSubtype || isColMissing) {
+            const { data, error } = await supabase
+              .from('accounts')
+              .select('id, account_code, account_name, account_type')
+              .eq('organization_id', organization.id)
+              .eq('account_type', 'Income')
+              .order('account_code', { ascending: true });
+            if (error) throw error;
+            accs = data as any[] | null;
+          } else {
+            throw err;
+          }
+        }
+        setIncomeAccounts((accs || []) as any);
+      } catch (e) {
+        console.warn('Failed to load accounts', e);
+        setIncomeAccounts([]);
+      } finally {
+        setAccountsLoading(false);
+      }
+    };
+    loadAccounts();
+  }, [organization?.id]);
 
   const fetchAvailableProducts = useCallback(async () => {
     try {
@@ -211,6 +262,7 @@ export default function ServiceForm() {
               is_active: service.is_active,
               commission_percentage: Number((service as any).commission_percentage) || 0,
               location_id: (service as any).location_id || "",
+              income_account_id: (service as any).income_account_id || "",
             });
             setServiceOrgId((service as any).organization_id || null);
           }
@@ -280,6 +332,10 @@ export default function ServiceForm() {
         toast.error("Please select a location");
         return;
       }
+      if (!isEdit && !formData.income_account_id) {
+        toast.error("Please select an Income Account for this service");
+        return;
+      }
 
       let serviceId = id as string | undefined;
       const payload: Record<string, any> = {
@@ -290,6 +346,7 @@ export default function ServiceForm() {
         category: formData.category || null,
         is_active: formData.is_active,
         location_id: formData.location_id,
+        income_account_id: formData.income_account_id || null,
       };
 
       if (isEdit && serviceId) {
@@ -309,6 +366,9 @@ export default function ServiceForm() {
           const isMissingLocationId = code === '42703'
             || /column\s+("?[\w\.]*location_id"?)\s+does not exist/i.test(message)
             || (/schema cache/i.test(message) && /location_id/i.test(message) && /services/i.test(message));
+          const isMissingIncomeAccountId = code === '42703'
+            || /column\s+("?[\w\.]*income_account_id"?)\s+does not exist/i.test(message)
+            || (/schema cache/i.test(message) && /income_account_id/i.test(message) && /services/i.test(message));
           if (isMissingLocationId) {
             const { error: retryError } = await supabase
               .from("services")
@@ -319,6 +379,21 @@ export default function ServiceForm() {
                 price: payload.price,
                 category: payload.category,
                 is_active: payload.is_active,
+                income_account_id: isMissingIncomeAccountId ? undefined : payload.income_account_id,
+              })
+              .eq("id", serviceId);
+            if (retryError) throw retryError;
+          } else if (isMissingIncomeAccountId) {
+            const { error: retryError } = await supabase
+              .from("services")
+              .update({
+                name: payload.name,
+                description: payload.description,
+                duration_minutes: payload.duration_minutes,
+                price: payload.price,
+                category: payload.category,
+                is_active: payload.is_active,
+                location_id: payload.location_id,
               })
               .eq("id", serviceId);
             if (retryError) throw retryError;
@@ -343,6 +418,7 @@ export default function ServiceForm() {
                 is_active: payload.is_active,
                 organization_id: organization.id,
                 location_id: payload.location_id,
+                income_account_id: payload.income_account_id,
               },
             ])
             .select('id')
@@ -359,6 +435,9 @@ export default function ServiceForm() {
           const isMissingLocationId = code === '42703'
             || /column\s+("?[\w\.]*location_id"?)\s+does not exist/i.test(message)
             || (/schema cache/i.test(message) && /location_id/i.test(message) && /services/i.test(message));
+          const isMissingIncomeAccountId = code === '42703'
+            || /column\s+("?[\w\.]*income_account_id"?)\s+does not exist/i.test(message)
+            || (/schema cache/i.test(message) && /income_account_id/i.test(message) && /services/i.test(message));
           if (isMissingOrgId || isMissingLocationId) {
             const { data: retryData, error: retryError } = await supabase
               .from("services")
@@ -371,6 +450,26 @@ export default function ServiceForm() {
                   category: payload.category,
                   is_active: payload.is_active,
                   organization_id: organization?.id || '',
+                  income_account_id: isMissingIncomeAccountId ? undefined : payload.income_account_id,
+                },
+              ])
+              .select('id')
+              .maybeSingle();
+            if (retryError) throw retryError;
+            data = retryData;
+          } else if (isMissingIncomeAccountId) {
+            const { data: retryData, error: retryError } = await supabase
+              .from("services")
+              .insert([
+                {
+                  name: payload.name,
+                  description: payload.description,
+                  duration_minutes: payload.duration_minutes,
+                  price: payload.price,
+                  category: payload.category,
+                  is_active: payload.is_active,
+                  organization_id: organization?.id || '',
+                  location_id: payload.location_id,
                 },
               ])
               .select('id')
@@ -480,6 +579,19 @@ export default function ServiceForm() {
                 <div className="md:col-span-2">
                   <Label htmlFor="description">Description</Label>
                   <Textarea id="description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={3} placeholder="Describe what this service includes..." />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>Income Account *</Label>
+                  <Select value={formData.income_account_id || ''} onValueChange={(v) => setFormData({ ...formData, income_account_id: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={accountsLoading ? 'Loading...' : (incomeAccounts.length ? 'Select income account' : 'No income accounts found')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {incomeAccounts.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>{(a as any).account_code ? `${(a as any).account_code} - ${a.account_name}` : a.account_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label htmlFor="category">Category</Label>
