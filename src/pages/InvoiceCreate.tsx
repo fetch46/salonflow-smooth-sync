@@ -158,7 +158,7 @@ export default function InvoiceCreate() {
       try {
         const { data: jc } = await supabase
           .from('job_cards')
-          .select('id, client_id')
+          .select('id, client_id, location_id, staff_id')
           .eq('id', fromJobCard)
           .maybeSingle();
         if (!jc) return;
@@ -171,7 +171,8 @@ export default function InvoiceCreate() {
             customer_name: client.full_name,
             customer_email: client.email || '',
             customer_phone: client.phone || '',
-            jobcard_id: jc.id
+            jobcard_id: jc.id,
+            location_id: (jc as any).location_id || prev.location_id,
           }));
         } else if (jc.client_id) {
           const { data: cli } = await supabase.from('clients').select('id, full_name, email, phone').eq('id', jc.client_id).maybeSingle();
@@ -203,7 +204,7 @@ export default function InvoiceCreate() {
           quantity: Number(row.quantity || 1),
           unit_price: Number(row.unit_price || 0),
           discount_percentage: 0,
-          staff_id: row.staff_id || '',
+          staff_id: row.staff_id || (jc as any)?.staff_id || '',
           commission_percentage: typeof row.commission_percentage === 'number' ? Number(row.commission_percentage) : 0,
           total_price: Number(row.quantity || 1) * Number(row.unit_price || 0),
         }));

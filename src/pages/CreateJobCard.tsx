@@ -567,6 +567,7 @@ export default function CreateJobCard() {
             total_amount: jobCardData.service_charge,
             status: jobCardData.end_time ? "completed" : "in_progress",
             organization_id: organization?.id || null,
+            location_id: selectedLocationId || null,
             job_number: '', // Will be set by trigger
           }])
           .select()

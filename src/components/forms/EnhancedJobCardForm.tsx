@@ -147,15 +147,31 @@ export const EnhancedJobCardForm: React.FC<EnhancedJobCardFormProps> = ({
         status: 'in_progress',
         organization_id: organization.id,
         job_number: '', // Will be set by trigger
+        location_id: defaultLocation || null,
       };
 
-      const { data: jobCard, error: jobCardError } = await supabase
-        .from('job_cards')
-        .insert(jobCardData)
-        .select('*, job_number')
-        .maybeSingle();
-
-      if (jobCardError) throw jobCardError;
+      let jobCard: any = null;
+      try {
+        const { data, error } = await supabase
+          .from('job_cards')
+          .insert(jobCardData)
+          .select('*, job_number')
+          .maybeSingle();
+        if (error) throw error;
+        jobCard = data;
+      } catch (e: any) {
+        const msg = String(e?.message || '').toLowerCase();
+        const code = (e as any)?.code || '';
+        const missingLoc = code === '42703' || (msg.includes('column') && msg.includes('location_id') && msg.includes('does not exist'));
+        if (!missingLoc) throw e;
+        const { data, error } = await supabase
+          .from('job_cards')
+          .insert({ ...jobCardData, location_id: undefined } as any)
+          .select('*, job_number')
+          .maybeSingle();
+        if (error) throw error;
+        jobCard = data;
+      }
 
       // Insert services
       if (selectedServices.length > 0) {
