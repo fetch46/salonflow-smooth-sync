@@ -229,11 +229,15 @@ export default function ServiceForm() {
   useEffect(() => {
     if (isEdit) return;
     if (formData.location_id) return;
-    const preferred = locations.find((l) => (l as any).is_default) || locations[0];
+    const settings = (organization?.settings as any) || {};
+    const configuredId = settings.services_default_location_id as string | undefined;
+    const preferred = (configuredId && locations.find(l => l.id === configuredId))
+      || locations.find((l) => (l as any).is_default)
+      || locations[0];
     if (preferred?.id) {
       setFormData((prev) => ({ ...prev, location_id: preferred.id }));
     }
-  }, [locations, isEdit, formData.location_id]);
+  }, [locations, isEdit, formData.location_id, organization?.settings]);
 
   const addKitItem = (productId: string) => {
     const product = availableProducts.find((p) => p.id === productId);
