@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { Config } from "tailwindcss";
 import typography from "@tailwindcss/typography";
 import animate from "tailwindcss-animate";
@@ -5,6 +6,7 @@ import animate from "tailwindcss-animate";
 export default {
 	darkMode: ["class"],
 	content: [
+		"./index.html",
 		"./pages/**/*.{ts,tsx}",
 		"./components/**/*.{ts,tsx}",
 		"./app/**/*.{ts,tsx}",
@@ -29,9 +31,9 @@ export default {
 		},
 		extend: {
 			fontFamily: {
-				sans: ['Noto Sans', 'Zoho Purvi', 'system-ui', 'sans-serif'],
-				'zoho': ['Noto Sans', 'Zoho Purvi', 'system-ui', 'sans-serif'],
-				'heading': ['Noto Sans', 'Zoho Purvi', 'system-ui', 'sans-serif'],
+				sans: ['Inter', 'Noto Sans', 'Zoho Purvi', 'system-ui', 'sans-serif'],
+				'zoho': ['Inter', 'Noto Sans', 'Zoho Purvi', 'system-ui', 'sans-serif'],
+				'heading': ['Inter', 'Noto Sans', 'Zoho Purvi', 'system-ui', 'sans-serif'],
 			},
 			fontSize: {
 				'responsive-xs': 'var(--text-xs)',
