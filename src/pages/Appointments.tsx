@@ -881,40 +881,24 @@ export default function Appointments() {
               />
             </div>
             <div className="flex items-center gap-2 w-full md:w-auto">
-              <div className="hidden md:flex items-center flex-wrap gap-1.5">
-                {["all","scheduled","confirmed","in_progress","completed","cancelled","no_show"].map((s) => (
-                  <Button
-                    key={s}
-                    size="sm"
-                    variant={statusFilter === s ? "default" : "outline"}
-                    className="rounded-full h-8 px-3"
-                    onClick={() => setStatusFilter(s)}
-                  >
-                    {s === "all" ? "All" : s.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
-                  </Button>
-                ))}
-                <Button variant="ghost" size="sm" onClick={() => { setSearchTerm(""); setStatusFilter("all"); }}>
-                  Clear
-                </Button>
-              </div>
-              <div className="md:hidden flex items-center gap-2 w-full">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full h-9">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All statuses</SelectItem>
-                    <SelectItem value="scheduled">Scheduled</SelectItem>
-                    <SelectItem value="confirmed">Confirmed</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                    <SelectItem value="no_show">No Show</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button variant="ghost" onClick={() => { setSearchTerm(""); setStatusFilter("all"); }}>
-                  Clear
-                </Button>
+              <div className="w-full md:w-48">
+                <div className="flex flex-col">
+                  <Label className="text-xs text-muted-foreground mb-1">Status</Label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-full h-9" aria-label="Status">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All statuses</SelectItem>
+                      <SelectItem value="scheduled">Scheduled</SelectItem>
+                      <SelectItem value="confirmed">Confirmed</SelectItem>
+                      <SelectItem value="in_progress">In Progress</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                      <SelectItem value="no_show">No Show</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           </div>
