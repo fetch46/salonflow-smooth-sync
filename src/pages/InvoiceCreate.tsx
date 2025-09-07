@@ -14,6 +14,9 @@ import { Users, Receipt, Trash2, Plus } from "lucide-react";
 import { createInvoiceWithFallback, getInvoicesWithFallback, getInvoiceItemsWithFallback } from "@/utils/mockDatabase";
 import { useOrganizationCurrency, useOrganizationTaxRate, useOrganization } from "@/lib/saas/hooks";
 import { useTransactionNumbers } from "@/hooks/useTransactionNumbers";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { recordInvoicePaymentWithFallback } from "@/utils/mockDatabase";
 
 
 interface Customer { id: string; full_name: string; email: string | null; phone: string | null }
@@ -73,6 +76,18 @@ export default function InvoiceCreate() {
 
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
   const [applyTax, setApplyTax] = useState<boolean>(true);
+  const [receivedPayment, setReceivedPayment] = useState<boolean>(false);
+  const [depositAccounts, setDepositAccounts] = useState<Array<{ id: string; account_code: string; account_name: string; account_subtype?: string | null }>>([]);
+  const [paymentData, setPaymentData] = useState<{ method: string; account_id: string; reference: string; amount: string }>({ method: "", account_id: "", reference: "", amount: "" });
+
+  const prevAccountForMethod = (method: string, options: Array<{ id: string; account_code: string; account_name: string; account_subtype?: string | null }>): string => {
+    const m = (method || '').toLowerCase();
+    if (m === 'cash') return options.find(o => (o.account_subtype || '').toLowerCase() === 'cash')?.id || '';
+    if (m === 'card') return options.find(o => (o.account_subtype || '').toLowerCase() === 'bank')?.id || '';
+    if (m === 'bank_transfer') return options.find(o => (o.account_subtype || '').toLowerCase() === 'bank')?.id || '';
+    if (m === 'mpesa') return options.find(o => (o.account_name || '').toLowerCase().includes('mpesa') || (o.account_name || '').toLowerCase().includes('mobile'))?.id || '';
+    return '';
+  };
   
 
   useEffect(() => {
@@ -87,6 +102,36 @@ export default function InvoiceCreate() {
         setServices(svc || []);
         setStaff(stf || []);
       } catch {}
+    })();
+  }, [organization?.id]);
+
+  // Initialize applyTax from org settings and lock when tax disabled
+  useEffect(() => {
+    if (taxEnabled === false) {
+      setApplyTax(false);
+    } else {
+      setApplyTax(true);
+    }
+  }, [taxEnabled]);
+
+  // Load deposit accounts for payment details card
+  useEffect(() => {
+    (async () => {
+      try {
+        if (!organization?.id) { setDepositAccounts([]); return; }
+        const { data, error } = await supabase
+          .from('accounts')
+          .select('id, account_code, account_name, account_subtype, account_type')
+          .eq('organization_id', organization.id)
+          .eq('account_type', 'Asset')
+          .in('account_subtype', ['Cash', 'Bank'])
+          .order('account_code', { ascending: true });
+        if (error) throw error;
+        const opts = (data || []).map((a: any) => ({ id: a.id, account_code: a.account_code, account_name: a.account_name, account_subtype: a.account_subtype }));
+        setDepositAccounts(opts);
+      } catch {
+        setDepositAccounts([]);
+      }
     })();
   }, [organization?.id]);
 
@@ -314,6 +359,32 @@ export default function InvoiceCreate() {
         location_id: formData.location_id || null,
       };
       const created = await createInvoiceWithFallback(supabase, invoiceData, selectedItems);
+
+      // If payment was received, record it immediately
+      if (receivedPayment) {
+        const amountNum = Number(paymentData.amount || totals.total || 0) || 0;
+        if (!paymentData.method) {
+          toast.error('Select a payment method');
+        } else if (paymentData.method === 'mpesa' && !paymentData.reference.trim()) {
+          toast.error('Reference number is required for Mpesa');
+        } else if (amountNum <= 0) {
+          toast.error('Amount received must be greater than 0');
+        } else {
+          try {
+            await recordInvoicePaymentWithFallback(supabase, {
+              invoice_id: created.id,
+              amount: amountNum,
+              method: paymentData.method,
+              reference_number: paymentData.reference || null,
+              payment_date: new Date().toISOString().slice(0, 10),
+              location_id: formData.location_id || null,
+              account_id: paymentData.account_id || undefined,
+            } as any);
+          } catch (payErr) {
+            console.warn('Failed to record payment for invoice', payErr);
+          }
+        }
+      }
       toast.success('Invoice created');
       navigate('/invoices');
     } catch (e) {
@@ -438,6 +509,17 @@ export default function InvoiceCreate() {
                 </Select>
               </div>
             </div>
+            {(taxEnabled !== false) ? (
+              <div className="flex items-center gap-2 pt-1">
+                <Checkbox id="apply_tax" checked={applyTax} onCheckedChange={(c) => setApplyTax(Boolean(c))} />
+                <Label htmlFor="apply_tax">Add tax to invoice</Label>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 pt-1 opacity-60">
+                <Checkbox id="apply_tax" checked={false} disabled />
+                <Label htmlFor="apply_tax" className="text-slate-500">Add tax to invoice (disabled in settings)</Label>
+              </div>
+            )}
           </div>
 
           <Separator />
@@ -569,7 +651,85 @@ export default function InvoiceCreate() {
               </Card>
             )}
           </div>
+          {/* Payment Section */}
+          <Separator />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Switch id="received_payment" checked={receivedPayment} onCheckedChange={(v) => {
+                  setReceivedPayment(v);
+                  if (v) {
+                    const t = calculateTotals();
+                    setPaymentData(prev => ({ ...prev, amount: String((t.total || 0).toFixed(2)) }));
+                  }
+                }} />
+                <Label htmlFor="received_payment">I have received payment</Label>
+              </div>
+            </div>
+            {receivedPayment && (
+              <Card className="bg-white/90">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Payment Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Payment Method *</Label>
+                      <Select value={paymentData.method} onValueChange={(v) => {
+                        setPaymentData(prev => ({ ...prev, method: v }));
+                        // Default deposit account from organization settings mapping, if present
+                        const map = ((organization?.settings as any)?.default_deposit_accounts_by_method || {}) as Record<string, string>;
+                        const next = map[v] || prevAccountForMethod(v, depositAccounts);
+                        setPaymentData(prev => ({ ...prev, account_id: next || prev.account_id }));
+                      }}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select payment method" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cash">Cash</SelectItem>
+                          <SelectItem value="mpesa">Mpesa</SelectItem>
+                          <SelectItem value="card">Card</SelectItem>
+                          <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Deposit to Account</Label>
+                      <Select value={paymentData.account_id || "__none__"} onValueChange={(v) => setPaymentData(prev => ({ ...prev, account_id: v === "__none__" ? "" : v }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose account" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">— None —</SelectItem>
+                          {depositAccounts.map(acc => (
+                            <SelectItem key={acc.id} value={acc.id}>{acc.account_code} · {acc.account_name}{acc.account_subtype ? ` (${acc.account_subtype})` : ''}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="reference">Reference {paymentData.method === 'mpesa' ? '(required for Mpesa)' : ''}</Label>
+                      <Input
+                        id="reference"
+                        value={paymentData.reference}
+                        onChange={(e) => setPaymentData(prev => ({ ...prev, reference: e.target.value }))}
+                        required={paymentData.method === 'mpesa'}
+                        className={paymentData.method === 'mpesa' ? 'bg-gradient-to-r from-red-50 to-rose-50 border-red-300 placeholder:text-red-400' : ''}
+                        placeholder={paymentData.method === 'mpesa' ? 'Mpesa reference is required' : 'Optional reference'}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="amount_received">Amount Received</Label>
+                      <Input id="amount_received" type="number" step="0.01" value={paymentData.amount} onChange={(e) => setPaymentData(prev => ({ ...prev, amount: e.target.value }))} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
           
         </form>
       </div>
