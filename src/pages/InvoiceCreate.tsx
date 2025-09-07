@@ -22,7 +22,7 @@ export default function InvoiceCreate() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { symbol } = useOrganizationCurrency();
-  const { taxRate: orgTaxRate } = useOrganizationTaxRate();
+  const { taxRate: orgTaxRate, taxEnabled } = useOrganizationTaxRate() as any;
   const { organization } = useOrganization();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -248,7 +248,8 @@ export default function InvoiceCreate() {
   const calculateTotals = useMemo(() => {
     return () => {
       const subtotal = selectedItems.reduce((sum, item: any) => Number(sum) + (Number(item.total_price) || 0), 0);
-      const taxAmount = applyTax ? Number(subtotal) * ((Number(orgTaxRate) || 0) / 100) : 0;
+      const canApply = taxEnabled !== false && applyTax;
+      const taxAmount = canApply ? Number(subtotal) * ((Number(orgTaxRate) || 0) / 100) : 0;
       const total = Number(subtotal) + Number(taxAmount);
       return { subtotal, taxAmount, total };
     };
@@ -579,12 +580,14 @@ export default function InvoiceCreate() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label className="flex items-center space-x-2">
-                  <input type="checkbox" checked={applyTax} onChange={(e) => setApplyTax(e.target.checked)} />
-                  <span>Apply Tax ({(orgTaxRate * 100).toFixed(1)}%)</span>
-                </Label>
-              </div>
+              {taxEnabled !== false && (
+                <div className="space-y-2">
+                  <Label className="flex items-center space-x-2">
+                    <input type="checkbox" checked={applyTax} onChange={(e) => setApplyTax(e.target.checked)} />
+                    <span>Apply Tax ({(orgTaxRate).toFixed(1)}%)</span>
+                  </Label>
+                </div>
+              )}
             </div>
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="notes">Notes</Label>
@@ -659,9 +662,9 @@ export default function InvoiceCreate() {
                       <span>Subtotal:</span>
                       <span>{symbol}{totals.subtotal.toFixed(2)}</span>
                     </div>
-                    {applyTax && (
+                    {taxEnabled !== false && applyTax && (
                       <div className="flex justify-between">
-                        <span>Tax ({(orgTaxRate * 100).toFixed(1)}%):</span>
+                        <span>Tax ({(orgTaxRate).toFixed(1)}%):</span>
                         <span>{symbol}{totals.taxAmount.toFixed(2)}</span>
                       </div>
                     )}

@@ -329,9 +329,19 @@ export const useOrganizationCurrency = () => {
  */
 export const useOrganizationTaxRate = () => {
   const { organization } = useSaas()
-  
+
+  // Pull percent value and enabled flag from organization settings
+  const settings = (organization?.settings as any) || {}
+  const rawRate = settings?.tax_rate_percent
+  const parsedRate = typeof rawRate === 'number' ? rawRate : typeof rawRate === 'string' ? parseFloat(rawRate) : 0
+  const safeRate = Number.isFinite(parsedRate) ? parsedRate : 0
+  // Default enabled unless explicitly set to false
+  const taxEnabled = settings?.tax_enabled === false ? false : true
+
   return {
-    taxRate: 0.1, // 10% default
+    // Percent value, e.g. 8.5 means 8.5%
+    taxRate: safeRate,
+    taxEnabled,
     loading: false,
   }
 }

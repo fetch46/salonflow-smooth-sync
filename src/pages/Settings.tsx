@@ -72,6 +72,7 @@ phone: "",
 
   // New: Finance Settings - Tax Rate
   const [taxRatePercent, setTaxRatePercent] = useState<string>("");
+  const [taxEnabled, setTaxEnabled] = useState<boolean>(true);
 
   // New: Accounting - Default deposit accounts per payment method
   type AccountOption = { id: string; account_code: string; account_name: string; account_subtype?: string | null }
@@ -381,6 +382,8 @@ phone: "",
       const tax = s.tax_rate_percent
       const parsed = typeof tax === 'number' ? tax : typeof tax === 'string' ? parseFloat(tax) : 0
       setTaxRatePercent(Number.isFinite(parsed) ? String(parsed) : "")
+      // Initialize tax enabled flag
+      setTaxEnabled(s.tax_enabled === false ? false : true)
       // Initialize default POS warehouse from org settings
       setDefaultPosWarehouseId(s.pos_default_warehouse_id || "")
       setPreventNegativeStock(!!s.prevent_negative_stock)
@@ -609,12 +612,13 @@ phone: "",
         settings: {
           ...(organization.settings as any),
           tax_rate_percent: taxRatePercent === '' ? null : parseFloat(taxRatePercent),
+          tax_enabled: Boolean(taxEnabled),
         },
       } as any)
-      toast.success('Tax rate updated')
+      toast.success('Tax settings updated')
     } catch (e) {
       console.error(e)
-      toast.error('Failed to save tax rate')
+      toast.error('Failed to save tax settings')
     }
   }
 
@@ -1784,6 +1788,13 @@ phone: "",
                    <CardDescription>Set your default sales tax rate</CardDescription>
                  </CardHeader>
                  <CardContent className="space-y-4">
+                   <div className="flex items-center justify-between">
+                     <div>
+                       <Label htmlFor="tax_enabled">Enable Tax</Label>
+                       <p className="text-xs text-muted-foreground">Disable to hide tax on all transactions</p>
+                     </div>
+                     <Switch id="tax_enabled" checked={taxEnabled} onCheckedChange={setTaxEnabled} />
+                   </div>
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      <div className="space-y-2">
                        <Label htmlFor="tax_rate_percent">Tax Rate (%)</Label>
@@ -1795,6 +1806,7 @@ phone: "",
                          value={taxRatePercent}
                          onChange={(e) => setTaxRatePercent(e.target.value)}
                          placeholder="e.g. 8.5"
+                         disabled={!taxEnabled}
                        />
                        <p className="text-xs text-muted-foreground">This rate will be used across POS, Invoices and Purchases.</p>
                      </div>
