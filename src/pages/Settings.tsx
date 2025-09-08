@@ -20,6 +20,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Globe } from "lucide-react";
 import { useSaas } from "@/lib/saas";
 import { ModuleManagement } from "@/components/settings/ModuleManagement";
+import { LocationsSettings } from "@/components/settings/LocationsSettings";
+import { WarehousesSettings } from "@/components/settings/WarehousesSettings";
 
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -370,38 +372,12 @@ export default function Settings() {
 
           {/* Locations Settings */}
           <TabsContent value="locations">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-purple-600" />
-                  Business Locations
-                </CardTitle>
-                <CardDescription>
-                  Manage your business locations and branches
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Location management will be implemented here.</p>
-              </CardContent>
-            </Card>
+            <LocationsSettings />
           </TabsContent>
 
           {/* Warehouses Settings */}
           <TabsContent value="warehouses">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5 text-orange-600" />
-                  Warehouses
-                </CardTitle>
-                <CardDescription>
-                  Configure inventory warehouses and storage locations
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Warehouse management will be implemented here.</p>
-              </CardContent>
-            </Card>
+            <WarehousesSettings />
           </TabsContent>
 
           {/* Accounting Settings */}
