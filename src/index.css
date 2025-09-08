@@ -27,9 +27,9 @@ All colors MUST be HSL.
     --popover-foreground: 0 0% 3.9%;
 
     /* Theme-aware primary colors - can be overridden via CSS custom properties */
-    --primary: var(--theme-primary, 220 70% 50%);
+    --primary: var(--theme-primary, 0 0% 0%);
     --primary-foreground: var(--theme-primary-foreground, 0 0% 98%);
-    --primary-light: var(--theme-primary-light, 220 70% 60%);
+    --primary-light: var(--theme-primary-light, 0 0% 20%);
     --primary-lighter-70: color-mix(in hsl, hsl(var(--primary)) 30%, hsl(0 0% 100%) 70%);
 
     --secondary: 0 0% 96.1%;
@@ -219,9 +219,9 @@ All colors MUST be HSL.
     --popover: 0 0% 3.9%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: var(--theme-primary, 220 70% 50%);
-    --primary-foreground: var(--theme-primary-foreground, 0 0% 9%);
-    --primary-light: var(--theme-primary-light, 220 70% 40%);
+    --primary: var(--theme-primary, 0 0% 0%);
+    --primary-foreground: var(--theme-primary-foreground, 0 0% 98%);
+    --primary-light: var(--theme-primary-light, 0 0% 20%);
     --primary-lighter-70: color-mix(in hsl, hsl(var(--primary)) 30%, hsl(0 0% 0%) 70%);
 
     --secondary: 0 0% 14.9%;
