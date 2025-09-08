@@ -35,7 +35,7 @@ import { mockDb } from '@/utils/mockDatabase';
 import { useOrganization } from '@/lib/saas/hooks';
 import { useOrganizationCurrency } from '@/lib/saas/hooks';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
-import { LineChart as RLineChart, Line, XAxis, YAxis, CartesianGrid, PieChart as RPieChart, Pie, Cell } from 'recharts';
+import { LineChart as RLineChart, Line, XAxis, YAxis, CartesianGrid, PieChart as RPieChart, Pie, Cell, BarChart as RBarChart, Bar } from 'recharts';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 // Import new report components
@@ -75,6 +75,7 @@ const Reports = () => {
   const [recalcLoading, setRecalcLoading] = useState(false);
   const [density, setDensity] = useState<'compact' | 'comfortable'>('comfortable');
   const [revenueSeries, setRevenueSeries] = useState<Array<{ label: string; current: number; previous: number }>>([]);
+  const [monthlySeries, setMonthlySeries] = useState<Array<{ month: string; income: number; expense: number }>>([]);
   const [serviceDistribution, setServiceDistribution] = useState<Array<{ name: string; value: number; fill?: string }>>([]);
   const [drillOpen, setDrillOpen] = useState(false);
   const [drillTitle, setDrillTitle] = useState('');
@@ -727,6 +728,80 @@ const Reports = () => {
     loadOverview();
   }, [loadOverview]);
 
+  // Load last 12 months Income (invoice_payments) and Expense (expenses) totals
+  useEffect(() => {
+    const loadMonthlyIncomeExpense = async () => {
+      try {
+        const end = new Date(`${endDate}T00:00:00`);
+        const start = new Date(end.getFullYear(), end.getMonth() - 11, 1);
+        const startStr = start.toISOString().slice(0, 10);
+        const endStr = new Date(end.getFullYear(), end.getMonth() + 1, 0).toISOString().slice(0, 10);
+
+        const paymentsQuery = supabase
+          .from('invoice_payments')
+          .select('amount, payment_date, location_id')
+          .gte('payment_date', startStr)
+          .lte('payment_date', endStr);
+        const expensesQuery = supabase
+          .from('expenses')
+          .select('amount, expense_date, location_id')
+          .eq('status', 'paid')
+          .gte('expense_date', startStr)
+          .lte('expense_date', endStr);
+        if (locationFilter !== 'all') {
+          (paymentsQuery as any).eq('location_id', locationFilter);
+          (expensesQuery as any).eq('location_id', locationFilter);
+        }
+
+        const [{ data: payments, error: payErr }, { data: expenses, error: expErr }] = await Promise.all([
+          paymentsQuery, expensesQuery,
+        ]);
+
+        let paymentsData = payments || [];
+        let expensesData = expenses || [];
+
+        if (payErr || expErr) {
+          // Fallback to mock storage if available
+          try {
+            const storage = await mockDb.getStore();
+            paymentsData = (storage.receipts || [])
+              .filter((r: any) => r.created_at?.slice(0,10) >= startStr && r.created_at?.slice(0,10) <= endStr)
+              .map((r: any) => ({ amount: Number(r.total_amount) || 0, payment_date: r.created_at?.slice(0,10), location_id: r.location_id }));
+            expensesData = (storage.expenses || [])
+              .filter((e: any) => e.expense_date?.slice(0,10) >= startStr && e.expense_date?.slice(0,10) <= endStr)
+              .map((e: any) => ({ amount: Number(e.amount) || 0, expense_date: e.expense_date?.slice(0,10), location_id: e.location_id }));
+          } catch {}
+        }
+
+        const monthKey = (iso: string) => (iso || '').slice(0, 7); // YYYY-MM
+        const incomeBy: Record<string, number> = {};
+        const expenseBy: Record<string, number> = {};
+        for (const p of paymentsData as any[]) {
+          const k = monthKey(p.payment_date || '');
+          incomeBy[k] = (incomeBy[k] || 0) + (Number(p.amount) || 0);
+        }
+        for (const e of expensesData as any[]) {
+          const k = monthKey(e.expense_date || '');
+          expenseBy[k] = (expenseBy[k] || 0) + (Number(e.amount) || 0);
+        }
+
+        const series: Array<{ month: string; income: number; expense: number }> = [];
+        for (let i = 0; i < 12; i++) {
+          const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          const label = d.toLocaleString(undefined, { month: 'short' });
+          series.push({ month: label, income: Math.round(incomeBy[key] || 0), expense: Math.round(expenseBy[key] || 0) });
+        }
+
+        setMonthlySeries(series);
+      } catch (e) {
+        // Silent fail
+        setMonthlySeries([]);
+      }
+    };
+    loadMonthlyIncomeExpense();
+  }, [endDate, locationFilter]);
+
   const refreshData = async () => {
     setLoading(true);
     // Simulate API call
@@ -1001,50 +1076,90 @@ const Reports = () => {
                 </Card>
               </div>
 
-              {/* Quick Insights from Services */}
-              <Card className="shadow-sm border-slate-200">
-                <CardHeader className="border-b border-slate-200">
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="w-5 h-5 text-green-600" />
-                    Quick Insights
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4">
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium text-slate-700">Service Utilization</span>
-                        <span className="text-sm text-slate-600">{Math.round(serviceMetrics.utilizationPct || 0)}%</span>
+              {/* Quick Insights + Monthly Chart Row */}
+              <div className="grid gap-6 lg:grid-cols-2">
+                {/* Quick Insights from Services */}
+                <Card className="shadow-sm border-slate-200">
+                  <CardHeader className="border-b border-slate-200">
+                    <CardTitle className="flex items-center gap-2">
+                      <Activity className="w-5 h-5 text-green-600" />
+                      Quick Insights
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium text-slate-700">Service Utilization</span>
+                          <span className="text-sm text-slate-600">{Math.round(serviceMetrics.utilizationPct || 0)}%</span>
+                        </div>
+                        <Progress value={Math.max(0, Math.min(100, Math.round(serviceMetrics.utilizationPct || 0)))} className="h-2" />
                       </div>
-                      <Progress value={Math.max(0, Math.min(100, Math.round(serviceMetrics.utilizationPct || 0)))} className="h-2" />
-                    </div>
-                    
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium text-slate-700">Customer Satisfaction</span>
-                        <span className="text-sm text-slate-600">{serviceMetrics.avgRating.toFixed(1)}/5.0</span>
+                      
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium text-slate-700">Customer Satisfaction</span>
+                          <span className="text-sm text-slate-600">{serviceMetrics.avgRating.toFixed(1)}/5.0</span>
+                        </div>
+                        <Progress value={Math.max(0, Math.min(100, (serviceMetrics.avgRating / 5) * 100))} className="h-2" />
                       </div>
-                      <Progress value={Math.max(0, Math.min(100, (serviceMetrics.avgRating / 5) * 100))} className="h-2" />
-                    </div>
-                    
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium text-slate-700">Revenue Growth</span>
-                        <span className="text-sm text-slate-600">{(serviceMetrics.revenueGrowthPct || 0) >= 0 ? '+' : ''}{(serviceMetrics.revenueGrowthPct || 0).toFixed(1)}%</span>
+                      
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium text-slate-700">Revenue Growth</span>
+                          <span className="text-sm text-slate-600">{(serviceMetrics.revenueGrowthPct || 0) >= 0 ? '+' : ''}{(serviceMetrics.revenueGrowthPct || 0).toFixed(1)}%</span>
+                        </div>
+                        <Progress value={Math.max(0, Math.min(100, Math.abs(serviceMetrics.revenueGrowthPct || 0)))} className="h-2" />
                       </div>
-                      <Progress value={Math.max(0, Math.min(100, Math.abs(serviceMetrics.revenueGrowthPct || 0)))} className="h-2" />
-                    </div>
-                    
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium text-slate-700">Booking Growth</span>
-                        <span className="text-sm text-slate-600">{(serviceMetrics.bookingGrowthPct || 0) >= 0 ? '+' : ''}{(serviceMetrics.bookingGrowthPct || 0).toFixed(1)}%</span>
+                      
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium text-slate-700">Booking Growth</span>
+                          <span className="text-sm text-slate-600">{(serviceMetrics.bookingGrowthPct || 0) >= 0 ? '+' : ''}{(serviceMetrics.bookingGrowthPct || 0).toFixed(1)}%</span>
+                        </div>
+                        <Progress value={Math.max(0, Math.min(100, Math.abs(serviceMetrics.bookingGrowthPct || 0)))} className="h-2" />
                       </div>
-                      <Progress value={Math.max(0, Math.min(100, Math.abs(serviceMetrics.bookingGrowthPct || 0)))} className="h-2" />
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+
+                {/* Monthly Income vs Expense Bar Chart */}
+                <Card className="shadow-sm border-slate-200">
+                  <CardHeader className="border-b border-slate-200">
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5 text-blue-600" />
+                      Monthly Income vs Expense
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <div className="h-64">
+                      <ChartContainer
+                        config={{
+                          income: {
+                            label: 'Income',
+                            theme: { light: '#16a34a', dark: '#22c55e' },
+                          },
+                          expense: {
+                            label: 'Expense',
+                            theme: { light: '#dc2626', dark: '#ef4444' },
+                          },
+                        }}
+                        className="h-64"
+                      >
+                        <RBarChart data={monthlySeries} margin={{ left: 12, right: 12, top: 12, bottom: 12 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                          <YAxis tickLine={false} axisLine={false} />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <ChartLegend content={<ChartLegendContent />} />
+                          <Bar dataKey="income" fill="var(--color-income)" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="expense" fill="var(--color-expense)" radius={[4, 4, 0, 0]} />
+                        </RBarChart>
+                      </ChartContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
               {/* Charts Row */}
               <div className="grid gap-6 lg:grid-cols-2">
