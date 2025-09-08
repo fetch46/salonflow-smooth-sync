@@ -2114,8 +2114,8 @@ phone: "",
                      <Button onClick={handleSaveDepositAccounts}>Save</Button>
                    </div>
                  </CardContent>
-               </Card>
-             </div>
+                </Card>
+              </div>
            </TabsContent>
 
           {/* Modules Tab */}
