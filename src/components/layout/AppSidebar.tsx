@@ -398,11 +398,14 @@ export function AppSidebar() {
     <Button
       variant="ghost"
       size="sm"
-      onClick={() => setOpen(!open)}
+      onClick={() => {
+        console.log('Toggle clicked, current open state:', open);
+        setOpen(!open);
+      }}
       className="h-8 w-8 p-0 hover:bg-sidebar-accent/50 transition-colors"
       aria-label={open ? "Collapse sidebar" : "Expand sidebar"}
     >
-      {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+      {isCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}
     </Button>
   );
 
@@ -423,7 +426,7 @@ export function AppSidebar() {
         <SidebarHeader className="px-3 py-3 border-b border-sidebar-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex-shrink-0 shadow-sm" />
+              <div className="h-7 w-7 rounded-lg bg-muted border border-border flex-shrink-0 shadow-sm" />
               {!isCollapsed && (
                 <span className="font-semibold text-sm text-sidebar-foreground truncate animate-fade-in">
                   SalonFlow

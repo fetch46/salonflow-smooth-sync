@@ -10,18 +10,19 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90 border border-primary/20",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90 border border-destructive/20",
         outline:
           "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-secondary/20",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        solid: "bg-primary text-white shadow-md hover:bg-primary/90 transition-all duration-200",
-        "solid-destructive": "bg-red-600 text-white shadow-md hover:bg-red-700 transition-all duration-200",
-        "solid-secondary": "bg-gray-600 text-white shadow-md hover:bg-gray-700 transition-all duration-200",
+        solid: "bg-primary text-primary-foreground shadow-md hover:bg-primary/90 transition-all duration-200 border border-primary/20",
+        "solid-destructive": "bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90 transition-all duration-200 border border-destructive/20",
+        "solid-secondary": "bg-secondary text-secondary-foreground shadow-md hover:bg-secondary/80 transition-all duration-200 border border-secondary/20",
+        "theme-neutral": "bg-muted text-muted-foreground hover:bg-muted/80 border border-muted shadow-sm transition-all duration-200",
       },
       size: {
         default: "h-9 px-4 py-2 text-responsive-sm",

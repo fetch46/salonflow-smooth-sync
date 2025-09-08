@@ -298,6 +298,41 @@ All colors MUST be HSL.
   .pb-footer {
     padding-bottom: calc(var(--footer-height) + env(safe-area-inset-bottom));
   }
+
+  /* Theme-neutral utilities for black and white theme */
+  .btn-neutral {
+    @apply bg-muted text-muted-foreground hover:bg-muted/80 border border-muted/50 transition-all;
+  }
+
+  .gradient-neutral {
+    @apply bg-gradient-to-r from-muted to-background;
+  }
+
+  .card-neutral {
+    @apply bg-card border border-border shadow-sm;
+  }
+
+  /* Ensure text readability in all button variants */
+  button[class*="bg-primary"] {
+    color: hsl(var(--primary-foreground)) !important;
+  }
+
+  button[class*="bg-secondary"] {
+    color: hsl(var(--secondary-foreground)) !important;
+  }
+
+  button[class*="bg-destructive"] {
+    color: hsl(var(--destructive-foreground)) !important;
+  }
+
+  button[class*="bg-muted"] {
+    color: hsl(var(--muted-foreground)) !important;
+  }
+
+  /* Ensure proper contrast for all text colors */
+  .dark button[class*="text-white"] {
+    color: hsl(var(--primary-foreground)) !important;
+  }
 }
 
 /* Ensure the app never causes horizontal scrolling on small screens */
@@ -421,7 +456,53 @@ html, body, #root {
 }
 
 @layer base {
+  /* Theme-aware card gradients - use grey for black and white theme */
+  .bg-card:not([class*="bg-gradient-to-"]) {
+    background-image: linear-gradient(135deg, hsl(var(--muted) / 0.3), hsl(var(--muted) / 0.1));
+  }
+
   .dark .bg-card:not([class*="bg-gradient-to-"]) {
-    background-image: linear-gradient(135deg, hsl(var(--primary) / 0.12), hsl(var(--primary) / 0.03));
+    background-image: linear-gradient(135deg, hsl(var(--muted) / 0.4), hsl(var(--muted) / 0.1));
+  }
+
+  /* Replace colored gradients with grey gradients for black/white theme */
+  [class*="bg-gradient-to-"][class*="from-emerald-"],
+  [class*="bg-gradient-to-"][class*="from-blue-"],
+  [class*="bg-gradient-to-"][class*="from-purple-"],
+  [class*="bg-gradient-to-"][class*="from-pink-"],
+  [class*="bg-gradient-to-"][class*="from-red-"],
+  [class*="bg-gradient-to-"][class*="from-yellow-"],
+  [class*="bg-gradient-to-"][class*="from-orange-"],
+  [class*="bg-gradient-to-"][class*="from-green-"],
+  [class*="bg-gradient-to-"][class*="from-cyan-"],
+  [class*="bg-gradient-to-"][class*="from-violet-"],
+  [class*="bg-gradient-to-"][class*="from-rose-"],
+  [class*="bg-gradient-to-"][class*="from-amber-"],
+  [class*="bg-gradient-to-"][class*="from-lime-"],
+  [class*="bg-gradient-to-"][class*="from-teal-"],
+  [class*="bg-gradient-to-"][class*="from-sky-"],
+  [class*="bg-gradient-to-"][class*="from-indigo-"],
+  [class*="bg-gradient-to-"][class*="from-fuchsia-"] {
+    background-image: linear-gradient(135deg, hsl(var(--muted)), hsl(var(--background))) !important;
+  }
+
+  .dark [class*="bg-gradient-to-"][class*="from-emerald-"],
+  .dark [class*="bg-gradient-to-"][class*="from-blue-"],
+  .dark [class*="bg-gradient-to-"][class*="from-purple-"],
+  .dark [class*="bg-gradient-to-"][class*="from-pink-"],
+  .dark [class*="bg-gradient-to-"][class*="from-red-"],
+  .dark [class*="bg-gradient-to-"][class*="from-yellow-"],
+  .dark [class*="bg-gradient-to-"][class*="from-orange-"],
+  .dark [class*="bg-gradient-to-"][class*="from-green-"],
+  .dark [class*="bg-gradient-to-"][class*="from-cyan-"],
+  .dark [class*="bg-gradient-to-"][class*="from-violet-"],
+  .dark [class*="bg-gradient-to-"][class*="from-rose-"],
+  .dark [class*="bg-gradient-to-"][class*="from-amber-"],
+  .dark [class*="bg-gradient-to-"][class*="from-lime-"],
+  .dark [class*="bg-gradient-to-"][class*="from-teal-"],
+  .dark [class*="bg-gradient-to-"][class*="from-sky-"],
+  .dark [class*="bg-gradient-to-"][class*="from-indigo-"],
+  .dark [class*="bg-gradient-to-"][class*="from-fuchsia-"] {
+    background-image: linear-gradient(135deg, hsl(var(--muted)), hsl(var(--background))) !important;
   }
 }

@@ -110,8 +110,8 @@ export const BalanceSheetReport: React.FC<BalanceSheetReportProps> = ({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-lg">
-            <Calculator className="h-5 w-5 text-white" />
+          <div className="p-2.5 bg-muted rounded-xl shadow-lg border">
+            <Calculator className="h-5 w-5 text-foreground" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-900">Balance Sheet</h2>
