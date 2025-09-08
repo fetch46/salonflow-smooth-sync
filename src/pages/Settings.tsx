@@ -153,6 +153,19 @@ export default function Settings() {
         country: settings.country || '',
         currency: settings.currency || ''
       });
+
+      // Load saved branding/theme settings
+      if (settings.branding) {
+        const branding = settings.branding as any
+        if (branding.theme) {
+          setSelectedTheme(branding.theme)
+        }
+        if (branding.colors) {
+          setBrandColors(branding.colors)
+          // Apply to CSS variables so preview reflects saved branding
+          applyTheme({ primary: branding.colors.primary, accent: branding.colors.accent })
+        }
+      }
     }
   }, [organization]);
 
@@ -228,6 +241,34 @@ export default function Settings() {
     } catch (error) {
       console.error('Error saving company settings:', error);
       toast.error('Failed to save company settings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveBrandingSettings = async () => {
+    if (!organization?.id || !updateOrganization) return;
+
+    try {
+      setLoading(true);
+
+      const currentSettings = (organization.settings as any) || {};
+      const updatedSettings = {
+        ...currentSettings,
+        branding: {
+          theme: selectedTheme,
+          colors: brandColors,
+        },
+      };
+
+      await updateOrganization(organization.id, {
+        settings: updatedSettings,
+      });
+
+      toast.success('Theme settings saved successfully');
+    } catch (error) {
+      console.error('Error saving theme settings:', error);
+      toast.error('Failed to save theme settings');
     } finally {
       setLoading(false);
     }
@@ -401,6 +442,12 @@ export default function Settings() {
                        <ThemeColorPicker />
                      </div>
                    </div>
+                 </div>
+                 <div className="flex justify-end pt-4 border-t">
+                   <Button onClick={saveBrandingSettings} disabled={loading} className="flex items-center gap-2">
+                     <Save className="h-4 w-4" />
+                     {loading ? 'Saving...' : 'Save Theme Settings'}
+                   </Button>
                  </div>
                 </div>
 
