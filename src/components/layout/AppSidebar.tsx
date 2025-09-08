@@ -220,6 +220,24 @@ const menuItems: MenuItem[] = [
         feature: "reports",
       },
       {
+        title: "Profit and Loss",
+        url: "/reports?type=profit-loss",
+        icon: Calculator,
+        feature: "reports",
+      },
+      {
+        title: "Balance Sheet",
+        url: "/reports?type=balance-sheet",
+        icon: FileText,
+        feature: "reports",
+      },
+      {
+        title: "Expense Report",
+        url: "/reports?type=expenses",
+        icon: CreditCard,
+        feature: "reports",
+      },
+      {
         title: "Sales Reports",
         url: "/reports?type=sales",
         icon: DollarSign,
