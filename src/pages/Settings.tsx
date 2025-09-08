@@ -22,6 +22,8 @@ import { useSaas } from "@/lib/saas";
 import { ModuleManagement } from "@/components/settings/ModuleManagement";
 import { LocationsSettings } from "@/components/settings/LocationsSettings";
 import { WarehousesSettings } from "@/components/settings/WarehousesSettings";
+import { AccountingSettings } from "@/components/settings/AccountingSettings";
+import { ItemsSettings } from "@/components/settings/ItemsSettings";
 
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -382,20 +384,12 @@ export default function Settings() {
 
           {/* Accounting Settings */}
           <TabsContent value="accounting">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-emerald-600" />
-                  Accounting & Finance
-                </CardTitle>
-                <CardDescription>
-                  Configure tax rates, chart of accounts, and financial settings
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Accounting settings will be implemented here.</p>
-              </CardContent>
-            </Card>
+            <AccountingSettings />
+          </TabsContent>
+
+          {/* Items Settings */}
+          <TabsContent value="items">
+            <ItemsSettings />
           </TabsContent>
 
           {/* Modules Tab */}
