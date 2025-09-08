@@ -20,7 +20,7 @@ import {
   recordInvoicePaymentWithFallback,
   getInvoicesWithBalanceWithFallback 
 } from "@/utils/mockDatabase";
-import { postInvoicePaymentWithAccount, postInvoicePaymentToLedger } from "@/utils/ledger";
+import { postInvoicePaymentWithAccount, postInvoicePaymentToLedger, deleteTransactionsByReference } from "@/utils/ledger";
 import { useNavigate } from "react-router-dom";
 import { downloadInvoicePDF } from "@/utils/invoicePdf";
 import { useOrganizationCurrency, useOrganization } from "@/lib/saas/hooks";
@@ -165,6 +165,25 @@ export default function PaymentsNew() {
       toast.error('Failed to load payments');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const deleteExpense = async (expenseId: string) => {
+    if (!confirm('Delete this expense? This cannot be undone.')) return;
+    try {
+      try {
+        await deleteTransactionsByReference('expense_payment', expenseId);
+      } catch {}
+      const { error } = await supabase
+        .from('expenses')
+        .delete()
+        .eq('id', expenseId);
+      if (error) throw error;
+      toast.success('Expense deleted');
+      await loadData();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete expense');
     }
   };
 
@@ -706,6 +725,9 @@ export default function PaymentsNew() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => navigate(`/expenses/${expense.id}`)}>
                               <Edit className="mr-2 h-4 w-4" /> View/Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-red-600" onClick={() => deleteExpense(expense.id)}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete Expense
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
