@@ -83,6 +83,44 @@ export default function Settings() {
     if (savedAccent) setSelectedAccent(savedAccent);
   }, []);
 
+  // Organization and other state variables
+  const { organization } = useOrganization();
+  const [countries, setCountries] = useState<any[]>([]);
+  const [currencies, setCurrencies] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam && tabParam !== activeTab) {
+      setActiveTab(
+        tabParam === 'users'
+          ? 'roles'
+          : tabParam === 'regional' || tabParam === 'organization'
+          ? 'company'
+          : tabParam
+      );
+    }
+  }, [searchParams]);
+
+  // Load countries and currencies
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [countriesRes, currenciesRes] = await Promise.all([
+          supabase.from('countries').select('*').eq('is_active', true),
+          supabase.from('currencies').select('*').eq('is_active', true)
+        ]);
+        
+        if (countriesRes.data) setCountries(countriesRes.data);
+        if (currenciesRes.data) setCurrencies(currenciesRes.data);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    };
+    
+    loadData();
+  }, []);
+
   return (
     <div className="container mx-auto p-6 max-w-7xl">
       <div>
@@ -109,6 +147,26 @@ export default function Settings() {
             <Palette className="w-4 h-4" />
             Branding
           </TabsTrigger>
+          <TabsTrigger value="roles" className="justify-start gap-2 data-[state=active]:bg-muted">
+            <Shield className="w-4 h-4" />
+            Roles
+          </TabsTrigger>
+          <TabsTrigger value="communications" className="justify-start gap-2 data-[state=active]:bg-muted">
+            <MessageSquare className="w-4 h-4" />
+            Communications
+          </TabsTrigger>
+          <TabsTrigger value="locations" className="justify-start gap-2 data-[state=active]:bg-muted">
+            <MapPin className="w-4 h-4" />
+            Locations
+          </TabsTrigger>
+          <TabsTrigger value="warehouses" className="justify-start gap-2 data-[state=active]:bg-muted">
+            <Package className="w-4 h-4" />
+            Warehouses
+          </TabsTrigger>
+          <TabsTrigger value="accounting" className="justify-start gap-2 data-[state=active]:bg-muted">
+            <CreditCard className="w-4 h-4" />
+            Accounting
+          </TabsTrigger>
           <TabsTrigger value="modules" className="justify-start gap-2 data-[state=active]:bg-muted">
             <Settings2 className="w-4 h-4" />
             Modules
@@ -124,9 +182,56 @@ export default function Settings() {
                   <Building className="h-5 w-5 text-pink-600" />
                   Organization Information
                 </CardTitle>
+                <CardDescription>
+                  Manage your organization details and regional settings
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <p>Organization settings would go here...</p>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Organization Name</Label>
+                    <Input 
+                      value={organization?.name || ""} 
+                      placeholder="Enter organization name"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div>
+                    <Label>Country</Label>
+                    <Select disabled={loading}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select country" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {countries.map(country => (
+                          <SelectItem key={country.id} value={country.code}>
+                            {country.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Currency</Label>
+                    <Select disabled={loading}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select currency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {currencies.map(currency => (
+                          <SelectItem key={currency.id} value={currency.code}>
+                            {currency.name} ({currency.symbol})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button disabled={loading}>
+                    {loading ? "Saving..." : "Save Changes"}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -223,6 +328,96 @@ export default function Settings() {
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Roles Settings */}
+          <TabsContent value="roles">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-blue-600" />
+                  User Roles & Permissions
+                </CardTitle>
+                <CardDescription>
+                  Manage user roles and access permissions
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">Role management functionality will be implemented here.</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Communications Settings */}
+          <TabsContent value="communications">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-green-600" />
+                  Communications
+                </CardTitle>
+                <CardDescription>
+                  Configure email, SMS, and notification settings
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">Communication settings will be implemented here.</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Locations Settings */}
+          <TabsContent value="locations">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-purple-600" />
+                  Business Locations
+                </CardTitle>
+                <CardDescription>
+                  Manage your business locations and branches
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">Location management will be implemented here.</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Warehouses Settings */}
+          <TabsContent value="warehouses">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-orange-600" />
+                  Warehouses
+                </CardTitle>
+                <CardDescription>
+                  Configure inventory warehouses and storage locations
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">Warehouse management will be implemented here.</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Accounting Settings */}
+          <TabsContent value="accounting">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5 text-emerald-600" />
+                  Accounting & Finance
+                </CardTitle>
+                <CardDescription>
+                  Configure tax rates, chart of accounts, and financial settings
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">Accounting settings will be implemented here.</p>
               </CardContent>
             </Card>
           </TabsContent>
