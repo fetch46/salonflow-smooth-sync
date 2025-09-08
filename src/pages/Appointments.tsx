@@ -772,16 +772,16 @@ export default function Appointments() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 md:gap-3">
         <Card className="overflow-hidden">
-          <CardContent className="p-3">
+          <CardContent className="p-2.5">
             <div className="flex items-center gap-2">
-              <div className="rounded-lg p-1.5 bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+              <div className="rounded-md p-1 bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
                 <CalendarDays className="w-3 h-3" />
               </div>
               <div>
-                <div className="text-[11px] text-muted-foreground">Scheduled</div>
-                <div className="text-xl font-semibold">
+                <div className="text-[10px] text-muted-foreground leading-none">Scheduled</div>
+                <div className="text-lg font-semibold leading-tight">
                   {appointments.filter(a => a.status === "scheduled").length}
                 </div>
               </div>
@@ -789,14 +789,14 @@ export default function Appointments() {
           </CardContent>
         </Card>
         <Card className="overflow-hidden">
-          <CardContent className="p-3">
+          <CardContent className="p-2.5">
             <div className="flex items-center gap-2">
-              <div className="rounded-lg p-1.5 bg-green-100 text-green-600 dark:bg-green-950/40 dark:text-green-400">
+              <div className="rounded-md p-1 bg-green-100 text-green-600 dark:bg-green-950/40 dark:text-green-400">
                 <CheckCircle2 className="w-3 h-3" />
               </div>
               <div>
-                <div className="text-[11px] text-muted-foreground">Confirmed</div>
-                <div className="text-xl font-semibold">
+                <div className="text-[10px] text-muted-foreground leading-none">Confirmed</div>
+                <div className="text-lg font-semibold leading-tight">
                   {appointments.filter(a => a.status === "confirmed").length}
                 </div>
               </div>
@@ -804,14 +804,14 @@ export default function Appointments() {
           </CardContent>
         </Card>
         <Card className="overflow-hidden">
-          <CardContent className="p-3">
+          <CardContent className="p-2.5">
             <div className="flex items-center gap-2">
-              <div className="rounded-lg p-1.5 bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400">
+              <div className="rounded-md p-1 bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400">
                 <Clock className="w-3 h-3" />
               </div>
               <div>
-                <div className="text-[11px] text-muted-foreground">In Progress</div>
-                <div className="text-xl font-semibold">
+                <div className="text-[10px] text-muted-foreground leading-none">In Progress</div>
+                <div className="text-lg font-semibold leading-tight">
                   {appointments.filter(a => a.status === "in_progress").length}
                 </div>
               </div>
@@ -819,14 +819,14 @@ export default function Appointments() {
           </CardContent>
         </Card>
         <Card className="overflow-hidden">
-          <CardContent className="p-3">
+          <CardContent className="p-2.5">
             <div className="flex items-center gap-2">
-              <div className="rounded-lg p-1.5 bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+              <div className="rounded-md p-1 bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
                 <CheckCircle2 className="w-3 h-3" />
               </div>
               <div>
-                <div className="text-[11px] text-muted-foreground">Completed</div>
-                <div className="text-xl font-semibold">
+                <div className="text-[10px] text-muted-foreground leading-none">Completed</div>
+                <div className="text-lg font-semibold leading-tight">
                   {appointments.filter(a => a.status === "completed").length}
                 </div>
               </div>
@@ -834,14 +834,14 @@ export default function Appointments() {
           </CardContent>
         </Card>
         <Card className="overflow-hidden">
-          <CardContent className="p-3">
+          <CardContent className="p-2.5">
             <div className="flex items-center gap-2">
-              <div className="rounded-lg p-1.5 bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400">
+              <div className="rounded-md p-1 bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400">
                 <XCircle className="w-3 h-3" />
               </div>
               <div>
-                <div className="text-[11px] text-muted-foreground">Cancelled</div>
-                <div className="text-xl font-semibold">
+                <div className="text-[10px] text-muted-foreground leading-none">Cancelled</div>
+                <div className="text-lg font-semibold leading-tight">
                   {appointments.filter(a => a.status === "cancelled").length}
                 </div>
               </div>
@@ -849,14 +849,14 @@ export default function Appointments() {
           </CardContent>
         </Card>
         <Card className="overflow-hidden">
-          <CardContent className="p-3">
+          <CardContent className="p-2.5">
             <div className="flex items-center gap-2">
-              <div className="rounded-lg p-1.5 bg-slate-100 text-slate-600 dark:bg-slate-950/40 dark:text-slate-400">
+              <div className="rounded-md p-1 bg-slate-100 text-slate-600 dark:bg-slate-950/40 dark:text-slate-400">
                 <AlertCircle className="w-3 h-3" />
               </div>
               <div>
-                <div className="text-[11px] text-muted-foreground">No Show</div>
-                <div className="text-xl font-semibold">
+                <div className="text-[10px] text-muted-foreground leading-none">No Show</div>
+                <div className="text-lg font-semibold leading-tight">
                   {appointments.filter(a => a.status === "no_show").length}
                 </div>
               </div>
@@ -924,7 +924,7 @@ export default function Appointments() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 gap-2.5">
                 {filteredAppointments.map((appointment) => {
                   const items = appointmentServicesById[appointment.id] || [];
                   const serviceNames = (items.length
@@ -932,17 +932,17 @@ export default function Appointments() {
                     : appointment.service_name) || "—";
 
                   return (
-                     <div
-                       key={appointment.id}
-                       className="group relative w-full rounded-xl border bg-gradient-to-br from-card to-card/80 p-4 md:p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200 text-sm ring-1 ring-border/50 hover:ring-primary/20"
-                     >
-                       <div className="absolute top-3 right-3">
-                         <DropdownMenu>
-                           <DropdownMenuTrigger asChild>
-                             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted/80 rounded-lg">
-                               <MoreHorizontal className="h-4 w-4" />
-                             </Button>
-                           </DropdownMenuTrigger>
+                    <div
+                      key={appointment.id}
+                      className="group relative w-full rounded-lg border bg-gradient-to-br from-card to-card/80 p-3 md:p-3.5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-[13px] ring-1 ring-border/50 hover:ring-primary/20"
+                    >
+                      <div className="absolute top-2.5 right-2.5">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-muted/80 rounded-md">
+                              <MoreHorizontal className="h-3.5 w-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="z-50 bg-background">
                             <DropdownMenuItem onClick={() => handleView(appointment)}>
                               <Eye className="mr-2 h-4 w-4" />
@@ -982,94 +982,94 @@ export default function Appointments() {
                         </DropdownMenu>
                       </div>
 
-                       <div className="flex items-center justify-between mb-3">
-                         <Badge className={`${getStatusColor(appointment.status || 'scheduled')} capitalize px-2.5 py-1 text-xs font-medium rounded-full`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <Badge className={`${getStatusColor(appointment.status || 'scheduled')} capitalize px-2 py-0.5 text-[11px] font-medium rounded-full`}>
                            {String(appointment.status || 'scheduled').replace('_', ' ')}
                          </Badge>
-                         <div className="text-xs text-muted-foreground flex items-center gap-2">
-                           <div className="flex items-center gap-1">
-                             <CalendarDays className="w-3 h-3" />
-                             <span className="font-medium">{appointment.appointment_date}</span>
-                           </div>
-                           <span className="text-muted-foreground/50">•</span>
-                           <div className="flex items-center gap-1">
-                             <Clock className="w-3 h-3" />
-                             <span className="font-medium">
-                               {appointment.appointment_time} ({Number(appointment.duration_minutes ?? 0)}min)
-                             </span>
-                           </div>
-                         </div>
-                       </div>
+                        <div className="text-[11px] text-muted-foreground flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            <CalendarDays className="w-3 h-3" />
+                            <span className="font-medium leading-none">{appointment.appointment_date}</span>
+                          </div>
+                          <span className="text-muted-foreground/50">•</span>
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            <span className="font-medium leading-none">
+                              {appointment.appointment_time} ({Number(appointment.duration_minutes ?? 0)}min)
+                            </span>
+                          </div>
+                        </div>
+                      </div>
 
-                       <div className="space-y-3">
-                         <div className="flex items-start justify-between">
-                           <div className="flex-1">
-                             <div className="flex items-center gap-2 mb-1">
-                               <div className="w-8 h-8 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center">
-                                 <User className="w-4 h-4 text-primary" />
-                               </div>
-                               <h3 className="font-semibold text-foreground text-lg leading-tight">{appointment.customer_name}</h3>
-                             </div>
-                             <div className="flex flex-col gap-2 text-sm text-muted-foreground ml-10">
-                               {appointment.customer_email && (
-                                 <div className="inline-flex items-center gap-2">
-                                   <Mail className="w-4 h-4 text-muted-foreground/70" />
-                                   <span>{appointment.customer_email}</span>
-                                 </div>
-                               )}
-                               {appointment.customer_phone && (
-                                 <div className="inline-flex items-center gap-2">
-                                   <Phone className="w-4 h-4 text-muted-foreground/70" />
-                                   <span className="font-medium">{appointment.customer_phone}</span>
-                                 </div>
-                               )}
-                             </div>
-                           </div>
-                           <div className="text-right">
-                             <div className="text-xs text-muted-foreground">Amount</div>
-                             <div className="text-lg font-bold text-primary">
-                               {Number(appointment.price || 0) > 0 ? formatMoney(Number(appointment.price || 0)) : '—'}
-                             </div>
-                           </div>
-                         </div>
-                       </div>
+                      <div className="space-y-2.5">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <div className="w-7 h-7 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center">
+                                <User className="w-3.5 h-3.5 text-primary" />
+                              </div>
+                              <h3 className="font-semibold text-foreground text-base leading-tight">{appointment.customer_name}</h3>
+                            </div>
+                            <div className="flex flex-col gap-1.5 text-[12px] text-muted-foreground ml-9">
+                              {appointment.customer_email && (
+                                <div className="inline-flex items-center gap-2">
+                                  <Mail className="w-3.5 h-3.5 text-muted-foreground/70" />
+                                  <span>{appointment.customer_email}</span>
+                                </div>
+                              )}
+                              {appointment.customer_phone && (
+                                <div className="inline-flex items-center gap-2">
+                                  <Phone className="w-3.5 h-3.5 text-muted-foreground/70" />
+                                  <span className="font-medium leading-none">{appointment.customer_phone}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-[11px] text-muted-foreground leading-none">Amount</div>
+                            <div className="text-base font-bold text-primary">
+                              {Number(appointment.price || 0) > 0 ? formatMoney(Number(appointment.price || 0)) : '—'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
 
-                       <div className="mt-3 flex flex-wrap gap-2">
-                         {items.length ? (
-                           items.map((it, idx) => {
-                             const srvName = services.find(s => s.id === it.service_id)?.name || 'Service';
-                             const stfName = staff.find(s => s.id === it.staff_id)?.full_name || 'Unassigned';
-                             return (
-                               <div key={idx} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border border-blue-200 dark:border-blue-800">
-                                 <div className="flex items-center gap-1">
-                                   <span className="text-sm font-medium text-blue-700 dark:text-blue-300">{srvName}</span>
-                                   <span className="text-blue-500 dark:text-blue-400">•</span>
-                                   <span className="text-xs text-blue-600 dark:text-blue-400">{stfName}</span>
-                                 </div>
-                               </div>
-                             );
-                           })
-                         ) : (
-                           <div className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-950/20 dark:to-gray-950/20 border border-slate-200 dark:border-slate-800">
-                             <span className="text-sm text-slate-600 dark:text-slate-400">{serviceNames}</span>
-                           </div>
-                         )}
-                       </div>
+                      <div className="mt-2.5 flex flex-wrap gap-1.5">
+                        {items.length ? (
+                          items.map((it, idx) => {
+                            const srvName = services.find(s => s.id === it.service_id)?.name || 'Service';
+                            const stfName = staff.find(s => s.id === it.staff_id)?.full_name || 'Unassigned';
+                            return (
+                              <div key={idx} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border border-blue-200 dark:border-blue-800">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[12px] font-medium text-blue-700 dark:text-blue-300">{srvName}</span>
+                                  <span className="text-blue-500 dark:text-blue-400">•</span>
+                                  <span className="text-[11px] text-blue-600 dark:text-blue-400">{stfName}</span>
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="px-2.5 py-1 rounded-md bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-950/20 dark:to-gray-950/20 border border-slate-200 dark:border-slate-800">
+                            <span className="text-[12px] text-slate-600 dark:text-slate-400">{serviceNames}</span>
+                          </div>
+                        )}
+                      </div>
 
-                       {appointment.location_id && (
-                         <div className="mt-3 pt-3 border-t border-border/50">
-                           <div className="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-muted/50">
-                             <MapPin className="w-3 h-3 text-muted-foreground" />
-                             <span className="text-xs font-medium text-muted-foreground">
-                               {locations.find((l: any) => l.id === appointment.location_id)?.name || 'Location'}
-                             </span>
-                           </div>
-                         </div>
-                       )}
+                      {appointment.location_id && (
+                        <div className="mt-2.5 pt-2.5 border-t border-border/50">
+                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted/50">
+                            <MapPin className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-[11px] font-medium text-muted-foreground">
+                              {locations.find((l: any) => l.id === appointment.location_id)?.name || 'Location'}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
-                <div className="col-span-full text-xs text-muted-foreground text-right">{filteredAppointments.length} appointments</div>
+                <div className="col-span-full text-[11px] text-muted-foreground text-right">{filteredAppointments.length} appointments</div>
               </div>
             )}
         </CardContent>
