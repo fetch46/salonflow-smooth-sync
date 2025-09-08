@@ -428,10 +428,11 @@ export default function InvoiceCreate() {
               <p className="text-slate-600">Full-page invoice creation</p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
-            <Button onClick={handleSubmit}>Create Invoice</Button>
-          </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
+          <Button variant="secondary" onClick={handleSubmit}>Save Invoice</Button>
+          <Button onClick={handleSubmit}>Create Invoice</Button>
+        </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">

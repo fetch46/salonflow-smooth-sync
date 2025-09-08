@@ -270,6 +270,7 @@ export default function InvoiceEdit() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
+          <Button variant="secondary" onClick={handleSubmit}>Save Invoice</Button>
           <Button onClick={handleSubmit}>Save Changes</Button>
         </div>
       </div>

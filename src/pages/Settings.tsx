@@ -21,6 +21,7 @@ import { LocationsSettings } from "@/components/settings/LocationsSettings";
 import { WarehousesSettings } from "@/components/settings/WarehousesSettings";
 import { AccountingSettings } from "@/components/settings/AccountingSettings";
 import { ItemsSettings } from "@/components/settings/ItemsSettings";
+import { RegionalSettings } from "@/components/settings/RegionalSettings";
 
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -355,6 +356,10 @@ export default function Settings() {
                     </div>
                   </div>
                 </div>
+
+                <Separator />
+
+                <RegionalSettings />
               </CardContent>
             </Card>
           </TabsContent>
