@@ -526,9 +526,9 @@ export default function Staff() {
 
       {/* Main Content */}
       <Card className="shadow-sm border-slate-200">
-        <CardHeader className="pb-4 border-b border-slate-200">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-fit">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <CardHeader className="pb-4 border-b border-slate-200">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <TabsList className="grid grid-cols-2 w-fit">
                 <TabsTrigger value="staff" className="flex items-center gap-2">
                   <Users className="w-4 h-4" />
@@ -539,7 +539,6 @@ export default function Staff() {
                   System Roles ({organizationUsers.length})
                 </TabsTrigger>
               </TabsList>
-            </Tabs>
 
             <div className="flex items-center gap-3">
               {activeTab === 'staff' && (
@@ -762,6 +761,7 @@ export default function Staff() {
             </Table>
           </TabsContent>
         </CardContent>
+        </Tabs>
       </Card>
 
       {/* Staff Add/Edit Modal */}
