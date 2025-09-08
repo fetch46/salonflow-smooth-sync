@@ -34,6 +34,55 @@ export default function Settings() {
     theme: "default" // default, branded
   });
   
+  const [selectedPrimary, setSelectedPrimary] = useState('slate');
+  const [selectedAccent, setSelectedAccent] = useState('gray');
+  
+  const SHADCN_COLORS = [
+    { name: 'slate', hsl: 'hsl(210 40% 50%)' },
+    { name: 'gray', hsl: 'hsl(220 8.9% 46.1%)' },
+    { name: 'zinc', hsl: 'hsl(240 5.9% 10%)' },
+    { name: 'neutral', hsl: 'hsl(0 0% 45%)' },
+    { name: 'stone', hsl: 'hsl(25 5% 45%)' },
+    { name: 'red', hsl: 'hsl(0 84.2% 60.2%)' },
+    { name: 'orange', hsl: 'hsl(24.6 95% 53.1%)' },
+    { name: 'amber', hsl: 'hsl(45.4 93.4% 47.5%)' },
+    { name: 'yellow', hsl: 'hsl(54.5 91.7% 64.3%)' },
+    { name: 'lime', hsl: 'hsl(82.2 84.5% 67.1%)' },
+    { name: 'green', hsl: 'hsl(142.1 76.2% 36.3%)' },
+    { name: 'emerald', hsl: 'hsl(161.1 93.5% 30.4%)' },
+    { name: 'teal', hsl: 'hsl(175.7 82.7% 31.8%)' },
+    { name: 'cyan', hsl: 'hsl(188.7 94.5% 42.7%)' },
+    { name: 'sky', hsl: 'hsl(198.6 88.7% 48.4%)' },
+    { name: 'blue', hsl: 'hsl(221.2 83.2% 53.3%)' },
+    { name: 'indigo', hsl: 'hsl(243.4 75.4% 58.6%)' },
+    { name: 'violet', hsl: 'hsl(258.3 89.5% 66.3%)' },
+    { name: 'purple', hsl: 'hsl(272.1 81.3% 55.9%)' },
+    { name: 'fuchsia', hsl: 'hsl(292.2 91.4% 72.9%)' },
+    { name: 'pink', hsl: 'hsl(328.4 85.5% 70.2%)' },
+    { name: 'rose', hsl: 'hsl(351.7 94.5% 71.4%)' }
+  ];
+  
+  const handleColorChange = (type: 'primary' | 'accent', color: { name: string; hsl: string }) => {
+    if (type === 'primary') {
+      setSelectedPrimary(color.name);
+      document.documentElement.style.setProperty('--primary', color.hsl.replace('hsl(', '').replace(')', ''));
+    } else {
+      setSelectedAccent(color.name);
+      document.documentElement.style.setProperty('--accent', color.hsl.replace('hsl(', '').replace(')', ''));
+    }
+    
+    // Save to localStorage
+    localStorage.setItem(`brandColors_${type}`, color.name);
+  };
+  
+  useEffect(() => {
+    const savedPrimary = localStorage.getItem('brandColors_primary');
+    const savedAccent = localStorage.getItem('brandColors_accent');
+    
+    if (savedPrimary) setSelectedPrimary(savedPrimary);
+    if (savedAccent) setSelectedAccent(savedAccent);
+  }, []);
+  
   useEffect(() => {
     const tabParam = searchParams.get("tab");
     if (tabParam && tabParam !== activeTab) {
@@ -2071,6 +2120,7 @@ phone: "",
                </Card>
              </div>
           </TabsContent>
+
 
           {/* Modules Tab */}
           <TabsContent value="modules">
