@@ -255,6 +255,12 @@ const menuItems: MenuItem[] = [
         icon: Users,
         feature: "reports",
       },
+      {
+        title: "Payments Report",
+        url: "/payments",
+        icon: DollarSign,
+        feature: "reports",
+      },
     ],
   },
   {
