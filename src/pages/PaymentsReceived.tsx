@@ -9,12 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { CalendarRange, Download, Edit, MoreVertical, RefreshCw, Search, Trash2, DollarSign } from "lucide-react";
+import { CalendarRange, Download, Edit, MoreVertical, RefreshCw, Search, Trash2, DollarSign, Banknote } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { getAllInvoicePaymentsWithFallback, updateInvoicePaymentWithFallback, deleteInvoicePaymentWithFallback } from "@/utils/mockDatabase";
 import { useNavigate } from "react-router-dom";
 import { useOrganizationCurrency, useOrganization } from "@/lib/saas/hooks";
+import { downloadInvoicePDF } from "@/utils/invoicePdf";
 
 interface InvoicePayment {
   id: string;
@@ -145,6 +146,25 @@ export default function PaymentsReceived() {
     } catch (err) {
       console.error(err);
       toast.error('Failed to delete payment');
+    }
+  };
+
+  const handleDownloadInvoice = async (invoiceId: string, format: 'standard' | '80mm' = 'standard') => {
+    try {
+      const invoice = invoicesById[invoiceId];
+      if (!invoice) return;
+      await downloadInvoicePDF({
+        id: invoiceId,
+        invoice_number: invoice.invoice_number,
+        client_id: (invoice as any).customer_id,
+        total_amount: invoice.total_amount,
+        issue_date: invoice.created_at,
+        status: (invoice as any).status || 'sent'
+      }, format);
+      toast.success(`Invoice downloaded (${format})`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to download invoice');
     }
   };
 
@@ -293,78 +313,87 @@ export default function PaymentsReceived() {
         </CardContent>
       </Card>
 
-      {/* Payments Table */}
+      {/* Payments Received Section (from Payments page) */}
       <Card>
         <CardHeader>
-          <CardTitle>Payments Received ({filteredReceived.length})</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Banknote className="h-5 w-5 text-green-600" />
+            Payments Received
+          </CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Invoice #</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>Payment Date</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Method</TableHead>
-                <TableHead>Reference</TableHead>
-                <TableHead className="w-12"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedReceived.map((payment) => {
-                const invoice = invoicesById[payment.invoice_id];
-                const client = invoice?.customer_id ? clientsById[invoice.customer_id] : null;
-                
-                return (
-                  <TableRow key={payment.id}>
-                    <TableCell className="font-medium">
-                      {invoice?.invoice_number || '—'}
-                    </TableCell>
-                    <TableCell>
-                      {client?.full_name || '—'}
-                    </TableCell>
-                    <TableCell>
-                      {format(new Date(payment.payment_date), 'MMM dd, yyyy')}
-                    </TableCell>
-                    <TableCell className="font-semibold text-emerald-600">
-                      {formatCurrency(payment.amount)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="capitalize">
-                        {payment.method}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {payment.reference_number || '—'}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEdit(payment)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit Payment
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => deletePayment(payment)}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Payment
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+            <Input
+              placeholder="Search by invoice, client, method..."
+              value={searchReceived}
+              onChange={(e) => setSearchReceived(e.target.value)}
+              className="md:max-w-sm"
+            />
+          </div>
+
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Invoice</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Method</TableHead>
+                  <TableHead>Reference</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredReceived.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      No payments found
                     </TableCell>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                )}
+                {filteredReceived.map((payment) => {
+                  const invoice = invoicesById[payment.invoice_id];
+                  const clientName = invoice?.customer_id ? (clientsById[invoice.customer_id]?.full_name || '—') : '—';
+                  
+                  return (
+                    <TableRow key={payment.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium">{invoice?.invoice_number || '—'}</TableCell>
+                      <TableCell>{clientName}</TableCell>
+                      <TableCell>{format(new Date(payment.payment_date), 'MMM dd, yyyy')}</TableCell>
+                      <TableCell>{formatCurrency(Number(payment.amount || 0))}</TableCell>
+                      <TableCell>
+                        <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize">
+                          {payment.method || 'cash'}
+                        </span>
+                      </TableCell>
+                      <TableCell>{payment.reference_number || '—'}</TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={() => handleDownloadInvoice(payment.invoice_id)}>
+                              <Download className="mr-2 h-4 w-4" /> Download Invoice
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openEdit(payment)}>
+                              <Edit className="mr-2 h-4 w-4" /> Edit Payment
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-red-600" onClick={() => deletePayment(payment)}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete Payment
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
