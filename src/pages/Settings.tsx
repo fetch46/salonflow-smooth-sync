@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Building, Users, CreditCard, MessageSquare, MapPin, Plus, Edit2, Trash2, Crown, Shield, User, Package, Settings2 } from "lucide-react";
+import { Building, Users, CreditCard, MessageSquare, MapPin, Plus, Edit2, Trash2, Crown, Shield, User, Package, Settings2, Palette } from "lucide-react";
 import { Dialog as UIDialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { usePermissions } from "@/lib/saas/hooks";
 import { toast } from "sonner";
@@ -26,6 +26,14 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "company");
   const { systemSettings } = useSaas();
   const appName = (systemSettings as any)?.app_name || 'AURA OS';
+  
+  // Branding state
+  const [brandColors, setBrandColors] = useState({
+    primary: "0 0% 9%",
+    accent: "0 0% 96.1%",
+    theme: "default" // default, branded
+  });
+  
   useEffect(() => {
     const tabParam = searchParams.get("tab");
     if (tabParam && tabParam !== activeTab) {
@@ -423,8 +431,27 @@ phone: "",
       // Initialize deposit account mapping from org settings
       const map = (s.default_deposit_accounts_by_method as Record<string, string>) || {}
       setDepositAccountMap(map)
+      
+      // Initialize branding settings
+      const branding = s.branding || {};
+      setBrandColors({
+        primary: branding.primary || "0 0% 9%",
+        accent: branding.accent || "0 0% 96.1%",
+        theme: branding.theme || "default"
+      });
     }
   }, [organization, countries, currencies])
+
+  // Load branding settings into CSS variables
+  useEffect(() => {
+    if (brandColors.theme === "branded") {
+      document.documentElement.setAttribute('data-theme', 'branded');
+      document.documentElement.style.setProperty('--brand-primary', brandColors.primary);
+      document.documentElement.style.setProperty('--brand-accent', brandColors.accent);
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  }, [brandColors]);
 
   // Load selectable deposit accounts (Cash/Bank assets)
   useEffect(() => {
@@ -832,6 +859,23 @@ phone: "",
     }
   }
 
+  const handleSaveBranding = async () => {
+    if (!organization) return toast.error('No organization selected');
+    try {
+      await updateOrganization(organization.id, {
+        settings: {
+          ...(organization.settings as any),
+          branding: brandColors,
+        },
+      } as any);
+      toast.success('Branding settings updated successfully');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update branding settings');
+    }
+  };
+  }
+
   return (
     <div className="flex-1 space-y-6 p-8 pt-3">
       {/* Header */}
@@ -860,6 +904,10 @@ phone: "",
           <TabsTrigger value="company" className="justify-start gap-2 data-[state=active]:bg-muted">
             <Building className="w-4 h-4" />
             Organization
+          </TabsTrigger>
+          <TabsTrigger value="branding" className="justify-start gap-2 data-[state=active]:bg-muted">
+            <Palette className="w-4 h-4" />
+            Branding
           </TabsTrigger>
           <TabsTrigger value="roles" className="justify-start gap-2 data-[state=active]:bg-muted">
             <Shield className="w-4 h-4" />
@@ -1084,10 +1132,118 @@ phone: "",
                  </form>
                </CardContent>
              </Card>
-           </TabsContent>
+            </TabsContent>
 
-          
-              
+          {/* Branding Settings */}
+          <TabsContent value="branding">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Palette className="h-5 w-5 text-primary" />
+                  Theme & Branding
+                </CardTitle>
+                <CardDescription>
+                  Customize the visual appearance of your application
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Color Theme</Label>
+                    <Select 
+                      value={brandColors.theme} 
+                      onValueChange={(value) => setBrandColors(prev => ({ ...prev, theme: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select theme" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="default">Default Black & White</SelectItem>
+                        <SelectItem value="branded">Custom Branded Colors</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {brandColors.theme === "branded" && (
+                    <div className="space-y-4 border rounded-lg p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Primary Color</Label>
+                          <Select 
+                            value={brandColors.primary} 
+                            onValueChange={(value) => setBrandColors(prev => ({ ...prev, primary: value }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select primary color" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="0 0% 9%">Black</SelectItem>
+                              <SelectItem value="221.2 83.2% 53.3%">Blue</SelectItem>
+                              <SelectItem value="142.1 76.2% 36.3%">Green</SelectItem>
+                              <SelectItem value="0 72.2% 50.6%">Red</SelectItem>
+                              <SelectItem value="262.1 83.3% 57.8%">Purple</SelectItem>
+                              <SelectItem value="346.8 77.2% 49.8%">Rose</SelectItem>
+                              <SelectItem value="24.6 95% 53.1%">Orange</SelectItem>
+                              <SelectItem value="47.9 95.8% 53.1%">Yellow</SelectItem>
+                              <SelectItem value="173.4 80.4% 40%">Teal</SelectItem>
+                              <SelectItem value="199.9 89.2% 48%">Sky</SelectItem>
+                              <SelectItem value="271.5 81% 55.9%">Violet</SelectItem>
+                              <SelectItem value="14.3 100% 53.3%">Red Orange</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Accent Color</Label>
+                          <Select 
+                            value={brandColors.accent} 
+                            onValueChange={(value) => setBrandColors(prev => ({ ...prev, accent: value }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select accent color" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="0 0% 96.1%">Light Gray</SelectItem>
+                              <SelectItem value="210 40% 96%">Light Blue</SelectItem>
+                              <SelectItem value="138.5 76.5% 96.7%">Light Green</SelectItem>
+                              <SelectItem value="0 85.7% 97.3%">Light Red</SelectItem>
+                              <SelectItem value="270 100% 98%">Light Purple</SelectItem>
+                              <SelectItem value="351.3 100% 98.8%">Light Rose</SelectItem>
+                              <SelectItem value="25.7 100% 96.5%">Light Orange</SelectItem>
+                              <SelectItem value="48.2 100% 96.1%">Light Yellow</SelectItem>
+                              <SelectItem value="166.1 84% 94.9%">Light Teal</SelectItem>
+                              <SelectItem value="204 100% 97.1%">Light Sky</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 p-4 border rounded bg-muted/50">
+                        <div 
+                          className="w-12 h-12 rounded border"
+                          style={{ backgroundColor: `hsl(${brandColors.primary})` }}
+                        />
+                        <div 
+                          className="w-12 h-12 rounded border"
+                          style={{ backgroundColor: `hsl(${brandColors.accent})` }}
+                        />
+                        <div className="text-sm text-muted-foreground">
+                          Preview of your selected colors
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end">
+                    <Button onClick={handleSaveBranding}>Save Branding</Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+           
+               
 
           {/* Users & Roles - Redesigned */}
           <TabsContent value="roles" className="space-y-6">
