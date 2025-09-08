@@ -26,7 +26,7 @@ import {
   Download,
   ChevronRight,
   LayoutGrid,
-  Table as TableIcon
+  List
 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, isSameDay } from "date-fns";
 import { toast } from "sonner";
@@ -319,8 +319,8 @@ export default function JobCards() {
               onClick={() => setViewMode('list')}
               aria-pressed={viewMode === 'list'}
             >
-              <TableIcon className="icon-responsive-sm mr-2" />
-              Table
+              <List className="icon-responsive-sm mr-2" />
+              List
             </Button>
           </div>
           <Button variant="outline" onClick={refreshData} disabled={refreshing} className="btn-compact">
