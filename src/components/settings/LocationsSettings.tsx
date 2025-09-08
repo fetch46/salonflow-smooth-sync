@@ -24,6 +24,7 @@ const locationFormSchema = z.object({
   address: z.string().optional(),
   phone: z.string().optional(),
   manager_id: z.string().optional(),
+  default_warehouse_id: z.string().optional(),
   is_active: z.boolean().default(true),
   is_default: z.boolean().default(false),
 });
@@ -37,6 +38,7 @@ interface Location {
   address?: string;
   phone?: string;
   manager_id?: string;
+  default_warehouse_id?: string;
   is_active: boolean;
   is_default: boolean;
   created_at: string;
@@ -48,10 +50,17 @@ interface Staff {
   full_name: string;
 }
 
+interface Warehouse {
+  id: string;
+  name: string;
+  code?: string;
+}
+
 export function LocationsSettings() {
   const { organization } = useOrganization();
   const [locations, setLocations] = useState<Location[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [showDialog, setShowDialog] = useState(false);
@@ -66,6 +75,7 @@ export function LocationsSettings() {
       address: "",
       phone: "",
       manager_id: "",
+      default_warehouse_id: "",
       is_active: true,
       is_default: false,
     },
@@ -81,7 +91,7 @@ export function LocationsSettings() {
     try {
       setLoading(true);
       
-      const [locationsRes, staffRes] = await Promise.all([
+      const [locationsRes, staffRes, warehousesRes] = await Promise.all([
         supabase
           .from("business_locations")
           .select("*")
@@ -92,14 +102,22 @@ export function LocationsSettings() {
           .select("id, full_name")
           .eq("organization_id", organization?.id)
           .eq("is_active", true)
-          .order("full_name")
+          .order("full_name"),
+        supabase
+          .from("warehouses")
+          .select("id, name")
+          .eq("organization_id", organization?.id)
+          .eq("is_active", true)
+          .order("name")
       ]);
 
       if (locationsRes.error) throw locationsRes.error;
       if (staffRes.error) throw staffRes.error;
+      if (warehousesRes.error) throw warehousesRes.error;
 
       setLocations(locationsRes.data || []);
       setStaff(staffRes.data || []);
+      setWarehouses(warehousesRes.data || []);
 
       // Load organization settings for default locations
       const { data: orgData } = await supabase
@@ -144,6 +162,7 @@ export function LocationsSettings() {
             address: values.address,
             phone: values.phone,
             manager_id: values.manager_id,
+            default_warehouse_id: values.default_warehouse_id,
             is_active: values.is_active,
             is_default: values.is_default,
             organization_id: organization?.id,
@@ -171,6 +190,7 @@ export function LocationsSettings() {
       address: location.address || "",
       phone: location.phone || "",
       manager_id: location.manager_id || "",
+      default_warehouse_id: location.default_warehouse_id || "",
       is_active: location.is_active,
       is_default: location.is_default,
     });
@@ -419,6 +439,30 @@ export function LocationsSettings() {
                         )}
                       />
                     </div>
+                    <FormField
+                      control={form.control}
+                      name="default_warehouse_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Default Warehouse</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select default warehouse for this location" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {warehouses.map((warehouse) => (
+                                <SelectItem key={warehouse.id} value={warehouse.id}>
+                                  {warehouse.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <div className="flex items-center space-x-2">
                       <FormField
                         control={form.control}
@@ -458,6 +502,7 @@ export function LocationsSettings() {
                   <TableHead>Code</TableHead>
                   <TableHead>Address</TableHead>
                   <TableHead>Manager</TableHead>
+                  <TableHead>Default Warehouse</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -465,7 +510,7 @@ export function LocationsSettings() {
               <TableBody>
                 {locations.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={7} className="text-center py-8">
                       <div className="text-muted-foreground">
                         No locations configured yet. Create your first location to get started.
                       </div>
@@ -488,6 +533,9 @@ export function LocationsSettings() {
                       </TableCell>
                       <TableCell>
                         {staff.find(s => s.id === location.manager_id)?.full_name || "-"}
+                      </TableCell>
+                      <TableCell>
+                        {warehouses.find(w => w.id === location.default_warehouse_id)?.name || "-"}
                       </TableCell>
                       <TableCell>
                         <Badge variant={location.is_active ? "default" : "secondary"}>
