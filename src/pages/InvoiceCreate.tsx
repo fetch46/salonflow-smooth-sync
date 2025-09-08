@@ -41,6 +41,7 @@ export default function InvoiceCreate() {
   const [jobCards, setJobCards] = useState<Array<{ id: string; job_card_number: string; client_name?: string; total_amount: number }>>([]);
   const [locations, setLocations] = useState<Array<{ id: string; name: string; is_default?: boolean; is_active?: boolean }>>([]);
   const [defaultLocationIdForUser, setDefaultLocationIdForUser] = useState<string | null>(null);
+  const [customerJobCards, setCustomerJobCards] = useState<Array<{ id: string; job_card_number: string; total_amount: number }>>([]);
 
   // Unique locations by name (prefer default when duplicates exist)
   const uniqueLocations = useMemo(() => {
@@ -653,7 +654,7 @@ Thank you for your business!`;
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="customer_id">Existing Customer</Label>
-                <Select value={formData.customer_id} onValueChange={(value) => {
+                <Select value={formData.customer_id} onValueChange={async (value) => {
                   const customer = customers.find(c => c.id === value);
                   setFormData({
                     ...formData,
@@ -662,6 +663,24 @@ Thank you for your business!`;
                     customer_email: customer?.email || "",
                     customer_phone: customer?.phone || "",
                   });
+                  
+                  // Fetch job cards for this customer
+                  if (value) {
+                    try {
+                      const { data: customerJCs } = await supabase
+                        .from("job_cards")
+                        .select("id, job_card_number, total_amount")
+                        .eq('client_id', value)
+                        .eq('organization_id', organization?.id || '')
+                        .order('created_at', { ascending: false });
+                      setCustomerJobCards(customerJCs || []);
+                    } catch (error) {
+                      console.error("Error fetching customer job cards:", error);
+                      setCustomerJobCards([]);
+                    }
+                  } else {
+                    setCustomerJobCards([]);
+                  }
                 }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select existing customer" />
@@ -735,6 +754,16 @@ Thank you for your business!`;
                     ))}
                   </SelectContent>
                 </Select>
+                {customerJobCards.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    <p className="text-sm text-slate-600">Job cards for this customer:</p>
+                    {customerJobCards.map((jc) => (
+                      <p key={jc.id} className="text-sm text-red-600 font-medium">
+                        {jc.job_card_number} - {symbol}{formatNumber(jc.total_amount)}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             {(taxEnabled !== false) ? (
