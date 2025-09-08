@@ -323,6 +323,10 @@ export default function ServiceView() {
                 <p className="text-sm">{service.category || "No category"}</p>
               </div>
               <div>
+                <label className="text-sm font-medium text-muted-foreground">Revenue Account</label>
+                <p className="text-sm">{(service as any).income_account_name || "Default Revenue Account"}</p>
+              </div>
+              <div>
                 <label className="text-sm font-medium text-muted-foreground">Status</label>
                 <p className="text-sm">{service.is_active ? "Active" : "Inactive"}</p>
               </div>
