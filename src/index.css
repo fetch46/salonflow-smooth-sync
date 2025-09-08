@@ -76,6 +76,19 @@ All colors MUST be HSL.
     --brand-accent: var(--accent);
     --brand-accent-foreground: var(--accent-foreground);
 
+    /* App structure variables */
+    --topbar-bg: var(--background);
+    --topbar-foreground: var(--foreground);
+    --footer-bg: var(--background);
+    --footer-foreground: var(--foreground);
+    --nav-link-color: var(--foreground);
+
+    /* Tabs variables */
+    --tabs-bg: var(--muted);
+    --tabs-foreground: var(--muted-foreground);
+    --tabs-active-bg: var(--card);
+    --tabs-active-foreground: var(--primary);
+
     /* Compact, clean text sizes for dense layouts */
     --text-xs: clamp(0.68rem, 1.5vw, 0.72rem);
     --text-sm: clamp(0.78rem, 2vw, 0.82rem);

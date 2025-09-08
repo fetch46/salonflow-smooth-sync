@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Building, Palette, Wrench, CreditCard, Package, Users, UserCheck, MapPin, Warehouse, Save } from "lucide-react";
+import { Building, Palette, Wrench, CreditCard, Package, Users, UserCheck, MapPin, Warehouse, Save, LayoutGrid } from "lucide-react";
 import { toast } from "sonner";
 import { useOrganization } from "@/lib/saas/hooks";
 import { supabase } from "@/integrations/supabase/client";
@@ -162,6 +162,20 @@ export default function Settings() {
 
   const [selectedTheme, setSelectedTheme] = useState("default");
   const [loading, setLoading] = useState(false);
+  // Manual theme parts
+  const [manualTheme, setManualTheme] = useState({
+    sidebarBg: '',
+    sidebarText: '',
+    topbarBg: '',
+    topbarText: '',
+    footerBg: '',
+    footerText: '',
+    navLinkColor: '',
+    tabsBg: '',
+    tabsText: '',
+    tabsActiveBg: '',
+    tabsActiveText: ''
+  });
   const [countries, setCountries] = useState<any[]>([]);
   const [currencies, setCurrencies] = useState<any[]>([]);
   const [modules, setModules] = useState<any[]>([]);
@@ -181,6 +195,26 @@ export default function Settings() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Load manual theme overrides from localStorage on mount
+  useEffect(() => {
+    const keys = [
+      'sidebarBg','sidebarText','topbarBg','topbarText','footerBg','footerText','navLinkColor','tabsBg','tabsText','tabsActiveBg','tabsActiveText'
+    ] as const
+    const loaded: any = {}
+    let hasAny = false
+    keys.forEach((k) => {
+      const v = localStorage.getItem(`manual-${k}`)
+      if (v) {
+        loaded[k] = v
+        hasAny = true
+      }
+    })
+    if (hasAny) {
+      setManualTheme((prev) => ({ ...prev, ...loaded }))
+      applyManualTheme(loaded)
+    }
+  }, [])
 
   useEffect(() => {
     if (organization) {
@@ -210,6 +244,22 @@ export default function Settings() {
             secondary: branding.colors.secondary || brandColors.secondary,
             accent: branding.colors.accent || brandColors.accent 
           })
+        }
+        if (branding.manual) {
+          setManualTheme({
+            sidebarBg: branding.manual.sidebarBg || '',
+            sidebarText: branding.manual.sidebarText || '',
+            topbarBg: branding.manual.topbarBg || '',
+            topbarText: branding.manual.topbarText || '',
+            footerBg: branding.manual.footerBg || '',
+            footerText: branding.manual.footerText || '',
+            navLinkColor: branding.manual.navLinkColor || '',
+            tabsBg: branding.manual.tabsBg || '',
+            tabsText: branding.manual.tabsText || '',
+            tabsActiveBg: branding.manual.tabsActiveBg || '',
+            tabsActiveText: branding.manual.tabsActiveText || ''
+          })
+          applyManualTheme(branding.manual)
         }
       }
     }
@@ -284,6 +334,25 @@ export default function Settings() {
     }
   };
 
+  const applyManualTheme = (manual: Partial<typeof manualTheme>) => {
+    const root = document.documentElement;
+    if (manual.sidebarBg) root.style.setProperty('--sidebar-background', manual.sidebarBg);
+    if (manual.sidebarText) root.style.setProperty('--sidebar-foreground', manual.sidebarText);
+    if (manual.topbarBg) root.style.setProperty('--topbar-bg', manual.topbarBg);
+    if (manual.topbarText) root.style.setProperty('--topbar-foreground', manual.topbarText);
+    if (manual.footerBg) root.style.setProperty('--footer-bg', manual.footerBg);
+    if (manual.footerText) root.style.setProperty('--footer-foreground', manual.footerText);
+    if (manual.navLinkColor) root.style.setProperty('--nav-link-color', manual.navLinkColor);
+    if (manual.tabsBg) root.style.setProperty('--tabs-bg', manual.tabsBg);
+    if (manual.tabsText) root.style.setProperty('--tabs-foreground', manual.tabsText);
+    if (manual.tabsActiveBg) root.style.setProperty('--tabs-active-bg', manual.tabsActiveBg);
+    if (manual.tabsActiveText) root.style.setProperty('--tabs-active-foreground', manual.tabsActiveText);
+
+    Object.entries(manual).forEach(([key, value]) => {
+      if (value) localStorage.setItem(`manual-${key}`, value);
+    });
+  };
+
   const setPrimaryColor = (hsl: string) => {
     setBrandColors((prev) => {
       const next = { ...prev, primary: hsl, theme: 'custom' } as any;
@@ -351,6 +420,7 @@ export default function Settings() {
         branding: {
           theme: selectedTheme,
           colors: brandColors,
+          manual: manualTheme,
         },
       };
 
@@ -459,11 +529,29 @@ export default function Settings() {
             </div>
           </TabsContent>
 
-          {/* Branding Settings */}
+          {/* Branding Settings */
+          /* Layout: Left new card (40% width), Theme & Branding (40%), Preview below (full width) */}
           <TabsContent value="branding">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Left: Theme & Branding Controls */}
-              <Card>
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+              {/* New Left Card (instructions / quick actions) */}
+              <Card className="lg:col-span-3 order-1">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <LayoutGrid className="h-5 w-5 text-primary" />
+                    Appearance Overview
+                  </CardTitle>
+                  <CardDescription>
+                    Configure brand colors and UI sections. Primary affects buttons; Secondary affects text/icons.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="text-sm text-muted-foreground">Primary color is used for buttons and active elements. Secondary color is used for text and icons.</div>
+                  <div className="text-sm">You can also manually set Sidebar, Topbar, Footer, Tabs, and Navigation colors below.</div>
+                </CardContent>
+              </Card>
+
+              {/* Theme & Branding Controls - 40% width */}
+              <Card className="lg:col-span-2 order-2">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Palette className="h-5 w-5 text-primary" />
@@ -556,8 +644,103 @@ export default function Settings() {
                 </CardContent>
               </Card>
 
-              {/* Right: Live Preview */}
-              <Card>
+              {/* Manual Theming Controls - full width on lg (spans 5) */}
+              <Card className="lg:col-span-5 order-4">
+                <CardHeader>
+                  <CardTitle>Manual Theme Controls</CardTitle>
+                  <CardDescription>Customize Sidebar, Top Bar, Footer, Tabs and Navigation texts</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Sidebar Background</Label>
+                      <Input placeholder="e.g. 0 0% 98%" value={manualTheme.sidebarBg}
+                        onChange={(e) => setManualTheme(prev => ({ ...prev, sidebarBg: e.target.value }))}
+                        onBlur={() => applyManualTheme({ sidebarBg: manualTheme.sidebarBg })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Sidebar Text</Label>
+                      <Input placeholder="e.g. 0 0% 26%" value={manualTheme.sidebarText}
+                        onChange={(e) => setManualTheme(prev => ({ ...prev, sidebarText: e.target.value }))}
+                        onBlur={() => applyManualTheme({ sidebarText: manualTheme.sidebarText })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Navigation Links</Label>
+                      <Input placeholder="e.g. 0 0% 26%" value={manualTheme.navLinkColor}
+                        onChange={(e) => setManualTheme(prev => ({ ...prev, navLinkColor: e.target.value }))}
+                        onBlur={() => applyManualTheme({ navLinkColor: manualTheme.navLinkColor })}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Top Bar Background</Label>
+                      <Input placeholder="e.g. 0 0% 100%" value={manualTheme.topbarBg}
+                        onChange={(e) => setManualTheme(prev => ({ ...prev, topbarBg: e.target.value }))}
+                        onBlur={() => applyManualTheme({ topbarBg: manualTheme.topbarBg })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Top Bar Text</Label>
+                      <Input placeholder="e.g. 0 0% 3.9%" value={manualTheme.topbarText}
+                        onChange={(e) => setManualTheme(prev => ({ ...prev, topbarText: e.target.value }))}
+                        onBlur={() => applyManualTheme({ topbarText: manualTheme.topbarText })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Footer Background</Label>
+                      <Input placeholder="e.g. 0 0% 100%" value={manualTheme.footerBg}
+                        onChange={(e) => setManualTheme(prev => ({ ...prev, footerBg: e.target.value }))}
+                        onBlur={() => applyManualTheme({ footerBg: manualTheme.footerBg })}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Footer Text</Label>
+                      <Input placeholder="e.g. 0 0% 3.9%" value={manualTheme.footerText}
+                        onChange={(e) => setManualTheme(prev => ({ ...prev, footerText: e.target.value }))}
+                        onBlur={() => applyManualTheme({ footerText: manualTheme.footerText })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Tabs Background</Label>
+                      <Input placeholder="e.g. 0 0% 96.1%" value={manualTheme.tabsBg}
+                        onChange={(e) => setManualTheme(prev => ({ ...prev, tabsBg: e.target.value }))}
+                        onBlur={() => applyManualTheme({ tabsBg: manualTheme.tabsBg })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Tabs Text</Label>
+                      <Input placeholder="e.g. 0 0% 45.1%" value={manualTheme.tabsText}
+                        onChange={(e) => setManualTheme(prev => ({ ...prev, tabsText: e.target.value }))}
+                        onBlur={() => applyManualTheme({ tabsText: manualTheme.tabsText })}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Active Tab Background</Label>
+                      <Input placeholder="e.g. 0 0% 100%" value={manualTheme.tabsActiveBg}
+                        onChange={(e) => setManualTheme(prev => ({ ...prev, tabsActiveBg: e.target.value }))}
+                        onBlur={() => applyManualTheme({ tabsActiveBg: manualTheme.tabsActiveBg })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Active Tab Text</Label>
+                      <Input placeholder="e.g. 221 83% 53%" value={manualTheme.tabsActiveText}
+                        onChange={(e) => setManualTheme(prev => ({ ...prev, tabsActiveText: e.target.value }))}
+                        onBlur={() => applyManualTheme({ tabsActiveText: manualTheme.tabsActiveText })}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Right: Live Preview below (full width) */}
+              <Card className="lg:col-span-5 order-3">
                 <CardHeader>
                   <CardTitle>Preview</CardTitle>
                   <CardDescription>See how your colors look in UI elements</CardDescription>

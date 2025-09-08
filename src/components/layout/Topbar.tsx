@@ -157,7 +157,9 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border px-3 md:px-4 lg:px-6 py-2.5">
+    <header className="sticky top-0 z-50 backdrop-blur border-b border-border px-3 md:px-4 lg:px-6 py-2.5"
+      style={{ backgroundColor: `hsl(var(--topbar-bg))`, color: `hsl(var(--topbar-foreground))` }}
+    >
       <div className="flex items-center justify-between gap-2">
         {/* Left side */}
         <div className="flex items-center gap-4">
