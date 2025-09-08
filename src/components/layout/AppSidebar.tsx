@@ -96,6 +96,12 @@ const menuItems: MenuItem[] = [
         feature: "accounting",
       },
       {
+        title: "Job Cards",
+        url: "/job-cards",
+        icon: Scissors,
+        feature: "job_cards",
+      },
+      {
         title: "Payments Received",
         url: "/payments-received",
         icon: DollarSign,
@@ -137,12 +143,6 @@ const menuItems: MenuItem[] = [
         url: "/expenses",
         icon: Receipt,
         feature: "accounting",
-      },
-      {
-        title: "Job Cards",
-        url: "/job-cards",
-        icon: Scissors,
-        feature: "job_cards",
       },
     ],
   },
