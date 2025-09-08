@@ -22,7 +22,7 @@ import { WarehousesSettings } from "@/components/settings/WarehousesSettings";
 import { AccountingSettings } from "@/components/settings/AccountingSettings";
 import { ItemsSettings } from "@/components/settings/ItemsSettings";
 import { RegionalSettings } from "@/components/settings/RegionalSettings";
-import { ThemeColorPicker } from "@/components/theme/ThemeColorPicker";
+// ThemeColorPicker removed in favor of dropdown-based selectors
 
 import { SubscriptionBilling } from "@/components/settings/SubscriptionBilling";
 
@@ -35,6 +35,7 @@ export default function Settings() {
   // Branding state
   const [brandColors, setBrandColors] = useState({
     primary: "0 0% 9%",
+    secondary: "0 0% 96.1%",
     accent: "0 0% 96.1%",
     theme: "default"
   });
@@ -47,6 +48,7 @@ export default function Settings() {
       description: "Clean black and white theme",
       colors: {
         primary: "0 0% 9%",
+        secondary: "0 0% 96.1%",
         accent: "0 0% 96.1%",
         preview: "hsl(0 0% 9%)"
       }
@@ -57,6 +59,7 @@ export default function Settings() {
       description: "Bold red accent theme",
       colors: {
         primary: "0 72% 51%",
+        secondary: "0 0% 96.1%",
         accent: "0 0% 96.1%",
         preview: "hsl(0 72% 51%)"
       }
@@ -67,6 +70,7 @@ export default function Settings() {
       description: "Elegant rose theme",
       colors: {
         primary: "346 77% 50%",
+        secondary: "0 0% 96.1%",
         accent: "0 0% 96.1%", 
         preview: "hsl(346 77% 50%)"
       }
@@ -77,6 +81,7 @@ export default function Settings() {
       description: "Vibrant orange theme",
       colors: {
         primary: "25 95% 53%",
+        secondary: "0 0% 96.1%",
         accent: "0 0% 96.1%",
         preview: "hsl(25 95% 53%)"
       }
@@ -87,6 +92,7 @@ export default function Settings() {
       description: "Nature green theme",
       colors: {
         primary: "142 76% 36%",
+        secondary: "0 0% 96.1%",
         accent: "0 0% 96.1%",
         preview: "hsl(142 76% 36%)"
       }
@@ -97,6 +103,7 @@ export default function Settings() {
       description: "Professional blue theme", 
       colors: {
         primary: "221 83% 53%",
+        secondary: "0 0% 96.1%",
         accent: "0 0% 96.1%",
         preview: "hsl(221 83% 53%)"
       }
@@ -107,6 +114,7 @@ export default function Settings() {
       description: "Bright yellow theme",
       colors: {
         primary: "48 96% 53%", 
+        secondary: "0 0% 96.1%",
         accent: "0 0% 96.1%",
         preview: "hsl(48 96% 53%)"
       }
@@ -117,10 +125,39 @@ export default function Settings() {
       description: "Creative violet theme",
       colors: {
         primary: "262 83% 58%",
+        secondary: "0 0% 96.1%",
         accent: "0 0% 96.1%",
         preview: "hsl(262 83% 58%)"
       }
     }
+  ];
+
+  // Shadcn color options (500-ish hues)
+  const SHADCN_COLORS: { id: string; name: string; hsl: string }[] = [
+    { id: 'slate', name: 'Slate', hsl: '215 20.2% 65.1%' },
+    { id: 'gray', name: 'Gray', hsl: '220 9% 46%' },
+    { id: 'zinc', name: 'Zinc', hsl: '240 5% 64.9%' },
+    { id: 'neutral', name: 'Neutral', hsl: '0 0% 45%' },
+    { id: 'stone', name: 'Stone', hsl: '24 6% 55%' },
+    { id: 'red', name: 'Red', hsl: '0 72% 51%' },
+    { id: 'rose', name: 'Rose', hsl: '346 77% 50%' },
+    { id: 'orange', name: 'Orange', hsl: '25 95% 53%' },
+    { id: 'amber', name: 'Amber', hsl: '38 92% 50%' },
+    { id: 'yellow', name: 'Yellow', hsl: '48 96% 53%' },
+    { id: 'lime', name: 'Lime', hsl: '84 81% 44%' },
+    { id: 'green', name: 'Green', hsl: '142 76% 36%' },
+    { id: 'emerald', name: 'Emerald', hsl: '160 84% 39%' },
+    { id: 'teal', name: 'Teal', hsl: '173 80% 40%' },
+    { id: 'cyan', name: 'Cyan', hsl: '199 89% 48%' },
+    { id: 'sky', name: 'Sky', hsl: '202 89% 53%' },
+    { id: 'blue', name: 'Blue', hsl: '221 83% 53%' },
+    { id: 'indigo', name: 'Indigo', hsl: '239 84% 67%' },
+    { id: 'violet', name: 'Violet', hsl: '262 83% 58%' },
+    { id: 'purple', name: 'Purple', hsl: '270 70% 55%' },
+    { id: 'fuchsia', name: 'Fuchsia', hsl: '292 84% 61%' },
+    { id: 'pink', name: 'Pink', hsl: '330 81% 60%' },
+    { id: 'black', name: 'Black', hsl: '0 0% 9%' },
+    { id: 'white', name: 'White', hsl: '0 0% 96.1%' },
   ];
 
   const [selectedTheme, setSelectedTheme] = useState("default");
@@ -161,9 +198,18 @@ export default function Settings() {
           setSelectedTheme(branding.theme)
         }
         if (branding.colors) {
-          setBrandColors(branding.colors)
+          setBrandColors((prev) => ({
+            ...prev,
+            primary: branding.colors.primary || prev.primary,
+            secondary: branding.colors.secondary || prev.secondary,
+            accent: branding.colors.accent || prev.accent,
+          }))
           // Apply to CSS variables so preview reflects saved branding
-          applyTheme({ primary: branding.colors.primary, accent: branding.colors.accent })
+          applyTheme({ 
+            primary: branding.colors.primary || brandColors.primary, 
+            secondary: branding.colors.secondary || brandColors.secondary,
+            accent: branding.colors.accent || brandColors.accent 
+          })
         }
       }
     }
@@ -195,24 +241,71 @@ export default function Settings() {
     setSelectedTheme(themeId);
     const theme = THEME_PRESETS.find(t => t.id === themeId);
     if (theme) {
-      setBrandColors({
+      setBrandColors((prev) => ({
+        ...prev,
         primary: theme.colors.primary,
+        secondary: theme.colors.secondary,
         accent: theme.colors.accent,
         theme: themeId
-      });
-      applyTheme(theme.colors);
+      }));
+      applyTheme(theme.colors as any);
     }
   };
 
-  const applyTheme = (colors: { primary: string; accent: string }) => {
+  const applyTheme = (colors: { primary: string; secondary: string; accent: string }) => {
     const root = document.documentElement;
     root.style.setProperty('--theme-primary', colors.primary);
-    root.style.setProperty('--theme-primary-foreground', '0 0% 98%');
+    root.style.setProperty('--theme-primary-foreground', computeForeground(colors.primary));
+    // Secondary and Accent map directly to Tailwind tokens
+    root.style.setProperty('--secondary', colors.secondary);
+    root.style.setProperty('--secondary-foreground', computeForeground(colors.secondary));
     root.style.setProperty('--accent', colors.accent);
+    root.style.setProperty('--accent-foreground', computeForeground(colors.accent));
     
     // Store in localStorage for persistence
     localStorage.setItem('theme-primary', colors.primary);
-    localStorage.setItem('theme-primary-foreground', '0 0% 98%');
+    localStorage.setItem('theme-primary-foreground', computeForeground(colors.primary));
+    localStorage.setItem('theme-secondary', colors.secondary);
+    localStorage.setItem('theme-secondary-foreground', computeForeground(colors.secondary));
+    localStorage.setItem('theme-accent', colors.accent);
+    localStorage.setItem('theme-accent-foreground', computeForeground(colors.accent));
+  };
+
+  const computeForeground = (hsl: string) => {
+    // crude parse: "H S% L%" -> decide white or near-black text
+    try {
+      const parts = hsl.split(' ');
+      const lightnessStr = parts[2] || '';
+      const lightness = parseInt(lightnessStr.replace('%', ''));
+      if (isNaN(lightness)) return '0 0% 98%';
+      return lightness < 55 ? '0 0% 98%' : '0 0% 9%';
+    } catch {
+      return '0 0% 98%';
+    }
+  };
+
+  const setPrimaryColor = (hsl: string) => {
+    setBrandColors((prev) => {
+      const next = { ...prev, primary: hsl, theme: 'custom' } as any;
+      applyTheme(next as any);
+      return next;
+    });
+  };
+
+  const setSecondaryColor = (hsl: string) => {
+    setBrandColors((prev) => {
+      const next = { ...prev, secondary: hsl, theme: 'custom' } as any;
+      applyTheme(next as any);
+      return next;
+    });
+  };
+
+  const setAccentColor = (hsl: string) => {
+    setBrandColors((prev) => {
+      const next = { ...prev, accent: hsl, theme: 'custom' } as any;
+      applyTheme(next as any);
+      return next;
+    });
   };
 
   const handleCompanySettingsChange = (field: string, value: string) => {
@@ -368,91 +461,144 @@ export default function Settings() {
 
           {/* Branding Settings */}
           <TabsContent value="branding">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Palette className="h-5 w-5 text-primary" />
-                  Theme & Branding
-                </CardTitle>
-                <CardDescription>
-                  Choose from beautiful preset themes inspired by shadcn/ui
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="space-y-4">
-                    <Label className="text-base font-semibold">Choose a Theme</Label>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {THEME_PRESETS.map((theme) => (
-                        <div
-                          key={theme.id}
-                          className={`relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:shadow-md ${
-                            selectedTheme === theme.id 
-                              ? 'border-primary bg-primary/5' 
-                              : 'border-border hover:border-primary/50'
-                          }`}
-                          onClick={() => handleThemeChange(theme.id)}
-                        >
-                          <div className="space-y-2">
-                            <div 
-                              className="w-full h-8 rounded-md border"
-                              style={{ backgroundColor: theme.colors.preview }}
-                            />
-                            <div className="space-y-1">
-                              <div className="font-medium text-sm">{theme.name}</div>
-                              <div className="text-xs text-muted-foreground">{theme.description}</div>
-                            </div>
-                          </div>
-                          {selectedTheme === theme.id && (
-                            <div className="absolute top-2 right-2">
-                              <div className="w-4 h-4 bg-primary rounded-full flex items-center justify-center">
-                                <div className="w-2 h-2 bg-white rounded-full" />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left: Theme & Branding Controls */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Palette className="h-5 w-5 text-primary" />
+                    Theme & Branding
+                  </CardTitle>
+                  <CardDescription>
+                    Select a theme and customize Primary, Secondary, and Accent colors
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Theme preset</Label>
+                    <Select value={selectedTheme} onValueChange={handleThemeChange}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a theme" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {THEME_PRESETS.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Separator />
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Primary color</Label>
+                      <Select value={SHADCN_COLORS.find(c => c.hsl === brandColors.primary)?.id}
+                        onValueChange={(id) => {
+                          const c = SHADCN_COLORS.find(x => x.id === id);
+                          if (c) setPrimaryColor(c.hsl);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose primary" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SHADCN_COLORS.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Secondary color</Label>
+                      <Select value={SHADCN_COLORS.find(c => c.hsl === (brandColors as any).secondary)?.id}
+                        onValueChange={(id) => {
+                          const c = SHADCN_COLORS.find(x => x.id === id);
+                          if (c) setSecondaryColor(c.hsl);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose secondary" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SHADCN_COLORS.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Accent color</Label>
+                      <Select value={SHADCN_COLORS.find(c => c.hsl === brandColors.accent)?.id}
+                        onValueChange={(id) => {
+                          const c = SHADCN_COLORS.find(x => x.id === id);
+                          if (c) setAccentColor(c.hsl);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose accent" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SHADCN_COLORS.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
-                  <div className="space-y-4 border rounded-lg p-4 bg-muted/20">
-                    <Label className="text-sm font-medium">Preview</Label>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <div 
-                          className="w-4 h-4 rounded border"
-                          style={{ 
-                            backgroundColor: `hsl(${brandColors.primary})` 
-                          }}
-                        />
-                        <span className="text-sm">Primary: {brandColors.primary}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div 
-                          className="w-4 h-4 rounded border"
-                          style={{ 
-                            backgroundColor: `hsl(${brandColors.accent})` 
-                          }}
-                        />
-                        <span className="text-sm">Accent: {brandColors.accent}</span>
-                     </div>
-                     
-                     {/* Theme Color Picker */}
-                     <div className="mt-8">
-                       <ThemeColorPicker />
-                     </div>
-                   </div>
-                 </div>
-                 <div className="flex justify-end pt-4 border-t">
-                   <Button onClick={saveBrandingSettings} disabled={loading} className="flex items-center gap-2">
-                     <Save className="h-4 w-4" />
-                     {loading ? 'Saving...' : 'Save Theme Settings'}
-                   </Button>
-                 </div>
-                </div>
+                  <div className="flex justify-end pt-4 border-t">
+                    <Button onClick={saveBrandingSettings} disabled={loading} className="flex items-center gap-2">
+                      <Save className="h-4 w-4" />
+                      {loading ? 'Saving...' : 'Save Theme Settings'}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
 
-              </CardContent>
-            </Card>
+              {/* Right: Live Preview */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Preview</CardTitle>
+                  <CardDescription>See how your colors look in UI elements</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <div className="text-sm text-muted-foreground">Primary</div>
+                        <div className="h-10 rounded-md border" style={{ backgroundColor: `hsl(${brandColors.primary})` }} />
+                        <div className="text-xs break-all">{brandColors.primary}</div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="text-sm text-muted-foreground">Secondary</div>
+                        <div className="h-10 rounded-md border" style={{ backgroundColor: `hsl(${(brandColors as any).secondary})` }} />
+                        <div className="text-xs break-all">{(brandColors as any).secondary}</div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="text-sm text-muted-foreground">Accent</div>
+                        <div className="h-10 rounded-md border" style={{ backgroundColor: `hsl(${brandColors.accent})` }} />
+                        <div className="text-xs break-all">{brandColors.accent}</div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="flex flex-wrap gap-3">
+                      <Button>Primary Button</Button>
+                      <Button variant="secondary">Secondary</Button>
+                      <Button variant="outline">Outline</Button>
+                    </div>
+                    <div className="p-4 rounded-md border bg-accent text-accent-foreground">
+                      This is an accent surface
+                    </div>
+                    <div className="p-4 rounded-md border bg-secondary text-secondary-foreground">
+                      This is a secondary surface
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Accounting Settings */}
