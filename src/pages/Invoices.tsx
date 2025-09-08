@@ -443,6 +443,10 @@ export default function Invoices() {
 
   const handleStatusUpdate = async (invoiceId: string, newStatus: string) => {
     try {
+      if (newStatus === "paid") {
+        toast.error("Invoice can only be marked as paid by recording a payment");
+        return;
+      }
       await updateInvoiceWithFallback(supabase, invoiceId, { status: newStatus });
       toast.success("Invoice status updated");
       fetchInvoices();
@@ -890,12 +894,12 @@ export default function Invoices() {
                           </DropdownMenuContent>
                         </DropdownMenu>
                         
-                        <Select value={invoice.status} onValueChange={(value) => handleStatusUpdate(invoice.id, value)}>
-                          <SelectTrigger className="w-24 h-8">
+                        <Select value={invoice.status} onValueChange={(value) => handleStatusUpdate(invoice.id, value)} disabled={invoice.status === 'paid'}>
+                          <SelectTrigger className="w-28 h-8">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {INVOICE_STATUSES.map((status) => (
+                            {INVOICE_STATUSES.filter((s) => s.value !== 'paid').map((status) => (
                               <SelectItem key={status.value} value={status.value}>
                                 <div className="flex items-center gap-2">
                                   <status.icon className="w-3 h-3" />
