@@ -323,11 +323,11 @@ export default function JobCards() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600">Completed</p>
-                <p className="text-2xl font-bold text-emerald-600">{stats.completed}</p>
+                <p className="text-responsive-sm font-medium text-slate-600">Completed</p>
+                <p className="text-responsive-lg font-bold text-emerald-600">{stats.completed}</p>
               </div>
               <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-emerald-600" />
+                <CheckCircle className="icon-responsive-sm text-emerald-600" />
               </div>
             </div>
           </CardContent>
@@ -337,11 +337,11 @@ export default function JobCards() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600">In Progress</p>
-                <p className="text-2xl font-bold text-blue-600">{stats.inProgress}</p>
+                <p className="text-responsive-sm font-medium text-slate-600">In Progress</p>
+                <p className="text-responsive-lg font-bold text-blue-600">{stats.inProgress}</p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Timer className="w-6 h-6 text-blue-600" />
+                <Timer className="icon-responsive-sm text-blue-600" />
               </div>
             </div>
           </CardContent>
@@ -351,11 +351,11 @@ export default function JobCards() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600">Total Revenue</p>
-                <p className="text-2xl font-bold text-slate-900">{formatCurrency(stats.totalRevenue)}</p>
+                <p className="text-responsive-sm font-medium text-slate-600">Total Revenue</p>
+                <p className="text-responsive-lg font-bold text-slate-900">{formatCurrency(stats.totalRevenue)}</p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-green-600" />
+                <DollarSign className="icon-responsive-sm text-green-600" />
               </div>
             </div>
           </CardContent>
@@ -365,11 +365,11 @@ export default function JobCards() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600">Today</p>
-                <p className="text-2xl font-bold text-slate-900">{stats.todayCards}</p>
+                <p className="text-responsive-sm font-medium text-slate-600">Today</p>
+                <p className="text-responsive-lg font-bold text-slate-900">{stats.todayCards}</p>
               </div>
               <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <Activity className="w-6 h-6 text-orange-600" />
+                <Activity className="icon-responsive-sm text-orange-600" />
               </div>
             </div>
           </CardContent>
@@ -379,11 +379,11 @@ export default function JobCards() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600">Completion Rate</p>
-                <p className="text-2xl font-bold text-slate-900">{stats.completionRate.toFixed(1)}%</p>
+                <p className="text-responsive-sm font-medium text-slate-600">Completion Rate</p>
+                <p className="text-responsive-lg font-bold text-slate-900">{stats.completionRate.toFixed(1)}%</p>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Target className="w-6 h-6 text-purple-600" />
+                <Target className="icon-responsive-sm text-purple-600" />
               </div>
             </div>
             <div className="mt-3">
