@@ -22,7 +22,7 @@ import { WarehousesSettings } from "@/components/settings/WarehousesSettings";
 import { AccountingSettings } from "@/components/settings/AccountingSettings";
 import { ItemsSettings } from "@/components/settings/ItemsSettings";
 import { RegionalSettings } from "@/components/settings/RegionalSettings";
-import { StaffManagement } from "@/components/settings/StaffManagement";
+
 import { SubscriptionBilling } from "@/components/settings/SubscriptionBilling";
 
 export default function Settings() {
@@ -460,9 +460,20 @@ export default function Settings() {
             <ModuleManagement />
           </TabsContent>
 
-          {/* Staff Settings */}
+          {/* Staff Settings - Redirect to main Staff page */}
           <TabsContent value="staff">
-            <StaffManagement />
+            <Card>
+              <CardContent className="p-6 text-center">
+                <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-semibold mb-2">Staff Management</h3>
+                <p className="text-muted-foreground mb-4">
+                  Staff management has been moved to its own dedicated page with more features.
+                </p>
+                <Button onClick={() => window.location.href = '/staff'}>
+                  Go to Staff Management
+                </Button>
+              </CardContent>
+            </Card>
           </TabsContent>
         </div>
       </Tabs>
