@@ -453,6 +453,24 @@ export default function Invoices() {
   };
 
   const handleDeleteInvoice = async (invoiceId: string) => {
+    // Check if invoice has payments
+    try {
+      const { data: payments } = await supabase
+        .from('invoice_payments')
+        .select('id')
+        .eq('invoice_id', invoiceId)
+        .limit(1);
+      
+      if (payments && payments.length > 0) {
+        toast.error("Cannot delete invoice with posted payments. Please delete payments first.");
+        return;
+      }
+    } catch (error) {
+      console.error("Error checking payments:", error);
+      toast.error("Failed to check payment status");
+      return;
+    }
+
     if (confirm("Are you sure you want to delete this invoice?")) {
       try {
         await deleteInvoiceWithFallback(supabase, invoiceId);

@@ -290,7 +290,7 @@ export default function Settings() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div>
                       <Label>Organization Name</Label>
                       <Input 
@@ -299,44 +299,6 @@ export default function Settings() {
                         placeholder="Enter organization name"
                         disabled={loading}
                       />
-                    </div>
-                    <div>
-                      <Label>Country</Label>
-                      <Select 
-                        value={companySettings.country} 
-                        onValueChange={(value) => handleCompanySettingsChange('country', value)}
-                        disabled={loading}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select country" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {countries.map(country => (
-                            <SelectItem key={country.id} value={country.code}>
-                              {country.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Currency</Label>
-                      <Select 
-                        value={companySettings.currency} 
-                        onValueChange={(value) => handleCompanySettingsChange('currency', value)}
-                        disabled={loading}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select currency" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {currencies.map(currency => (
-                            <SelectItem key={currency.id} value={currency.code}>
-                              {currency.name} ({currency.symbol})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                     </div>
                   </div>
                   
