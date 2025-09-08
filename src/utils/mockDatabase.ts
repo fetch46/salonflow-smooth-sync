@@ -705,6 +705,22 @@ export async function recordInvoicePaymentWithFallback(
       const nextStatus = paidSum >= totalAmount ? 'paid' : paidSum > 0 ? 'partial' : ((inv as any)?.status || 'sent');
       if ((inv as any)?.status !== nextStatus) {
         await supabase.from('invoices').update({ status: nextStatus }).eq('id', invId);
+        
+        // If invoice is fully paid, update associated job card status to 'closed'
+        if (nextStatus === 'paid') {
+          const { data: invoiceData } = await supabase
+            .from('invoices')
+            .select('jobcard_reference')
+            .eq('id', invId)
+            .maybeSingle();
+          
+          if (invoiceData?.jobcard_reference) {
+            await supabase
+              .from('job_cards')
+              .update({ status: 'closed' })
+              .eq('id', invoiceData.jobcard_reference);
+          }
+        }
       }
     } catch (statusError) {
       console.error('Error updating invoice status:', statusError);

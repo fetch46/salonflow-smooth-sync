@@ -664,7 +664,7 @@ Thank you for your business!`;
                     customer_phone: customer?.phone || "",
                   });
                   
-                  // Fetch job cards for this customer
+                  // Fetch job cards for this customer (only completed ones)
                   if (value) {
                     try {
                       const { data: customerJCs } = await supabase
@@ -672,6 +672,7 @@ Thank you for your business!`;
                         .select("id, job_card_number, total_amount")
                         .eq('client_id', value)
                         .eq('organization_id', organization?.id || '')
+                        .eq('status', 'completed')
                         .order('created_at', { ascending: false });
                       setCustomerJobCards(customerJCs || []);
                     } catch (error) {
@@ -756,7 +757,7 @@ Thank you for your business!`;
                 </Select>
                 {customerJobCards.length > 0 && (
                   <div className="mt-2 space-y-1">
-                    <p className="text-sm text-slate-600">Job cards for this customer:</p>
+                    <p className="text-sm text-slate-600">Completed job cards for this customer:</p>
                     {customerJobCards.map((jc) => (
                       <p key={jc.id} className="text-sm text-red-600 font-medium">
                         {jc.job_card_number} - {symbol}{formatNumber(jc.total_amount)}

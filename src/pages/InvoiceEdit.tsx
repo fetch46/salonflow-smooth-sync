@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Users, Receipt, Trash2, Plus } from "lucide-react";
 import { useOrganizationCurrency, useOrganizationTaxRate, useOrganization } from "@/lib/saas/hooks";
 import { getInvoiceItemsWithFallback, getInvoicesWithFallback, updateInvoiceWithFallback } from "@/utils/mockDatabase";
+import { formatNumber } from "@/lib/currencyUtils";
 
 export default function InvoiceEdit() {
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ export default function InvoiceEdit() {
   const [jobCards, setJobCards] = useState<Array<{ id: string; job_card_number: string; client_name?: string; total_amount: number }>>([]);
   const [locations, setLocations] = useState<Array<{ id: string; name: string; is_default?: boolean; is_active?: boolean }>>([]);
   const [defaultLocationIdForUser, setDefaultLocationIdForUser] = useState<string | null>(null);
+  const [customerJobCards, setCustomerJobCards] = useState<Array<{ id: string; job_card_number: string; total_amount: number }>>([]);
 
   const [formData, setFormData] = useState({
     customer_id: "",
@@ -357,7 +359,35 @@ export default function InvoiceEdit() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="customer_id">Existing Customer</Label>
-              <Select value={formData.customer_id} onValueChange={(v) => setFormData(prev => ({ ...prev, customer_id: v }))}>
+              <Select value={formData.customer_id} onValueChange={async (value) => {
+                const customer = customers.find(c => c.id === value);
+                setFormData(prev => ({ 
+                  ...prev, 
+                  customer_id: value,
+                  customer_name: customer?.full_name || prev.customer_name,
+                  customer_email: customer?.email || prev.customer_email,
+                  customer_phone: customer?.phone || prev.customer_phone,
+                }));
+                
+                // Fetch job cards for this customer (only completed ones)
+                if (value) {
+                  try {
+                    const { data: customerJCs } = await supabase
+                      .from("job_cards")
+                      .select("id, job_card_number, total_amount")
+                      .eq('client_id', value)
+                      .eq('organization_id', organization?.id || '')
+                      .eq('status', 'completed')
+                      .order('created_at', { ascending: false });
+                    setCustomerJobCards(customerJCs || []);
+                  } catch (error) {
+                    console.error("Error fetching customer job cards:", error);
+                    setCustomerJobCards([]);
+                  }
+                } else {
+                  setCustomerJobCards([]);
+                }
+              }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select existing customer" />
                 </SelectTrigger>
@@ -424,6 +454,16 @@ export default function InvoiceEdit() {
                   ))}
                 </SelectContent>
               </Select>
+              {customerJobCards.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-sm text-slate-600">Completed job cards for this customer:</p>
+                  {customerJobCards.map((jc) => (
+                    <p key={jc.id} className="text-sm text-red-600 font-medium">
+                      {jc.job_card_number} - {symbol}{formatNumber(jc.total_amount)}
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
