@@ -213,7 +213,7 @@ export function SuperAdminSidebar() {
                                     `flex items-center gap-2 ${
                                       isActive 
                                         ? "bg-purple-200 text-purple-900 font-medium" 
-                                        : "text-slate-700 hover:text-purple-800"
+                                        : "text-black dark:text-slate-200 hover:text-black dark:hover:text-purple-800 font-medium"
                                     }`
                                   }
                                   onClick={handleNavClick}
@@ -245,7 +245,7 @@ export function SuperAdminSidebar() {
                           `flex items-center gap-2 ${
                             isActive 
                               ? "bg-purple-200 text-purple-900 font-medium" 
-                              : "text-slate-700 hover:text-purple-800"
+                              : "text-black dark:text-slate-200 hover:text-black dark:hover:text-purple-800 font-medium"
                           }`
                         }
                         onClick={handleNavClick}
