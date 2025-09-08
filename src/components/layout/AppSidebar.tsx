@@ -578,7 +578,7 @@ export function AppSidebar() {
                                 to={subItem.url}
                                 onClick={handleNavClick}
                                 className={cn(
-                                  "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all duration-200",
+                                  "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all duration-200 text-black dark:text-foreground font-medium",
                                   "hover:bg-accent hover:text-accent-foreground hover:scale-[1.02]",
                                   subItemActive && "bg-accent text-accent-foreground shadow-sm font-medium",
                                   !subItemAvailable && "opacity-50 pointer-events-none"
