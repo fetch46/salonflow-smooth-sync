@@ -7,6 +7,10 @@ All colors MUST be HSL.
 */
 
 @layer base {
+  /* Default native button style uses primary theme */
+  button:not([class*="bg-"]):not([class*="text-"]):not([class*="border-"]) {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 border border-primary/20;
+  }
   :root {
     /* Black and White Theme - Light Mode */
     --background: 0 0% 100%;
