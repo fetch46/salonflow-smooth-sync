@@ -38,22 +38,23 @@ serve(async (req) => {
       });
     }
 
-    const { data: isSuperAdmin, error: saErr } = await userClient.rpc("is_super_admin", { uid: userData.user.id });
-    if (saErr) {
-      return new Response(JSON.stringify({ error: "Privilege check failed", details: saErr.message }), {
+    const body = await req.json();
+    const { organization_id, user_id, role, is_active } = body || {};
+
+    // Check if user is admin of the organization
+    const { data: isOrgAdmin, error: orgErr } = await userClient.rpc("is_admin_of_organization", { org_id: organization_id });
+    if (orgErr) {
+      return new Response(JSON.stringify({ error: "Organization privilege check failed", details: orgErr.message }), {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
-    if (!isSuperAdmin) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
+    if (!isOrgAdmin) {
+      return new Response(JSON.stringify({ error: "Only organization admins can update user roles" }), {
         status: 403,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
-
-    const body = await req.json();
-    const { organization_id, user_id, role, is_active } = body || {};
 
     if (!organization_id || !user_id) {
       return new Response(JSON.stringify({ error: "organization_id and user_id are required" }), {
@@ -69,7 +70,7 @@ serve(async (req) => {
       });
     }
 
-    const allowedRoles = new Set(["owner", "admin", "manager", "member", "staff", "viewer", "accountant"]);
+    const allowedRoles = new Set(["admin", "manager", "member", "staff", "viewer", "accountant"]);
     if (role && !allowedRoles.has(String(role))) {
       return new Response(JSON.stringify({ error: "Invalid role value" }), {
         status: 400,

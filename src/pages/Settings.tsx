@@ -22,6 +22,8 @@ import { WarehousesSettings } from "@/components/settings/WarehousesSettings";
 import { AccountingSettings } from "@/components/settings/AccountingSettings";
 import { ItemsSettings } from "@/components/settings/ItemsSettings";
 import { RegionalSettings } from "@/components/settings/RegionalSettings";
+import { StaffManagement } from "@/components/settings/StaffManagement";
+import { SubscriptionBilling } from "@/components/settings/SubscriptionBilling";
 
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -228,59 +230,65 @@ export default function Settings() {
         <div className="space-y-6">
           {/* Company Settings */}
           <TabsContent value="company">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building className="h-5 w-5 text-primary" />
-                  Company Information
-                </CardTitle>
-                <CardDescription>
-                  Basic information about your organization
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Organization Name</Label>
-                    <Input 
-                      value={organization?.name || ""} 
-                      placeholder="Enter organization name"
-                      disabled={loading}
-                    />
+            <div className="space-y-6">
+              {/* Company Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5 text-primary" />
+                    Company Information
+                  </CardTitle>
+                  <CardDescription>
+                    Basic information about your organization
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Organization Name</Label>
+                      <Input 
+                        value={organization?.name || ""} 
+                        placeholder="Enter organization name"
+                        disabled={loading}
+                      />
+                    </div>
+                    <div>
+                      <Label>Country</Label>
+                      <Select disabled={loading}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select country" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {countries.map(country => (
+                            <SelectItem key={country.id} value={country.code}>
+                              {country.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Currency</Label>
+                      <Select disabled={loading}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select currency" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {currencies.map(currency => (
+                            <SelectItem key={currency.id} value={currency.code}>
+                              {currency.name} ({currency.symbol})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div>
-                    <Label>Country</Label>
-                    <Select disabled={loading}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select country" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {countries.map(country => (
-                          <SelectItem key={country.id} value={country.code}>
-                            {country.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Currency</Label>
-                    <Select disabled={loading}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select currency" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {currencies.map(currency => (
-                          <SelectItem key={currency.id} value={currency.code}>
-                            {currency.name} ({currency.symbol})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              {/* Subscription & Billing */}
+              <SubscriptionBilling />
+            </div>
           </TabsContent>
 
           {/* Branding Settings */}
@@ -391,24 +399,7 @@ export default function Settings() {
 
           {/* Staff Settings */}
           <TabsContent value="staff">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary" />
-                  Staff Management
-                </CardTitle>
-                <CardDescription>
-                  Manage your organization's staff and permissions
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <div className="text-muted-foreground">
-                    Staff management features will be available soon.
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <StaffManagement />
           </TabsContent>
         </div>
       </Tabs>

@@ -38,32 +38,33 @@ serve(async (req) => {
       });
     }
 
-    const { data: isSuperAdmin, error: saErr } = await userClient.rpc("is_super_admin", { uid: userData.user.id });
-    if (saErr) {
-      return new Response(JSON.stringify({ error: "Privilege check failed", details: saErr.message }), {
+    const body = await req.json();
+    const { organization_id, email, role, send_email } = body || {};
+
+    // Check if user is admin of the organization
+    const { data: isOrgAdmin, error: orgErr } = await userClient.rpc("is_admin_of_organization", { org_id: organization_id });
+    if (orgErr) {
+      return new Response(JSON.stringify({ error: "Organization privilege check failed", details: orgErr.message }), {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
-    if (!isSuperAdmin) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
+    if (!isOrgAdmin) {
+      return new Response(JSON.stringify({ error: "Only organization admins can add users" }), {
         status: 403,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
-    const body = await req.json();
-    const { organization_id, user_id, role } = body || {};
-
-    if (!organization_id || !user_id) {
-      return new Response(JSON.stringify({ error: "organization_id and user_id are required" }), {
+    if (!organization_id || !email) {
+      return new Response(JSON.stringify({ error: "organization_id and email are required" }), {
         status: 400,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
-    const allowedRoles = new Set(["owner", "admin", "manager", "member", "staff", "viewer", "accountant"]);
-    const roleValue = String(role || "member");
+    const allowedRoles = new Set(["admin", "manager", "member", "staff", "viewer", "accountant"]);
+    const roleValue = String(role || "staff");
     if (!allowedRoles.has(roleValue)) {
       return new Response(JSON.stringify({ error: "Invalid role value" }), {
         status: 400,
@@ -71,20 +72,69 @@ serve(async (req) => {
       });
     }
 
+    // Check if user exists by email
+    let userId = null;
+    const { data: existingUser } = await adminClient.auth.admin.getUserByEmail(email);
+    
+    if (existingUser.user) {
+      userId = existingUser.user.id;
+      
+      // Check if user is already in this organization
+      const { data: existingOrgUser } = await adminClient
+        .from('organization_users')
+        .select('id')
+        .eq('organization_id', organization_id)
+        .eq('user_id', userId)
+        .single();
+
+      if (existingOrgUser) {
+        return new Response(JSON.stringify({ error: 'User is already a member of this organization' }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+    } else {
+      // Create new user account
+      const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
+        email,
+        email_confirm: true,
+        user_metadata: {
+          invited_to_org: organization_id,
+          role: roleValue
+        }
+      });
+
+      if (createError) {
+        return new Response(JSON.stringify({ error: `Failed to create user: ${createError.message}` }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      userId = newUser.user.id;
+
+      // Create profile for new user
+      await adminClient
+        .from('profiles')
+        .insert({
+          user_id: userId,
+          email: email,
+          full_name: email.split('@')[0] // Default name from email
+        });
+    }
+
+    // Add user to organization
     const { data, error } = await adminClient
       .from("organization_users")
-      .upsert(
-        {
-          organization_id,
-          user_id,
-          role: roleValue,
-          is_active: true,
-          invited_by: userData.user.id,
-          invited_at: new Date().toISOString(),
-          joined_at: new Date().toISOString(),
-        },
-        { onConflict: "organization_id,user_id" } as any,
-      )
+      .insert({
+        organization_id,
+        user_id: userId,
+        role: roleValue,
+        is_active: true,
+        invited_by: userData.user.id,
+        invited_at: new Date().toISOString(),
+        joined_at: new Date().toISOString(),
+      })
       .select("id, organization_id, user_id, role, is_active")
       .single();
 
@@ -95,7 +145,23 @@ serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ success: true, membership: data }), {
+    // Send invitation email if requested
+    if (send_email && !existingUser.user) {
+      // Generate password reset link for new users
+      const { error: resetError } = await adminClient.auth.admin.generateLink({
+        type: 'invite',
+        email: email,
+        options: {
+          redirectTo: `${req.headers.get('origin') || 'http://localhost:5173'}/auth`
+        }
+      });
+
+      if (resetError) {
+        console.error('Failed to send invitation email:', resetError);
+      }
+    }
+
+    return new Response(JSON.stringify({ success: true, membership: data, user_id: userId }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
