@@ -18,6 +18,8 @@ import { useTransactionNumbers } from "@/hooks/useTransactionNumbers";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { recordInvoicePaymentWithFallback } from "@/utils/mockDatabase";
+import { useRegionalSettings } from "@/hooks/useRegionalSettings";
+import { formatCurrency as formatCurrencyWithSeparators, formatNumber } from "@/lib/currencyUtils";
 
 
 interface Customer { id: string; full_name: string; email: string | null; phone: string | null }
@@ -31,6 +33,7 @@ export default function InvoiceCreate() {
   const { taxRate: orgTaxRate, taxEnabled } = useOrganizationTaxRate() as any;
   const { organization } = useOrganization();
   const { getNextNumber } = useTransactionNumbers();
+  const { formatCurrency: formatRegionalCurrency, settings: regionalSettings } = useRegionalSettings();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -1046,8 +1049,7 @@ Thank you for your business!`;
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button 
-              variant="outline" 
-              className="w-full bg-white hover:bg-gray-50 border-gray-200"
+              className="w-full btn-theme-outline"
               disabled={selectedItems.length === 0}
             >
               <Receipt className="w-4 h-4 mr-2" />
@@ -1055,17 +1057,17 @@ Thank you for your business!`;
               <ChevronDown className="w-4 h-4 ml-auto" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-full bg-white border border-gray-200 shadow-lg z-50">
+          <DropdownMenuContent className="w-full bg-background border border-border shadow-lg z-50">
             <DropdownMenuItem 
               onClick={() => handlePrintInvoice()}
-              className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 cursor-pointer"
+              className="flex items-center gap-2 px-3 py-2 hover:bg-accent hover:text-accent-foreground cursor-pointer"
             >
               <Printer className="w-4 h-4" />
               Print Invoice
             </DropdownMenuItem>
             <DropdownMenuItem 
               onClick={() => handleSendWhatsApp()}
-              className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 cursor-pointer"
+              className="flex items-center gap-2 px-3 py-2 hover:bg-accent hover:text-accent-foreground cursor-pointer"
             >
               <MessageCircle className="w-4 h-4" />
               Send via WhatsApp

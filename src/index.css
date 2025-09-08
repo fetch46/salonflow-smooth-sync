@@ -329,6 +329,23 @@ All colors MUST be HSL.
     color: hsl(var(--muted-foreground)) !important;
   }
 
+  button[class*="bg-accent"] {
+    color: hsl(var(--accent-foreground)) !important;
+  }
+
+  /* Theme-aware button styling */
+  .btn-theme {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 transition-colors;
+  }
+
+  .btn-theme-outline {
+    @apply border border-primary text-primary hover:bg-primary hover:text-primary-foreground bg-background transition-colors;
+  }
+
+  .btn-theme-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors;
+  }
+
   /* Ensure proper contrast for all text colors */
   .dark button[class*="text-white"] {
     color: hsl(var(--primary-foreground)) !important;
