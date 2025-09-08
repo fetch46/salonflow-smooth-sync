@@ -184,12 +184,6 @@ const menuItems: MenuItem[] = [
     ],
   },
   {
-    title: "Staff",
-    url: "/staff",
-    icon: User,
-    feature: "staff",
-  },
-  {
     title: "Reports",
     url: "/reports",
     icon: TrendingUp,
@@ -197,15 +191,47 @@ const menuItems: MenuItem[] = [
   },
   {
     title: "Accounting",
-    url: "/banking",
     icon: Calculator,
     feature: "accounting",
+    subItems: [
+      {
+        title: "Chart of Accounts",
+        url: "/accounts",
+        icon: FileText,
+        feature: "accounting",
+      },
+      {
+        title: "Banking",
+        url: "/banking",
+        icon: CreditCard,
+        feature: "accounting",
+      },
+      {
+        title: "Journal",
+        url: "/journal",
+        icon: FileText,
+        feature: "accounting",
+      },
+    ],
   },
   {
     title: "Settings",
-    url: "/settings",
     icon: Settings,
     feature: "settings",
+    subItems: [
+      {
+        title: "Staff",
+        url: "/staff",
+        icon: User,
+        feature: "staff",
+      },
+      {
+        title: "General Settings",
+        url: "/settings",
+        icon: Settings,
+        feature: "settings",
+      },
+    ],
   },
   {
     title: "Help",
