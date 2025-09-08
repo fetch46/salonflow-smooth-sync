@@ -26,6 +26,7 @@ All colors MUST be HSL.
     --primary: var(--theme-primary, 220 70% 50%);
     --primary-foreground: var(--theme-primary-foreground, 0 0% 98%);
     --primary-light: var(--theme-primary-light, 220 70% 60%);
+    --primary-lighter-70: color-mix(in hsl, hsl(var(--primary)) 30%, hsl(0 0% 100%) 70%);
 
     --secondary: 0 0% 96.1%;
     --secondary-foreground: 0 0% 9%;
@@ -97,9 +98,8 @@ All colors MUST be HSL.
 
     /* Fixed footer height */
     --footer-height: 3.5rem; /* 56px */
-}
+  }
 
-@layer components {
   /* Freshsales-style compact text sizing */
   .text-responsive-xs { font-size: var(--text-xs); line-height: 1.3; }
   .text-responsive-sm { font-size: var(--text-sm); line-height: 1.35; }
@@ -202,7 +202,6 @@ All colors MUST be HSL.
       gap: 1rem;
     }
   }
-}
 
   .dark {
     /* Black and White Theme - Dark Mode */
@@ -219,6 +218,7 @@ All colors MUST be HSL.
     --primary: var(--theme-primary, 220 70% 50%);
     --primary-foreground: var(--theme-primary-foreground, 0 0% 9%);
     --primary-light: var(--theme-primary-light, 220 70% 40%);
+    --primary-lighter-70: color-mix(in hsl, hsl(var(--primary)) 30%, hsl(0 0% 0%) 70%);
 
     --secondary: 0 0% 14.9%;
     --secondary-foreground: 0 0% 98%;
