@@ -440,13 +440,13 @@ export default function InvoiceEdit() {
               <CardTitle className="text-sm text-purple-800">Add Item</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 lg:grid-cols-9 gap-3">
-                <div className="lg:col-span-2">
-                  <Label className="text-sm">Description *</Label>
-                  <Input className="h-9" value={newItem.description} onChange={(e) => setNewItem({ ...newItem, description: e.target.value })} />
+              <div className="grid grid-cols-8 gap-3 items-end">
+                <div className="col-span-2">
+                  <Label className="text-xs font-medium text-gray-700 mb-1 block">Description *</Label>
+                  <Input className="h-9 text-sm" value={newItem.description} onChange={(e) => setNewItem({ ...newItem, description: e.target.value })} placeholder="Item description" />
                 </div>
-                <div className="lg:col-span-1">
-                  <Label className="text-sm">Service *</Label>
+                <div>
+                  <Label className="text-xs font-medium text-gray-700 mb-1 block">Service *</Label>
                   <Select value={newItem.service_id} onValueChange={async (value) => {
                     const service = services.find(s => s.id === value);
                     // Get service commission rate
@@ -472,30 +472,30 @@ export default function InvoiceEdit() {
                       commission_percentage: commissionRate || newItem.commission_percentage,
                     });
                   }}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Select service *" />
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder="Select service" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
                       {services.map((s: any) => (
-                        <SelectItem key={s.id} value={s.id}>{s.name} - {symbol}{s.price}</SelectItem>
+                        <SelectItem key={s.id} value={s.id} className="text-sm">{s.name} - {symbol}{s.price}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="lg:col-span-1">
-                  <Label className="text-sm">Qty *</Label>
-                  <Input className="h-9" type="number" min="1" value={newItem.quantity} onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })} />
+                <div>
+                  <Label className="text-xs font-medium text-gray-700 mb-1 block">Qty *</Label>
+                  <Input className="h-9 text-sm" type="number" min="1" value={newItem.quantity} onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })} />
                 </div>
-                <div className="lg:col-span-1">
-                  <Label className="text-sm">Price *</Label>
-                  <Input className="h-9" type="number" step="0.01" value={newItem.unit_price} onChange={(e) => setNewItem({ ...newItem, unit_price: e.target.value })} />
+                <div>
+                  <Label className="text-xs font-medium text-gray-700 mb-1 block">Price *</Label>
+                  <Input className="h-9 text-sm" type="number" step="0.01" value={newItem.unit_price} onChange={(e) => setNewItem({ ...newItem, unit_price: e.target.value })} />
                 </div>
-                <div className="lg:col-span-1">
-                  <Label className="text-sm">Discount %</Label>
-                  <Input className="h-9" type="number" min="0" max="100" value={newItem.discount_percentage} onChange={(e) => setNewItem({ ...newItem, discount_percentage: parseFloat(e.target.value) || 0 })} />
+                <div>
+                  <Label className="text-xs font-medium text-gray-700 mb-1 block">Discount %</Label>
+                  <Input className="h-9 text-sm" type="number" min="0" max="100" value={newItem.discount_percentage} onChange={(e) => setNewItem({ ...newItem, discount_percentage: parseFloat(e.target.value) || 0 })} />
                 </div>
-                <div className="lg:col-span-1">
-                  <Label className="text-sm">Staff *</Label>
+                <div>
+                  <Label className="text-xs font-medium text-gray-700 mb-1 block">Staff *</Label>
                   <Select value={newItem.staff_id} onValueChange={(value) => {
                     const selectedStaff = staff.find(s => s.id === value);
                     // Use staff commission rate only if service doesn't have one
@@ -508,22 +508,23 @@ export default function InvoiceEdit() {
                       commission_percentage: commissionRate
                     });
                   }}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Select staff *" />
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder="Select staff" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
                       {staff.map((s: any) => (
-                        <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>
+                        <SelectItem key={s.id} value={s.id} className="text-sm">{s.full_name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="lg:col-span-1">
-                  <Label className="text-sm">Commission %</Label>
-                  <Input className="h-9" type="number" min="0" max="100" step="0.1" value={newItem.commission_percentage} onChange={(e) => setNewItem({ ...newItem, commission_percentage: parseFloat(e.target.value) || 0 })} />
+                <div>
+                  <Label className="text-xs font-medium text-gray-700 mb-1 block">Commission %</Label>
+                  <Input className="h-9 text-sm" type="number" min="0" max="100" step="0.1" value={newItem.commission_percentage} onChange={(e) => setNewItem({ ...newItem, commission_percentage: parseFloat(e.target.value) || 0 })} />
                 </div>
-                <div className="lg:col-span-1 flex items-end">
-                  <Button type="button" size="sm" className="w-full h-9 bg-violet-600 hover:bg-violet-700" onClick={addItemToInvoice}>
+                <div>
+                  <Label className="text-xs font-medium text-gray-700 mb-1 block">&nbsp;</Label>
+                  <Button type="button" size="sm" className="w-full h-9 bg-violet-600 hover:bg-violet-700 text-sm" onClick={addItemToInvoice}>
                     <Plus className="w-4 h-4 mr-1" /> Add
                   </Button>
                 </div>
