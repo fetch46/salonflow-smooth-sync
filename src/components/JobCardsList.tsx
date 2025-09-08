@@ -1,16 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { 
-  Search, 
-  Filter, 
   MoreHorizontal, 
   Eye, 
   Edit, 
@@ -21,11 +17,7 @@ import {
   PlayCircle,
   PauseCircle,
   StopCircle,
-  AlertTriangle,
   Calendar,
-  User,
-  DollarSign,
-  MapPin,
   Phone
 } from "lucide-react";
 import { format, differenceInMinutes } from "date-fns";
@@ -71,14 +63,14 @@ const JOB_STATUSES = [
 
 interface JobCardsListProps {
   onRefresh?: () => void;
+  searchTerm?: string;
+  statusFilter?: string;
 }
 
-export default function JobCardsList({ onRefresh }: JobCardsListProps) {
+export default function JobCardsList({ onRefresh, searchTerm, statusFilter }: JobCardsListProps) {
   const { formatCurrency } = useRegionalSettings();
   const [jobCards, setJobCards] = useState<JobCard[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
 
   const fetchJobCards = useCallback(async () => {
@@ -238,14 +230,16 @@ export default function JobCardsList({ onRefresh }: JobCardsListProps) {
   };
 
   const filteredJobCards = useMemo(() => {
+    const normalizedSearch = (searchTerm || '').toLowerCase();
+    const normalizedStatus = statusFilter || 'all';
     return jobCards.filter(card => {
       const matchesSearch = 
-        card.job_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        card.client?.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        card.staff?.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (card.services || []).some(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
+        card.job_number.toLowerCase().includes(normalizedSearch) ||
+        card.client?.full_name.toLowerCase().includes(normalizedSearch) ||
+        card.staff?.full_name.toLowerCase().includes(normalizedSearch) ||
+        (card.services || []).some(s => s.name.toLowerCase().includes(normalizedSearch));
       
-      const matchesStatus = statusFilter === "all" || card.status === statusFilter;
+      const matchesStatus = normalizedStatus === "all" || card.status === normalizedStatus;
       
       return matchesSearch && matchesStatus;
     });
@@ -298,37 +292,6 @@ export default function JobCardsList({ onRefresh }: JobCardsListProps) {
 
   return (
     <div className="space-y-6">
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-            <Input
-              placeholder="Search job cards, clients, staff..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
-              <Filter className="w-4 h-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              {JOB_STATUSES.map((status) => (
-                <SelectItem key={status.value} value={status.value}>
-                  {status.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
       {/* Job Cards Grid */}
       <div className="grid grid-cols-responsive-cards gap-2 sm:gap-3">
         {filteredJobCards.length === 0 ? (

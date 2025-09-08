@@ -457,7 +457,11 @@ export default function JobCards() {
       </Card>
 
       {/* Job Cards List */}
-      <JobCardsList onRefresh={() => fetchJobCards({ silent: true })} />
+      <JobCardsList 
+        onRefresh={() => fetchJobCards({ silent: true })}
+        searchTerm={searchTerm}
+        statusFilter={statusFilter}
+      />
     </div>
   );
 }
