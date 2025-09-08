@@ -5,10 +5,12 @@ import { ExpenseReport } from '@/components/reports/ExpenseReport';
 import { CustomerReports } from '@/components/reports/CustomerReports';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useOrganization } from '@/lib/saas/hooks';
 
 const SpecificReports = () => {
   const [searchParams] = useSearchParams();
   const reportType = searchParams.get('type');
+  const { organization } = useOrganization();
   
   const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
   const [locationFilter, setLocationFilter] = useState<string>('all');
@@ -19,13 +21,16 @@ const SpecificReports = () => {
   });
   const [endDate, setEndDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
 
-  // Load locations
+  // Load locations for current organization only
   useEffect(() => {
     const loadLocations = async () => {
+      if (!organization?.id) return;
+      
       try {
         const { data } = await supabase
           .from('business_locations')
           .select('id, name')
+          .eq('organization_id', organization.id)
           .eq('is_active', true)
           .order('name');
         setLocations(data || []);
@@ -34,7 +39,7 @@ const SpecificReports = () => {
       }
     };
     loadLocations();
-  }, []);
+  }, [organization?.id]);
 
   const commonProps = {
     locationFilter,
