@@ -10,19 +10,16 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 border border-primary/20 shadow-sm",
-        destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90 border border-destructive/20 shadow-sm",
-        outline:
-          "border border-primary text-primary bg-background hover:bg-primary hover:text-primary-foreground shadow-sm",
-        secondary:
-          "bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 shadow-sm",
-        ghost: "text-primary hover:bg-primary/10",
-        link: "text-primary underline-offset-4 hover:underline hover:text-primary/80",
-        solid: "bg-primary text-primary-foreground shadow-md hover:bg-primary/90 transition-all duration-200 border border-primary/20",
-        "solid-destructive": "bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90 transition-all duration-200 border border-destructive/20",
-        "solid-secondary": "bg-secondary text-secondary-foreground shadow-md hover:bg-secondary/80 transition-all duration-200 border border-secondary/20",
-        "theme-neutral": "bg-muted text-muted-foreground hover:bg-muted/80 border border-muted shadow-sm transition-all duration-200",
+        default: "bg-primary text-primary-foreground border border-primary/20 shadow-sm",
+        destructive: "bg-primary text-primary-foreground border border-primary/20 shadow-sm",
+        outline: "bg-primary text-primary-foreground border border-primary/20 shadow-sm",
+        secondary: "bg-primary text-primary-foreground border border-primary/20 shadow-sm",
+        ghost: "bg-primary text-primary-foreground border border-primary/20 shadow-sm",
+        link: "bg-primary text-primary-foreground border border-primary/20 shadow-sm",
+        solid: "bg-primary text-primary-foreground shadow-md transition-all duration-200 border border-primary/20",
+        "solid-destructive": "bg-primary text-primary-foreground shadow-md transition-all duration-200 border border-primary/20",
+        "solid-secondary": "bg-primary text-primary-foreground shadow-md transition-all duration-200 border border-primary/20",
+        "theme-neutral": "bg-primary text-primary-foreground border border-primary/20 shadow-sm transition-all duration-200",
       },
       size: {
         default: "h-9 px-4 py-2 text-responsive-sm",
