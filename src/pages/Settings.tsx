@@ -349,7 +349,7 @@ export default function Settings() {
     if (manual.tabsActiveText) root.style.setProperty('--tabs-active-foreground', manual.tabsActiveText);
 
     Object.entries(manual).forEach(([key, value]) => {
-      if (value) localStorage.setItem(`manual-${key}`, value);
+      if (value) localStorage.setItem(`manual-${key}`, String(value));
     });
   };
 
@@ -544,9 +544,42 @@ export default function Settings() {
                     Configure brand colors and UI sections. Primary affects buttons; Secondary affects text/icons.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-6">
                   <div className="text-sm text-muted-foreground">Primary color is used for buttons and active elements. Secondary color is used for text and icons.</div>
-                  <div className="text-sm">You can also manually set Sidebar, Topbar, Footer, Tabs, and Navigation colors below.</div>
+                  <Separator />
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <div className="text-sm text-muted-foreground">Primary</div>
+                        <div className="h-10 rounded-md border" style={{ backgroundColor: `hsl(${brandColors.primary})` }} />
+                        <div className="text-xs break-all">{brandColors.primary}</div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="text-sm text-muted-foreground">Secondary</div>
+                        <div className="h-10 rounded-md border" style={{ backgroundColor: `hsl(${(brandColors as any).secondary})` }} />
+                        <div className="text-xs break-all">{(brandColors as any).secondary}</div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="text-sm text-muted-foreground">Accent</div>
+                        <div className="h-10 rounded-md border" style={{ backgroundColor: `hsl(${brandColors.accent})` }} />
+                        <div className="text-xs break-all">{brandColors.accent}</div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="flex flex-wrap gap-3">
+                      <Button>Primary Button</Button>
+                      <Button variant="secondary">Secondary</Button>
+                      <Button variant="outline">Outline</Button>
+                    </div>
+                    <div className="p-4 rounded-md border bg-accent text-accent-foreground">
+                      This is an accent surface
+                    </div>
+                    <div className="p-4 rounded-md border bg-secondary text-secondary-foreground">
+                      This is a secondary surface
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -644,143 +677,7 @@ export default function Settings() {
                 </CardContent>
               </Card>
 
-              {/* Manual Theming Controls - full width on lg (spans 5) */}
-              <Card className="lg:col-span-5 order-4">
-                <CardHeader>
-                  <CardTitle>Manual Theme Controls</CardTitle>
-                  <CardDescription>Customize Sidebar, Top Bar, Footer, Tabs and Navigation texts</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label>Sidebar Background</Label>
-                      <Input placeholder="e.g. 0 0% 98%" value={manualTheme.sidebarBg}
-                        onChange={(e) => setManualTheme(prev => ({ ...prev, sidebarBg: e.target.value }))}
-                        onBlur={() => applyManualTheme({ sidebarBg: manualTheme.sidebarBg })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Sidebar Text</Label>
-                      <Input placeholder="e.g. 0 0% 26%" value={manualTheme.sidebarText}
-                        onChange={(e) => setManualTheme(prev => ({ ...prev, sidebarText: e.target.value }))}
-                        onBlur={() => applyManualTheme({ sidebarText: manualTheme.sidebarText })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Navigation Links</Label>
-                      <Input placeholder="e.g. 0 0% 26%" value={manualTheme.navLinkColor}
-                        onChange={(e) => setManualTheme(prev => ({ ...prev, navLinkColor: e.target.value }))}
-                        onBlur={() => applyManualTheme({ navLinkColor: manualTheme.navLinkColor })}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label>Top Bar Background</Label>
-                      <Input placeholder="e.g. 0 0% 100%" value={manualTheme.topbarBg}
-                        onChange={(e) => setManualTheme(prev => ({ ...prev, topbarBg: e.target.value }))}
-                        onBlur={() => applyManualTheme({ topbarBg: manualTheme.topbarBg })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Top Bar Text</Label>
-                      <Input placeholder="e.g. 0 0% 3.9%" value={manualTheme.topbarText}
-                        onChange={(e) => setManualTheme(prev => ({ ...prev, topbarText: e.target.value }))}
-                        onBlur={() => applyManualTheme({ topbarText: manualTheme.topbarText })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Footer Background</Label>
-                      <Input placeholder="e.g. 0 0% 100%" value={manualTheme.footerBg}
-                        onChange={(e) => setManualTheme(prev => ({ ...prev, footerBg: e.target.value }))}
-                        onBlur={() => applyManualTheme({ footerBg: manualTheme.footerBg })}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label>Footer Text</Label>
-                      <Input placeholder="e.g. 0 0% 3.9%" value={manualTheme.footerText}
-                        onChange={(e) => setManualTheme(prev => ({ ...prev, footerText: e.target.value }))}
-                        onBlur={() => applyManualTheme({ footerText: manualTheme.footerText })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Tabs Background</Label>
-                      <Input placeholder="e.g. 0 0% 96.1%" value={manualTheme.tabsBg}
-                        onChange={(e) => setManualTheme(prev => ({ ...prev, tabsBg: e.target.value }))}
-                        onBlur={() => applyManualTheme({ tabsBg: manualTheme.tabsBg })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Tabs Text</Label>
-                      <Input placeholder="e.g. 0 0% 45.1%" value={manualTheme.tabsText}
-                        onChange={(e) => setManualTheme(prev => ({ ...prev, tabsText: e.target.value }))}
-                        onBlur={() => applyManualTheme({ tabsText: manualTheme.tabsText })}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label>Active Tab Background</Label>
-                      <Input placeholder="e.g. 0 0% 100%" value={manualTheme.tabsActiveBg}
-                        onChange={(e) => setManualTheme(prev => ({ ...prev, tabsActiveBg: e.target.value }))}
-                        onBlur={() => applyManualTheme({ tabsActiveBg: manualTheme.tabsActiveBg })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Active Tab Text</Label>
-                      <Input placeholder="e.g. 221 83% 53%" value={manualTheme.tabsActiveText}
-                        onChange={(e) => setManualTheme(prev => ({ ...prev, tabsActiveText: e.target.value }))}
-                        onBlur={() => applyManualTheme({ tabsActiveText: manualTheme.tabsActiveText })}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Right: Live Preview below (full width) */}
-              <Card className="lg:col-span-5 order-3">
-                <CardHeader>
-                  <CardTitle>Preview</CardTitle>
-                  <CardDescription>See how your colors look in UI elements</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <div className="text-sm text-muted-foreground">Primary</div>
-                        <div className="h-10 rounded-md border" style={{ backgroundColor: `hsl(${brandColors.primary})` }} />
-                        <div className="text-xs break-all">{brandColors.primary}</div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="text-sm text-muted-foreground">Secondary</div>
-                        <div className="h-10 rounded-md border" style={{ backgroundColor: `hsl(${(brandColors as any).secondary})` }} />
-                        <div className="text-xs break-all">{(brandColors as any).secondary}</div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="text-sm text-muted-foreground">Accent</div>
-                        <div className="h-10 rounded-md border" style={{ backgroundColor: `hsl(${brandColors.accent})` }} />
-                        <div className="text-xs break-all">{brandColors.accent}</div>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    <div className="flex flex-wrap gap-3">
-                      <Button>Primary Button</Button>
-                      <Button variant="secondary">Secondary</Button>
-                      <Button variant="outline">Outline</Button>
-                    </div>
-                    <div className="p-4 rounded-md border bg-accent text-accent-foreground">
-                      This is an accent surface
-                    </div>
-                    <div className="p-4 rounded-md border bg-secondary text-secondary-foreground">
-                      This is a secondary surface
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Manual Theme Controls removed */}
             </div>
           </TabsContent>
 
