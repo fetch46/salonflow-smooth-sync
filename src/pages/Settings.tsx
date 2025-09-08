@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Building, Palette, Wrench, CreditCard, Package, Users, UserCheck, MapPin, Warehouse } from "lucide-react";
+import { Building, Palette, Wrench, CreditCard, Package, Users, UserCheck, MapPin, Warehouse, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useOrganization } from "@/lib/saas/hooks";
 import { supabase } from "@/integrations/supabase/client";
@@ -127,7 +127,12 @@ export default function Settings() {
   const [countries, setCountries] = useState<any[]>([]);
   const [currencies, setCurrencies] = useState<any[]>([]);
   const [modules, setModules] = useState<any[]>([]);
-  const { organization } = useOrganization();
+  const { organization, updateOrganization } = useOrganization();
+  const [companySettings, setCompanySettings] = useState({
+    name: '',
+    country: '',
+    currency: ''
+  });
 
   useEffect(() => {
     if (searchParams.get("tab") !== activeTab) {
@@ -138,6 +143,17 @@ export default function Settings() {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (organization) {
+      const settings = organization.settings as any || {};
+      setCompanySettings({
+        name: organization.name || '',
+        country: settings.country || '',
+        currency: settings.currency || ''
+      });
+    }
+  }, [organization]);
 
   const loadData = async () => {
     try {
@@ -178,6 +194,37 @@ export default function Settings() {
     const root = document.documentElement;
     root.style.setProperty('--primary', colors.primary);
     root.style.setProperty('--accent', colors.accent);
+  };
+
+  const handleCompanySettingsChange = (field: string, value: string) => {
+    setCompanySettings(prev => ({ ...prev, [field]: value }));
+  };
+
+  const saveCompanySettings = async () => {
+    if (!organization?.id || !updateOrganization) return;
+    
+    try {
+      setLoading(true);
+      
+      const currentSettings = organization.settings as any || {};
+      const updatedSettings = {
+        ...currentSettings,
+        country: companySettings.country,
+        currency: companySettings.currency
+      };
+
+      await updateOrganization(organization.id, {
+        name: companySettings.name,
+        settings: updatedSettings
+      });
+
+      toast.success('Company settings saved successfully');
+    } catch (error) {
+      console.error('Error saving company settings:', error);
+      toast.error('Failed to save company settings');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -247,14 +294,19 @@ export default function Settings() {
                     <div>
                       <Label>Organization Name</Label>
                       <Input 
-                        value={organization?.name || ""} 
+                        value={companySettings.name} 
+                        onChange={(e) => handleCompanySettingsChange('name', e.target.value)}
                         placeholder="Enter organization name"
                         disabled={loading}
                       />
                     </div>
                     <div>
                       <Label>Country</Label>
-                      <Select disabled={loading}>
+                      <Select 
+                        value={companySettings.country} 
+                        onValueChange={(value) => handleCompanySettingsChange('country', value)}
+                        disabled={loading}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select country" />
                         </SelectTrigger>
@@ -269,7 +321,11 @@ export default function Settings() {
                     </div>
                     <div>
                       <Label>Currency</Label>
-                      <Select disabled={loading}>
+                      <Select 
+                        value={companySettings.currency} 
+                        onValueChange={(value) => handleCompanySettingsChange('currency', value)}
+                        disabled={loading}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select currency" />
                         </SelectTrigger>
@@ -283,8 +339,18 @@ export default function Settings() {
                       </Select>
                     </div>
                   </div>
+                  
+                  <div className="flex justify-end pt-4 border-t">
+                    <Button onClick={saveCompanySettings} disabled={loading} className="flex items-center gap-2">
+                      <Save className="h-4 w-4" />
+                      {loading ? 'Saving...' : 'Save Company Settings'}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
+
+              {/* Regional Settings */}
+              <RegionalSettings />
 
               {/* Subscription & Billing */}
               <SubscriptionBilling />
@@ -365,9 +431,6 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <Separator />
-
-                <RegionalSettings />
               </CardContent>
             </Card>
           </TabsContent>
