@@ -22,6 +22,7 @@ import { WarehousesSettings } from "@/components/settings/WarehousesSettings";
 import { AccountingSettings } from "@/components/settings/AccountingSettings";
 import { ItemsSettings } from "@/components/settings/ItemsSettings";
 import { RegionalSettings } from "@/components/settings/RegionalSettings";
+import { ThemeColorPicker } from "@/components/theme/ThemeColorPicker";
 
 import { SubscriptionBilling } from "@/components/settings/SubscriptionBilling";
 
@@ -192,8 +193,13 @@ export default function Settings() {
 
   const applyTheme = (colors: { primary: string; accent: string }) => {
     const root = document.documentElement;
-    root.style.setProperty('--primary', colors.primary);
+    root.style.setProperty('--theme-primary', colors.primary);
+    root.style.setProperty('--theme-primary-foreground', '0 0% 98%');
     root.style.setProperty('--accent', colors.accent);
+    
+    // Store in localStorage for persistence
+    localStorage.setItem('theme-primary', colors.primary);
+    localStorage.setItem('theme-primary-foreground', '0 0% 98%');
   };
 
   const handleCompanySettingsChange = (field: string, value: string) => {
@@ -388,9 +394,14 @@ export default function Settings() {
                           }}
                         />
                         <span className="text-sm">Accent: {brandColors.accent}</span>
-                      </div>
-                    </div>
-                  </div>
+                     </div>
+                     
+                     {/* Theme Color Picker */}
+                     <div className="mt-8">
+                       <ThemeColorPicker />
+                     </div>
+                   </div>
+                 </div>
                 </div>
 
               </CardContent>
