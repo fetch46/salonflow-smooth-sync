@@ -38,11 +38,18 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLe
 import { LineChart as RLineChart, Line, XAxis, YAxis, CartesianGrid, PieChart as RPieChart, Pie, Cell } from 'recharts';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
+// Import new report components
+import { ProfitLossReport } from '@/components/reports/ProfitLossReport';
+import { BalanceSheetReport } from '@/components/reports/BalanceSheetReport';
+import { ExpenseReport as NewExpenseReport } from '@/components/reports/ExpenseReport';
+import { CustomerReports } from '@/components/reports/CustomerReports';
+
 const Reports = () => {
   const navigate = useNavigate();
   const { organization, subscriptionPlan, organizationRole } = useSaas();
   const { organization: org } = useOrganization();
   const [searchParams, setSearchParams] = useSearchParams();
+  const reportType = searchParams.get('type');
   const initialTab = searchParams.get('tab') || 'overview';
   const initialSub = searchParams.get('sub');
   const [timeRange, setTimeRange] = useState('month');
@@ -81,6 +88,33 @@ const Reports = () => {
   }, [organizationRole]);
 
   const { symbol, format: formatMoney } = useOrganizationCurrency();
+
+  // Check if this is a specific report type
+  if (reportType) {
+    const commonProps = {
+      locationFilter,
+      setLocationFilter,
+      locations,
+      startDate,
+      setStartDate,
+      endDate,
+      setEndDate,
+    };
+
+    switch (reportType) {
+      case 'profit-loss':
+        return <ProfitLossReport {...commonProps} />;
+      case 'balance-sheet':
+        return <BalanceSheetReport {...commonProps} />;
+      case 'expenses':
+        return <NewExpenseReport {...commonProps} />;
+      case 'customers':
+        return <CustomerReports {...commonProps} />;
+      default:
+        // Continue with normal reports page
+        break;
+    }
+  }
 
   // Quick Insights data for Overview
   const [serviceMetrics, setServiceMetrics] = useState({
