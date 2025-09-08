@@ -25,6 +25,8 @@ import {
   HelpCircle,
   ArrowLeftRight,
   Truck,
+  Menu,
+  X,
 } from "lucide-react";
 import {
   Sidebar,
@@ -37,14 +39,13 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarTrigger,
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useFeatureGating, usePermissions } from "@/lib/saas/hooks";
 import { useSaas } from "@/lib/saas";
 import { useModuleAccess } from "@/hooks/useModuleAccess";
@@ -88,7 +89,6 @@ const menuItems: MenuItem[] = [
         icon: Users,
         feature: "clients",
       },
-
       {
         title: "Invoices",
         url: "/invoices",
@@ -102,28 +102,34 @@ const menuItems: MenuItem[] = [
         feature: "accounting",
       },
       {
+        title: "Payments Made",
+        url: "/payments-made",
+        icon: ArrowLeftRight,
+        feature: "accounting",
+      },
+      {
         title: "Job Cards",
         url: "/job-cards",
-        icon: FileText,
+        icon: Scissors,
         feature: "job_cards",
       },
     ],
   },
-    {
-    title: "Purchases",
+  {
+    title: "Purchasing",
     icon: ShoppingCart,
     feature: "purchases",
     subItems: [
       {
-        title: "Suppliers",
-        url: "/suppliers",
-        icon: Building,
-        feature: "suppliers",
-      },
-      {
         title: "Purchases",
         url: "/purchases",
         icon: ShoppingCart,
+        feature: "purchases",
+      },
+      {
+        title: "Suppliers",
+        url: "/suppliers",
+        icon: Building,
         feature: "purchases",
       },
       {
@@ -136,20 +142,14 @@ const menuItems: MenuItem[] = [
         title: "Expenses",
         url: "/expenses",
         icon: Receipt,
-        feature: "expenses",
-      },
-      {
-        title: "Payments Made",
-        url: "/payments-made",
-        icon: CreditCard,
-        feature: "expenses",
+        feature: "accounting",
       },
     ],
   },
   {
     title: "Services",
     url: "/services",
-    icon: Scissors,
+    icon: Sparkles,
     feature: "services",
   },
   {
@@ -158,7 +158,7 @@ const menuItems: MenuItem[] = [
     feature: "inventory",
     subItems: [
       {
-        title: "Products",
+        title: "Items",
         url: "/inventory",
         icon: Package,
         feature: "inventory",
@@ -167,455 +167,380 @@ const menuItems: MenuItem[] = [
         title: "Adjustments",
         url: "/inventory-adjustments",
         icon: Sliders,
-        feature: "inventory_adjustments",
+        feature: "inventory",
       },
       {
         title: "Transfers",
-        url: "/inventory-transfers",
+        url: "/stock-transfers",
         icon: ArrowLeftRight,
+        feature: "inventory",
+      },
+      {
+        title: "Warehouses",
+        url: "/warehouses",
+        icon: Building,
         feature: "inventory",
       },
     ],
   },
-        {
-        title: "Accountant",
-        icon: DollarSign,
-        feature: "expenses", // section header only; individual items gated below
-        subItems: [
-          {
-            title: "Chart of Accounts",
-            url: "/accounts",
-            icon: Calculator,
-            feature: "accounting",
-          },
-          {
-            title: "Journal",
-            url: "/journal",
-            icon: FileText,
-            feature: "accounting",
-          },
-          {
-            title: "Banking",
-            url: "/banking",
-            icon: CreditCard,
-            feature: "accounting",
-          },
-        ],
-      },
+  {
+    title: "Staff",
+    url: "/staff",
+    icon: User,
+    feature: "staff",
+  },
   {
     title: "Reports",
+    url: "/reports",
     icon: TrendingUp,
-    feature: "reports", // Visibility will be additionally gated by role (accountant/owner)
-    subItems: [
-      { title: "Overview", url: "/reports?tab=overview", icon: TrendingUp, feature: "reports" },
-      { title: "Revenue", url: "/reports?tab=revenue", icon: DollarSign, feature: "reports" },
-      { title: "Clients", url: "/reports?tab=clients", icon: Users, feature: "reports" },
-      { title: "Expenses", url: "/reports?tab=expenses", icon: Receipt, feature: "reports" },
-      { title: "Purchases", url: "/reports?tab=purchases", icon: ShoppingCart, feature: "reports" },
-      { title: "P&L", url: "/reports?tab=pnl", icon: Calculator, feature: "reports" },
-      { title: "Balance Sheet", url: "/reports?tab=balancesheet", icon: Calculator, feature: "reports" },
-      { title: "Trial Balance", url: "/reports?tab=trialbalance", icon: Calculator, feature: "reports" },
-      { title: "Commissions", url: "/reports?tab=commissions", icon: DollarSign, feature: "reports" },
-      { title: "Product Usage", url: "/reports?tab=product_usage", icon: Package, feature: "reports" },
-    ],
+    feature: "reports",
+  },
+  {
+    title: "Accounting",
+    url: "/banking",
+    icon: Calculator,
+    feature: "accounting",
   },
   {
     title: "Settings",
+    url: "/settings",
     icon: Settings,
-    feature: "reports",
-    subItems: [
-      {
-        title: "General",
-        url: "/settings",
-        icon: Settings,
-        feature: "reports",
-      },
-      {
-        title: "Users",
-        url: "/staff",
-        icon: Users,
-        feature: "staff",
-      },
-      {
-        title: "Help & Support",
-        url: "/help",
-        icon: HelpCircle,
-        feature: "reports",
-      },
-    ],
+    feature: "settings",
+  },
+  {
+    title: "Help",
+    url: "/help",
+    icon: HelpCircle,
+    feature: "help",
   },
 ];
 
-// Super Admin menu item (separate from main menu since it's system-wide)
 const superAdminMenuItem: MenuItem = {
   title: "Super Admin",
   url: "/admin",
   icon: Crown,
-  feature: "system", // This will always be false for regular features, we'll handle it separately
+  feature: "system",
 };
 
 export function AppSidebar() {
   const location = useLocation();
-  const [openSubmenus, setOpenSubmenus] = useState<string[]>([]);
-  const { hasFeature, getFeatureAccess } = useFeatureGating();
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [submenuTimeout, setSubmenuTimeout] = useState<NodeJS.Timeout | null>(null);
+  const { hasFeature } = useFeatureGating();
   const { userRole: organizationRole } = usePermissions();
   const { subscriptionPlan, isSuperAdmin, systemSettings } = useSaas();
-  const { state, isMobile, setOpenMobile } = useSidebar();
+  const { state, isMobile, setOpenMobile, open, setOpen } = useSidebar();
   const { canAccessModule, isModuleEnabled } = useModuleAccess();
 
-  // Get trial info from system settings
   const isTrialing = systemSettings?.subscription_status === 'trial';
   const daysLeftInTrial = systemSettings?.trial_days_remaining || null;
+  const isCollapsed = state === 'collapsed';
 
-  const toggleSubmenu = (title: string) => {
-    setOpenSubmenus((prev) =>
-      prev.includes(title)
-        ? []
-        : [title]
-    );
+  const isMenuItemAvailable = (item: MenuItem) => {
+    if (['owner', 'admin'].includes(organizationRole || '')) return true;
+    if (item.feature === 'system') return false;
+    if (item.feature === 'services') return true;
+    return hasFeature(item.feature) && canAccessModule(item.feature) && isModuleEnabled(item.feature);
   };
 
   const handleNavClick = () => {
-    // Close the sheet on mobile after navigation
     if (isMobile) setOpenMobile(false);
   };
 
-  const getUsageBadge = (_feature: string) => null;
-
-  const getIconColorForTitle = (title: string) => {
-    switch (title) {
-      case 'Dashboard': return 'text-blue-600';
-      case 'Appointments': return 'text-amber-600';
-      case 'Sales': return 'text-rose-600';
-      case 'Clients': return 'text-cyan-600';
-      case 'Invoices': return 'text-amber-600';
-      case 'Payments Received': return 'text-emerald-600';
-      case 'Payments Made': return 'text-red-600';
-      case 'Job Cards': return 'text-indigo-600';
-      case 'Purchases': return 'text-orange-600';
-      case 'Suppliers': return 'text-sky-600';
-      case 'Goods Received': return 'text-lime-600';
-      case 'Expenses': return 'text-rose-600';
-      case 'Services': return 'text-pink-600';
-      case 'Inventory': return 'text-yellow-600';
-      case 'Products': return 'text-yellow-600';
-      case 'Adjustments': return 'text-purple-600';
-      case 'Transfers': return 'text-cyan-600';
-      case 'Accountant': return 'text-emerald-600';
-      case 'Chart of Accounts': return 'text-fuchsia-600';
-      case 'Journal': return 'text-indigo-600';
-      case 'Banking': return 'text-blue-600';
-      case 'Reports': return 'text-sky-600';
-      case 'Overview': return 'text-sky-600';
-      case 'Revenue': return 'text-emerald-600';
-      case 'P&L': return 'text-amber-600';
-      case 'Balance Sheet': return 'text-amber-700';
-      case 'Trial Balance': return 'text-amber-700';
-      case 'Commissions': return 'text-emerald-700';
-      case 'Product Usage': return 'text-yellow-600';
-      case 'Settings': return 'text-slate-600';
-      case 'General': return 'text-slate-600';
-      case 'Regional': return 'text-purple-600';
-      case 'Profile': return 'text-rose-600';
-      case 'Users': return 'text-indigo-600';
-      case 'Help & Support': return 'text-cyan-600';
-      case 'Super Admin': return 'text-amber-700';
-      case 'Landing CMS': return 'text-fuchsia-600';
-      default: return 'text-slate-600';
-    }
+  const handleMouseEnter = (itemTitle: string) => {
+    if (submenuTimeout) clearTimeout(submenuTimeout);
+    setHoveredItem(itemTitle);
   };
 
-  const isMenuItemAvailable = (item: MenuItem) => {
-    // Map menu items to module IDs
-    const moduleMap: Record<string, string> = {
-      'Appointments': 'appointments',
-      'Sales': 'sales',
-      'Purchases': 'purchases',
-      'Services': 'services',
-      'Inventory': 'inventory',
-      'Accountant': 'accountant'
-    };
-
-    const moduleId = moduleMap[item.title];
-    
-    // If it's a module-based item, check module access
-    if (moduleId) {
-      return canAccessModule(moduleId);
-    }
-
-    // Special cases for non-module items
-    if (item.title === 'Dashboard' || item.title === 'Settings') {
-      return true;
-    }
-
-    if (item.title === 'Reports') {
-      // Reports are part of accountant module
-      return canAccessModule('accountant');
-    }
-
-    // Default permission check for other items
-    if (item.subItems) {
-      return item.subItems.some(subItem => {
-        const subModuleId = moduleMap[subItem.title];
-        return subModuleId ? canAccessModule(subModuleId) : hasFeature(subItem.feature);
-      });
-    }
-    
-    return hasFeature(item.feature);
+  const handleMouseLeave = () => {
+    const timeout = setTimeout(() => {
+      setHoveredItem(null);
+    }, 100);
+    setSubmenuTimeout(timeout);
   };
 
-  useEffect(() => {
-    // Keep the parent of the active route expanded
-    const searchParams = new URLSearchParams(location.search);
-    const currentReportsTab = searchParams.get('tab') || 'overview';
-    const activeParent = menuItems.find((item) =>
-      item.subItems?.some((subItem) => {
-        if (item.title === 'Reports') {
-          return (
-            location.pathname === '/reports' &&
-            subItem.url.includes(`tab=${currentReportsTab}`)
-          );
-        }
-        return location.pathname === subItem.url;
-      })
+  const getActiveParentItem = () => {
+    return menuItems.find(item => 
+      item.subItems?.some(subItem => 
+        location.pathname === subItem.url || 
+        (subItem.url === '/' && location.pathname === '/')
+      )
     );
+  };
 
-    if (activeParent) {
-      setOpenSubmenus([activeParent.title]);
+  const isItemActive = (item: MenuItem) => {
+    if (item.url) {
+      return location.pathname === item.url || (item.url === '/' && location.pathname === '/');
     }
-  }, [location.pathname, location.search]);
+    return getActiveParentItem()?.title === item.title;
+  };
+
+  const isSubItemActive = (subItem: MenuSubItem) => {
+    return location.pathname === subItem.url || (subItem.url === '/' && location.pathname === '/');
+  };
+
+  // Custom toggle button component
+  const CustomSidebarToggle = () => (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={() => setOpen(!open)}
+      className="h-8 w-8 p-0 hover:bg-sidebar-accent/50 transition-colors"
+      aria-label={open ? "Collapse sidebar" : "Expand sidebar"}
+    >
+      {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+    </Button>
+  );
 
   return (
-    <Sidebar role="navigation" aria-label="Primary" variant="inset" collapsible="icon" className="border-r border-sidebar-border bg-sidebar-background min-w-[240px] max-w-[240px] data-[collapsible=icon]:min-w-[52px] data-[collapsible=icon]:max-w-[52px]">
+    <Sidebar 
+      role="navigation" 
+      aria-label="Primary" 
+      variant="inset" 
+      collapsible="icon" 
+      className={cn(
+        "border-r border-sidebar-border bg-sidebar-background transition-all duration-300 ease-in-out",
+        "min-w-[240px] max-w-[240px]",
+        "data-[collapsible=icon]:min-w-[60px] data-[collapsible=icon]:max-w-[60px]",
+        "shadow-sm"
+      )}
+    >
       <SidebarContent className="px-0">
-        <SidebarHeader className="px-3 py-2 border-b border-sidebar-border">
+        <SidebarHeader className="px-3 py-3 border-b border-sidebar-border">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="h-6 w-6 rounded-md bg-gradient-to-br from-primary to-accent flex-shrink-0" />
-              <span className="font-medium text-responsive-sm group-data-[collapsible=icon]:hidden text-sidebar-foreground truncate">SalonFlow</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex-shrink-0 shadow-sm" />
+              {!isCollapsed && (
+                <span className="font-semibold text-sm text-sidebar-foreground truncate animate-fade-in">
+                  SalonFlow
+                </span>
+              )}
             </div>
-            <SidebarTrigger className="h-6 w-6 hidden md:inline-flex" />
+            <CustomSidebarToggle />
           </div>
         </SidebarHeader>
-        <SidebarGroup className="px-2 py-1">
-          <SidebarGroupLabel className="flex items-center justify-between px-1 py-1 text-responsive-xs font-medium text-sidebar-foreground/70 uppercase tracking-wide">
-            <span>Navigation</span>
-            {(isTrialing && daysLeftInTrial !== null && daysLeftInTrial <= 7) && (
+
+        <SidebarGroup className="px-2 py-2">
+          <SidebarGroupLabel className="flex items-center justify-between px-2 py-2 text-xs font-medium text-sidebar-foreground/70 uppercase tracking-wide">
+            {!isCollapsed && <span>Navigation</span>}
+            {!isCollapsed && isTrialing && daysLeftInTrial !== null && daysLeftInTrial <= 7 && (
               <Badge variant="outline" className="text-[10px] h-4 px-1 bg-amber-50 text-amber-700 border-amber-200">
                 <Crown className="w-2 h-2 mr-0.5" />
                 {daysLeftInTrial}d
               </Badge>
             )}
           </SidebarGroupLabel>
+          
           <SidebarGroupContent>
-            <SidebarMenu className="gap-2">
+            <SidebarMenu className="gap-1">
               {menuItems.map((item) => {
                 const isAvailable = isMenuItemAvailable(item);
                 const hasSubItems = item.subItems && item.subItems.length > 0;
-                const isOpen = openSubmenus.includes(item.title);
-                const usageBadge = getUsageBadge(item.feature);
-
-                if (hasSubItems) {
-                  return (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        onClick={() => toggleSubmenu(item.title)}
-                        aria-expanded={isOpen}
-                        aria-controls={`submenu-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
-                        aria-disabled={!isAvailable || undefined}
-                        className={`h-9 text-responsive-base font-medium px-3 hover:bg-sidebar-accent/50 data-[active=true]:bg-sidebar-accent ${!isAvailable ? 'opacity-50' : ''}`}
-                        tooltip={state === 'collapsed' ? item.title : undefined}
-                      >
-                        <item.icon className="icon-responsive-md flex-shrink-0 text-sidebar-primary/70" />
-                        <span className="flex-1 text-left truncate">{item.title}</span>
-                        <div className="flex items-center gap-1 group-data-[collapsible=icon]:hidden flex-shrink-0">
-                          {!isAvailable && <Lock className="w-3 h-3 text-sidebar-primary/40" />}
-                          {isOpen ? (
-                            <ChevronDown className="w-3 h-3 text-sidebar-primary/60" />
-                          ) : (
-                            <ChevronRight className="w-3 h-3 text-sidebar-primary/60" />
-                          )}
-                        </div>
-                      </SidebarMenuButton>
-                      {isOpen && (
-                        <SidebarMenuSub id={`submenu-${item.title.toLowerCase().replace(/\s+/g, '-')}`} className="gap-0.5 ml-2 pl-2 border-l border-sidebar-border/50">
-                          {item.subItems?.map((subItem) => {
-                            // Owner and Admin roles have access to all sub-items
-                            const subItemAvailable = ['owner', 'admin'].includes(organizationRole || '') || hasFeature(subItem.feature);
-                            const subItemUsageBadge = getUsageBadge(subItem.feature);
-                            
-                            return (
-                              <SidebarMenuSubItem key={subItem.title}>
-                                <SidebarMenuSubButton 
-                                  asChild
-                                  className={`h-8 text-responsive-sm px-3 hover:bg-sidebar-accent/30 ${!subItemAvailable ? 'opacity-50 pointer-events-none' : ''}`}
-                                  isActive={(item.title === 'Reports') ? (location.pathname === '/reports' && subItem.url.includes(`tab=${new URLSearchParams(location.search).get('tab') || 'overview'}`)) : (location.pathname === subItem.url)}
-                                >
-                                  <NavLink
-                                    to={subItem.url}
-                                    className={({ isActive }) =>
-                                      `flex items-center gap-2 w-full ${
-                                        isActive ? "bg-sidebar-accent text-sidebar-primary font-medium" : "text-sidebar-foreground/80"
-                                      }`
-                                    }
-                                    onClick={handleNavClick}
-                                  >
-                                    <subItem.icon className="icon-responsive-sm flex-shrink-0 text-sidebar-primary/60" />
-                                    <span className="flex-1 text-left truncate">{subItem.title}</span>
-                                    <div className="flex items-center gap-1 flex-shrink-0">
-                                      {!subItemAvailable && <Lock className="w-2.5 h-2.5 text-sidebar-primary/40" />}
-                                    </div>
-                                  </NavLink>
-                                </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
-                            );
-                          })}
-                        </SidebarMenuSub>
-                      )}
-                    </SidebarMenuItem>
-                  );
-                }
+                const isActive = isItemActive(item);
+                const showSubmenu = hasSubItems && (hoveredItem === item.title || isActive) && isCollapsed;
 
                 return (
-                  <SidebarMenuItem key={item.title}>
-                     <SidebarMenuButton 
-                       asChild
-                       className={`h-9 text-responsive-base font-medium px-3 hover:bg-sidebar-accent/50 ${(!isAvailable && item.title !== 'Services') ? 'opacity-50 pointer-events-none' : ''}`}
-                                   tooltip={state === 'collapsed' ? item.title : undefined}
-                                   isActive={location.pathname === item.url}
-                                 >
-                      <NavLink
-                        to={item.url!}
-                        className={({ isActive }) =>
-                          `flex items-center gap-2 w-full ${
-                            isActive ? "bg-sidebar-accent text-sidebar-primary font-medium" : "text-sidebar-foreground"
-                          }`
-                        }
-                        onClick={handleNavClick}
+                  <div 
+                    key={item.title} 
+                    className="relative"
+                    onMouseEnter={() => hasSubItems && isCollapsed && handleMouseEnter(item.title)}
+                    onMouseLeave={() => hasSubItems && isCollapsed && handleMouseLeave()}
+                  >
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild={!!item.url}
+                        className={cn(
+                          "h-10 text-sm font-medium px-3 transition-all duration-200",
+                          "hover:bg-sidebar-accent/60 hover:scale-[1.02]",
+                          isActive && "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm",
+                          !isAvailable && "opacity-50 pointer-events-none"
+                        )}
+                        tooltip={isCollapsed ? item.title : undefined}
                       >
-                        <item.icon className="icon-responsive-md flex-shrink-0 text-sidebar-primary/70" />
-                        <span className="flex-1 text-left truncate">{item.title}</span>
+                        {item.url ? (
+                          <NavLink 
+                            to={item.url} 
+                            onClick={handleNavClick}
+                            className="flex items-center gap-3 w-full"
+                          >
+                            <item.icon className={cn(
+                              "h-5 w-5 flex-shrink-0 transition-colors",
+                              isActive ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/70"
+                            )} />
+                            {!isCollapsed && (
+                              <span className="flex-1 text-left truncate animate-fade-in">
+                                {item.title}
+                              </span>
+                            )}
+                          </NavLink>
+                        ) : (
+                          <div className="flex items-center gap-3 w-full">
+                            <item.icon className="h-5 w-5 flex-shrink-0 text-sidebar-foreground/70" />
+                            {!isCollapsed && (
+                              <>
+                                <span className="flex-1 text-left truncate animate-fade-in">
+                                  {item.title}
+                                </span>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  {!isAvailable && <Lock className="w-3 h-3 text-sidebar-foreground/40" />}
+                                  <ChevronRight className="w-3 h-3 text-sidebar-foreground/60" />
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </SidebarMenuButton>
+
+                      {/* Submenu for non-collapsed state */}
+                      {!isCollapsed && hasSubItems && isActive && (
+                        <div className="ml-4 mt-1 space-y-1 animate-fade-in">
+                          {item.subItems?.map((subItem) => {
+                            const subItemAvailable = ['owner', 'admin'].includes(organizationRole || '') || hasFeature(subItem.feature);
+                            const subItemActive = isSubItemActive(subItem);
+                            
+                            return (
+                              <SidebarMenuButton
+                                key={subItem.title}
+                                asChild
+                                className={cn(
+                                  "h-8 text-xs px-3 ml-2 transition-all duration-200",
+                                  "hover:bg-sidebar-accent/40 hover:translate-x-1",
+                                  subItemActive && "bg-sidebar-accent/60 text-sidebar-accent-foreground",
+                                  !subItemAvailable && "opacity-50 pointer-events-none"
+                                )}
+                              >
+                                <NavLink 
+                                  to={subItem.url} 
+                                  onClick={handleNavClick}
+                                  className="flex items-center gap-2 w-full"
+                                >
+                                  <subItem.icon className={cn(
+                                    "h-4 w-4 flex-shrink-0",
+                                    subItemActive ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/60"
+                                  )} />
+                                  <span className="truncate">{subItem.title}</span>
+                                  {!subItemAvailable && <Lock className="w-2.5 h-2.5 text-sidebar-foreground/40" />}
+                                </NavLink>
+                              </SidebarMenuButton>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </SidebarMenuItem>
+
+                    {/* Popout submenu for collapsed state */}
+                    {showSubmenu && (
+                      <div 
+                        className={cn(
+                          "absolute left-full top-0 ml-2 z-50 animate-scale-in",
+                          "bg-popover border border-border rounded-lg shadow-lg",
+                          "min-w-[200px] p-2"
+                        )}
+                        onMouseEnter={() => handleMouseEnter(item.title)}
+                        onMouseLeave={handleMouseLeave}
+                      >
+                        <div className="text-xs font-semibold text-foreground/70 px-2 py-1 border-b border-border/50 mb-2">
+                          {item.title}
+                        </div>
+                        <div className="space-y-1">
+                          {item.subItems?.map((subItem) => {
+                            const subItemAvailable = ['owner', 'admin'].includes(organizationRole || '') || hasFeature(subItem.feature);
+                            const subItemActive = isSubItemActive(subItem);
+                            
+                            return (
+                              <NavLink
+                                key={subItem.title}
+                                to={subItem.url}
+                                onClick={handleNavClick}
+                                className={cn(
+                                  "flex items-center gap-2 px-2 py-2 rounded-md text-sm transition-all duration-200",
+                                  "hover:bg-accent hover:text-accent-foreground hover:scale-[1.02]",
+                                  subItemActive && "bg-accent text-accent-foreground",
+                                  !subItemAvailable && "opacity-50 pointer-events-none"
+                                )}
+                              >
+                                <subItem.icon className="h-4 w-4 flex-shrink-0" />
+                                <span className="truncate">{subItem.title}</span>
+                                {!subItemAvailable && <Lock className="w-3 h-3 text-muted-foreground" />}
+                              </NavLink>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Super Admin Section */}
+              {isSuperAdmin && (
+                <div className="mt-4 pt-4 border-t border-sidebar-border/50">
+                  {!isCollapsed && (
+                    <SidebarGroupLabel className="px-2 py-1 text-xs font-medium text-amber-600/80 uppercase tracking-wide">
+                      System Admin
+                    </SidebarGroupLabel>
+                  )}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      className={cn(
+                        "h-10 text-sm font-medium px-3 transition-all duration-200",
+                        "hover:bg-amber-50 hover:text-amber-700 hover:scale-[1.02]",
+                        location.pathname.startsWith("/admin") && "bg-amber-100 text-amber-800"
+                      )}
+                      tooltip={isCollapsed ? superAdminMenuItem.title : undefined}
+                    >
+                      <NavLink 
+                        to={superAdminMenuItem.url} 
+                        onClick={handleNavClick}
+                        className="flex items-center gap-3 w-full"
+                      >
+                        <Crown className="h-5 w-5 flex-shrink-0 text-amber-600" />
+                        {!isCollapsed && (
+                          <span className="flex-1 text-left truncate animate-fade-in">
+                            {superAdminMenuItem.title}
+                          </span>
+                        )}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                );
-              })}
+                </div>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        {isSuperAdmin && (
-          <SidebarGroup className="px-2 py-1">
-            <SidebarGroupLabel className="px-1 py-1 text-responsive-xs font-medium text-accent/80 uppercase tracking-wide">System Admin</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-0.5">
-                <SidebarMenuItem>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={location.pathname === superAdminMenuItem.url}
-                    className="h-9 text-responsive-base font-medium px-3 hover:bg-accent/30 data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
-                    tooltip={state === 'collapsed' ? superAdminMenuItem.title : undefined}
-                  >
-                    <NavLink to={superAdminMenuItem.url} className={({ isActive }) => `flex items-center gap-2 w-full ${isActive ? 'text-accent-foreground' : 'text-sidebar-foreground'}`} onClick={handleNavClick}>
-                      <superAdminMenuItem.icon className="icon-responsive-md flex-shrink-0 text-accent/70" />
-                      <span className="flex-1 text-left truncate">{superAdminMenuItem.title}</span>
-                      <Badge 
-                        variant="outline" 
-                        className="h-4 px-1 text-[10px] bg-accent/10 text-accent border-accent/20 flex-shrink-0"
-                      >
-                        <Crown className="w-2 h-2 mr-0.5" />
-                        Admin
-                      </Badge>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location.pathname === '/admin/cms'}
-                    className="h-9 text-responsive-base font-medium px-3 hover:bg-accent/30 data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
-                    tooltip={state === 'collapsed' ? 'Landing CMS' : undefined}
-                  >
-                    <NavLink to="/admin/cms" className={({ isActive }) => `flex items-center gap-2 w-full ${isActive ? 'text-accent-foreground' : 'text-sidebar-foreground'}`} onClick={handleNavClick}>
-                      <Sparkles className="icon-responsive-md flex-shrink-0 text-accent/70" />
-                      <span className="flex-1 text-left truncate">Landing CMS</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        <SidebarGroup className="px-2 py-1 mt-auto">
-          <SidebarGroupLabel className="px-1 py-1 text-responsive-xs font-medium text-sidebar-foreground/70 uppercase tracking-wide">Subscription</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <div className="px-1 py-2 space-y-1.5">
-              {subscriptionPlan && (
-                <div className="flex items-center justify-between">
-                  <span className="text-responsive-xs text-sidebar-foreground/70">Plan</span>
-                  <Badge 
-                    className={`text-[10px] h-4 px-1 ${
-                      subscriptionPlan.slug === 'enterprise' 
-                        ? 'bg-amber-100 text-amber-800 border-amber-200'
-                        : subscriptionPlan.slug === 'professional'
-                        ? 'bg-purple-100 text-purple-800 border-purple-200'
-                        : 'bg-blue-100 text-blue-800 border-blue-200'
-                    }`}
-                  >
-                    {subscriptionPlan.name}
-                  </Badge>
-                </div>
-              )}
-              
-              {isTrialing && daysLeftInTrial !== null && (
-                <div className="flex items-center justify-between">
-                  <span className="text-responsive-xs text-sidebar-foreground/70">Trial</span>
-                  <Badge 
-                    variant="outline" 
-                    className={`text-[10px] h-4 px-1 ${
-                      daysLeftInTrial <= 3 
-                        ? 'bg-destructive/10 text-destructive border-destructive/20'
-                        : 'bg-warning/10 text-warning border-warning/20'
-                    }`}
-                  >
-                    {daysLeftInTrial}d left
-                  </Badge>
-                </div>
-              )}
-
-              {/* Quick usage overview */}
-              <div className="space-y-1 pt-1.5 border-t border-sidebar-border/50">
-                {['clients', 'staff', 'services'].map((feature) => {
-                  const access = getFeatureAccess(feature);
-                  if (!access.enabled || access.unlimited) return null;
-                  
-                  const percentage = access.limit ? (access.usage! / access.limit) * 100 : 0;
-                  const isNearLimit = percentage >= 80;
-                  
-                  if (isNearLimit) {
-                    return (
-                      <div key={feature} className="flex items-center justify-between text-[10px]">
-                        <span className="text-sidebar-foreground/60 capitalize">{feature}</span>
-                        <span className={`${percentage >= 100 ? 'text-destructive' : 'text-warning'}`}>
-                          {access.usage}/{access.limit}
-                        </span>
-                      </div>
-                    );
-                  }
-                  return null;
-                })}
-              </div>
-            </div>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarFooter className="p-2 border-t border-sidebar-border/50">
-          <div className="text-[10px] text-sidebar-foreground/50 px-1">v1.0.0</div>
-        </SidebarFooter>
       </SidebarContent>
+
+      <SidebarFooter className="p-3 border-t border-sidebar-border">
+        {!isCollapsed ? (
+          <div className="space-y-2">
+            {subscriptionPlan && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-sidebar-foreground/60">Plan:</span>
+                <Badge variant="outline" className="text-[10px]">
+                  {subscriptionPlan.name}
+                </Badge>
+              </div>
+            )}
+            {isTrialing && daysLeftInTrial !== null && (
+              <div className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
+                <Crown className="w-3 h-3 inline mr-1" />
+                Trial: {daysLeftInTrial} days left
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex justify-center">
+            {isTrialing && (
+              <Badge variant="outline" className="w-8 h-8 p-0 rounded-full bg-amber-50 border-amber-200">
+                <Crown className="w-3 h-3 text-amber-600" />
+              </Badge>
+            )}
+          </div>
+        )}
+      </SidebarFooter>
+      
       <SidebarRail />
     </Sidebar>
   );
 }
-
