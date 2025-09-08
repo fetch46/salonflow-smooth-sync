@@ -106,6 +106,20 @@ export default function JobCards() {
   const [dateFilter, setDateFilter] = useState("all_time");
   const navigate = useNavigate();
   const [jobCardsWithReceipts, setJobCardsWithReceipts] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<'cards' | 'list'>(() => {
+    try {
+      const saved = localStorage.getItem('jobCardsView');
+      return saved === 'list' || saved === 'cards' ? (saved as 'cards' | 'list') : 'cards';
+    } catch {
+      return 'cards';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('jobCardsView', viewMode);
+    } catch {}
+  }, [viewMode]);
 
   const fetchJobCards = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = !!opts?.silent;
@@ -289,6 +303,26 @@ export default function JobCards() {
         </div>
         
         <div className="flex flex-wrap gap-2">
+          <div className="flex items-center gap-1 mr-1">
+            <Button 
+              variant={viewMode === 'cards' ? 'default' : 'outline'}
+              className="btn-compact"
+              onClick={() => setViewMode('cards')}
+              aria-pressed={viewMode === 'cards'}
+            >
+              <LayoutGrid className="icon-responsive-sm mr-2" />
+              Cards
+            </Button>
+            <Button 
+              variant={viewMode === 'list' ? 'default' : 'outline'}
+              className="btn-compact"
+              onClick={() => setViewMode('list')}
+              aria-pressed={viewMode === 'list'}
+            >
+              <List className="icon-responsive-sm mr-2" />
+              List
+            </Button>
+          </div>
           <Button variant="outline" onClick={refreshData} disabled={refreshing} className="btn-compact">
             <RefreshCw className={`icon-responsive-sm mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
@@ -461,6 +495,7 @@ export default function JobCards() {
         onRefresh={() => fetchJobCards({ silent: true })}
         searchTerm={searchTerm}
         statusFilter={statusFilter}
+        viewMode={viewMode}
       />
     </div>
   );
