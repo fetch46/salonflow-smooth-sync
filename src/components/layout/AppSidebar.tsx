@@ -470,9 +470,9 @@ export function AppSidebar() {
                         asChild={!!item.url && !(isCollapsed && hasSubItems)}
                         onClick={() => handleItemClick(item.title, hasSubItems)}
                         className={cn(
-                          "h-10 text-sm font-medium px-3 transition-all duration-200",
+                          "h-10 text-sm font-medium px-3 transition-all duration-200 text-black dark:text-sidebar-foreground",
                           "hover:bg-sidebar-accent/60 hover:scale-[1.02]",
-                          isActive && "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm",
+                          isActive && "bg-sidebar-accent text-black dark:text-sidebar-accent-foreground shadow-sm",
                           !isAvailable && "opacity-50 pointer-events-none",
                           hasSubItems && "cursor-pointer"
                         )}
@@ -482,7 +482,7 @@ export function AppSidebar() {
                           <NavLink 
                             to={item.url} 
                             onClick={handleNavClick}
-                            className="flex items-center gap-3 w-full"
+                            className="flex items-center gap-3 w-full text-black dark:text-sidebar-foreground font-medium"
                           >
                             <item.icon className={cn(
                               "h-5 w-5 flex-shrink-0 transition-colors",
@@ -495,7 +495,7 @@ export function AppSidebar() {
                             )}
                           </NavLink>
                         ) : (
-                          <div className="flex items-center gap-3 w-full">
+                          <div className="flex items-center gap-3 w-full text-black dark:text-sidebar-foreground font-medium">
                             <item.icon className="h-5 w-5 flex-shrink-0 text-sidebar-foreground/70" />
                             {!isCollapsed && (
                               <>
@@ -527,16 +527,16 @@ export function AppSidebar() {
                                 key={subItem.title}
                                 asChild
                                 className={cn(
-                                  "h-8 text-xs px-3 ml-2 transition-all duration-200",
-                                  "hover:bg-sidebar-accent/40 hover:translate-x-1",
-                                  subItemActive && "bg-sidebar-accent/60 text-sidebar-accent-foreground",
+                                  "h-8 text-xs px-3 ml-2 transition-all duration-200 text-black dark:text-sidebar-foreground",
+                                  "hover:bg-sidebar-accent/40 hover:translate-x-1 hover:text-black dark:hover:text-sidebar-accent-foreground",
+                                  subItemActive && "bg-sidebar-accent/60 text-black dark:text-sidebar-accent-foreground",
                                   !subItemAvailable && "opacity-50 pointer-events-none"
                                 )}
                               >
                                 <NavLink 
                                   to={subItem.url} 
                                   onClick={handleNavClick}
-                                  className="flex items-center gap-2 w-full"
+                                  className="flex items-center gap-2 w-full text-black dark:text-sidebar-foreground font-medium"
                                 >
                                   <subItem.icon className={cn(
                                     "h-4 w-4 flex-shrink-0",
@@ -579,8 +579,8 @@ export function AppSidebar() {
                                 onClick={handleNavClick}
                                 className={cn(
                                   "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all duration-200 text-black dark:text-foreground font-medium",
-                                  "hover:bg-accent hover:text-accent-foreground hover:scale-[1.02]",
-                                  subItemActive && "bg-accent text-accent-foreground shadow-sm font-medium",
+                                  "hover:bg-accent hover:text-black dark:hover:text-accent-foreground hover:scale-[1.02]",
+                                  subItemActive && "bg-accent text-black dark:text-accent-foreground shadow-sm font-medium",
                                   !subItemAvailable && "opacity-50 pointer-events-none"
                                 )}
                               >
