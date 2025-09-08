@@ -37,6 +37,7 @@ export default function InvoiceEdit() {
     payment_method: "",
     notes: "",
     jobcard_id: "",
+    jobcard_reference: "",
     location_id: "",
   });
 
@@ -118,6 +119,7 @@ export default function InvoiceEdit() {
             payment_method: inv.payment_method || "",
             notes: inv.notes || "",
             jobcard_id: inv.jobcard_id || "",
+            jobcard_reference: (inv as any).jobcard_reference || "",
             location_id: (inv as any).location_id || prev.location_id,
           }));
         }
@@ -198,6 +200,7 @@ export default function InvoiceEdit() {
         due_date: formData.due_date || null,
         payment_method: formData.payment_method || null,
         notes: formData.notes || null,
+        jobcard_reference: formData.jobcard_reference || null,
         location_id: formData.location_id || null,
         subtotal: totals.subtotal,
         tax_amount: totals.taxAmount,
@@ -317,12 +320,12 @@ export default function InvoiceEdit() {
             <Receipt className="w-4 h-4 text-purple-600" />
             Invoice Details
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="due_date">Due Date</Label>
               <Input id="due_date" type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} />
             </div>
-            <div className="space-y-2 md:col-span-2">
+            <div className="space-y-2">
               <Label htmlFor="location_id">Location *</Label>
               <Select value={formData.location_id} onValueChange={(v) => setFormData({ ...formData, location_id: v })}>
                 <SelectTrigger>
@@ -334,6 +337,15 @@ export default function InvoiceEdit() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="jobcard_reference">Job Card Reference</Label>
+              <Input 
+                id="jobcard_reference" 
+                value={formData.jobcard_reference} 
+                onChange={(e) => setFormData({ ...formData, jobcard_reference: e.target.value })} 
+                placeholder="Enter job card reference"
+              />
             </div>
           </div>
         </div>

@@ -61,6 +61,7 @@ export default function InvoiceCreate() {
     payment_method: "",
     notes: "",
     jobcard_id: "",
+    jobcard_reference: "",
     location_id: "",
   });
 
@@ -353,6 +354,7 @@ export default function InvoiceCreate() {
         payment_method: formData.payment_method || null,
         notes: formData.notes || null,
         jobcard_id: formData.jobcard_id || null,
+        jobcard_reference: formData.jobcard_reference || null,
         location_id: formData.location_id || null,
       };
       const created = await createInvoiceWithFallback(supabase, invoiceData, selectedItems);
@@ -488,7 +490,7 @@ export default function InvoiceCreate() {
               <Receipt className="w-4 h-4 text-purple-600" />
               Invoice Details
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
               <div className="space-y-2">
                 <Label htmlFor="due_date">Invoice Date</Label>
                 <Input className="w-full" id="due_date" type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} />
@@ -505,6 +507,15 @@ export default function InvoiceCreate() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="jobcard_reference">Job Card Reference</Label>
+                <Input 
+                  id="jobcard_reference" 
+                  value={formData.jobcard_reference} 
+                  onChange={(e) => setFormData({ ...formData, jobcard_reference: e.target.value })} 
+                  placeholder="Enter job card reference"
+                />
               </div>
             </div>
             {(taxEnabled !== false) ? (
