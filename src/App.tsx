@@ -29,7 +29,7 @@ const lazyWithRetry = <T extends {}>(loader: () => Promise<{ default: React.Comp
 
 // Load essential pages
 const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
-//const SimpleDashboard = lazyWithRetry(() => import("./components/dashboard/SimpleDashboard"));
+const SimpleDashboard = lazyWithRetry(() => import("./components/dashboard/SimpleDashboard"));
 const Appointments = lazyWithRetry(() => import("./pages/Appointments"));
 const AppointmentForm = lazyWithRetry(() => import("./pages/AppointmentForm"));
 const Clients = lazyWithRetry(() => import("./pages/Clients"));
