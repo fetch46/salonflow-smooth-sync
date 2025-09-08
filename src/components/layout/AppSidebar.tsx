@@ -225,6 +225,7 @@ const superAdminMenuItem: MenuItem = {
 export function AppSidebar() {
   const location = useLocation();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [clickedItem, setClickedItem] = useState<string | null>(null);
   const [submenuTimeout, setSubmenuTimeout] = useState<NodeJS.Timeout | null>(null);
   const { hasFeature } = useFeatureGating();
   const { userRole: organizationRole } = usePermissions();
@@ -245,17 +246,46 @@ export function AppSidebar() {
 
   const handleNavClick = () => {
     if (isMobile) setOpenMobile(false);
+    setClickedItem(null); // Close any open popouts
+  };
+
+  const handleItemClick = (itemTitle: string, hasSubItems: boolean) => {
+    if (isCollapsed && hasSubItems) {
+      setClickedItem(clickedItem === itemTitle ? null : itemTitle);
+    }
   };
 
   const handleMouseEnter = (itemTitle: string) => {
-    if (submenuTimeout) clearTimeout(submenuTimeout);
+    if (!isCollapsed) return;
+    
+    if (submenuTimeout) {
+      clearTimeout(submenuTimeout);
+      setSubmenuTimeout(null);
+    }
     setHoveredItem(itemTitle);
   };
 
   const handleMouseLeave = () => {
+    if (!isCollapsed) return;
+    
     const timeout = setTimeout(() => {
       setHoveredItem(null);
-    }, 100);
+    }, 150);
+    setSubmenuTimeout(timeout);
+  };
+
+  const handleSubmenuMouseEnter = () => {
+    if (submenuTimeout) {
+      clearTimeout(submenuTimeout);
+      setSubmenuTimeout(null);
+    }
+  };
+
+  const handleSubmenuMouseLeave = () => {
+    const timeout = setTimeout(() => {
+      setHoveredItem(null);
+      setClickedItem(null);
+    }, 150);
     setSubmenuTimeout(timeout);
   };
 
@@ -337,27 +367,30 @@ export function AppSidebar() {
                 const isAvailable = isMenuItemAvailable(item);
                 const hasSubItems = item.subItems && item.subItems.length > 0;
                 const isActive = isItemActive(item);
-                const showSubmenu = hasSubItems && (hoveredItem === item.title || isActive) && isCollapsed;
+                const showSubmenu = hasSubItems && isCollapsed && (hoveredItem === item.title || clickedItem === item.title);
 
                 return (
                   <div 
                     key={item.title} 
                     className="relative"
-                    onMouseEnter={() => hasSubItems && isCollapsed && handleMouseEnter(item.title)}
-                    onMouseLeave={() => hasSubItems && isCollapsed && handleMouseLeave()}
+                    data-menu-item={item.title}
+                    onMouseEnter={() => hasSubItems && handleMouseEnter(item.title)}
+                    onMouseLeave={handleMouseLeave}
                   >
                     <SidebarMenuItem>
                       <SidebarMenuButton
-                        asChild={!!item.url}
+                        asChild={!!item.url && !(isCollapsed && hasSubItems)}
+                        onClick={() => handleItemClick(item.title, hasSubItems)}
                         className={cn(
                           "h-10 text-sm font-medium px-3 transition-all duration-200",
                           "hover:bg-sidebar-accent/60 hover:scale-[1.02]",
                           isActive && "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm",
-                          !isAvailable && "opacity-50 pointer-events-none"
+                          !isAvailable && "opacity-50 pointer-events-none",
+                          isCollapsed && hasSubItems && "cursor-pointer"
                         )}
                         tooltip={isCollapsed ? item.title : undefined}
                       >
-                        {item.url ? (
+                        {item.url && !(isCollapsed && hasSubItems) ? (
                           <NavLink 
                             to={item.url} 
                             onClick={handleNavClick}
@@ -432,14 +465,15 @@ export function AppSidebar() {
                     {showSubmenu && (
                       <div 
                         className={cn(
-                          "absolute left-full top-0 ml-2 z-50 animate-scale-in",
-                          "bg-popover border border-border rounded-lg shadow-lg",
-                          "min-w-[200px] p-2"
+                          "absolute left-full top-0 ml-1 z-[100]",
+                          "bg-popover border border-border rounded-lg shadow-xl",
+                          "min-w-[220px] max-w-[280px] p-3",
+                          "animate-fade-in animate-scale-in"
                         )}
-                        onMouseEnter={() => handleMouseEnter(item.title)}
-                        onMouseLeave={handleMouseLeave}
+                        onMouseEnter={handleSubmenuMouseEnter}
+                        onMouseLeave={handleSubmenuMouseLeave}
                       >
-                        <div className="text-xs font-semibold text-foreground/70 px-2 py-1 border-b border-border/50 mb-2">
+                        <div className="text-xs font-semibold text-foreground/70 px-2 py-1 border-b border-border/50 mb-3">
                           {item.title}
                         </div>
                         <div className="space-y-1">
@@ -453,19 +487,21 @@ export function AppSidebar() {
                                 to={subItem.url}
                                 onClick={handleNavClick}
                                 className={cn(
-                                  "flex items-center gap-2 px-2 py-2 rounded-md text-sm transition-all duration-200",
+                                  "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all duration-200",
                                   "hover:bg-accent hover:text-accent-foreground hover:scale-[1.02]",
-                                  subItemActive && "bg-accent text-accent-foreground",
+                                  subItemActive && "bg-accent text-accent-foreground shadow-sm font-medium",
                                   !subItemAvailable && "opacity-50 pointer-events-none"
                                 )}
                               >
                                 <subItem.icon className="h-4 w-4 flex-shrink-0" />
                                 <span className="truncate">{subItem.title}</span>
-                                {!subItemAvailable && <Lock className="w-3 h-3 text-muted-foreground" />}
+                                {!subItemAvailable && <Lock className="w-3 h-3 text-muted-foreground ml-auto" />}
                               </NavLink>
                             );
                           })}
                         </div>
+                        {/* Arrow pointer */}
+                        <div className="absolute left-[-6px] top-4 w-3 h-3 bg-popover border-l border-t border-border rotate-45"></div>
                       </div>
                     )}
                   </div>
