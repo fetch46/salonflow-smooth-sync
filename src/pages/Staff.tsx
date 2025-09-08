@@ -67,6 +67,26 @@ interface Staff {
   updated_at: string;
 }
 
+interface OrganizationUser {
+  id: string;
+  user_id: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+  profiles?: {
+    full_name: string;
+    email: string;
+    phone?: string;
+  };
+}
+
+interface Permission {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+}
+
 const SPECIALTY_OPTIONS = [
   "Hair Cutting",
   "Hair Coloring",
@@ -88,6 +108,33 @@ const SPECIALTY_OPTIONS = [
   "Lowlights"
 ];
 
+const ROLE_HIERARCHY = ['viewer', 'member', 'staff', 'accountant', 'manager', 'admin', 'owner'];
+
+const PERMISSIONS_LIST: Permission[] = [
+  { id: 'view_dashboard', name: 'View Dashboard', description: 'Access to main dashboard', category: 'Dashboard' },
+  { id: 'manage_clients', name: 'Manage Clients', description: 'Create, edit, and delete clients', category: 'Clients' },
+  { id: 'view_clients', name: 'View Clients', description: 'View client information', category: 'Clients' },
+  { id: 'manage_appointments', name: 'Manage Appointments', description: 'Schedule and manage appointments', category: 'Appointments' },
+  { id: 'view_appointments', name: 'View Appointments', description: 'View appointment schedules', category: 'Appointments' },
+  { id: 'manage_inventory', name: 'Manage Inventory', description: 'Manage products and stock', category: 'Inventory' },
+  { id: 'view_inventory', name: 'View Inventory', description: 'View inventory levels', category: 'Inventory' },
+  { id: 'manage_reports', name: 'Generate Reports', description: 'Access to all reports', category: 'Reports' },
+  { id: 'view_reports', name: 'View Reports', description: 'View basic reports', category: 'Reports' },
+  { id: 'manage_settings', name: 'Manage Settings', description: 'Access to system settings', category: 'Settings' },
+  { id: 'manage_staff', name: 'Manage Staff', description: 'Invite and manage staff members', category: 'Staff' },
+  { id: 'manage_billing', name: 'Manage Billing', description: 'Access billing and subscription management', category: 'Billing' },
+];
+
+const ROLE_PERMISSIONS: Record<string, string[]> = {
+  viewer: ['view_dashboard', 'view_clients', 'view_appointments', 'view_inventory', 'view_reports'],
+  member: ['view_dashboard', 'view_clients', 'view_appointments', 'view_inventory', 'view_reports'],
+  staff: ['view_dashboard', 'manage_clients', 'view_clients', 'manage_appointments', 'view_appointments', 'view_inventory', 'view_reports'],
+  accountant: ['view_dashboard', 'view_clients', 'view_appointments', 'view_inventory', 'manage_reports', 'view_reports'],
+  manager: ['view_dashboard', 'manage_clients', 'manage_appointments', 'manage_inventory', 'manage_reports', 'view_reports'],
+  admin: ['view_dashboard', 'manage_clients', 'manage_appointments', 'manage_inventory', 'manage_reports', 'manage_settings', 'manage_staff'],
+  owner: ['view_dashboard', 'manage_clients', 'manage_appointments', 'manage_inventory', 'manage_reports', 'manage_settings', 'manage_staff', 'manage_billing'],
+};
+
 const STAFF_FILTERS = [
   { label: "All Staff", value: "all" },
   { label: "Active", value: "active" },
@@ -107,7 +154,7 @@ export default function Staff() {
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState("staff");
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards');
   const { toast } = useToast();
   const { hasFeature, getFeatureAccess, enforceLimit } = useFeatureGating();
@@ -123,6 +170,17 @@ export default function Staff() {
   const [assignRoleOpen, setAssignRoleOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   const [selectedRole, setSelectedRole] = useState<string>("staff");
+
+  // Organization Users (System Roles) State
+  const [organizationUsers, setOrganizationUsers] = useState<OrganizationUser[]>([]);
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [isEditRoleDialogOpen, setIsEditRoleDialogOpen] = useState(false);
+  const [selectedOrgUser, setSelectedOrgUser] = useState<OrganizationUser | null>(null);
+  const [inviteForm, setInviteForm] = useState({
+    email: '',
+    role: 'staff',
+    send_email: true
+  });
 
   const [formData, setFormData] = useState({
     full_name: "",
@@ -203,9 +261,39 @@ export default function Staff() {
     }
   }, [toast]);
 
+  const loadOrganizationUsers = useCallback(async () => {
+    if (!organization?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('organization_users')
+        .select(`
+          *,
+          profiles!inner(
+            full_name,
+            email,
+            phone
+          )
+        `)
+        .eq('organization_id', organization.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setOrganizationUsers(data || []);
+    } catch (error) {
+      console.error('Error loading organization users:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load organization users",
+        variant: "destructive",
+      });
+    }
+  }, [organization?.id, toast]);
+
   useEffect(() => {
     fetchStaff();
-  }, [fetchStaff]);
+    loadOrganizationUsers();
+  }, [fetchStaff, loadOrganizationUsers]);
 
   // Load today's appointments and revenue per staff for dashboard cards
   useEffect(() => {
@@ -323,6 +411,120 @@ export default function Staff() {
     } finally {
       setRefreshing(false);
     }
+  };
+
+  // Role Management Functions
+  const handleInviteUser = async () => {
+    if (!organization?.id || !inviteForm.email.trim()) {
+      toast({
+        title: "Error",
+        description: "Email is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('add-org-user', {
+        body: {
+          organization_id: organization.id,
+          email: inviteForm.email.trim(),
+          role: inviteForm.role,
+          send_email: inviteForm.send_email
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "User invited successfully",
+      });
+      setIsInviteDialogOpen(false);
+      setInviteForm({ email: '', role: 'staff', send_email: true });
+      loadOrganizationUsers();
+    } catch (error: any) {
+      console.error('Error inviting user:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to invite user",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateUserRole = async (userId: string, newRole: string) => {
+    if (!organization?.id) return;
+
+    try {
+      const { error } = await supabase.functions.invoke('update-org-user-role', {
+        body: {
+          organization_id: organization.id,
+          user_id: userId,
+          role: newRole
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Role updated successfully",
+      });
+      loadOrganizationUsers();
+    } catch (error: any) {
+      console.error('Error updating role:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update role",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRemoveUser = async (userId: string, userName: string) => {
+    if (!organization?.id) return;
+    if (!confirm(`Are you sure you want to remove ${userName} from the organization?`)) return;
+
+    try {
+      const { error } = await supabase
+        .from('organization_users')
+        .update({ is_active: false })
+        .eq('organization_id', organization.id)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "User removed successfully",
+      });
+      loadOrganizationUsers();
+    } catch (error) {
+      console.error('Error removing user:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove user",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getRoleColor = (role: string) => {
+    const colors: Record<string, string> = {
+      owner: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
+      admin: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+      manager: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+      accountant: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+      staff: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+      member: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300',
+      viewer: 'bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-300',
+    };
+    return colors[role] || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+  };
+
+  const getPermissionsForRole = (role: string) => {
+    return ROLE_PERMISSIONS[role] || [];
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -926,68 +1128,58 @@ export default function Staff() {
         <CardHeader className="pb-4 border-b border-slate-200">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-fit">
-              <TabsList className="grid grid-cols-4 w-fit">
-                <TabsTrigger value="all" className="flex items-center gap-2">
+              <TabsList className="grid grid-cols-2 w-fit">
+                <TabsTrigger value="staff" className="flex items-center gap-2">
                   <Users className="w-4 h-4" />
-                  All ({dashboardStats.totalStaff})
+                  Business Staff ({dashboardStats.totalStaff})
                 </TabsTrigger>
-                <TabsTrigger value="active" className="flex items-center gap-2">
-                  <UserCheck className="w-4 h-4" />
-                  Active ({dashboardStats.activeStaff})
-                </TabsTrigger>
-                <TabsTrigger value="inactive" className="flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" />
-                  Inactive ({dashboardStats.inactiveStaff})
-                </TabsTrigger>
-                <TabsTrigger value="new" className="flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  New ({dashboardStats.newHires})
+                <TabsTrigger value="roles" className="flex items-center gap-2">
+                  <Shield className="w-4 h-4" />
+                  System Roles ({organizationUsers.length})
                 </TabsTrigger>
               </TabsList>
             </Tabs>
 
             <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="Search staff..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 w-64"
-                />
-              </div>
+              {activeTab === 'staff' && (
+                <>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input
+                      placeholder="Search staff..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9 w-64"
+                    />
+                  </div>
+                  
+                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STAFF_FILTERS.map((filter) => (
+                        <SelectItem key={filter.value} value={filter.value}>
+                          {filter.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
               
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-36">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {STAFF_FILTERS.map((filter) => (
-                    <SelectItem key={filter.value} value={filter.value}>
-                      {filter.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <Select value={specialtyFilter} onValueChange={setSpecialtyFilter}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Specialty" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Specialties</SelectItem>
-                  {SPECIALTY_OPTIONS.map((specialty) => (
-                    <SelectItem key={specialty} value={specialty}>
-                      {specialty}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {activeTab === 'roles' && (
+                <Button onClick={() => setIsInviteDialogOpen(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Invite User
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
         
         <CardContent className="p-6">
+          <TabsContent value="staff" className="mt-0">{/* Staff content goes here */}
           {currentStaff.length === 0 ? (
             <div className="text-center py-16 space-y-4">
               <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
@@ -1429,8 +1621,268 @@ export default function Staff() {
               )}
             </FeatureGate>
           )}
+          </TabsContent>
+
+          <TabsContent value="roles" className="mt-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {organizationUsers.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>{user.profiles?.full_name || 'Unknown'}</TableCell>
+                    <TableCell>{user.profiles?.email}</TableCell>
+                    <TableCell>
+                      <Badge className={getRoleColor(user.role)}>
+                        {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={user.is_active ? 'default' : 'secondary'}>
+                        {user.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => {
+                            setSelectedOrgUser(user);
+                            setIsEditRoleDialogOpen(true);
+                          }}>
+                            <Edit2 className="w-4 h-4 mr-2" />Edit Role
+                          </DropdownMenuItem>
+                          {user.role !== 'owner' && (
+                            <DropdownMenuItem onClick={() => handleRemoveUser(user.user_id, user.profiles?.full_name || 'User')} className="text-red-600">
+                              <Trash2 className="w-4 h-4 mr-2" />Remove
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TabsContent>
         </CardContent>
       </Card>
+
+      {/* Role Management Dialogs */}
+      <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invite User</DialogTitle>
+            <DialogDescription>Send an invitation to join your organization.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Email Address</Label>
+              <Input value={inviteForm.email} onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })} placeholder="user@example.com" />
+            </div>
+            <div>
+              <Label>Role</Label>
+              <Select value={inviteForm.role} onValueChange={(value) => setInviteForm({ ...inviteForm, role: value })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {ROLE_HIERARCHY.filter(role => role !== 'owner').map((role) => (
+                    <SelectItem key={role} value={role}>{role.charAt(0).toUpperCase() + role.slice(1)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsInviteDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleInviteUser}>Send Invitation</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditRoleDialogOpen} onOpenChange={setIsEditRoleDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit User Role</DialogTitle>
+            <DialogDescription>Change the role for {selectedOrgUser?.profiles?.full_name}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Select value={selectedOrgUser?.role} onValueChange={(value) => {
+              if (selectedOrgUser) {
+                handleUpdateUserRole(selectedOrgUser.user_id, value);
+                setIsEditRoleDialogOpen(false);
+              }
+            }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ROLE_HIERARCHY.filter(role => role !== 'owner').map((role) => (
+                  <SelectItem key={role} value={role}>{role.charAt(0).toUpperCase() + role.slice(1)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </DialogContent>
+      </Dialog>
+          )}
+        </TabsContent>
+
+        <TabsContent value="roles" className="mt-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {organizationUsers.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell className="font-medium">
+                    {user.profiles?.full_name || 'Unknown'}
+                  </TableCell>
+                  <TableCell>{user.profiles?.email}</TableCell>
+                  <TableCell>
+                    <Badge className={getRoleColor(user.role)}>
+                      {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={user.is_active ? 'default' : 'secondary'}>
+                      {user.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedOrgUser(user);
+                            setIsEditRoleDialogOpen(true);
+                          }}
+                        >
+                          <Edit2 className="w-4 h-4 mr-2" />
+                          Edit Role
+                        </DropdownMenuItem>
+                        {user.role !== 'owner' && (
+                          <DropdownMenuItem
+                            onClick={() => handleRemoveUser(user.user_id, user.profiles?.full_name || 'User')}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Remove
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TabsContent>
+      </Card>
+
+      {/* Invite Dialog */}
+      <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invite User</DialogTitle>
+            <DialogDescription>
+              Send an invitation to a new user to join your organization.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                value={inviteForm.email}
+                onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
+                placeholder="user@example.com"
+              />
+            </div>
+            <div>
+              <Label htmlFor="role">Role</Label>
+              <Select value={inviteForm.role} onValueChange={(value) => setInviteForm({ ...inviteForm, role: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLE_HIERARCHY.filter(role => role !== 'owner').map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {role.charAt(0).toUpperCase() + role.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsInviteDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleInviteUser}>
+                Send Invitation
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Role Dialog */}
+      <Dialog open={isEditRoleDialogOpen} onOpenChange={setIsEditRoleDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit User Role</DialogTitle>
+            <DialogDescription>
+              Change the role for {selectedOrgUser?.profiles?.full_name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="new-role">New Role</Label>
+              <Select
+                value={selectedOrgUser?.role}
+                onValueChange={(value) => {
+                  if (selectedOrgUser) {
+                    handleUpdateUserRole(selectedOrgUser.user_id, value);
+                    setIsEditRoleDialogOpen(false);
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLE_HIERARCHY.filter(role => role !== 'owner').map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {role.charAt(0).toUpperCase() + role.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={assignRoleOpen} onOpenChange={setAssignRoleOpen}>
         <DialogContent className="sm:max-w-[480px]">
