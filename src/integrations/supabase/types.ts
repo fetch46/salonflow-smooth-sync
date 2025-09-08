@@ -2847,6 +2847,7 @@ export type Database = {
           description: string | null
           duration_minutes: number
           id: string
+          income_account_id: string | null
           is_active: boolean | null
           location_id: string | null
           name: string
@@ -2861,6 +2862,7 @@ export type Database = {
           description?: string | null
           duration_minutes?: number
           id?: string
+          income_account_id?: string | null
           is_active?: boolean | null
           location_id?: string | null
           name: string
@@ -2875,6 +2877,7 @@ export type Database = {
           description?: string | null
           duration_minutes?: number
           id?: string
+          income_account_id?: string | null
           is_active?: boolean | null
           location_id?: string | null
           name?: string
@@ -2883,6 +2886,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "services_income_account_id_fkey"
+            columns: ["income_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "services_location_id_fkey"
             columns: ["location_id"]
@@ -3751,7 +3761,7 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: {
-        Args: { uid: string }
+        Args: Record<PropertyKey, never> | { uid: string }
         Returns: boolean
       }
       pay_purchase: {

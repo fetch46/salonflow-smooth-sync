@@ -346,8 +346,9 @@ phone: "",
     })()
   }, [])
 
+  // Load organization settings with proper data dependencies
   useEffect(() => {
-    if (organization) {
+    if (organization && countries.length > 0 && currencies.length > 0) {
       const s = (organization.settings as any) || {}
       setCompanyData(prev => ({
         ...prev,
@@ -360,10 +361,37 @@ phone: "",
         website: s.website || prev.website,
         timezone: s.timezone || prev.timezone,
       }))
-      setSelectedCurrencyId((organization as any).currency_id || "")
-      setSelectedCountryCode((organization as any).country_id ? 
-        countries.find(c => c.id === (organization as any).country_id)?.code || "US" 
-        : s.country || "US")
+      
+      // Set currency properly - check both currency_id and settings
+      const orgCurrencyId = (organization as any).currency_id;
+      const settingsCurrency = s.currency;
+      let finalCurrencyId = "";
+      
+      if (orgCurrencyId) {
+        finalCurrencyId = orgCurrencyId;
+      } else if (settingsCurrency) {
+        // Try to find currency by code if stored as code
+        const currencyByCode = currencies.find(c => c.code === settingsCurrency);
+        finalCurrencyId = currencyByCode?.id || "";
+      }
+      setSelectedCurrencyId(finalCurrencyId);
+      
+      // Set country properly - check both country_id and settings
+      const orgCountryId = (organization as any).country_id;
+      const settingsCountry = s.country;
+      let finalCountryCode = "US"; // default
+      
+      if (orgCountryId) {
+        const country = countries.find(c => c.id === orgCountryId);
+        finalCountryCode = country?.code || "US";
+      } else if (settingsCountry) {
+        // If stored as code, use directly; if stored as name, try to find by name
+        const countryByCode = countries.find(c => c.code === settingsCountry);
+        const countryByName = countries.find(c => c.name.toLowerCase() === settingsCountry.toLowerCase());
+        finalCountryCode = countryByCode?.code || countryByName?.code || settingsCountry || "US";
+      }
+      setSelectedCountryCode(finalCountryCode);
+      
       // Load saved role definitions if present
       const defs = (s.role_definitions as typeof roles) || [];
       if (Array.isArray(defs) && defs.length > 0) {
@@ -396,7 +424,7 @@ phone: "",
       const map = (s.default_deposit_accounts_by_method as Record<string, string>) || {}
       setDepositAccountMap(map)
     }
-  }, [organization])
+  }, [organization, countries, currencies])
 
   // Load selectable deposit accounts (Cash/Bank assets)
   useEffect(() => {

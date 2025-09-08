@@ -11,6 +11,7 @@ import { ArrowLeft, Receipt } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSaas } from "@/lib/saas";
 import { postExpensePaymentWithAccount } from "@/utils/ledger";
+import ExpenseSummary from "@/components/expense/ExpenseSummary";
 
 interface ExpenseRecord {
   id: string;
@@ -260,154 +261,175 @@ export default function ExpenseForm() {
   };
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 pb-24 sm:pb-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen overflow-x-hidden">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-xl shadow-lg">
-            <Receipt className="h-6 w-6 text-white" />
+    <div className="flex gap-6 p-4 sm:p-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen">
+      {/* Main Form */}
+      <div className="flex-1 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-xl shadow-lg">
+              <Receipt className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">{isEdit ? "Edit Expense" : "Create Expense"}</h1>
+              <p className="text-slate-600">{isEdit ? "Update expense details" : "Add a new business expense"}</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">{isEdit ? "Edit Expense" : "Create Expense"}</h1>
-            <p className="text-slate-600">{isEdit ? "Update expense details" : "Add a new business expense"}</p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => navigate(-1)}>
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back
+            </Button>
+            <Button onClick={handleSubmit as any}>{isEdit ? "Update Expense" : "Create Expense"}</Button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => navigate(-1)}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back
-          </Button>
-          <Button onClick={handleSubmit as any}>{isEdit ? "Update Expense" : "Create Expense"}</Button>
-        </div>
-      </div>
 
-      <Card className="shadow-lg border-0">
-        <CardHeader>
-          <CardTitle>Expense Details</CardTitle>
-          <CardDescription>Fill in the expense information</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="expense_number">Expense Number</Label>
-                <Input id="expense_number" placeholder="Auto-generated if empty" value={formData.expense_number} onChange={(e) => setFormData({ ...formData, expense_number: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="vendor_name">Vendor Name</Label>
-                <Input id="vendor_name" placeholder="Enter vendor name" value={formData.vendor_name} onChange={(e) => setFormData({ ...formData, vendor_name: e.target.value })} required />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Input id="description" placeholder="Expense description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} required />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="amount">Amount</Label>
-                <Input id="amount" type="number" step="0.01" placeholder="0.00" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="expense_date">Expense Date</Label>
-                <Input id="expense_date" type="date" value={formData.expense_date} onChange={(e) => setFormData({ ...formData, expense_date: e.target.value })} required />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="category">Account</Label>
-                <Select value={formData.category} onValueChange={(value) => { const acc = expenseAccounts.find(a => a.account_name === value || a.id === value); setFormData({ ...formData, category: acc?.account_name || '' }); }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select expense account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {expenseAccounts.map(acc => (
-                      <SelectItem key={acc.id} value={acc.account_name || acc.id}>{acc.account_code} - {acc.account_name || 'Unnamed Account'}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="payment_method">Payment Method</Label>
-                <Select value={formData.payment_method} onValueChange={(value) => setFormData({ ...formData, payment_method: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select payment method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Cash">Cash</SelectItem>
-                    <SelectItem value="Credit Card">Credit Card</SelectItem>
-                    <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-                    <SelectItem value="Check">Check</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="paid">Paid</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="receipt_url">Receipt URL</Label>
-                <Input id="receipt_url" placeholder="https://..." value={formData.receipt_url} onChange={(e) => setFormData({ ...formData, receipt_url: e.target.value })} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
-                <Select value={formData.location_id} onValueChange={(value) => setFormData({ ...formData, location_id: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {locations.map(loc => (
-                      <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {formData.status === 'paid' && (
+        <Card className="shadow-lg border-0">
+          <CardHeader>
+            <CardTitle>Expense Details</CardTitle>
+            <CardDescription>Fill in the expense information</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="paid_from">Paid From Account</Label>
-                  <Select value={paidFromAccountId} onValueChange={setPaidFromAccountId}>
+                  <Label htmlFor="expense_number">Expense Number</Label>
+                  <Input id="expense_number" placeholder="Auto-generated if empty" value={formData.expense_number} onChange={(e) => setFormData({ ...formData, expense_number: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="vendor_name">Vendor Name</Label>
+                  <Input id="vendor_name" placeholder="Enter vendor name" value={formData.vendor_name} onChange={(e) => setFormData({ ...formData, vendor_name: e.target.value })} required />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Input id="description" placeholder="Expense description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} required />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="amount">Amount</Label>
+                  <Input id="amount" type="number" step="0.01" placeholder="0.00" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="expense_date">Expense Date</Label>
+                  <Input id="expense_date" type="date" value={formData.expense_date} onChange={(e) => setFormData({ ...formData, expense_date: e.target.value })} required />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="category">Account</Label>
+                  <Select value={formData.category} onValueChange={(value) => { const acc = expenseAccounts.find(a => a.account_name === value || a.id === value); setFormData({ ...formData, category: acc?.account_name || '' }); }}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select Cash/Bank account" />
+                      <SelectValue placeholder="Select expense account" />
                     </SelectTrigger>
                     <SelectContent>
-                      {paymentAccounts.map(acc => (
-                        <SelectItem key={acc.id} value={acc.id}>{acc.account_code} - {acc.account_name}</SelectItem>
+                      {expenseAccounts.map(acc => (
+                        <SelectItem key={acc.id} value={acc.account_name || acc.id}>{acc.account_code} - {acc.account_name || 'Unnamed Account'}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-              )}
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="payment_method">Payment Method</Label>
+                  <Select value={formData.payment_method} onValueChange={(value) => setFormData({ ...formData, payment_method: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select payment method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Cash">Cash</SelectItem>
+                      <SelectItem value="Credit Card">Credit Card</SelectItem>
+                      <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                      <SelectItem value="Check">Check</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea id="notes" placeholder="Additional notes..." value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
-            </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="paid">Paid</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="receipt_url">Receipt URL</Label>
+                  <Input id="receipt_url" placeholder="https://..." value={formData.receipt_url} onChange={(e) => setFormData({ ...formData, receipt_url: e.target.value })} />
+                </div>
+              </div>
 
-            <div className="flex justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => navigate("/expenses")}>Cancel</Button>
-              <Button type="submit">{isEdit ? "Update Expense" : "Create Expense"}</Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Select value={formData.location_id} onValueChange={(value) => setFormData({ ...formData, location_id: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {locations.map(loc => (
+                        <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {formData.status === 'paid' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="paid_from">Paid From Account</Label>
+                    <Select value={paidFromAccountId} onValueChange={setPaidFromAccountId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Cash/Bank account" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {paymentAccounts.map(acc => (
+                          <SelectItem key={acc.id} value={acc.id}>{acc.account_code} - {acc.account_name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea id="notes" placeholder="Additional notes..." value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button type="button" variant="outline" onClick={() => navigate("/expenses")}>Cancel</Button>
+                <Button type="submit">{isEdit ? "Update Expense" : "Create Expense"}</Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* Expense Summary Sidebar */}
+      <div className="w-80 space-y-4">
+        <ExpenseSummary 
+          expense={{
+            expense_number: formData.expense_number || "Not generated",
+            vendor_name: formData.vendor_name,
+            description: formData.description,
+            amount: parseFloat(formData.amount) || 0,
+            expense_date: formData.expense_date,
+            category: formData.category,
+            payment_method: formData.payment_method,
+            status: formData.status,
+            notes: formData.notes,
+          }}
+          expenseId={isEdit ? id : undefined}
+        />
+      </div>
     </div>
   );
 }
