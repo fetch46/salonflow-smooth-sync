@@ -225,7 +225,7 @@ const superAdminMenuItem: MenuItem = {
 export function AppSidebar() {
   const location = useLocation();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
-  const [clickedItem, setClickedItem] = useState<string | null>(null);
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [submenuTimeout, setSubmenuTimeout] = useState<NodeJS.Timeout | null>(null);
   const { hasFeature } = useFeatureGating();
   const { userRole: organizationRole } = usePermissions();
@@ -237,6 +237,14 @@ export function AppSidebar() {
   const daysLeftInTrial = systemSettings?.trial_days_remaining || null;
   const isCollapsed = state === 'collapsed';
 
+  // Auto-expand parent menu if current page is a submenu item
+  useEffect(() => {
+    const activeParent = getActiveParentItem();
+    if (activeParent && !isCollapsed) {
+      setExpandedItem(activeParent.title);
+    }
+  }, [location.pathname, isCollapsed]);
+
   const isMenuItemAvailable = (item: MenuItem) => {
     if (['owner', 'admin'].includes(organizationRole || '')) return true;
     if (item.feature === 'system') return false;
@@ -246,32 +254,38 @@ export function AppSidebar() {
 
   const handleNavClick = () => {
     if (isMobile) setOpenMobile(false);
-    setClickedItem(null); // Close any open popouts
+    setHoveredItem(null);
   };
 
   const handleItemClick = (itemTitle: string, hasSubItems: boolean) => {
-    if (isCollapsed && hasSubItems) {
-      setClickedItem(clickedItem === itemTitle ? null : itemTitle);
+    if (hasSubItems) {
+      if (isCollapsed) {
+        // In collapsed mode, toggle popout on click
+        setHoveredItem(hoveredItem === itemTitle ? null : itemTitle);
+      } else {
+        // In expanded mode, toggle expanded submenu
+        setExpandedItem(expandedItem === itemTitle ? null : itemTitle);
+      }
     }
   };
 
-  const handleMouseEnter = (itemTitle: string) => {
-    if (!isCollapsed) return;
-    
-    if (submenuTimeout) {
-      clearTimeout(submenuTimeout);
-      setSubmenuTimeout(null);
+  const handleMouseEnter = (itemTitle: string, hasSubItems: boolean) => {
+    if (hasSubItems && isCollapsed) {
+      if (submenuTimeout) {
+        clearTimeout(submenuTimeout);
+        setSubmenuTimeout(null);
+      }
+      setHoveredItem(itemTitle);
     }
-    setHoveredItem(itemTitle);
   };
 
   const handleMouseLeave = () => {
-    if (!isCollapsed) return;
-    
-    const timeout = setTimeout(() => {
-      setHoveredItem(null);
-    }, 150);
-    setSubmenuTimeout(timeout);
+    if (isCollapsed) {
+      const timeout = setTimeout(() => {
+        setHoveredItem(null);
+      }, 200);
+      setSubmenuTimeout(timeout);
+    }
   };
 
   const handleSubmenuMouseEnter = () => {
@@ -282,11 +296,12 @@ export function AppSidebar() {
   };
 
   const handleSubmenuMouseLeave = () => {
-    const timeout = setTimeout(() => {
-      setHoveredItem(null);
-      setClickedItem(null);
-    }, 150);
-    setSubmenuTimeout(timeout);
+    if (isCollapsed) {
+      const timeout = setTimeout(() => {
+        setHoveredItem(null);
+      }, 200);
+      setSubmenuTimeout(timeout);
+    }
   };
 
   const getActiveParentItem = () => {
@@ -367,14 +382,15 @@ export function AppSidebar() {
                 const isAvailable = isMenuItemAvailable(item);
                 const hasSubItems = item.subItems && item.subItems.length > 0;
                 const isActive = isItemActive(item);
-                const showSubmenu = hasSubItems && isCollapsed && (hoveredItem === item.title || clickedItem === item.title);
+                const showPopoutSubmenu = hasSubItems && isCollapsed && hoveredItem === item.title;
+                const showExpandedSubmenu = hasSubItems && !isCollapsed && (expandedItem === item.title || isActive);
 
                 return (
                   <div 
                     key={item.title} 
                     className="relative"
                     data-menu-item={item.title}
-                    onMouseEnter={() => hasSubItems && handleMouseEnter(item.title)}
+                    onMouseEnter={() => handleMouseEnter(item.title, hasSubItems)}
                     onMouseLeave={handleMouseLeave}
                   >
                     <SidebarMenuItem>
@@ -386,7 +402,7 @@ export function AppSidebar() {
                           "hover:bg-sidebar-accent/60 hover:scale-[1.02]",
                           isActive && "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm",
                           !isAvailable && "opacity-50 pointer-events-none",
-                          isCollapsed && hasSubItems && "cursor-pointer"
+                          hasSubItems && "cursor-pointer"
                         )}
                         tooltip={isCollapsed ? item.title : undefined}
                       >
@@ -416,7 +432,10 @@ export function AppSidebar() {
                                 </span>
                                 <div className="flex items-center gap-1 flex-shrink-0">
                                   {!isAvailable && <Lock className="w-3 h-3 text-sidebar-foreground/40" />}
-                                  <ChevronRight className="w-3 h-3 text-sidebar-foreground/60" />
+                                  <ChevronDown className={cn(
+                                    "w-3 h-3 text-sidebar-foreground/60 transition-transform duration-200",
+                                    showExpandedSubmenu && "rotate-180"
+                                  )} />
                                 </div>
                               </>
                             )}
@@ -424,8 +443,8 @@ export function AppSidebar() {
                         )}
                       </SidebarMenuButton>
 
-                      {/* Submenu for non-collapsed state */}
-                      {!isCollapsed && hasSubItems && isActive && (
+                      {/* Submenu for expanded state */}
+                      {showExpandedSubmenu && (
                         <div className="ml-4 mt-1 space-y-1 animate-fade-in">
                           {item.subItems?.map((subItem) => {
                             const subItemAvailable = ['owner', 'admin'].includes(organizationRole || '') || hasFeature(subItem.feature);
@@ -462,7 +481,7 @@ export function AppSidebar() {
                     </SidebarMenuItem>
 
                     {/* Popout submenu for collapsed state */}
-                    {showSubmenu && (
+                    {showPopoutSubmenu && (
                       <div 
                         className={cn(
                           "absolute left-full top-0 ml-1 z-[100]",
