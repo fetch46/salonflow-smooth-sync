@@ -101,18 +101,6 @@ const menuItems: MenuItem[] = [
         icon: DollarSign,
         feature: "accounting",
       },
-      {
-        title: "Payments Made",
-        url: "/payments-made",
-        icon: ArrowLeftRight,
-        feature: "accounting",
-      },
-      {
-        title: "Job Cards",
-        url: "/job-cards",
-        icon: Scissors,
-        feature: "job_cards",
-      },
     ],
   },
   {
@@ -133,6 +121,12 @@ const menuItems: MenuItem[] = [
         feature: "purchases",
       },
       {
+        title: "Payments Made",
+        url: "/payments-made",
+        icon: ArrowLeftRight,
+        feature: "accounting",
+      },
+      {
         title: "Goods Received",
         url: "/goods-received",
         icon: Truck,
@@ -143,6 +137,12 @@ const menuItems: MenuItem[] = [
         url: "/expenses",
         icon: Receipt,
         feature: "accounting",
+      },
+      {
+        title: "Job Cards",
+        url: "/job-cards",
+        icon: Scissors,
+        feature: "job_cards",
       },
     ],
   },

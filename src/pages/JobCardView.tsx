@@ -22,6 +22,7 @@ import {
  } from "lucide-react";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
+import { usePermissions } from "@/lib/saas/hooks";
 
 interface JobCardRecord {
   id: string;
@@ -64,6 +65,7 @@ interface ProductUsageItem {
 }
 
 export default function JobCardView() {
+  const { canPerformAction } = usePermissions();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -257,7 +259,7 @@ export default function JobCardView() {
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <DollarSign className="w-4 h-4" />
-                <span>Total: {Number(card.total_amount || 0).toFixed(2)}</span>
+                <span>Total: {Number(card.total_amount || 0)}</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <User className="w-4 h-4" />
@@ -347,7 +349,7 @@ export default function JobCardView() {
                         <TableCell className="text-right">{s.quantity || 1}</TableCell>
                         <TableCell className="text-right">{Number(s.unit_price || 0).toFixed(2)}</TableCell>
                         <TableCell className="text-right">
-                          {Number((s.quantity || 1) * (s.unit_price || 0)).toFixed(2)}
+                          {Number((s.quantity || 1) * (s.unit_price || 0))}
                         </TableCell>
                       </TableRow>
                     ))
@@ -358,7 +360,7 @@ export default function JobCardView() {
                         Subtotal
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        {servicesSubtotal.toFixed(2)}
+                        {servicesSubtotal}
                       </TableCell>
                     </TableRow>
                   )}
@@ -368,58 +370,60 @@ export default function JobCardView() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="w-5 h-5" /> Products / Materials Used
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead className="text-right">Unit Cost</TableHead>
-                    <TableHead className="text-right">Total Cost</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {products.length === 0 ? (
+        {canPerformAction('view', 'material_costs') && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="w-5 h-5" /> Products / Materials Used
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground">
-                        No products recorded
-                      </TableCell>
+                      <TableHead>Item</TableHead>
+                      <TableHead className="text-right">Quantity</TableHead>
+                      <TableHead className="text-right">Unit Cost</TableHead>
+                      <TableHead className="text-right">Total Cost</TableHead>
                     </TableRow>
-                  ) : (
-                    products.map((p) => (
-                      <TableRow key={p.id}>
-                        <TableCell className="font-medium">
-                          {p.inventory_items?.name || "Item"}
-                          {p.inventory_items?.unit ? (
-                            <span className="text-xs text-muted-foreground ml-2">({p.inventory_items.unit})</span>
-                          ) : null}
+                  </TableHeader>
+                  <TableBody>
+                    {products.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground">
+                          No products recorded
                         </TableCell>
-                        <TableCell className="text-right">{p.quantity_used}</TableCell>
-                        <TableCell className="text-right">{Number(p.unit_cost || 0).toFixed(2)}</TableCell>
-                        <TableCell className="text-right">{Number(p.total_cost || 0).toFixed(2)}</TableCell>
                       </TableRow>
-                    ))
-                  )}
-                  {products.length > 0 && (
-                    <TableRow>
-                      <TableCell colSpan={3} className="text-right font-medium">
-                        Subtotal
-                      </TableCell>
-                      <TableCell className="text-right font-medium">{productsSubtotal.toFixed(2)}</TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+                    ) : (
+                      products.map((p) => (
+                        <TableRow key={p.id}>
+                          <TableCell className="font-medium">
+                            {p.inventory_items?.name || "Item"}
+                            {p.inventory_items?.unit ? (
+                              <span className="text-xs text-muted-foreground ml-2">({p.inventory_items.unit})</span>
+                            ) : null}
+                          </TableCell>
+                          <TableCell className="text-right">{p.quantity_used}</TableCell>
+                          <TableCell className="text-right">{Number(p.unit_cost || 0)}</TableCell>
+                          <TableCell className="text-right">{Number(p.total_cost || 0)}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                    {products.length > 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-right font-medium">
+                          Subtotal
+                        </TableCell>
+                        <TableCell className="text-right font-medium">{productsSubtotal}</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {parsedNotes?.technicianNotes || parsedNotes?.clientFeedback ? (
           <Card>

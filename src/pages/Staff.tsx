@@ -122,16 +122,17 @@ const PERMISSIONS_LIST: Permission[] = [
   { id: 'manage_settings', name: 'Manage Settings', description: 'Access to system settings', category: 'Settings' },
   { id: 'manage_staff', name: 'Manage Staff', description: 'Invite and manage staff members', category: 'Staff' },
   { id: 'manage_billing', name: 'Manage Billing', description: 'Access billing and subscription management', category: 'Billing' },
+  { id: 'view_material_costs', name: 'View Material Costs', description: 'View material costs on job cards', category: 'Job Cards' },
 ];
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
   viewer: ['view_dashboard', 'view_clients', 'view_appointments', 'view_inventory', 'view_reports'],
   member: ['view_dashboard', 'view_clients', 'view_appointments', 'view_inventory', 'view_reports'],
   staff: ['view_dashboard', 'manage_clients', 'view_clients', 'manage_appointments', 'view_appointments', 'view_inventory', 'view_reports'],
-  accountant: ['view_dashboard', 'view_clients', 'view_appointments', 'view_inventory', 'manage_reports', 'view_reports'],
-  manager: ['view_dashboard', 'manage_clients', 'manage_appointments', 'manage_inventory', 'manage_reports', 'view_reports'],
-  admin: ['view_dashboard', 'manage_clients', 'manage_appointments', 'manage_inventory', 'manage_reports', 'manage_settings', 'manage_staff'],
-  owner: ['view_dashboard', 'manage_clients', 'manage_appointments', 'manage_inventory', 'manage_reports', 'manage_settings', 'manage_staff', 'manage_billing'],
+  accountant: ['view_dashboard', 'view_clients', 'view_appointments', 'view_inventory', 'manage_reports', 'view_reports', 'view_material_costs'],
+  manager: ['view_dashboard', 'manage_clients', 'manage_appointments', 'manage_inventory', 'manage_reports', 'view_reports', 'view_material_costs'],
+  admin: ['view_dashboard', 'manage_clients', 'manage_appointments', 'manage_inventory', 'manage_reports', 'manage_settings', 'manage_staff', 'view_material_costs'],
+  owner: ['view_dashboard', 'manage_clients', 'manage_appointments', 'manage_inventory', 'manage_reports', 'manage_settings', 'manage_staff', 'manage_billing', 'view_material_costs'],
 };
 
 const STAFF_FILTERS = [

@@ -184,9 +184,23 @@ export const useUsageMonitoring = () => {
 export const usePermissions = (): UsePermissionsResult => {
   const { organizationRole } = useSaas()
 
-  const canPerformAction = (action: string, resource: string): boolean => {
-    // Mock implementation - you would implement actual permission logic here
-    return organizationRole === 'owner' || organizationRole === 'admin'
+  const canPerformAction = (action: string, resource?: string): boolean => {
+    // Check for specific permission format: action_resource or just action
+    const permission = resource ? `${action}_${resource}` : action
+    
+    // Role-based permissions
+    const rolePermissions: Record<string, string[]> = {
+      viewer: ['view_dashboard', 'view_clients', 'view_appointments', 'view_inventory', 'view_reports'],
+      member: ['view_dashboard', 'view_clients', 'view_appointments', 'view_inventory', 'view_reports'],
+      staff: ['view_dashboard', 'manage_clients', 'view_clients', 'manage_appointments', 'view_appointments', 'view_inventory', 'view_reports'],
+      accountant: ['view_dashboard', 'view_clients', 'view_appointments', 'view_inventory', 'manage_reports', 'view_reports', 'view_material_costs'],
+      manager: ['view_dashboard', 'manage_clients', 'manage_appointments', 'manage_inventory', 'manage_reports', 'view_reports', 'view_material_costs'],
+      admin: ['view_dashboard', 'manage_clients', 'manage_appointments', 'manage_inventory', 'manage_reports', 'manage_settings', 'manage_staff', 'view_material_costs'],
+      owner: ['view_dashboard', 'manage_clients', 'manage_appointments', 'manage_inventory', 'manage_reports', 'manage_settings', 'manage_staff', 'manage_billing', 'view_material_costs'],
+    }
+    
+    const userPermissions = rolePermissions[organizationRole as string] || []
+    return userPermissions.includes(permission) || organizationRole === 'owner'
   }
 
   const hasRole = (role: UserRole): boolean => {
