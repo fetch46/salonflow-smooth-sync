@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { CalendarRange, Download, Edit, MoreVertical, RefreshCw, Search, CreditCard, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
+import { CalendarRange, Download, Edit, MoreVertical, RefreshCw, Search, CreditCard, DollarSign, TrendingUp, TrendingDown, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useOrganizationCurrency, useOrganization } from "@/lib/saas/hooks";
+import { deleteTransactionsByReference } from "@/utils/ledger";
 
 interface ExpenseLite {
   id: string;
@@ -71,6 +72,25 @@ export default function PaymentsMade() {
   useEffect(() => { loadData(); }, []);
 
   const refresh = async () => { setRefreshing(true); await loadData(); setRefreshing(false); };
+
+  const deleteExpense = async (expenseId: string) => {
+    if (!confirm('Delete this expense? This cannot be undone.')) return;
+    try {
+      try {
+        await deleteTransactionsByReference('expense_payment', expenseId);
+      } catch {}
+      const { error } = await supabase
+        .from('expenses')
+        .delete()
+        .eq('id', expenseId);
+      if (error) throw error;
+      toast.success('Expense deleted');
+      await loadData();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete expense');
+    }
+  };
 
   // Combine expenses and purchases into a unified list
   const allPayments = useMemo(() => {
@@ -394,6 +414,11 @@ export default function PaymentsMade() {
                           <Edit className="mr-2 h-4 w-4" />
                           View Details
                         </DropdownMenuItem>
+                        {payment.type === 'expense' && (
+                          <DropdownMenuItem className="text-red-600" onClick={() => deleteExpense(payment.id)}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete Expense
+                          </DropdownMenuItem>
+                        )}
                         {payment.receipt_url && (
                           <DropdownMenuItem asChild>
                             <a href={payment.receipt_url} target="_blank" rel="noopener noreferrer">
