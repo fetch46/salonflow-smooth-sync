@@ -46,15 +46,42 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({
   const calculateProfitLoss = async () => {
     setLoading(true);
     try {
-      // Revenue from invoice payments
+      // Revenue from invoice payments with location filtering
       let revenueQuery = supabase
         .from('invoice_payments')
-        .select('amount, payment_date')
+        .select(`
+          amount, 
+          payment_date,
+          invoices!inner(location_id)
+        `)
         .gte('payment_date', startDate)
         .lte('payment_date', endDate);
 
+      if (locationFilter !== 'all') {
+        revenueQuery = revenueQuery.eq('invoices.location_id', locationFilter);
+      }
+
       const { data: payments } = await revenueQuery;
-      const revenue = (payments || []).reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+      const invoiceRevenue = (payments || []).reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+
+      // Add completed job cards as revenue (where no invoice was created)
+      let jobCardRevenue = 0;
+      try {
+        const jobCardsQueryBuilder = supabase
+          .from('job_cards')
+          .select('total_amount, updated_at')
+          .eq('status', 'completed')
+          .gte('updated_at', startDate)
+          .lte('updated_at', endDate);
+
+        const { data: jobCards } = await jobCardsQueryBuilder;
+        jobCardRevenue = (jobCards || []).reduce((sum: number, jc: any) => sum + Number(jc.total_amount || 0), 0);
+      } catch (error) {
+        console.warn('Error loading job card revenue:', error);
+        jobCardRevenue = 0;
+      }
+
+      const revenue = invoiceRevenue + jobCardRevenue;
 
       // COGS from account transactions
       let cogsQuery = supabase
@@ -104,7 +131,10 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({
         expenses,
         netProfit,
         breakdown: {
-          revenue: { 'Service Revenue': revenue },
+          revenue: { 
+            'Invoice Payments': invoiceRevenue,
+            'Completed Job Cards': jobCardRevenue 
+          },
           expenses: expenseBreakdown,
         }
       });

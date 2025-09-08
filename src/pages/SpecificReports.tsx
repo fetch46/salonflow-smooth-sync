@@ -1,16 +1,16 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ProfitLossReport } from '@/components/reports/ProfitLossReport';
 import { BalanceSheetReport } from '@/components/reports/BalanceSheetReport';
 import { ExpenseReport } from '@/components/reports/ExpenseReport';
 import { CustomerReports } from '@/components/reports/CustomerReports';
 import { useSearchParams } from 'react-router-dom';
-import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 const SpecificReports = () => {
   const [searchParams] = useSearchParams();
   const reportType = searchParams.get('type');
   
-  const [locations] = useState<Array<{ id: string; name: string }>>([]);
+  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
   const [locationFilter, setLocationFilter] = useState<string>('all');
   const [startDate, setStartDate] = useState<string>(() => {
     const now = new Date();
@@ -18,6 +18,23 @@ const SpecificReports = () => {
     return start.toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+
+  // Load locations
+  useEffect(() => {
+    const loadLocations = async () => {
+      try {
+        const { data } = await supabase
+          .from('business_locations')
+          .select('id, name')
+          .eq('is_active', true)
+          .order('name');
+        setLocations(data || []);
+      } catch (error) {
+        console.error('Error loading locations:', error);
+      }
+    };
+    loadLocations();
+  }, []);
 
   const commonProps = {
     locationFilter,

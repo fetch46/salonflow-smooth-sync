@@ -47,15 +47,15 @@ export const CustomerReports: React.FC<CustomerReportsProps> = ({
           invoice_number,
           total_amount,
           status,
-          invoice_date,
+          issue_date,
           location_id,
-          clients!inner(id, name, email, phone),
+          clients!inner(id, full_name, email, phone),
           business_locations(name),
           invoice_payments(amount, payment_date)
         `)
-        .gte('invoice_date', startDate)
-        .lte('invoice_date', endDate)
-        .order('invoice_date', { ascending: false });
+        .gte('issue_date', startDate)
+        .lte('issue_date', endDate)
+        .order('issue_date', { ascending: false });
 
       if (locationFilter !== 'all') {
         query = query.eq('location_id', locationFilter);
@@ -70,7 +70,7 @@ export const CustomerReports: React.FC<CustomerReportsProps> = ({
         const clientId = invoice.clients.id;
         if (!customerSales[clientId]) {
           customerSales[clientId] = {
-            client: invoice.clients,
+            client: { ...invoice.clients, name: invoice.clients.full_name },
             totalInvoiced: 0,
             totalPaid: 0,
             invoiceCount: 0,
@@ -106,14 +106,22 @@ export const CustomerReports: React.FC<CustomerReportsProps> = ({
           status,
           notes,
           location_id,
-          clients!inner(id, name, email, phone),
-          services(name, price),
-          staff(full_name),
+          client_id,
+          service_name,
+          price,
+          staff_id,
           business_locations(name)
         `)
         .gte('appointment_date', startDate)
         .lte('appointment_date', endDate)
         .order('appointment_date', { ascending: false });
+
+      // Get client data separately since the join structure seems complex
+      const clientsQuery = supabase
+        .from('clients')
+        .select('id, full_name, email, phone');
+      
+      const { data: clientsData } = await clientsQuery;
 
       if (locationFilter !== 'all') {
         query = query.eq('location_id', locationFilter);
@@ -122,13 +130,23 @@ export const CustomerReports: React.FC<CustomerReportsProps> = ({
       const { data } = await query;
       const appointmentData = data || [];
 
+      // Create a client lookup map
+      const clientMap = (clientsData || []).reduce((map: any, client: any) => {
+        map[client.id] = client;
+        return map;
+      }, {});
+
       // Group by customer
       const customerAppointments: Record<string, any> = {};
       appointmentData.forEach((appointment: any) => {
-        const clientId = appointment.clients.id;
+        const clientId = appointment.client_id;
+        const client = clientMap[clientId];
+        
+        if (!client) return; // Skip if client not found
+        
         if (!customerAppointments[clientId]) {
           customerAppointments[clientId] = {
-            client: appointment.clients,
+            client: { ...client, name: client.full_name },
             totalAppointments: 0,
             completedAppointments: 0,
             cancelledAppointments: 0,
@@ -146,8 +164,8 @@ export const CustomerReports: React.FC<CustomerReportsProps> = ({
           customerAppointments[clientId].cancelledAppointments += 1;
         }
         
-        if (appointment.services?.price) {
-          customerAppointments[clientId].totalValue += Number(appointment.services.price);
+        if (appointment.price) {
+          customerAppointments[clientId].totalValue += Number(appointment.price);
         }
       });
 
