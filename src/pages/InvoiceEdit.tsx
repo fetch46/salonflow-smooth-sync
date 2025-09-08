@@ -459,7 +459,7 @@ export default function InvoiceEdit() {
                   <p className="text-sm text-slate-600">Completed job cards for this customer:</p>
                   {customerJobCards.map((jc) => (
                     <p key={jc.id} className="text-sm text-red-600 font-medium">
-                      {jc.job_card_number} - {symbol}{formatNumber(jc.total_amount)}
+                      {jc.job_card_number}
                     </p>
                   ))}
                 </div>
