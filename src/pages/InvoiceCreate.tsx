@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Users, Receipt, Trash2, Plus } from "lucide-react";
+import { Users, Receipt, Trash2, Plus, Printer, MessageCircle, ChevronDown } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { createInvoiceWithFallback, getInvoicesWithFallback, getInvoiceItemsWithFallback } from "@/utils/mockDatabase";
 import { useOrganizationCurrency, useOrganizationTaxRate, useOrganization } from "@/lib/saas/hooks";
 import { useTransactionNumbers } from "@/hooks/useTransactionNumbers";
@@ -482,6 +483,143 @@ export default function InvoiceCreate() {
     return Array.from(staffCommissions.values());
   }, [selectedItems, staff]);
 
+  const handlePrintInvoice = () => {
+    if (selectedItems.length === 0) {
+      toast.error("No items to print. Please add items to the invoice first.");
+      return;
+    }
+    
+    const totals = calculateTotals();
+    const invoiceData = {
+      invoice_number: "Draft Invoice",
+      customer_name: formData.customer_name,
+      customer_email: formData.customer_email,
+      customer_phone: formData.customer_phone,
+      issue_date: new Date().toLocaleDateString(),
+      due_date: formData.due_date ? new Date(formData.due_date).toLocaleDateString() : '',
+      items: selectedItems,
+      subtotal: totals.subtotal,
+      tax_amount: totals.taxAmount,
+      total_amount: totals.total,
+      jobcard_reference: formData.jobcard_reference
+    };
+    
+    // Create a print-friendly version
+    const printContent = `
+      <html>
+        <head>
+          <title>Invoice - ${invoiceData.invoice_number}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+            .customer-info { margin-bottom: 20px; }
+            .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            .items-table th, .items-table td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+            .items-table th { background-color: #f5f5f5; }
+            .totals { margin-left: auto; width: 300px; }
+            .total-row { font-weight: bold; border-top: 2px solid #333; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>INVOICE</h1>
+            <p><strong>Invoice #:</strong> ${invoiceData.invoice_number}</p>
+            <p><strong>Date:</strong> ${invoiceData.issue_date}</p>
+            ${invoiceData.due_date ? `<p><strong>Due Date:</strong> ${invoiceData.due_date}</p>` : ''}
+            ${invoiceData.jobcard_reference ? `<p><strong>Job Card Reference:</strong> ${invoiceData.jobcard_reference}</p>` : ''}
+          </div>
+          
+          <div class="customer-info">
+            <h3>Bill To:</h3>
+            <p><strong>${invoiceData.customer_name}</strong></p>
+            ${invoiceData.customer_email ? `<p>Email: ${invoiceData.customer_email}</p>` : ''}
+            ${invoiceData.customer_phone ? `<p>Phone: ${invoiceData.customer_phone}</p>` : ''}
+          </div>
+          
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th>Qty</th>
+                <th>Unit Price</th>
+                <th>Staff</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${invoiceData.items.map(item => `
+                <tr>
+                  <td>${item.description}</td>
+                  <td>${item.quantity}</td>
+                  <td>${symbol}${item.unit_price.toFixed(2)}</td>
+                  <td>${staff.find(s => s.id === item.staff_id)?.full_name || '-'}</td>
+                  <td>${symbol}${item.total_price.toFixed(2)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          
+          <div class="totals">
+            <table style="width: 100%;">
+              <tr><td>Subtotal:</td><td style="text-align: right;">${symbol}${invoiceData.subtotal.toFixed(2)}</td></tr>
+              ${taxEnabled !== false && applyTax ? `<tr><td>Tax (${orgTaxRate.toFixed(1)}%):</td><td style="text-align: right;">${symbol}${invoiceData.tax_amount.toFixed(2)}</td></tr>` : ''}
+              <tr class="total-row"><td><strong>Total:</strong></td><td style="text-align: right;"><strong>${symbol}${invoiceData.total_amount.toFixed(2)}</strong></td></tr>
+            </table>
+          </div>
+        </body>
+      </html>
+    `;
+    
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.print();
+    } else {
+      toast.error("Unable to open print window. Please check your browser's popup settings.");
+    }
+  };
+
+  const handleSendWhatsApp = () => {
+    if (selectedItems.length === 0) {
+      toast.error("No items to send. Please add items to the invoice first.");
+      return;
+    }
+    
+    if (!formData.customer_phone) {
+      toast.error("Customer phone number is required to send via WhatsApp.");
+      return;
+    }
+    
+    const totals = calculateTotals();
+    const message = `*INVOICE*
+
+*Invoice #:* Draft Invoice
+*Date:* ${new Date().toLocaleDateString()}
+*Customer:* ${formData.customer_name}
+${formData.jobcard_reference ? `*Job Card Reference:* ${formData.jobcard_reference}` : ''}
+
+*ITEMS:*
+${selectedItems.map(item => 
+  `• ${item.description}
+  ${item.quantity} × ${symbol}${item.unit_price.toFixed(2)} = ${symbol}${item.total_price.toFixed(2)}`
+).join('\n')}
+
+*TOTAL SUMMARY:*
+Subtotal: ${symbol}${totals.subtotal.toFixed(2)}
+${taxEnabled !== false && applyTax ? `Tax (${orgTaxRate.toFixed(1)}%): ${symbol}${totals.taxAmount.toFixed(2)}` : ''}
+*Total: ${symbol}${totals.total.toFixed(2)}*
+
+Thank you for your business!`;
+    
+    // Clean phone number (remove non-digits)
+    const cleanPhone = formData.customer_phone.replace(/\D/g, '');
+    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+    
+    window.open(whatsappUrl, '_blank');
+    toast.success("WhatsApp opened with invoice details!");
+  };
+
   return (
     <div className="flex gap-6 p-6 bg-slate-50/30 min-h-screen">
       {/* Main Form */}
@@ -902,6 +1040,37 @@ export default function InvoiceCreate() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Invoice Actions Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button 
+              variant="outline" 
+              className="w-full bg-white hover:bg-gray-50 border-gray-200"
+              disabled={selectedItems.length === 0}
+            >
+              <Receipt className="w-4 h-4 mr-2" />
+              Invoice Actions
+              <ChevronDown className="w-4 h-4 ml-auto" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-full bg-white border border-gray-200 shadow-lg z-50">
+            <DropdownMenuItem 
+              onClick={() => handlePrintInvoice()}
+              className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 cursor-pointer"
+            >
+              <Printer className="w-4 h-4" />
+              Print Invoice
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => handleSendWhatsApp()}
+              className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 cursor-pointer"
+            >
+              <MessageCircle className="w-4 h-4" />
+              Send via WhatsApp
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* Commission Summary */}
         {commissionSummary.length > 0 && (
