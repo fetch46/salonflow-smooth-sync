@@ -2116,8 +2116,7 @@ phone: "",
                  </CardContent>
                </Card>
              </div>
-          </TabsContent>
-
+           </TabsContent>
 
           {/* Modules Tab */}
           <TabsContent value="modules">
