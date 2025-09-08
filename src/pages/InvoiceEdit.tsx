@@ -25,6 +25,7 @@ export default function InvoiceEdit() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
+  const [jobCards, setJobCards] = useState<Array<{ id: string; job_card_number: string; client_name?: string; total_amount: number }>>([]);
   const [locations, setLocations] = useState<Array<{ id: string; name: string; is_default?: boolean; is_active?: boolean }>>([]);
   const [defaultLocationIdForUser, setDefaultLocationIdForUser] = useState<string | null>(null);
 
@@ -86,14 +87,30 @@ export default function InvoiceEdit() {
   useEffect(() => {
     (async () => {
       try {
-        const [{ data: cust }, { data: svc }, { data: stf }] = await Promise.all([
+        const [{ data: cust }, { data: svc }, { data: stf }, { data: jc }] = await Promise.all([
           supabase.from("clients").select("id, full_name, email, phone").eq("is_active", true).order("full_name"),
           supabase.from("services").select("id, name, price").eq("is_active", true).eq('organization_id', organization?.id || '').order("name"),
           supabase.from("staff").select("id, full_name, commission_rate").eq("is_active", true).eq('organization_id', organization?.id || '').order("full_name"),
+          supabase.from("job_cards")
+            .select(`
+              id, 
+              job_card_number, 
+              total_amount,
+              clients(full_name)
+            `)
+            .eq('organization_id', organization?.id || '')
+            .eq('status', 'completed')
+            .order('created_at', { ascending: false })
         ]);
         setCustomers(cust || []);
         setServices(svc || []);
         setStaff(stf || []);
+        setJobCards((jc || []).map((jc: any) => ({
+          id: jc.id,
+          job_card_number: jc.job_card_number,
+          client_name: jc.clients?.full_name,
+          total_amount: jc.total_amount
+        })));
       } catch {}
       await fetchLocations();
       const locId = await resolveUserDefaultLocation();
@@ -184,6 +201,55 @@ export default function InvoiceEdit() {
   };
 
   const removeItemFromInvoice = (idx: number) => setSelectedItems(selectedItems.filter((_, i) => i !== idx));
+
+  const handleJobCardSelection = async (jobCardId: string) => {
+    if (!jobCardId) return;
+    
+    try {
+      // Fetch job card services with their details
+      const { data: jobCardServices, error } = await supabase
+        .from('job_card_services')
+        .select(`
+          id,
+          service_id,
+          staff_id,
+          quantity,
+          unit_price,
+          commission_percentage,
+          commission_amount,
+          services(id, name),
+          staff(id, full_name)
+        `)
+        .eq('job_card_id', jobCardId);
+
+      if (error) throw error;
+
+      if (jobCardServices && jobCardServices.length > 0) {
+        // Clear existing items and add job card services
+        const invoiceItems = jobCardServices.map((jcs: any) => ({
+          id: `jobcard-${jcs.id}`,
+          invoice_id: "",
+          product_id: jcs.service_id,
+          service_id: jcs.service_id,
+          description: jcs.services?.name || 'Service',
+          quantity: jcs.quantity || 1,
+          unit_price: jcs.unit_price || 0,
+          discount_percentage: 0,
+          staff_id: jcs.staff_id || "",
+          commission_percentage: jcs.commission_percentage || 0,
+          total_price: (jcs.quantity || 1) * (jcs.unit_price || 0),
+        }));
+
+        setSelectedItems(invoiceItems);
+        toast.success(`Added ${invoiceItems.length} service(s) from job card`);
+      } else {
+        toast.info("No services found for this job card");
+      }
+    } catch (error) {
+      console.error("Error loading job card services:", error);
+      toast.error("Failed to load job card services");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -340,12 +406,24 @@ export default function InvoiceEdit() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="jobcard_reference">Job Card Reference</Label>
-              <Input 
-                id="jobcard_reference" 
+              <Select 
                 value={formData.jobcard_reference} 
-                onChange={(e) => setFormData({ ...formData, jobcard_reference: e.target.value })} 
-                placeholder="Enter job card reference"
-              />
+                onValueChange={(value) => {
+                  setFormData({ ...formData, jobcard_reference: value });
+                  handleJobCardSelection(value);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a job card" />
+                </SelectTrigger>
+                <SelectContent>
+                  {jobCards.map((jc) => (
+                    <SelectItem key={jc.id} value={jc.id}>
+                      {jc.job_card_number} {jc.client_name ? `- ${jc.client_name}` : ''} ({symbol}{jc.total_amount})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
