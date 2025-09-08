@@ -184,12 +184,6 @@ const menuItems: MenuItem[] = [
     ],
   },
   {
-    title: "Reports",
-    url: "/reports",
-    icon: TrendingUp,
-    feature: "reports",
-  },
-  {
     title: "Accounting",
     icon: Calculator,
     feature: "accounting",
@@ -211,6 +205,37 @@ const menuItems: MenuItem[] = [
         url: "/journal",
         icon: FileText,
         feature: "accounting",
+      },
+    ],
+  },
+  {
+    title: "Reports",
+    icon: TrendingUp,
+    feature: "reports",
+    subItems: [
+      {
+        title: "Financial Reports",
+        url: "/reports",
+        icon: TrendingUp,
+        feature: "reports",
+      },
+      {
+        title: "Sales Reports",
+        url: "/reports?type=sales",
+        icon: DollarSign,
+        feature: "reports",
+      },
+      {
+        title: "Inventory Reports",
+        url: "/reports?type=inventory",
+        icon: Package,
+        feature: "reports",
+      },
+      {
+        title: "Customer Reports",
+        url: "/reports?type=customers",
+        icon: Users,
+        feature: "reports",
       },
     ],
   },
