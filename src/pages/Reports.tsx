@@ -52,6 +52,8 @@ const Reports = () => {
   const reportType = searchParams.get('type');
   const initialTab = searchParams.get('tab') || 'overview';
   const initialSub = searchParams.get('sub');
+  
+  // ALL HOOKS MUST BE DECLARED FIRST - NO CONDITIONAL RETURNS BEFORE ALL HOOKS
   const [timeRange, setTimeRange] = useState('month');
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -78,6 +80,14 @@ const Reports = () => {
   const [drillTitle, setDrillTitle] = useState('');
   const [drillType, setDrillType] = useState<'Income' | 'Expense' | null>(null);
   const [drillRows, setDrillRows] = useState<Array<any>>([]);
+  
+  // Quick Insights data for Overview - THIS HOOK WAS AFTER THE CONDITIONAL RETURN!
+  const [serviceMetrics, setServiceMetrics] = useState({
+    utilizationPct: 75,
+    revenueGrowthPct: 12.5,
+    bookingGrowthPct: 8.3,
+    avgRating: 4.2
+  });
 
   // Hard block access unless accountant or owner
   useEffect(() => {
@@ -89,40 +99,12 @@ const Reports = () => {
 
   const { symbol, format: formatMoney } = useOrganizationCurrency();
 
-  // Check if this is a specific report type
+  // Check if this is a specific report type - redirect to separate component
   if (reportType) {
-    const commonProps = {
-      locationFilter,
-      setLocationFilter,
-      locations,
-      startDate,
-      setStartDate,
-      endDate,
-      setEndDate,
-    };
-
-    switch (reportType) {
-      case 'profit-loss':
-        return <ProfitLossReport {...commonProps} />;
-      case 'balance-sheet':
-        return <BalanceSheetReport {...commonProps} />;
-      case 'expenses':
-        return <NewExpenseReport {...commonProps} />;
-      case 'customers':
-        return <CustomerReports {...commonProps} />;
-      default:
-        // Continue with normal reports page
-        break;
-    }
+    // Redirect to SpecificReports component to avoid hooks issues
+    window.location.href = `/specific-reports?type=${reportType}`;
+    return <div>Redirecting...</div>;
   }
-
-  // Quick Insights data for Overview
-  const [serviceMetrics, setServiceMetrics] = useState({
-    utilizationPct: 75,
-    revenueGrowthPct: 12.5,
-    bookingGrowthPct: 8.3,
-    avgRating: 4.2
-  });
 
   // Load locations for current organization
   useEffect(() => {

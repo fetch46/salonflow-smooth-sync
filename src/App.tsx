@@ -53,6 +53,7 @@ const Settings = lazyWithRetry(() => import("./pages/Settings"));
 const Profile = lazyWithRetry(() => import("./pages/Profile"));
 const Help = lazyWithRetry(() => import("./pages/Help"));
 const Reports = lazyWithRetry(() => import("./pages/Reports"));
+const SpecificReports = lazyWithRetry(() => import("./pages/SpecificReports"));
 const POS = lazyWithRetry(() => import("./pages/POS"));
 const Invoices = lazyWithRetry(() => import("./pages/Invoices"));
 const InvoiceCreate = lazyWithRetry(() => import("./pages/InvoiceCreate"));
@@ -297,6 +298,7 @@ const AppRoutes = () => {
           <Route path="accounts/:id/edit" element={<ModuleGate moduleId="accountant"><AccountEdit /></ModuleGate>} />
           <Route path="journal" element={<ModuleGate moduleId="accountant"><Journal /></ModuleGate>} />
           <Route path="reports" element={<ModuleGate moduleId="accountant"><Reports /></ModuleGate>} />
+          <Route path="specific-reports" element={<ModuleGate moduleId="accountant"><SpecificReports /></ModuleGate>} />
           
           {/* Staff & General Settings (Always available) */}
           <Route path="staff" element={<Staff />} />
