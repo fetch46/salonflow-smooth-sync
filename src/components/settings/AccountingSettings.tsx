@@ -35,6 +35,7 @@ export function AccountingSettings() {
   const [loading, setLoading] = useState(true);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [taxEnabled, setTaxEnabled] = useState(false);
+  const [jobcardRequired, setJobcardRequired] = useState(false);
   const [paymentMethodAccounts, setPaymentMethodAccounts] = useState<PaymentMethodAccount[]>([]);
 
   useEffect(() => {
@@ -69,6 +70,7 @@ export function AccountingSettings() {
       if (orgData?.settings && typeof orgData.settings === 'object') {
         const settings = orgData.settings as any;
         setTaxEnabled(settings.tax_enabled || false);
+        setJobcardRequired(settings.jobcard_required_on_invoice || false);
         setPaymentMethodAccounts(settings.payment_method_accounts || []);
       }
 
@@ -107,6 +109,36 @@ export function AccountingSettings() {
     } catch (error) {
       console.error("Error updating tax setting:", error);
       toast.error("Failed to update tax setting");
+    }
+  };
+
+  const handleJobcardRequiredToggle = async (enabled: boolean) => {
+    try {
+      const currentSettings = await supabase
+        .from("organizations")
+        .select("settings")
+        .eq("id", organization?.id)
+        .single();
+
+      const settings = (currentSettings.data?.settings as any) || {};
+
+      const { error } = await supabase
+        .from("organizations")
+        .update({
+          settings: {
+            ...settings,
+            jobcard_required_on_invoice: enabled
+          }
+        })
+        .eq("id", organization?.id);
+
+      if (error) throw error;
+
+      setJobcardRequired(enabled);
+      toast.success(`Job card requirement ${enabled ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+      console.error("Error updating job card requirement setting:", error);
+      toast.error("Failed to update job card requirement");
     }
   };
 
@@ -214,6 +246,33 @@ export function AccountingSettings() {
                 </div>
               );
             })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Invoicing Policies */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5 text-primary" />
+            Invoicing Policies
+          </CardTitle>
+          <CardDescription>
+            Control invoice creation requirements
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-base font-medium">Require Job Card Reference</Label>
+              <p className="text-sm text-muted-foreground">
+                Users must select a job card when creating or editing invoices
+              </p>
+            </div>
+            <Switch
+              checked={jobcardRequired}
+              onCheckedChange={handleJobcardRequiredToggle}
+            />
           </div>
         </CardContent>
       </Card>
