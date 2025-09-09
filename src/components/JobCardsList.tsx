@@ -324,13 +324,15 @@ export default function JobCardsList({ onRefresh, searchTerm, statusFilter, view
                         {getStatusBadge(card.status)}
                       </div>
                       <div className="text-right shrink-0">
-                        <div className="text-responsive-lg sm:text-responsive-xl font-semibold text-slate-900 leading-tight">
-                          {formatCurrency(card.total_amount)}
-                        </div>
                         <div className="text-responsive-xs text-slate-500">
                           {format(new Date(card.created_at), 'MMM dd, yyyy')}
                         </div>
                       </div>
+                    </div>
+
+                    {/* Amount */}
+                    <div className="font-bold text-emerald-600 text-responsive-base">
+                      {formatCurrency(card.total_amount)}
                     </div>
 
                     {/* Client & Staff Info */}
@@ -373,14 +375,16 @@ export default function JobCardsList({ onRefresh, searchTerm, statusFilter, view
 
                     {/* Services */}
                     {card.services && card.services.length > 0 && (
-                      <div className="space-y-1.5">
-                        <div className="text-responsive-sm font-medium text-slate-600">Services</div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {card.services.map((service) => (
-                            <Badge key={service.id} variant="secondary" className="text-responsive-xs">
-                              {service.name}
-                            </Badge>
-                          ))}
+                      <div>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="text-responsive-sm font-medium text-slate-600">Services</div>
+                          <div className="ml-2 flex-1 flex flex-wrap gap-1.5 justify-end">
+                            {card.services.map((service) => (
+                              <Badge key={service.id} variant="secondary" className="text-responsive-xs">
+                                {service.name}
+                              </Badge>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     )}
