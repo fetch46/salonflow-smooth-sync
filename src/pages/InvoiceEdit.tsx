@@ -43,6 +43,7 @@ export default function InvoiceEdit() {
     jobcard_reference: "",
     location_id: "",
   });
+  const [invoiceMeta, setInvoiceMeta] = useState<any | null>(null);
   const jobcardRequired = Boolean(((organization as any)?.settings || {})?.jobcard_required_on_invoice);
 
   const [newItem, setNewItem] = useState({
@@ -142,6 +143,7 @@ export default function InvoiceEdit() {
             jobcard_reference: (inv as any).jobcard_reference || "",
             location_id: (inv as any).location_id || prev.location_id,
           }));
+          setInvoiceMeta(inv as any);
         }
         const items = await getInvoiceItemsWithFallback(supabase, id);
         setSelectedItems((items || []).map((it: any) => ({
@@ -328,7 +330,7 @@ export default function InvoiceEdit() {
   }, [selectedItems, staff]);
 
   return (
-    <div className="flex gap-6 p-6 bg-slate-50/30 min-h-screen">
+    <div className="flex flex-col xl:flex-row gap-6 p-6 bg-slate-50/30 min-h-screen max-w-7xl mx-auto w-full">
       {/* Main Form */}
       <div className="flex-1 space-y-6">
       <div className="flex items-center justify-between">
@@ -631,7 +633,39 @@ export default function InvoiceEdit() {
       </div>
 
       {/* Invoice Preview Sidebar */}
-      <div className="w-80 space-y-4">
+      <div className="w-full xl:w-80 space-y-4">
+        {/* Invoice Details (Sidebar) */}
+        <Card className="bg-white border border-slate-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-semibold text-slate-900">Invoice Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span>Invoice #:</span>
+              <span className="font-medium">{invoiceMeta?.invoice_number || id?.slice(-6) || 'TBD'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Date:</span>
+              <span className="font-medium">{invoiceMeta?.created_at ? new Date(invoiceMeta.created_at).toLocaleDateString() : new Date().toLocaleDateString()}</span>
+            </div>
+            {(formData.due_date || invoiceMeta?.due_date) && (
+              <div className="flex justify-between">
+                <span>Due:</span>
+                <span className="font-medium">{(invoiceMeta?.due_date || formData.due_date) ? new Date((invoiceMeta?.due_date || formData.due_date) as any).toLocaleDateString() : ''}</span>
+              </div>
+            )}
+            {invoiceMeta?.payment_method && (
+              <div className="flex justify-between">
+                <span>Payment:</span>
+                <span className="font-medium">{invoiceMeta.payment_method}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span>Location:</span>
+              <span className="font-medium">{(() => { const lid = formData.location_id || (invoiceMeta as any)?.location_id; const loc = locations.find(l => l.id === lid); return loc?.name || '—'; })()}</span>
+            </div>
+          </CardContent>
+        </Card>
         {/* Invoice Preview */}
         <Card className="bg-white border border-slate-200">
           <CardHeader className="pb-3">
