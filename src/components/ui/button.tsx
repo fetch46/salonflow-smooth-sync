@@ -20,6 +20,7 @@ const buttonVariants = cva(
         "solid-destructive": "bg-primary text-primary-foreground shadow-md transition-all duration-200 border border-primary/20",
         "solid-secondary": "bg-primary text-primary-foreground shadow-md transition-all duration-200 border border-primary/20",
         "theme-neutral": "bg-primary text-primary-foreground border border-primary/20 shadow-sm transition-all duration-200",
+        whatsapp: "bg-[#25D366] text-white border border-[#25D366]/20 shadow-sm hover:bg-[#1EBE57] focus-visible:ring-[#25D366]",
       },
       size: {
         default: "h-9 px-4 py-2 text-responsive-sm",
