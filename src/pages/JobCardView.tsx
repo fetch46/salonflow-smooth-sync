@@ -246,7 +246,7 @@ export default function JobCardView() {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-6 space-y-6">
+    <div className="w-full max-w-[1600px] 2xl:max-w-[1760px] mx-auto px-2 sm:px-3 md:px-4 lg:px-5 xl:px-6 py-4 space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Job Card</h1>
@@ -268,8 +268,8 @@ export default function JobCardView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 xl:gap-8">
+        <div className="lg:col-span-9 xl:col-span-9 2xl:col-span-10">
           <div ref={pdfRef} className="space-y-6 bg-background">
         <Card>
           <CardHeader>
