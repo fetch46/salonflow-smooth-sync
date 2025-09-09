@@ -26,7 +26,7 @@ export default function InvoiceEdit() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
-  const [jobCards, setJobCards] = useState<Array<{ id: string; job_card_number: string; client_name?: string; total_amount: number }>>([]);
+  const [jobCards, setJobCards] = useState<Array<{ id: string; job_card_number: string; client_name?: string; client_id?: string; total_amount: number }>>([]);
   const [locations, setLocations] = useState<Array<{ id: string; name: string; is_default?: boolean; is_active?: boolean }>>([]);
   const [defaultLocationIdForUser, setDefaultLocationIdForUser] = useState<string | null>(null);
   const [customerJobCards, setCustomerJobCards] = useState<Array<{ id: string; job_card_number: string; total_amount: number }>>([]);
@@ -100,6 +100,7 @@ export default function InvoiceEdit() {
               id, 
               job_card_number, 
               total_amount,
+              client_id,
               clients(full_name)
             `)
             .eq('organization_id', organization?.id || '')
@@ -112,6 +113,7 @@ export default function InvoiceEdit() {
         setJobCards((jc || []).map((jc: any) => ({
           id: jc.id,
           job_card_number: jc.job_card_number,
+          client_id: jc.client_id,
           client_name: jc.clients?.full_name,
           total_amount: jc.total_amount
         })));
@@ -211,6 +213,41 @@ export default function InvoiceEdit() {
     if (!jobCardId) return;
     
     try {
+      // Ensure invoice customer matches job card client
+      try {
+        const { data: jc } = await supabase
+          .from('job_cards')
+          .select('id, client_id')
+          .eq('id', jobCardId)
+          .maybeSingle();
+        const clientId = (jc as any)?.client_id as string | undefined;
+        if (clientId) {
+          const existing = customers.find(c => c.id === clientId);
+          if (existing) {
+            setFormData(prev => ({
+              ...prev,
+              customer_id: existing.id,
+              customer_name: existing.full_name || prev.customer_name,
+              customer_email: existing.email || prev.customer_email,
+              customer_phone: existing.phone || prev.customer_phone,
+              jobcard_reference: jobCardId,
+            }));
+          } else {
+            const { data: cli } = await supabase.from('clients').select('id, full_name, email, phone').eq('id', clientId).maybeSingle();
+            if (cli) {
+              setCustomers(prev => (prev.some(c => c.id === (cli as any).id) ? prev : [...prev, cli as any]));
+              setFormData(prev => ({
+                ...prev,
+                customer_id: (cli as any).id,
+                customer_name: (cli as any).full_name || prev.customer_name,
+                customer_email: (cli as any).email || prev.customer_email,
+                customer_phone: (cli as any).phone || prev.customer_phone,
+                jobcard_reference: jobCardId,
+              }));
+            }
+          }
+        }
+      } catch {}
       // Fetch job card services with their details
       const { data: jobCardServices, error } = await supabase
         .from('job_card_services')
@@ -439,7 +476,7 @@ export default function InvoiceEdit() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="jobcard_reference">Job Card Reference{jobcardRequired ? ' *' : ''}</Label>
+              <Label htmlFor="jobcard_reference" className={jobcardRequired && !formData.jobcard_reference ? 'text-red-600' : ''}>Job Card Reference{jobcardRequired ? ' *' : ''}</Label>
               <Select 
                 value={formData.jobcard_reference} 
                 onValueChange={(value) => {
@@ -447,7 +484,7 @@ export default function InvoiceEdit() {
                   handleJobCardSelection(value);
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger className={jobcardRequired && !formData.jobcard_reference ? 'border-red-300 bg-red-50' : ''}>
                   <SelectValue placeholder="Select a job card" />
                 </SelectTrigger>
                 <SelectContent>
