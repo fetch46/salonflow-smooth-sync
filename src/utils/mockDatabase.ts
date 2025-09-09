@@ -455,6 +455,7 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
       status: invoiceData.status || 'draft',
       notes: invoiceData.notes || null,
       location_id: invoiceData.location_id || null,
+      jobcard_id: invoiceData.jobcard_id || invoiceData.jobcard_reference || null,
     };
 
     const { data: invoice, error: invoiceError } = await supabase
@@ -504,6 +505,7 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
       location_id: invoiceData.location_id || null,
       updated_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
+      job_card_id: invoiceData.jobcard_id || invoiceData.jobcard_reference || null,
     } as any);
     // Persist items with staff/commission meta in local storage for analytics
     try {
@@ -541,7 +543,7 @@ export async function getInvoicesWithFallback(supabase: any) {
     const { data, error } = await supabase
       .from('invoices')
       .select(`
-        id, invoice_number, client_id, issue_date, due_date, subtotal, tax_amount, total_amount, status, notes, location_id, created_at, updated_at,
+        id, invoice_number, client_id, issue_date, due_date, subtotal, tax_amount, total_amount, status, notes, location_id, jobcard_id, created_at, updated_at,
         client:client_id (id, full_name, email, phone)
       `)
       .order('created_at', { ascending: false });
@@ -565,7 +567,8 @@ export async function getInvoicesWithFallback(supabase: any) {
         due_date: inv.due_date,
         payment_method: null,
         notes: inv.notes,
-        jobcard_id: null,
+        jobcard_id: inv.jobcard_id || null,
+        jobcard_reference: inv.jobcard_id || null,
         created_at: inv.created_at,
         updated_at: inv.updated_at,
         location_id: inv.location_id ?? null,
@@ -692,7 +695,7 @@ export async function recordInvoicePaymentWithFallback(
       const [{ data: inv }, { data: pays }] = await Promise.all([
         supabase
           .from('invoices')
-          .select('id, total_amount, status')
+          .select('id, total_amount, status, jobcard_id')
           .eq('id', invId)
           .maybeSingle(),
         supabase
@@ -705,21 +708,17 @@ export async function recordInvoicePaymentWithFallback(
       const nextStatus = paidSum >= totalAmount ? 'paid' : paidSum > 0 ? 'partial' : ((inv as any)?.status || 'sent');
       if ((inv as any)?.status !== nextStatus) {
         await supabase.from('invoices').update({ status: nextStatus }).eq('id', invId);
-        
-        // If invoice is fully paid, update associated job card status to 'closed'
-        if (nextStatus === 'paid') {
-          const { data: invoiceData } = await supabase
-            .from('invoices')
-            .select('jobcard_reference')
-            .eq('id', invId)
-            .maybeSingle();
-          
-          if (invoiceData?.jobcard_reference) {
+      }
+      // If invoice is fully paid, update associated job card status to 'closed'
+      if (nextStatus === 'paid') {
+        const jobcardId = (inv as any)?.jobcard_id || null;
+        if (jobcardId) {
+          try {
             await supabase
               .from('job_cards')
               .update({ status: 'closed' })
-              .eq('id', invoiceData.jobcard_reference);
-          }
+              .eq('id', jobcardId);
+          } catch {}
         }
       }
     } catch (statusError) {
@@ -1008,6 +1007,9 @@ export async function updateInvoiceWithFallback(supabase: any, id: string, updat
     if (typeof updates.total_amount !== 'undefined') allowed.total_amount = updates.total_amount;
     if (typeof updates.issue_date !== 'undefined') allowed.issue_date = updates.issue_date;
     if (typeof updates.organization_id !== 'undefined') allowed.organization_id = updates.organization_id;
+    if (typeof updates.jobcard_reference !== 'undefined' || typeof updates.jobcard_id !== 'undefined') {
+      allowed.jobcard_id = updates.jobcard_id || updates.jobcard_reference || null;
+    }
 
     const { error } = await supabase
       .from('invoices')
