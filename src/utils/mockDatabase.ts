@@ -456,15 +456,34 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
       notes: invoiceData.notes || null,
       location_id: invoiceData.location_id || null,
       jobcard_id: invoiceData.jobcard_id || invoiceData.jobcard_reference || null,
+      // Ensure org is set for RLS visibility if column exists
+      organization_id: invoiceData.organization_id || undefined,
     };
 
-    const { data: invoice, error: invoiceError } = await supabase
-      .from('invoices')
-      .insert([dbInvoice])
-      .select('id')
-      .maybeSingle();
+    // Try insert with organization_id first. If column missing, retry without it
+    let invoice: any = null;
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .insert([dbInvoice])
+        .select('id')
+        .maybeSingle();
+      if (error) throw error;
+      invoice = data;
+    } catch (e: any) {
+      const msg = String(e?.message || '').toLowerCase();
+      const code = (e as any)?.code || '';
+      const missingOrg = code === '42703' || (msg.includes('column') && msg.includes('organization_id') && msg.includes('does not exist'));
+      if (!missingOrg) throw e;
+      const { data, error } = await supabase
+        .from('invoices')
+        .insert([{ ...dbInvoice, organization_id: undefined }])
+        .select('id')
+        .maybeSingle();
+      if (error) throw error;
+      invoice = data;
+    }
 
-    if (invoiceError) throw invoiceError;
     if (!invoice?.id) throw new Error('Invoice created but no ID returned');
 
     const itemsData = items.map((item: any) => ({

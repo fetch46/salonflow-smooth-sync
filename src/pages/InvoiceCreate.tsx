@@ -486,6 +486,7 @@ export default function InvoiceCreate() {
         jobcard_id: formData.jobcard_id || null,
         jobcard_reference: formData.jobcard_reference || null,
         location_id: formData.location_id || null,
+        organization_id: organization?.id || undefined,
       };
       const created = await createInvoiceWithFallback(supabase, invoiceData, selectedItems);
 
