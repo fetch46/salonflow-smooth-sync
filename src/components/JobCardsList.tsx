@@ -450,10 +450,6 @@ export default function JobCardsList({ onRefresh, searchTerm, statusFilter, view
                             </DropdownMenuItem>
                           </>
                         )}
-                        <DropdownMenuItem onClick={() => createInvoiceFromJobCard(card)}>
-                          <Receipt className="icon-responsive-sm mr-2" />
-                          Create Invoice
-                        </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => handleDeleteJobCard(card.id)}
                           className="text-red-600"
