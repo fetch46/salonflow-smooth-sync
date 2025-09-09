@@ -69,6 +69,7 @@ import {
   QrCode,
   Share2
 } from "lucide-react";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval } from "date-fns";
 import { toast } from "sonner";
 import { 
@@ -858,8 +859,8 @@ export default function Invoices() {
                               <Mail className="w-4 h-4 mr-2" />
                               Send Email
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <MessageSquare className="w-4 h-4 mr-2" />
+                            <DropdownMenuItem className="text-[#25D366] focus:text-[#25D366]">
+                              <WhatsAppIcon className="w-4 h-4 mr-2" />
                               Send WhatsApp
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
@@ -1118,8 +1119,8 @@ export default function Invoices() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button variant="outline">
-                  <MessageSquare className="w-4 h-4 mr-2" />
+                <Button variant="whatsapp">
+                  <WhatsAppIcon className="w-4 h-4" />
                   Send WhatsApp
                 </Button>
                 {isEditingLocation ? (

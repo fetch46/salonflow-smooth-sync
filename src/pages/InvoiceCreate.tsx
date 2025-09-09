@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Users, Receipt, Trash2, Plus, Printer, MessageCircle, ChevronDown } from "lucide-react";
+import { Users, Receipt, Trash2, Plus, Printer, ChevronDown } from "lucide-react";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { createInvoiceWithFallback, getInvoicesWithFallback, getInvoiceItemsWithFallback } from "@/utils/mockDatabase";
 import { useOrganizationCurrency, useOrganizationTaxRate, useOrganization } from "@/lib/saas/hooks";
@@ -1216,9 +1217,9 @@ Thank you for your business!`;
             </DropdownMenuItem>
             <DropdownMenuItem 
               onClick={() => handleSendWhatsApp()}
-              className="flex items-center gap-2 px-3 py-2 hover:bg-accent hover:text-accent-foreground cursor-pointer"
+              className="flex items-center gap-2 px-3 py-2 hover:bg-accent hover:text-accent-foreground cursor-pointer text-[#25D366]"
             >
-              <MessageCircle className="w-4 h-4" />
+              <WhatsAppIcon className="w-4 h-4" />
               Send via WhatsApp
             </DropdownMenuItem>
           </DropdownMenuContent>
