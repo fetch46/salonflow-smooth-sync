@@ -42,6 +42,13 @@ export default function InvoiceCreate() {
   const [locations, setLocations] = useState<Array<{ id: string; name: string; is_default?: boolean; is_active?: boolean }>>([]);
   const [defaultLocationIdForUser, setDefaultLocationIdForUser] = useState<string | null>(null);
   const [customerJobCards, setCustomerJobCards] = useState<Array<{ id: string; job_card_number: string; total_amount: number }>>([]);
+  const [selectedJobCardInfo, setSelectedJobCardInfo] = useState<{
+    id: string;
+    job_card_number: string;
+    client_name?: string;
+    total_amount: number;
+    service_count?: number;
+  } | null>(null);
 
   // Unique locations by name (prefer default when duplicates exist)
   const uniqueLocations = useMemo(() => {
@@ -393,6 +400,13 @@ export default function InvoiceCreate() {
         }));
 
         setSelectedItems(invoiceItems);
+        // Update selected job card summary info for sidebar card
+        const basic = jobCards.find(jc => jc.id === jobCardId) || null;
+        if (basic) {
+          setSelectedJobCardInfo({ ...basic, service_count: jobCardServices.length });
+        } else {
+          setSelectedJobCardInfo(null);
+        }
         toast.success(`Added ${invoiceItems.length} service(s) from job card`);
       } else {
         toast.info("No services found for this job card");
@@ -1000,6 +1014,34 @@ Thank you for your business!`;
 
       {/* Invoice Preview Sidebar */}
       <div className="w-80 space-y-4">
+        {/* Selected Job Card Summary */}
+        {selectedJobCardInfo && (
+          <Card className="bg-white border border-slate-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg font-semibold text-slate-900">Job Card Summary</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span>Reference:</span>
+                <span className="font-medium">{selectedJobCardInfo.job_card_number}</span>
+              </div>
+              {selectedJobCardInfo.client_name && (
+                <div className="flex justify-between">
+                  <span>Client:</span>
+                  <span className="font-medium">{selectedJobCardInfo.client_name}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span>Services:</span>
+                <span className="font-medium">{typeof selectedJobCardInfo.service_count === 'number' ? selectedJobCardInfo.service_count : selectedItems.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Total:</span>
+                <span className="font-semibold">{symbol}{Number(selectedJobCardInfo.total_amount || 0).toFixed(2)}</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         {/* Invoice Preview */}
         <Card className="bg-white border border-slate-200">
           <CardHeader className="pb-3">
