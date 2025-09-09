@@ -289,7 +289,7 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-2 px-2 btn-compact">
+              <Button variant="ghost" className="flex items-center gap-2 px-2 btn-compact bg-transparent hover:bg-transparent focus:bg-transparent active:bg-transparent">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={user?.user_metadata?.avatar_url} />
                   <AvatarFallback>

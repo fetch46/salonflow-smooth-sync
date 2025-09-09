@@ -487,35 +487,70 @@ export default function Settings() {
         <div className="space-y-6">
           {/* Company Settings */}
           <TabsContent value="company">
-            <div className="space-y-6">
-              {/* Company Information */}
+            <div className="grid gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building className="h-5 w-5 text-primary" />
-                    Company Information
-                  </CardTitle>
+                  <CardTitle>Company Information</CardTitle>
                   <CardDescription>
-                    Basic information about your organization
+                    Update your company details and basic settings
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <Label>Organization Name</Label>
-                      <Input 
-                        value={companySettings.name} 
-                        onChange={(e) => handleCompanySettingsChange('name', e.target.value)}
-                        placeholder="Enter organization name"
-                        disabled={loading}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="company-name">Company Name</Label>
+                      <Input
+                        id="company-name"
+                        value={companySettings.name}
+                        onChange={(e) => handleCompanySettingsChange("name", e.target.value)}
+                        placeholder="Enter company name"
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="country">Country</Label>
+                      <Select 
+                        value={companySettings.country} 
+                        onValueChange={(value) => handleCompanySettingsChange("country", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select country" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {countries.map((country) => (
+                            <SelectItem key={country.id} value={country.code}>
+                              {country.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="currency">Currency</Label>
+                      <Select 
+                        value={companySettings.currency} 
+                        onValueChange={(value) => handleCompanySettingsChange("currency", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select currency" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {currencies.map((currency) => (
+                            <SelectItem key={currency.id} value={currency.code}>
+                              {currency.code} - {currency.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
                   <div className="flex justify-end pt-4 border-t">
-                    <Button onClick={saveCompanySettings} disabled={loading} className="flex items-center gap-2">
-                      <Save className="h-4 w-4" />
-                      {loading ? 'Saving...' : 'Save Company Settings'}
+                    <Button onClick={saveCompanySettings} disabled={loading}>
+                      <Save className="h-4 w-4 mr-2" />
+                      {loading ? 'Saving...' : 'Save Changes'}
                     </Button>
                   </div>
                 </CardContent>
@@ -529,155 +564,249 @@ export default function Settings() {
             </div>
           </TabsContent>
 
-          {/* Branding Settings */
-          /* Layout: Left new card (40% width), Theme & Branding (40%), Preview below (full width) */}
+          {/* Branding Settings */}
           <TabsContent value="branding">
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-              {/* New Left Card (instructions / quick actions) */}
-              <Card className="lg:col-span-3 order-1">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <LayoutGrid className="h-5 w-5 text-primary" />
-                    Appearance Overview
-                  </CardTitle>
-                  <CardDescription>
-                    Configure brand colors and UI sections. Primary affects buttons; Secondary affects text/icons.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="text-sm text-muted-foreground">Primary color is used for buttons and active elements. Secondary color is used for text and icons.</div>
-                  <Separator />
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <div className="text-sm text-muted-foreground">Primary</div>
-                        <div className="h-10 rounded-md border" style={{ backgroundColor: `hsl(${brandColors.primary})` }} />
-                        <div className="text-xs break-all">{brandColors.primary}</div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="text-sm text-muted-foreground">Secondary</div>
-                        <div className="h-10 rounded-md border" style={{ backgroundColor: `hsl(${(brandColors as any).secondary})` }} />
-                        <div className="text-xs break-all">{(brandColors as any).secondary}</div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="text-sm text-muted-foreground">Accent</div>
-                        <div className="h-10 rounded-md border" style={{ backgroundColor: `hsl(${brandColors.accent})` }} />
-                        <div className="text-xs break-all">{brandColors.accent}</div>
-                      </div>
-                    </div>
+            <div className="space-y-6">
+              {/* Header Section */}
+              <div className="text-center space-y-2 py-6">
+                <h2 className="text-2xl font-bold">Brand Appearance</h2>
+                <p className="text-muted-foreground max-w-2xl mx-auto">
+                  Customize your application's visual identity with color themes and live preview
+                </p>
+              </div>
 
-                    <Separator />
-
-                    <div className="flex flex-wrap gap-3">
-                      <Button>Primary Button</Button>
-                      <Button variant="secondary">Secondary</Button>
-                      <Button variant="outline">Outline</Button>
-                    </div>
-                    <div className="p-4 rounded-md border bg-accent text-accent-foreground">
-                      This is an accent surface
-                    </div>
-                    <div className="p-4 rounded-md border bg-secondary text-secondary-foreground">
-                      This is a secondary surface
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Theme & Branding Controls - 40% width */}
-              <Card className="lg:col-span-2 order-2">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Palette className="h-5 w-5 text-primary" />
-                    Theme & Branding
-                  </CardTitle>
-                  <CardDescription>
-                    Select a theme and customize Primary, Secondary, and Accent colors
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Theme preset</Label>
-                    <Select value={selectedTheme} onValueChange={handleThemeChange}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a theme" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {THEME_PRESETS.map((t) => (
-                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+              {/* Main Content Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Theme Selector - Full Width on Mobile, 4 columns on Desktop */}
+                <Card className="lg:col-span-4 shadow-lg border-2 hover:shadow-xl transition-shadow animate-fade-in">
+                  <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b">
+                    <CardTitle className="flex items-center gap-2">
+                      <Palette className="h-5 w-5 text-primary" />
+                      Quick Themes
+                    </CardTitle>
+                    <CardDescription>
+                      Choose from pre-designed color schemes
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      <Label className="text-sm font-semibold">Select Theme Preset</Label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {THEME_PRESETS.map((theme) => (
+                          <Button
+                            key={theme.id}
+                            variant={selectedTheme === theme.id ? "default" : "outline"}
+                            className={`flex flex-col items-center gap-2 h-auto p-3 transition-all duration-200 hover-scale ${
+                              selectedTheme === theme.id ? 'ring-2 ring-primary ring-offset-2' : ''
+                            }`}
+                            onClick={() => handleThemeChange(theme.id)}
+                          >
+                            <div 
+                              className="w-8 h-8 rounded-full border-2 border-border shadow-sm"
+                              style={{ backgroundColor: theme.colors.preview }}
+                            />
+                            <span className="text-xs font-medium">{theme.name}</span>
+                          </Button>
                         ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <Separator />
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label>Primary color</Label>
-                      <Select value={SHADCN_COLORS.find(c => c.hsl === brandColors.primary)?.id}
-                        onValueChange={(id) => {
-                          const c = SHADCN_COLORS.find(x => x.id === id);
-                          if (c) setPrimaryColor(c.hsl);
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Choose primary" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SHADCN_COLORS.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Secondary color</Label>
-                      <Select value={SHADCN_COLORS.find(c => c.hsl === (brandColors as any).secondary)?.id}
-                        onValueChange={(id) => {
-                          const c = SHADCN_COLORS.find(x => x.id === id);
-                          if (c) setSecondaryColor(c.hsl);
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Choose secondary" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SHADCN_COLORS.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Accent color</Label>
-                      <Select value={SHADCN_COLORS.find(c => c.hsl === brandColors.accent)?.id}
-                        onValueChange={(id) => {
-                          const c = SHADCN_COLORS.find(x => x.id === id);
-                          if (c) setAccentColor(c.hsl);
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Choose accent" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SHADCN_COLORS.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+                  </CardContent>
+                </Card>
 
-                  <div className="flex justify-end pt-4 border-t">
-                    <Button onClick={saveBrandingSettings} disabled={loading} className="flex items-center gap-2">
-                      <Save className="h-4 w-4" />
-                      {loading ? 'Saving...' : 'Save Theme Settings'}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                {/* Custom Color Controls - 4 columns on Desktop */}
+                <Card className="lg:col-span-4 shadow-lg border-2 hover:shadow-xl transition-shadow animate-fade-in">
+                  <CardHeader className="bg-gradient-to-r from-accent/5 to-accent/10 border-b">
+                    <CardTitle className="flex items-center gap-2">
+                      <LayoutGrid className="h-5 w-5 text-primary" />
+                      Custom Colors
+                    </CardTitle>
+                    <CardDescription>
+                      Fine-tune individual color elements
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-6">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold flex items-center gap-2">
+                          Primary Color
+                          <div 
+                            className="w-4 h-4 rounded border shadow-sm"
+                            style={{ backgroundColor: `hsl(${brandColors.primary})` }}
+                          />
+                        </Label>
+                        <Select 
+                          value={SHADCN_COLORS.find(c => c.hsl === brandColors.primary)?.id}
+                          onValueChange={(id) => {
+                            const c = SHADCN_COLORS.find(x => x.id === id);
+                            if (c) setPrimaryColor(c.hsl);
+                          }}
+                        >
+                          <SelectTrigger className="h-10">
+                            <SelectValue placeholder="Choose primary color" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SHADCN_COLORS.map((c) => (
+                              <SelectItem key={c.id} value={c.id} className="flex items-center gap-2">
+                                <div className="flex items-center gap-2">
+                                  <div 
+                                    className="w-4 h-4 rounded border"
+                                    style={{ backgroundColor: `hsl(${c.hsl})` }}
+                                  />
+                                  {c.name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-              {/* Manual Theme Controls removed */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold flex items-center gap-2">
+                          Secondary Color
+                          <div 
+                            className="w-4 h-4 rounded border shadow-sm"
+                            style={{ backgroundColor: `hsl(${(brandColors as any).secondary})` }}
+                          />
+                        </Label>
+                        <Select 
+                          value={SHADCN_COLORS.find(c => c.hsl === (brandColors as any).secondary)?.id}
+                          onValueChange={(id) => {
+                            const c = SHADCN_COLORS.find(x => x.id === id);
+                            if (c) setSecondaryColor(c.hsl);
+                          }}
+                        >
+                          <SelectTrigger className="h-10">
+                            <SelectValue placeholder="Choose secondary color" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SHADCN_COLORS.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                <div className="flex items-center gap-2">
+                                  <div 
+                                    className="w-4 h-4 rounded border"
+                                    style={{ backgroundColor: `hsl(${c.hsl})` }}
+                                  />
+                                  {c.name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold flex items-center gap-2">
+                          Accent Color
+                          <div 
+                            className="w-4 h-4 rounded border shadow-sm"
+                            style={{ backgroundColor: `hsl(${brandColors.accent})` }}
+                          />
+                        </Label>
+                        <Select 
+                          value={SHADCN_COLORS.find(c => c.hsl === brandColors.accent)?.id}
+                          onValueChange={(id) => {
+                            const c = SHADCN_COLORS.find(x => x.id === id);
+                            if (c) setAccentColor(c.hsl);
+                          }}
+                        >
+                          <SelectTrigger className="h-10">
+                            <SelectValue placeholder="Choose accent color" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SHADCN_COLORS.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                <div className="flex items-center gap-2">
+                                  <div 
+                                    className="w-4 h-4 rounded border"
+                                    style={{ backgroundColor: `hsl(${c.hsl})` }}
+                                  />
+                                  {c.name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Live Preview - 4 columns on Desktop */}
+                <Card className="lg:col-span-4 shadow-lg border-2 hover:shadow-xl transition-shadow animate-fade-in">
+                  <CardHeader className="bg-gradient-to-r from-secondary/5 to-secondary/10 border-b">
+                    <CardTitle className="flex items-center gap-2">
+                      <Building className="h-5 w-5 text-primary" />
+                      Live Preview
+                    </CardTitle>
+                    <CardDescription>
+                      See how your colors look in action
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-4">
+                    {/* Color Swatches */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="text-center space-y-2">
+                        <div 
+                          className="h-12 w-full rounded-lg border-2 shadow-sm transition-all hover-scale"
+                          style={{ backgroundColor: `hsl(${brandColors.primary})` }}
+                        />
+                        <span className="text-xs font-medium text-muted-foreground">Primary</span>
+                      </div>
+                      <div className="text-center space-y-2">
+                        <div 
+                          className="h-12 w-full rounded-lg border-2 shadow-sm transition-all hover-scale"
+                          style={{ backgroundColor: `hsl(${(brandColors as any).secondary})` }}
+                        />
+                        <span className="text-xs font-medium text-muted-foreground">Secondary</span>
+                      </div>
+                      <div className="text-center space-y-2">
+                        <div 
+                          className="h-12 w-full rounded-lg border-2 shadow-sm transition-all hover-scale"
+                          style={{ backgroundColor: `hsl(${brandColors.accent})` }}
+                        />
+                        <span className="text-xs font-medium text-muted-foreground">Accent</span>
+                      </div>
+                    </div>
+
+                    {/* Component Preview */}
+                    <div className="space-y-4 p-4 rounded-lg bg-background border">
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="sm">Primary Button</Button>
+                        <Button variant="secondary" size="sm">Secondary</Button>
+                        <Button variant="outline" size="sm">Outline</Button>
+                      </div>
+                      
+                      <div className="p-3 rounded-md bg-accent text-accent-foreground text-sm">
+                        Accent surface example
+                      </div>
+                      
+                      <div className="p-3 rounded-md bg-secondary text-secondary-foreground text-sm">
+                        Secondary surface example
+                      </div>
+                      
+                      <div className="text-xs text-muted-foreground">
+                        HSL Values:<br />
+                        Primary: {brandColors.primary}<br />
+                        Secondary: {(brandColors as any).secondary}<br />
+                        Accent: {brandColors.accent}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Save Button */}
+              <div className="flex justify-center pt-8">
+                <Button 
+                  onClick={saveBrandingSettings} 
+                  disabled={loading} 
+                  className="flex items-center gap-2 px-8 py-3 text-lg hover-scale shadow-lg"
+                  size="lg"
+                >
+                  <Save className="h-5 w-5" />
+                  {loading ? 'Saving Theme...' : 'Save Brand Settings'}
+                </Button>
+              </div>
             </div>
           </TabsContent>
 
@@ -701,25 +830,28 @@ export default function Settings() {
             <WarehousesSettings />
           </TabsContent>
 
-          {/* Module Management */}
+          {/* Modules Management */}
           <TabsContent value="modules">
             <ModuleManagement />
           </TabsContent>
 
-          {/* Staff Settings - Redirect to main Staff page */}
+          {/* Staff Management */}
           <TabsContent value="staff">
-            <Card>
-              <CardContent className="p-6 text-center">
-                <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-semibold mb-2">Staff Management</h3>
-                <p className="text-muted-foreground mb-4">
-                  Staff management has been moved to its own dedicated page with more features.
-                </p>
-                <Button onClick={() => window.location.href = '/staff'}>
-                  Go to Staff Management
-                </Button>
-              </CardContent>
-            </Card>
+            <div className="grid gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Staff Management</CardTitle>
+                  <CardDescription>
+                    Manage your team members and their permissions
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8 text-muted-foreground">
+                    Staff management functionality will be implemented here.
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </div>
       </Tabs>
