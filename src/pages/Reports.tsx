@@ -76,6 +76,7 @@ const Reports = () => {
   const [density, setDensity] = useState<'compact' | 'comfortable'>('comfortable');
   const [revenueSeries, setRevenueSeries] = useState<Array<{ label: string; current: number; previous: number }>>([]);
   const [monthlySeries, setMonthlySeries] = useState<Array<{ month: string; income: number; expense: number }>>([]);
+  const [monthlyPeriod, setMonthlyPeriod] = useState<'6m' | '12m' | 'ytd'>('12m');
   const [serviceDistribution, setServiceDistribution] = useState<Array<{ name: string; value: number; fill?: string }>>([]);
   const [drillOpen, setDrillOpen] = useState(false);
   const [drillTitle, setDrillTitle] = useState('');
@@ -728,12 +729,19 @@ const Reports = () => {
     loadOverview();
   }, [loadOverview]);
 
-  // Load last 12 months Income (invoice_payments) and Expense (expenses) totals
+  // Load monthly Income (invoice_payments) and Expense (expenses) totals for selected period
   useEffect(() => {
     const loadMonthlyIncomeExpense = async () => {
       try {
         const end = new Date(`${endDate}T00:00:00`);
-        const start = new Date(end.getFullYear(), end.getMonth() - 11, 1);
+        let start: Date;
+        if (monthlyPeriod === 'ytd') {
+          start = new Date(end.getFullYear(), 0, 1);
+        } else if (monthlyPeriod === '6m') {
+          start = new Date(end.getFullYear(), end.getMonth() - 5, 1);
+        } else {
+          start = new Date(end.getFullYear(), end.getMonth() - 11, 1);
+        }
         const startStr = start.toISOString().slice(0, 10);
         const endStr = new Date(end.getFullYear(), end.getMonth() + 1, 0).toISOString().slice(0, 10);
 
@@ -786,7 +794,8 @@ const Reports = () => {
         }
 
         const series: Array<{ month: string; income: number; expense: number }> = [];
-        for (let i = 0; i < 12; i++) {
+        const monthsCount = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
+        for (let i = 0; i < monthsCount; i++) {
           const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
           const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
           const label = d.toLocaleString(undefined, { month: 'short' });
@@ -800,7 +809,7 @@ const Reports = () => {
       }
     };
     loadMonthlyIncomeExpense();
-  }, [endDate, locationFilter]);
+  }, [endDate, locationFilter, monthlyPeriod]);
 
   const refreshData = async () => {
     setLoading(true);
@@ -1126,10 +1135,25 @@ const Reports = () => {
                 {/* Monthly Income vs Expense Bar Chart */}
                 <Card className="shadow-sm border-slate-200">
                   <CardHeader className="border-b border-slate-200">
-                    <CardTitle className="flex items-center gap-2">
-                      <BarChart3 className="w-5 h-5 text-blue-600" />
-                      Monthly Income vs Expense
-                    </CardTitle>
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <CardTitle className="flex items-center gap-2">
+                        <BarChart3 className="w-5 h-5 text-blue-600" />
+                        Monthly Income vs Expense
+                      </CardTitle>
+                      <div className="flex items-center gap-2">
+                        <Label className="sr-only">Period</Label>
+                        <Select value={monthlyPeriod} onValueChange={(v) => setMonthlyPeriod(v as '6m' | '12m' | 'ytd')}>
+                          <SelectTrigger className="w-40">
+                            <SelectValue placeholder="Period" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="6m">Last 6 months</SelectItem>
+                            <SelectItem value="12m">Last 12 months</SelectItem>
+                            <SelectItem value="ytd">Year to date</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                   </CardHeader>
                   <CardContent className="p-4">
                     <div className="h-64">
