@@ -193,6 +193,7 @@ export default function Invoices() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all_time");
+  const [locationFilter, setLocationFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -552,7 +553,8 @@ export default function Invoices() {
     const matchesSearch = ((invoice.invoice_number || "").toLowerCase().includes(normalizedSearch)) ||
                          ((invoice.customer_name || "").toLowerCase().includes(normalizedSearch));
     const matchesStatus = statusFilter === "all" || invoice.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesLocation = locationFilter === "all" || ((invoice as any).location_id || null) === locationFilter;
+    return matchesSearch && matchesStatus && matchesLocation;
   });
 
   const dateFilteredInvoices = filterInvoicesByDateRange(filteredInvoices, dateFilter);
@@ -716,6 +718,20 @@ export default function Invoices() {
                   {DATE_FILTERS.map((filter) => (
                     <SelectItem key={filter.value} value={filter.value}>
                       {filter.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={locationFilter} onValueChange={setLocationFilter}>
+                <SelectTrigger className="w-44">
+                  <SelectValue placeholder="Location" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Locations</SelectItem>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc.id} value={loc.id}>
+                      {loc.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
