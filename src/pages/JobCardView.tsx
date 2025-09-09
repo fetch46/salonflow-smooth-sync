@@ -269,65 +269,6 @@ export default function JobCardView() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5" /> Invoice
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!invoice ? (
-                <div className="text-sm text-muted-foreground">
-                  No invoice linked. You can create one from the top right.
-                </div>
-              ) : (
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Invoice #</span>
-                    <span className="font-medium">{invoice.invoice_number}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Status</span>
-                    <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize bg-secondary text-secondary-foreground">
-                      {invoice.status}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Total</span>
-                    <span className="font-semibold">{formatCurrency(Number(invoice.total_amount || 0))}</span>
-                  </div>
-                  <Separator />
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Customer</span>
-                      <span className="font-medium">{invoice.customer_name || '—'}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Date</span>
-                      <span className="font-medium">{invoice.created_at ? new Date(invoice.created_at).toLocaleDateString() : '—'}</span>
-                    </div>
-                    {invoice.due_date && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Due</span>
-                        <span className="font-medium">{new Date(invoice.due_date).toLocaleDateString()}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="pt-2 flex gap-2">
-                    <Button variant="outline" className="w-full" onClick={() => navigate(`/invoices/${invoice.id}/edit`)}>
-                      View / Edit
-                    </Button>
-                    <Button className="w-full" onClick={() => navigate(`/payments/received/new?invoiceId=${invoice.id}`)}>
-                      Record Payment
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
         <div className="lg:col-span-8">
           <div ref={pdfRef} className="space-y-6 bg-background">
         <Card>
@@ -540,6 +481,64 @@ export default function JobCardView() {
           </Card>
         ) : null}
           </div>
+        </div>
+        <div className="lg:col-span-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" /> Invoice
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!invoice ? (
+                <div className="text-sm text-muted-foreground">
+                  No invoice linked. You can create one from the top right.
+                </div>
+              ) : (
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Invoice #</span>
+                    <span className="font-medium">{invoice.invoice_number}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Status</span>
+                    <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize bg-secondary text-secondary-foreground">
+                      {invoice.status}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Total</span>
+                    <span className="font-semibold">{formatCurrency(Number(invoice.total_amount || 0))}</span>
+                  </div>
+                  <Separator />
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Customer</span>
+                      <span className="font-medium">{invoice.customer_name || '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Date</span>
+                      <span className="font-medium">{invoice.created_at ? new Date(invoice.created_at).toLocaleDateString() : '—'}</span>
+                    </div>
+                    {invoice.due_date && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Due</span>
+                        <span className="font-medium">{new Date(invoice.due_date).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="pt-2 flex gap-2">
+                    <Button variant="outline" className="w-full" onClick={() => navigate(`/invoices/${invoice.id}/edit`)}>
+                      View / Edit
+                    </Button>
+                    <Button className="w-full" onClick={() => navigate(`/payments/received/new?invoiceId=${invoice.id}`)}>
+                      Record Payment
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
