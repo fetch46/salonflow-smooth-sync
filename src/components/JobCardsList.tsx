@@ -292,17 +292,17 @@ export default function JobCardsList({ onRefresh, searchTerm, statusFilter, view
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Job Cards Grid */}
-      <div className="grid grid-cols-responsive-cards gap-2 sm:gap-3">
+      <div className="grid-responsive-cards">
         {filteredJobCards.length === 0 ? (
           <Card>
-            <CardContent className="p-8 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
-                <Calendar className="w-8 h-8 text-slate-400" />
+            <CardContent className="p-6 text-center">
+              <div className="w-14 h-14 mx-auto mb-3 bg-slate-100 rounded-full flex items-center justify-center">
+                <Calendar className="icon-responsive-lg text-slate-400" />
               </div>
-              <h3 className="text-lg font-medium text-slate-900 mb-2">No job cards found</h3>
-              <p className="text-slate-600 mb-4">
+              <h3 className="text-responsive-lg font-medium text-slate-900 mb-1">No job cards found</h3>
+              <p className="text-slate-600 text-responsive-sm">
                 {searchTerm || statusFilter !== "all" 
                   ? "Try adjusting your search or filters" 
                   : "Create your first job card to get started"}
@@ -311,20 +311,20 @@ export default function JobCardsList({ onRefresh, searchTerm, statusFilter, view
           </Card>
         ) : (
           filteredJobCards.map((card) => (
-            <Card key={card.id} className="hover:shadow-lg transition-all duration-200 min-w-0">
+            <Card key={card.id} className="freshsales-card">
               <CardContent className="p-3 sm:p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 space-y-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 space-y-3">
                     {/* Header */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <Badge variant="outline" className="font-mono text-responsive-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                        <Badge variant="outline" className="font-mono text-responsive-xs no-wrap-sm">
                           {card.job_number}
                         </Badge>
                         {getStatusBadge(card.status)}
                       </div>
-                      <div className="text-right">
-                        <div className="text-responsive-lg sm:text-responsive-xl font-semibold text-slate-900">
+                      <div className="text-right shrink-0">
+                        <div className="text-responsive-lg sm:text-responsive-xl font-semibold text-slate-900 leading-tight">
                           {formatCurrency(card.total_amount)}
                         </div>
                         <div className="text-responsive-xs text-slate-500">
@@ -334,21 +334,21 @@ export default function JobCardsList({ onRefresh, searchTerm, statusFilter, view
                     </div>
 
                     {/* Client & Staff Info */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {/* Client */}
-                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                        <Avatar className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
+                      <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                        <Avatar className="w-8 h-8 sm:w-9 sm:h-9 flex-shrink-0">
                           <AvatarFallback className="bg-blue-100 text-blue-600 text-responsive-xs">
                             {card.client?.full_name.split(' ').map(n => n[0]).join('') || 'C'}
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
-                          <div className="font-medium text-slate-900 truncate text-responsive-sm">
+                          <div className="font-medium text-slate-900 truncate text-responsive-base">
                             {card.client?.full_name || 'Unknown Client'}
                           </div>
                           {card.client?.phone && (
-                            <div className="flex items-center gap-1 text-responsive-xs text-slate-500">
-                              <Phone className="w-3 h-3 flex-shrink-0" />
+                            <div className="flex items-center gap-1 text-responsive-xs text-slate-500 min-w-0">
+                              <Phone className="icon-responsive-xs flex-shrink-0" />
                               <span className="truncate">{card.client.phone}</span>
                             </div>
                           )}
@@ -356,14 +356,14 @@ export default function JobCardsList({ onRefresh, searchTerm, statusFilter, view
                       </div>
 
                       {/* Staff */}
-                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                        <Avatar className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
+                      <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                        <Avatar className="w-8 h-8 sm:w-9 sm:h-9 flex-shrink-0">
                           <AvatarFallback className="bg-orange-100 text-orange-600 text-responsive-xs">
                             {card.staff?.full_name.split(' ').map(n => n[0]).join('') || 'S'}
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
-                          <div className="font-medium text-slate-900 truncate text-responsive-sm">
+                          <div className="font-medium text-slate-900 truncate text-responsive-base">
                             {card.staff?.full_name || 'Unassigned'}
                           </div>
                           <div className="text-responsive-xs text-slate-500">Staff Member</div>
@@ -373,9 +373,9 @@ export default function JobCardsList({ onRefresh, searchTerm, statusFilter, view
 
                     {/* Services */}
                     {card.services && card.services.length > 0 && (
-                      <div className="space-y-1 sm:space-y-2">
+                      <div className="space-y-1.5">
                         <div className="text-responsive-sm font-medium text-slate-600">Services</div>
-                        <div className="flex flex-wrap gap-1 sm:gap-2">
+                        <div className="flex flex-wrap gap-1.5">
                           {card.services.map((service) => (
                             <Badge key={service.id} variant="secondary" className="text-responsive-xs">
                               {service.name}
@@ -387,22 +387,22 @@ export default function JobCardsList({ onRefresh, searchTerm, statusFilter, view
 
                     {/* Timing */}
                     {(card.start_time || card.end_time) && (
-                      <div className="flex items-center gap-4 text-xs text-slate-500">
+                      <div className="flex flex-wrap items-center gap-3 text-responsive-xs text-slate-500">
                         {card.start_time && (
                           <div className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
+                            <Clock className="icon-responsive-xs" />
                             Started: {format(new Date(card.start_time), 'h:mm a')}
                           </div>
                         )}
                         {card.end_time && (
                           <div className="flex items-center gap-1">
-                            <CheckCircle className="w-3 h-3" />
+                            <CheckCircle className="icon-responsive-xs" />
                             Completed: {format(new Date(card.end_time), 'h:mm a')}
                           </div>
                         )}
                         {getDuration(card.start_time, card.end_time) && (
                           <div className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
+                            <Clock className="icon-responsive-xs" />
                             Duration: {getDuration(card.start_time, card.end_time)}
                           </div>
                         )}
@@ -411,50 +411,50 @@ export default function JobCardsList({ onRefresh, searchTerm, statusFilter, view
 
                     {/* Notes */}
                     {card.notes && (
-                      <div className="text-sm text-slate-600 line-clamp-2">
+                      <div className="text-responsive-sm text-slate-600 line-clamp-2">
                         {card.notes}
                       </div>
                     )}
                   </div>
 
                   {/* Actions */}
-                  <div className="ml-4">
+                  <div className="ml-2">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="w-4 h-4" />
+                        <Button variant="ghost" size="sm" className="btn-compact-icon">
+                          <MoreHorizontal className="icon-responsive-sm" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => navigate(`/job-cards/${card.id}`)}>
-                          <Eye className="w-4 h-4 mr-2" />
+                          <Eye className="icon-responsive-sm mr-2" />
                           View Details
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => navigate(`/job-cards/${card.id}/edit`)}>
-                          <Edit className="w-4 h-4 mr-2" />
+                          <Edit className="icon-responsive-sm mr-2" />
                           Edit
                         </DropdownMenuItem>
                         {card.status !== 'completed' && (
                           <>
                             <DropdownMenuItem onClick={() => handleStatusUpdate(card.id, 'in_progress')}>
-                              <PlayCircle className="w-4 h-4 mr-2" />
+                              <PlayCircle className="icon-responsive-sm mr-2" />
                               Start
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleStatusUpdate(card.id, 'completed')}>
-                              <CheckCircle className="w-4 h-4 mr-2" />
+                              <CheckCircle className="icon-responsive-sm mr-2" />
                               Complete
                             </DropdownMenuItem>
                           </>
                         )}
                         <DropdownMenuItem onClick={() => createInvoiceFromJobCard(card)}>
-                          <Receipt className="w-4 h-4 mr-2" />
+                          <Receipt className="icon-responsive-sm mr-2" />
                           Create Invoice
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => handleDeleteJobCard(card.id)}
                           className="text-red-600"
                         >
-                          <Trash2 className="w-4 h-4 mr-2" />
+                          <Trash2 className="icon-responsive-sm mr-2" />
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
