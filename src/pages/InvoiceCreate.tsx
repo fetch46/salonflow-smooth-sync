@@ -70,6 +70,7 @@ export default function InvoiceCreate() {
     jobcard_reference: "",
     location_id: "",
   });
+  const jobcardRequired = Boolean(((organization as any)?.settings || {})?.jobcard_required_on_invoice);
 
   const [newItem, setNewItem] = useState({
     service_id: "",
@@ -406,6 +407,7 @@ export default function InvoiceCreate() {
     e.preventDefault();
     if (selectedItems.length === 0) return toast.error('Please add at least one item to the invoice');
     if (!formData.location_id) return toast.error('Please select a location');
+    if (jobcardRequired && !formData.jobcard_reference) return toast.error('Job card reference is required by settings');
     try {
       // Generate next invoice number from configured series
       const invoiceNumber = await getNextNumber('invoice');
@@ -736,7 +738,7 @@ Thank you for your business!`;
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="jobcard_reference">Job Card Reference</Label>
+                <Label htmlFor="jobcard_reference">Job Card Reference{jobcardRequired ? ' *' : ''}</Label>
                 <Select 
                   value={formData.jobcard_reference} 
                   onValueChange={(value) => {
@@ -755,6 +757,9 @@ Thank you for your business!`;
                     ))}
                   </SelectContent>
                 </Select>
+                {jobcardRequired && !formData.jobcard_reference && (
+                  <p className="text-xs text-red-600 mt-1">Job card is required by accounting settings.</p>
+                )}
                 {customerJobCards.length > 0 && (
                   <div className="mt-2 space-y-1">
                     <p className="text-sm text-slate-600">Completed job cards for this customer:</p>
