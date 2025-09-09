@@ -30,6 +30,13 @@ export default function InvoiceEdit() {
   const [locations, setLocations] = useState<Array<{ id: string; name: string; is_default?: boolean; is_active?: boolean }>>([]);
   const [defaultLocationIdForUser, setDefaultLocationIdForUser] = useState<string | null>(null);
   const [customerJobCards, setCustomerJobCards] = useState<Array<{ id: string; job_card_number: string; total_amount: number }>>([]);
+  const [selectedJobCardInfo, setSelectedJobCardInfo] = useState<{
+    id: string;
+    job_card_number: string;
+    client_name?: string;
+    total_amount: number;
+    service_count?: number;
+  } | null>(null);
 
   const [formData, setFormData] = useState({
     customer_id: "",
@@ -156,6 +163,32 @@ export default function InvoiceEdit() {
           commission_percentage: it.commission_percentage ?? 0,
           total_price: it.total_price,
         })));
+        // Setup Job Card Summary if invoice has a reference
+        if (inv) {
+          const refId = (inv as any)?.jobcard_reference || (inv as any)?.jobcard_id;
+          if (refId) {
+            try {
+              const { data: jcRow } = await supabase
+                .from('job_cards')
+                .select(`id, job_card_number, total_amount, clients(full_name)`) 
+                .eq('id', refId)
+                .maybeSingle();
+              if (jcRow) {
+                const basic = {
+                  id: (jcRow as any).id as string,
+                  job_card_number: (jcRow as any).job_card_number as string,
+                  client_name: (jcRow as any).clients?.full_name as string | undefined,
+                  total_amount: Number((jcRow as any).total_amount || 0),
+                };
+                const { count } = await supabase
+                  .from('job_card_services')
+                  .select('id', { count: 'exact', head: true })
+                  .eq('job_card_id', refId);
+                setSelectedJobCardInfo({ ...basic, service_count: typeof count === 'number' ? count : undefined });
+              }
+            } catch {}
+          }
+        }
       } catch (e) {
         console.error(e);
       } finally {
@@ -268,6 +301,13 @@ export default function InvoiceEdit() {
         }));
 
         setSelectedItems(invoiceItems);
+        // Update selected job card summary info for sidebar card
+        const basic = jobCards.find(jc => jc.id === jobCardId) || null;
+        if (basic) {
+          setSelectedJobCardInfo({ ...basic, service_count: jobCardServices.length });
+        } else {
+          setSelectedJobCardInfo(null);
+        }
         toast.success(`Added ${invoiceItems.length} service(s) from job card`);
       } else {
         toast.info("No services found for this job card");
@@ -678,38 +718,34 @@ export default function InvoiceEdit() {
 
       {/* Invoice Preview Sidebar */}
       <div className="w-full xl:w-80 space-y-4">
-        {/* Invoice Details (Sidebar) */}
-        <Card className="bg-white border border-slate-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-semibold text-slate-900">Invoice Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span>Invoice #:</span>
-              <span className="font-medium">{invoiceMeta?.invoice_number || id?.slice(-6) || 'TBD'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Date:</span>
-              <span className="font-medium">{invoiceMeta?.created_at ? new Date(invoiceMeta.created_at).toLocaleDateString() : new Date().toLocaleDateString()}</span>
-            </div>
-            {(formData.due_date || invoiceMeta?.due_date) && (
+        {/* Job Card Summary (replaces Invoice Details) */}
+        {selectedJobCardInfo && (
+          <Card className="bg-white border border-slate-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg font-semibold text-slate-900">Job Card Summary</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span>Due:</span>
-                <span className="font-medium">{(invoiceMeta?.due_date || formData.due_date) ? new Date((invoiceMeta?.due_date || formData.due_date) as any).toLocaleDateString() : ''}</span>
+                <span>Reference:</span>
+                <span className="font-medium">{selectedJobCardInfo.job_card_number}</span>
               </div>
-            )}
-            {invoiceMeta?.payment_method && (
+              {selectedJobCardInfo.client_name && (
+                <div className="flex justify-between">
+                  <span>Client:</span>
+                  <span className="font-medium">{selectedJobCardInfo.client_name}</span>
+                </div>
+              )}
               <div className="flex justify-between">
-                <span>Payment:</span>
-                <span className="font-medium">{invoiceMeta.payment_method}</span>
+                <span>Services:</span>
+                <span className="font-medium">{typeof selectedJobCardInfo.service_count === 'number' ? selectedJobCardInfo.service_count : selectedItems.length}</span>
               </div>
-            )}
-            <div className="flex justify-between">
-              <span>Location:</span>
-              <span className="font-medium">{(() => { const lid = formData.location_id || (invoiceMeta as any)?.location_id; const loc = locations.find(l => l.id === lid); return loc?.name || '—'; })()}</span>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="flex justify-between">
+                <span>Total:</span>
+                <span className="font-semibold">{symbol}{Number(selectedJobCardInfo.total_amount || 0).toFixed(2)}</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         {/* Invoice Preview */}
         <Card className="bg-white border border-slate-200">
           <CardHeader className="pb-3">

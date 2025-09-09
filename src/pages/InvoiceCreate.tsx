@@ -1061,33 +1061,7 @@ Thank you for your business!`;
 
       {/* Invoice Preview Sidebar */}
       <div className="w-full xl:w-80 space-y-4">
-        {/* Invoice Details (Sidebar) */}
-        <Card className="bg-white border border-slate-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-semibold text-slate-900">Invoice Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span>Invoice #:</span>
-              <span className="font-medium">TBD</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Date:</span>
-              <span className="font-medium">{new Date().toLocaleDateString()}</span>
-            </div>
-            {formData.due_date && (
-              <div className="flex justify-between">
-                <span>Due:</span>
-                <span className="font-medium">{new Date(formData.due_date).toLocaleDateString()}</span>
-              </div>
-            )}
-            <div className="flex justify-between">
-              <span>Location:</span>
-              <span className="font-medium">{(() => { const lid = formData.location_id; const loc = uniqueLocations.find(l => l.id === lid); return loc?.name || '—'; })()}</span>
-            </div>
-          </CardContent>
-        </Card>
-        {/* Selected Job Card Summary */}
+        {/* Job Card Summary (replaces Invoice Details) */}
         {selectedJobCardInfo && (
           <Card className="bg-white border border-slate-200">
             <CardHeader className="pb-3">
