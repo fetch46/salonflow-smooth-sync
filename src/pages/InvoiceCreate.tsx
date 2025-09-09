@@ -365,6 +365,29 @@ export default function InvoiceCreate() {
     if (!jobCardId) return;
     
     try {
+      // Prefill and lock customer from selected job card
+      try {
+        const { data: jcRow } = await supabase
+          .from('job_cards')
+          .select('id, client_id, clients:client_id ( id, full_name, email, phone )')
+          .eq('id', jobCardId)
+          .maybeSingle();
+        if (jcRow) {
+          const cli = (jcRow as any).clients;
+          if (cli?.id) {
+            setCustomers(prev => (prev.some(c => c.id === cli.id) ? prev : [...prev, { id: cli.id, full_name: cli.full_name, email: cli.email, phone: cli.phone }]));
+          }
+          setFormData(prev => ({
+            ...prev,
+            customer_id: (jcRow as any).client_id || prev.customer_id,
+            customer_name: cli?.full_name || prev.customer_name,
+            customer_email: cli?.email || prev.customer_email,
+            customer_phone: cli?.phone || prev.customer_phone,
+            jobcard_id: jobCardId,
+          }));
+        }
+      } catch {}
+
       // Fetch job card services with their details
       const { data: jobCardServices, error } = await supabase
         .from('job_card_services')
@@ -422,6 +445,25 @@ export default function InvoiceCreate() {
     if (selectedItems.length === 0) return toast.error('Please add at least one item to the invoice');
     if (!formData.location_id) return toast.error('Please select a location');
     if (jobcardRequired && !formData.jobcard_reference) return toast.error('Job card reference is required by settings');
+    // Enforce invoice customer equals job card customer when a job card is selected
+    if (formData.jobcard_reference) {
+      try {
+        const { data: jcMin } = await supabase
+          .from('job_cards')
+          .select('id, client_id')
+          .eq('id', formData.jobcard_reference)
+          .maybeSingle();
+        const jobCustomerId = (jcMin as any)?.client_id || '';
+        if (jobCustomerId && formData.customer_id && jobCustomerId !== formData.customer_id) {
+          toast.error('Selected Job Card belongs to a different customer');
+          return;
+        }
+        // If customer_id is empty, adopt job card customer
+        if (!formData.customer_id && jobCustomerId) {
+          setFormData(prev => ({ ...prev, customer_id: jobCustomerId }));
+        }
+      } catch {}
+    }
     try {
       // Generate next invoice number from configured series
       const invoiceNumber = await getNextNumber('invoice');
@@ -670,7 +712,11 @@ Thank you for your business!`;
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="customer_id">Existing Customer</Label>
-                <Select value={formData.customer_id} onValueChange={async (value) => {
+                <Select value={formData.customer_id} disabled={Boolean(formData.jobcard_reference)} onValueChange={async (value) => {
+                  if (formData.jobcard_reference) {
+                    toast.error("Customer is controlled by the selected job card");
+                    return;
+                  }
                   const customer = customers.find(c => c.id === value);
                   setFormData({
                     ...formData,
@@ -699,7 +745,7 @@ Thank you for your business!`;
                     setCustomerJobCards([]);
                   }
                 }}>
-                  <SelectTrigger>
+                  <SelectTrigger disabled={Boolean(formData.jobcard_reference)}>
                     <SelectValue placeholder="Select existing customer" />
                   </SelectTrigger>
                   <SelectContent>
@@ -711,7 +757,7 @@ Thank you for your business!`;
               </div>
               <div className="space-y-2">
                 <Label htmlFor="customer_name">Customer Name *</Label>
-                <Input id="customer_name" value={formData.customer_name} onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })} required />
+                <Input id="customer_name" value={formData.customer_name} onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })} required readOnly={Boolean(formData.jobcard_reference)} />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -752,16 +798,16 @@ Thank you for your business!`;
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="jobcard_reference">Job Card Reference{jobcardRequired ? ' *' : ''}</Label>
+                <Label htmlFor="jobcard_reference" className={jobcardRequired && !formData.jobcard_reference ? 'text-red-700' : ''}>Job Card Reference{jobcardRequired ? ' *' : ''}</Label>
                 <Select 
                   value={formData.jobcard_reference} 
                   onValueChange={(value) => {
-                    setFormData({ ...formData, jobcard_reference: value });
+                    setFormData({ ...formData, jobcard_reference: value, jobcard_id: value });
                     handleJobCardSelection(value);
                   }}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a job card" />
+                  <SelectTrigger className={jobcardRequired && !formData.jobcard_reference ? 'border-red-500 ring-1 ring-red-500 bg-red-50' : ''}>
+                    <SelectValue placeholder={jobcardRequired ? 'Select a job card (required)' : 'Select a job card'} />
                   </SelectTrigger>
                   <SelectContent>
                     {jobCards.map((jc) => (
