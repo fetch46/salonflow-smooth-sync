@@ -65,9 +65,10 @@ interface JobCardsListProps {
   onRefresh?: () => void;
   searchTerm?: string;
   statusFilter?: string;
+  viewMode?: "list" | "cards";
 }
 
-export default function JobCardsList({ onRefresh, searchTerm, statusFilter }: JobCardsListProps) {
+export default function JobCardsList({ onRefresh, searchTerm, statusFilter, viewMode }: JobCardsListProps) {
   const { formatCurrency } = useRegionalSettings();
   const [jobCards, setJobCards] = useState<JobCard[]>([]);
   const [loading, setLoading] = useState(true);

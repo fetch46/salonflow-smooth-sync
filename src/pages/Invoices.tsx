@@ -600,31 +600,10 @@ export default function Invoices() {
               <RefreshCw className={`w-4 h-4 mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="btn-compact">
-                  <Download className="w-4 h-4 mr-1.5" />
-                  Export
-                  <ChevronDown className="w-4 h-4 ml-1" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>Export Options</DropdownMenuLabel>
-                <DropdownMenuItem>
-                  <FileText className="w-4 h-4 mr-2" />
-                  Export to PDF
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <FileCheck className="w-4 h-4 mr-2" />
-                  Export to Excel
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <BarChart3 className="w-4 h-4 mr-2" />
-                  Export Report
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button onClick={() => navigate('/invoices/new')} className="btn-compact">
+            <Button
+              onClick={() => navigate("/invoices/new")}
+              className="btn-theme-primary btn-compact"
+            >
               <Plus className="w-4 h-4 mr-1.5" />
               New Invoice
             </Button>
@@ -788,7 +767,7 @@ export default function Invoices() {
                   <TableHead>Status</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Due Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right">Options</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

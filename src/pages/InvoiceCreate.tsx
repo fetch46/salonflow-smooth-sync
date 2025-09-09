@@ -724,7 +724,7 @@ Thank you for your business!`;
               </div>
               <div className="space-y-2">
                 <Label htmlFor="location_id">Location *</Label>
-                <Select value={formData.location_id} onValueChange={(v) => setFormData({ ...formData, location_id: v })}>
+                <Select value={formData.location_id} onValueChange={(v) => setFormData(prev => ({ ...prev, location_id: v }))}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder={locations.length ? 'Select a location' : 'No locations found'} />
                   </SelectTrigger>
@@ -838,11 +838,11 @@ Thank you for your business!`;
                       const commissionRate = newItem.commission_percentage > 0 
                         ? newItem.commission_percentage 
                         : selectedStaff?.commission_rate || 0;
-                      setNewItem({ 
-                        ...newItem, 
+                      setNewItem(prev => ({ 
+                        ...prev, 
                         staff_id: value,
                         commission_percentage: commissionRate
-                      });
+                      }));
                     }}>
                       <SelectTrigger className="h-9 text-sm">
                         <SelectValue placeholder="Select staff" />
