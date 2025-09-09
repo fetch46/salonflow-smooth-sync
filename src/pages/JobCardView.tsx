@@ -23,6 +23,7 @@ import {
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import { usePermissions } from "@/lib/saas/hooks";
+import { useRegionalSettings } from "@/hooks/useRegionalSettings";
 
 interface JobCardRecord {
   id: string;
@@ -74,8 +75,10 @@ export default function JobCardView() {
   const [staff, setStaff] = useState<Party | null>(null);
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [products, setProducts] = useState<ProductUsageItem[]>([]);
+  const [invoice, setInvoice] = useState<any | null>(null);
 
   const pdfRef = useRef<HTMLDivElement>(null);
+  const { formatCurrency } = useRegionalSettings();
 
   useEffect(() => {
     const load = async () => {
@@ -129,6 +132,31 @@ export default function JobCardView() {
           )
           .eq("job_card_id", id);
         setProducts((prodData || []) as any);
+
+        // Load associated invoice (by jobcard_id or jobcard_reference)
+        try {
+          const { data: invById } = await supabase
+            .from('invoices')
+            .select('*')
+            .eq('jobcard_id', id)
+            .order('created_at', { ascending: false })
+            .limit(1);
+          let found = invById && invById.length ? invById[0] : null;
+
+          if (!found) {
+            const { data: invByRef } = await supabase
+              .from('invoices')
+              .select('*')
+              .eq('jobcard_reference', id)
+              .order('created_at', { ascending: false })
+              .limit(1);
+            found = invByRef && invByRef.length ? invByRef[0] : null;
+          }
+          setInvoice(found as any);
+        } catch (invErr) {
+          console.warn('Failed to load linked invoice', invErr);
+          setInvoice(null);
+        }
       } catch (e: any) {
         console.error("Failed to load job card:", e);
         toast.error(e?.message || "Failed to load job card");
@@ -240,7 +268,68 @@ export default function JobCardView() {
         </div>
       </div>
 
-      <div ref={pdfRef} className="space-y-6 bg-background">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" /> Invoice
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!invoice ? (
+                <div className="text-sm text-muted-foreground">
+                  No invoice linked. You can create one from the top right.
+                </div>
+              ) : (
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Invoice #</span>
+                    <span className="font-medium">{invoice.invoice_number}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Status</span>
+                    <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize bg-secondary text-secondary-foreground">
+                      {invoice.status}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Total</span>
+                    <span className="font-semibold">{formatCurrency(Number(invoice.total_amount || 0))}</span>
+                  </div>
+                  <Separator />
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Customer</span>
+                      <span className="font-medium">{invoice.customer_name || '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Date</span>
+                      <span className="font-medium">{invoice.created_at ? new Date(invoice.created_at).toLocaleDateString() : '—'}</span>
+                    </div>
+                    {invoice.due_date && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Due</span>
+                        <span className="font-medium">{new Date(invoice.due_date).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="pt-2 flex gap-2">
+                    <Button variant="outline" className="w-full" onClick={() => navigate(`/invoices/${invoice.id}/edit`)}>
+                      View / Edit
+                    </Button>
+                    <Button className="w-full" onClick={() => navigate(`/payments/received/new?invoiceId=${invoice.id}`)}>
+                      Record Payment
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-8">
+          <div ref={pdfRef} className="space-y-6 bg-background">
         <Card>
           <CardHeader>
             <CardTitle>Summary</CardTitle>
@@ -450,6 +539,8 @@ export default function JobCardView() {
             </CardContent>
           </Card>
         ) : null}
+          </div>
+        </div>
       </div>
     </div>
   );
