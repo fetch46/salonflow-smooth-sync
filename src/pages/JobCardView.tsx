@@ -303,6 +303,7 @@ export default function JobCardView() {
                 <JobCardStatusManager 
                   jobCardId={card.id} 
                   currentStatus={card.status} 
+                  hideStatic
                   onStatusChange={(newStatus) => setCard(prev => prev ? {...prev, status: newStatus} : null)}
                 />
               </div>

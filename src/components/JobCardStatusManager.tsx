@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +9,7 @@ interface JobCardStatusManagerProps {
   jobCardId: string;
   currentStatus: string;
   onStatusChange?: (newStatus: string) => void;
+  hideStatic?: boolean;
 }
 
 const statusOptions = [
@@ -18,7 +18,7 @@ const statusOptions = [
   { value: 'closed', label: 'Closed', icon: Clock, color: 'bg-gray-500' }
 ];
 
-export default function JobCardStatusManager({ jobCardId, currentStatus, onStatusChange }: JobCardStatusManagerProps) {
+export default function JobCardStatusManager({ jobCardId, currentStatus, onStatusChange, hideStatic = false }: JobCardStatusManagerProps) {
   const [isUpdating, setIsUpdating] = useState(false);
 
   const handleStatusUpdate = async (newStatus: string) => {
@@ -63,15 +63,17 @@ export default function JobCardStatusManager({ jobCardId, currentStatus, onStatu
 
   return (
     <div className="flex items-center gap-3">
-      <div className="flex items-center gap-2">
-        <div className={`p-1.5 rounded-full ${currentOption?.color || 'bg-gray-500'}`}>
-          <Icon className="w-4 h-4 text-white" />
+      {!hideStatic && (
+        <div className="flex items-center gap-2">
+          <div className={`p-1.5 rounded-full ${currentOption?.color || 'bg-gray-500'}`}>
+            <Icon className="w-4 h-4 text-white" />
+          </div>
+          <Badge variant="outline" className="text-sm">
+            {currentOption?.label || currentStatus}
+          </Badge>
         </div>
-        <Badge variant="outline" className="text-sm">
-          {currentOption?.label || currentStatus}
-        </Badge>
-      </div>
-      
+      )}
+
       <Select value={currentStatus} onValueChange={handleStatusUpdate} disabled={isUpdating}>
         <SelectTrigger className="w-40">
           <SelectValue />
