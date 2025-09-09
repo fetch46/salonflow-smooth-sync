@@ -83,21 +83,91 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({
 
       const revenue = invoiceRevenue + jobCardRevenue;
 
-      // COGS from account transactions
-      let cogsQuery = supabase
-        .from('account_transactions')
-        .select('debit_amount, credit_amount, accounts!inner(account_code)')
-        .eq('accounts.account_code', '5001')
-        .gte('transaction_date', startDate)
-        .lte('transaction_date', endDate);
-      
+      // COGS derived from invoice items and job cards
+      // 1) Fetch invoices within period (filtered by location when selected)
+      let invoicesQuery = supabase
+        .from('invoices')
+        .select('id, jobcard_id, location_id, created_at, status')
+        .gte('created_at', startDate)
+        .lte('created_at', endDate);
+
       if (locationFilter !== 'all') {
-        cogsQuery = cogsQuery.eq('location_id', locationFilter);
+        invoicesQuery = invoicesQuery.eq('location_id', locationFilter);
       }
 
-      const { data: cogsData } = await cogsQuery;
-      const cogs = (cogsData || []).reduce((sum: number, t: any) => 
-        sum + (Number(t.debit_amount || 0) - Number(t.credit_amount || 0)), 0);
+      const { data: invoices } = await invoicesQuery;
+      const invoiceList = (invoices || []) as Array<any>;
+      const invoiceIds: string[] = invoiceList.map((inv: any) => inv.id);
+      const jobcardIds: string[] = Array.from(
+        new Set(
+          invoiceList
+            .map((inv: any) => inv.jobcard_id)
+            .filter((id: any) => !!id)
+        )
+      ) as string[];
+
+      let jobCardCogs = 0;
+      let posProductsCogs = 0;
+
+      // 2) Sum cost of products used on job cards that were invoiced in the period
+      if (jobcardIds.length > 0) {
+        try {
+          const { data: jobProducts } = await supabase
+            .from('job_card_products')
+            .select('total_cost, job_card_id')
+            .in('job_card_id', jobcardIds);
+          jobCardCogs = (jobProducts || []).reduce(
+            (sum: number, row: any) => sum + Number(row.total_cost || 0),
+            0
+          );
+        } catch (e) {
+          console.warn('Failed to load job card product costs for COGS', e);
+          jobCardCogs = 0;
+        }
+      }
+
+      // 3) Sum cost of products sold on POS-like invoices (invoices without a linked job card)
+      const posLikeInvoiceIds: string[] = invoiceList
+        .filter((inv: any) => !inv.jobcard_id)
+        .map((inv: any) => inv.id);
+
+      if (posLikeInvoiceIds.length > 0) {
+        try {
+          // Fetch invoice_items for those invoices where product_id is present
+          const { data: posItems } = await supabase
+            .from('invoice_items')
+            .select('invoice_id, product_id, quantity')
+            .in('invoice_id', posLikeInvoiceIds)
+            .not('product_id', 'is', null);
+
+          const items = (posItems || []) as Array<any>;
+          const productIds = Array.from(
+            new Set(items.map((it: any) => it.product_id).filter((id: any) => !!id))
+          ) as string[];
+
+          let costMap = new Map<string, number>();
+          if (productIds.length > 0) {
+            const { data: products } = await supabase
+              .from('inventory_items')
+              .select('id, cost_price')
+              .in('id', productIds);
+            costMap = new Map(
+              (products || []).map((p: any) => [p.id, Number(p.cost_price || 0)])
+            );
+          }
+
+          posProductsCogs = items.reduce((sum: number, it: any) => {
+            const qty = Number(it.quantity || 0);
+            const unitCost = costMap.get(it.product_id) || 0;
+            return sum + qty * unitCost;
+          }, 0);
+        } catch (e) {
+          console.warn('Failed to load POS product costs for COGS', e);
+          posProductsCogs = 0;
+        }
+      }
+
+      const cogs = jobCardCogs + posProductsCogs;
 
       // Expenses
       let expensesQuery = supabase
@@ -315,7 +385,7 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({
               </TableHeader>
               <TableBody>
                 {Object.entries(profitLoss.breakdown.expenses)
-                  .sort((a, b) => b[1] - a[1])
+                  .sort((a, b) => (b[1] as number) - (a[1] as number))
                   .map(([category, amount]) => (
                     <TableRow key={category}>
                       <TableCell className="font-medium">{category}</TableCell>
