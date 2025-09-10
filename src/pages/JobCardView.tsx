@@ -1,547 +1,507 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { toast } from "sonner";
-import JobCardStatusManager from "@/components/JobCardStatusManager";
-import {
-  Calendar,
-  Clock,
-  User,
+import { 
+  ArrowLeft, 
+  Clock, 
+  User, 
+  Phone, 
+  Mail, 
+  MapPin, 
   DollarSign,
-  Pencil,
-  ArrowLeft,
-  Download,
-  ClipboardList,
-    Package,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Edit,
+  Calendar,
+  Wrench,
+  Package,
   FileText,
- } from "lucide-react";
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
-import { usePermissions } from "@/lib/saas/hooks";
-import { useRegionalSettings } from "@/hooks/useRegionalSettings";
-
-interface JobCardRecord {
-  id: string;
-  job_number: string;
-  client_id: string | null;
-  staff_id: string | null;
-  start_time: string | null;
-  end_time: string | null;
-  status: string;
-  total_amount: number;
-  notes?: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Party {
-  id: string;
-  full_name: string;
-  email?: string | null;
-  phone?: string | null;
-}
-
-interface ServiceItem {
-  id: string;
-  service_id: string;
-  staff_id: string | null;
-  quantity: number;
-  unit_price: number;
-  services?: { name: string } | null;
-  staff?: { id: string; full_name: string } | null;
-}
-
-interface ProductUsageItem {
-  id: string;
-  inventory_item_id: string;
-  quantity_used: number;
-  unit_cost: number;
-  total_cost: number;
-  inventory_items?: { id: string; name: string; unit?: string | null } | null;
-}
+  Receipt
+} from "lucide-react";
+import { format } from "date-fns";
+import { toast } from "sonner";
+import PageHeader from "@/components/layout/PageHeader";
 
 export default function JobCardView() {
-  const { canPerformAction } = usePermissions();
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams();
   const navigate = useNavigate();
+  const [jobCard, setJobCard] = useState<any>(null);
+  const [services, setServices] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [invoice, setInvoice] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [card, setCard] = useState<JobCardRecord | null>(null);
-  const [client, setClient] = useState<Party | null>(null);
-  const [staff, setStaff] = useState<Party | null>(null);
-  const [services, setServices] = useState<ServiceItem[]>([]);
-  const [products, setProducts] = useState<ProductUsageItem[]>([]);
-  const [invoice, setInvoice] = useState<any | null>(null);
-
-  const pdfRef = useRef<HTMLDivElement>(null);
-  const { formatCurrency } = useRegionalSettings();
 
   useEffect(() => {
-    const load = async () => {
-      if (!id) return;
-      setLoading(true);
-      try {
-        const { data: jc, error } = await supabase
-          .from("job_cards")
-          .select("*")
-          .eq("id", id)
-          .single();
-        if (error) throw error;
-        setCard(jc as any);
-
-        // Load linked parties
-        if (jc?.client_id) {
-          const { data: cli } = await supabase
-            .from("clients")
-            .select("id, full_name, email, phone")
-            .eq("id", jc.client_id)
-            .maybeSingle();
-          if (cli) setClient(cli as any);
-        }
-        if (jc?.staff_id) {
-          const { data: st } = await supabase
-            .from("staff")
-            .select("id, full_name, email, phone")
-            .eq("id", jc.staff_id)
-            .maybeSingle();
-          if (st) setStaff(st as any);
-        }
-
-        // Load services on this job card
-        const { data: svcData, error: svcErr } = await supabase
-          .from("job_card_services")
-          .select(
-            `id, service_id, staff_id, quantity, unit_price,
-             services:service_id ( name ),
-             staff:staff_id ( id, full_name )`
-          )
-          .eq("job_card_id", id);
-        if (svcErr) throw svcErr;
-        setServices((svcData || []) as any);
-
-        // Load product usage on this job card
-        const { data: prodData } = await supabase
-          .from("job_card_products")
-          .select(
-            `id, inventory_item_id, quantity_used, unit_cost, total_cost,
-             inventory_items:inventory_item_id ( id, name, unit )`
-          )
-          .eq("job_card_id", id);
-        setProducts((prodData || []) as any);
-
-        // Load associated invoice (by jobcard_id or jobcard_reference)
-        try {
-          const { data: invById } = await supabase
-            .from('invoices')
-            .select('*')
-            .eq('jobcard_id', id)
-            .order('created_at', { ascending: false })
-            .limit(1);
-          let found = invById && invById.length ? invById[0] : null;
-
-          if (!found) {
-            const { data: invByRef } = await supabase
-              .from('invoices')
-              .select('*')
-              .eq('jobcard_reference', id)
-              .order('created_at', { ascending: false })
-              .limit(1);
-            found = invByRef && invByRef.length ? invByRef[0] : null;
-          }
-          setInvoice(found as any);
-        } catch (invErr) {
-          console.warn('Failed to load linked invoice', invErr);
-          setInvoice(null);
-        }
-      } catch (e: any) {
-        console.error("Failed to load job card:", e);
-        toast.error(e?.message || "Failed to load job card");
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    if (id) {
+      fetchJobCardDetails();
+    }
   }, [id]);
 
-  const parsedNotes = useMemo(() => {
-    if (!card?.notes) return null;
+  const fetchJobCardDetails = async () => {
     try {
-      return typeof card.notes === "string" ? JSON.parse(card.notes) : card.notes;
-    } catch {
-      return null;
-    }
-  }, [card?.notes]);
+      setLoading(true);
 
-  const servicesSubtotal = useMemo(() => {
-    return services.reduce((sum, s) => sum + (s.quantity || 0) * (s.unit_price || 0), 0);
-  }, [services]);
+      // Fetch job card details
+      const { data: jobCardData, error: jobCardError } = await supabase
+        .from("job_cards")
+        .select(`
+          *,
+          clients:client_id (
+            id, full_name, email, phone, address
+          ),
+          staff:staff_id (
+            id, full_name, email, phone
+          ),
+          business_locations:location_id (
+            id, name, address, phone
+          )
+        `)
+        .eq("id", id)
+        .single();
 
-  const productsSubtotal = useMemo(() => {
-    return products.reduce((sum, p) => sum + (p.total_cost || 0), 0);
-  }, [products]);
+      if (jobCardError) throw jobCardError;
+      setJobCard(jobCardData);
 
-  const handleExportPDF = async () => {
-    try {
-      const element = pdfRef.current;
-      if (!element) return;
-      
+      // Fetch job card services
+      const { data: servicesData } = await supabase
+        .from("job_card_services")
+        .select(`
+          *,
+          services:service_id ( id, name, price, description ),
+          staff:staff_id ( id, full_name )
+        `)
+        .eq("job_card_id", id);
+      setServices(servicesData || []);
 
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        useCORS: true,
-        logging: false,
-        windowWidth: element.scrollWidth,
-      });
-      const imgData = canvas.toDataURL("image/png");
+      // Fetch job card products
+      const { data: productsData } = await supabase
+        .from("job_card_products")
+        .select(`
+          id, inventory_item_id, quantity_used, unit_cost, total_cost,
+          inventory_items:inventory_item_id ( id, name, unit )
+        `)
+        .eq("job_card_id", id);
+      setProducts(productsData || []);
 
-      const pdf = new jsPDF("p", "pt", "a4");
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 24;
-      const imgWidth = pageWidth - margin * 2;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      // Load associated invoice
+      try {
+        const invById = await supabase
+          .from('invoices')
+          .select('*')
+          .eq('jobcard_id', id)
+          .maybeSingle();
+        
+        let found = invById.data;
 
-      let heightLeft = imgHeight;
-      let position = margin;
-
-      pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight - margin * 2;
-
-      while (heightLeft > 0) {
-        pdf.addPage();
-        position = margin - (imgHeight - heightLeft);
-        pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight - margin * 2;
+        if (!found) {
+          const invByRef = await supabase
+            .from('invoices')
+            .select('*')
+            .eq('jobcard_reference', id)
+            .maybeSingle();
+          
+          found = invByRef.data;
+        }
+        
+        setInvoice(found);
+      } catch (invoiceError) {
+        console.error("Error loading invoice:", invoiceError);
       }
 
-      pdf.save(`${card?.job_number || "job-card"}.pdf`);
-    } catch (e: any) {
-      console.error("Failed to export PDF", e);
-      toast.error(e?.message || "Failed to export PDF");
+    } catch (error: any) {
+      console.error("Error fetching job card:", error);
+      toast.error(error.message || "Failed to load job card details");
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'in_progress':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800 border-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return CheckCircle;
+      case 'in_progress':
+        return Clock;
+      case 'pending':
+        return AlertCircle;
+      case 'cancelled':
+        return XCircle;
+      default:
+        return Clock;
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
   };
 
   if (loading) {
     return (
-      <div className="p-6">
-        <p className="text-sm text-muted-foreground">Loading...</p>
+      <div className="space-y-6">
+        <PageHeader 
+          title="Loading Job Card..." 
+          subtitle="Please wait while we fetch the details"
+        />
+        <div className="grid gap-6">
+          <div className="h-48 bg-gray-100 animate-pulse rounded-lg"></div>
+          <div className="h-32 bg-gray-100 animate-pulse rounded-lg"></div>
+        </div>
       </div>
     );
   }
 
-  if (!card) {
+  if (!jobCard) {
     return (
-      <div className="p-6">
-        <p className="text-sm text-destructive">Job card not found.</p>
-        <Button className="mt-4" variant="secondary" onClick={() => navigate(-1)}>
-          Go Back
-        </Button>
+      <div className="space-y-6">
+        <PageHeader title="Job Card Not Found" subtitle="The requested job card could not be found" />
+        <Card>
+          <CardContent className="pt-6 text-center">
+            <p className="text-gray-500 mb-4">This job card may have been deleted or the ID is invalid.</p>
+            <Button onClick={() => navigate('/job-cards')} variant="outline">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Job Cards
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
+
+  const StatusIcon = getStatusIcon(jobCard.status);
 
   return (
-    <div className="w-full max-w-[1600px] 2xl:max-w-[1760px] mx-auto px-2 sm:px-3 md:px-4 lg:px-5 xl:px-6 py-4 space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Job Card</h1>
-          <div className="text-sm text-muted-foreground">#{card.job_number}</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => navigate(-1)}>
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back
-          </Button>
-          <Button variant="outline" onClick={handleExportPDF}>
-            <Download className="w-4 h-4 mr-2" /> Export PDF
-          </Button>
-          <Button variant="outline" onClick={() => navigate(`/invoices?fromJobCard=${card.id}`)}>
-            <FileText className="w-4 h-4 mr-2" /> Create Invoice
-          </Button>
-          <Button onClick={() => navigate(`/job-cards/${card.id}/edit`)}>
-            <Pencil className="w-4 h-4 mr-2" /> Edit
+    <div className="space-y-6">
+      <PageHeader 
+        title={`Job Card ${jobCard.job_number || jobCard.id}`}
+        subtitle={`Created ${format(new Date(jobCard.created_at), 'PPP')}`}
+      />
+
+      {/* Header Section */}
+      <div className="flex items-center justify-between">
+        <Button 
+          variant="outline" 
+          onClick={() => navigate('/job-cards')}
+          className="flex items-center gap-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Job Cards
+        </Button>
+        
+        <div className="flex items-center gap-3">
+          <Badge 
+            variant="outline" 
+            className={`px-3 py-1 border ${getStatusColor(jobCard.status)}`}
+          >
+            <StatusIcon className="w-3 h-3 mr-1" />
+            {jobCard.status.replace('_', ' ').toUpperCase()}
+          </Badge>
+          
+          <Button 
+            onClick={() => navigate(`/job-cards/${id}/edit`)}
+            className="flex items-center gap-2"
+          >
+            <Edit className="w-4 h-4" />
+            Edit Job Card
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 xl:gap-8">
-        <div className="lg:col-span-9 xl:col-span-9 2xl:col-span-10">
-          <div ref={pdfRef} className="space-y-6 bg-background">
-        <Card>
-          <CardHeader>
-            <CardTitle>Summary</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="w-4 h-4" />
-                <span>
-                  Start: {card.start_time ? new Date(card.start_time).toLocaleString() : "—"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Clock className="w-4 h-4" />
-                <span>End: {card.end_time ? new Date(card.end_time).toLocaleString() : "—"}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <DollarSign className="w-4 h-4" />
-                <span>Total: {Number(card.total_amount || 0)}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <User className="w-4 h-4" />
-                <span>Client: {client?.full_name || "—"}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <User className="w-4 h-4" />
-                <span>Primary Staff: {staff?.full_name || "—"}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <JobCardStatusManager 
-                  jobCardId={card.id} 
-                  currentStatus={card.status} 
-                  hideStatic
-                  onStatusChange={(newStatus) => setCard(prev => prev ? {...prev, status: newStatus} : null)}
-                />
-              </div>
-            </div>
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="services">Services</TabsTrigger>
+          <TabsTrigger value="products">Products</TabsTrigger>
+          <TabsTrigger value="invoice">Invoice</TabsTrigger>
+        </TabsList>
 
-            {parsedNotes && (
-              <div className="pt-2">
-                <Separator className="my-2" />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  {parsedNotes.technicianType && (
-                    <div>
-                      <div className="font-medium">Technician Type</div>
-                      <div className="text-muted-foreground capitalize">{parsedNotes.technicianType}</div>
-                    </div>
-                  )}
-                  {parsedNotes.preferredStyle && (
-                    <div>
-                      <div className="font-medium">Preferred Style</div>
-                      <div className="text-muted-foreground">{parsedNotes.preferredStyle}</div>
-                    </div>
-                  )}
-                  {parsedNotes.allergies && (
-                    <div className="md:col-span-3">
-                      <div className="font-medium">Allergies / Sensitivities</div>
-                      <div className="text-muted-foreground whitespace-pre-wrap">
-                        {parsedNotes.allergies}
-                      </div>
-                    </div>
-                  )}
-                  {parsedNotes.specialConcerns && (
-                    <div className="md:col-span-3">
-                      <div className="font-medium">Special Concerns</div>
-                      <div className="text-muted-foreground whitespace-pre-wrap">
-                        {parsedNotes.specialConcerns}
-                      </div>
-                    </div>
-                  )}
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Client Information */}
+            <Card>
+              <CardHeader className="flex flex-row items-center space-y-0 pb-3">
+                <div className="flex items-center space-x-2">
+                  <User className="w-5 h-5 text-blue-600" />
+                  <CardTitle className="text-lg">Client Information</CardTitle>
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {jobCard.clients ? (
+                  <>
+                    <div>
+                      <p className="font-medium text-gray-900">{jobCard.clients.full_name}</p>
+                    </div>
+                    {jobCard.clients.email && (
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Mail className="w-4 h-4 mr-2" />
+                        {jobCard.clients.email}
+                      </div>
+                    )}
+                    {jobCard.clients.phone && (
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Phone className="w-4 h-4 mr-2" />
+                        {jobCard.clients.phone}
+                      </div>
+                    )}
+                    {jobCard.clients.address && (
+                      <div className="flex items-center text-sm text-gray-600">
+                        <MapPin className="w-4 h-4 mr-2" />
+                        {jobCard.clients.address}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-gray-500">No client information available</p>
+                )}
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ClipboardList className="w-5 h-5" /> Services Performed
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Service</TableHead>
-                    <TableHead>Assigned Staff</TableHead>
-                    <TableHead className="text-right">Qty</TableHead>
-                    <TableHead className="text-right">Unit Price</TableHead>
-                    <TableHead className="text-right">Line Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {services.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
-                        No services recorded
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    services.map((s) => (
-                      <TableRow key={s.id}>
-                        <TableCell className="font-medium">{s.services?.name || "Service"}</TableCell>
-                        <TableCell>{s.staff?.full_name || "—"}</TableCell>
-                        <TableCell className="text-right">{s.quantity || 1}</TableCell>
-                        <TableCell className="text-right">{Number(s.unit_price || 0).toFixed(2)}</TableCell>
-                        <TableCell className="text-right">
-                          {Number((s.quantity || 1) * (s.unit_price || 0))}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                  {services.length > 0 && (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-right font-medium">
-                        Subtotal
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {servicesSubtotal}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+            {/* Job Details */}
+            <Card>
+              <CardHeader className="flex flex-row items-center space-y-0 pb-3">
+                <div className="flex items-center space-x-2">
+                  <Wrench className="w-5 h-5 text-green-600" />
+                  <CardTitle className="text-lg">Job Details</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-gray-500">Job Number</p>
+                    <p className="font-medium">{jobCard.job_number || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Total Amount</p>
+                    <p className="font-medium text-green-600">{formatCurrency(jobCard.total_amount || 0)}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Start Time</p>
+                    <p className="font-medium">
+                      {jobCard.start_time ? format(new Date(jobCard.start_time), 'PPp') : 'Not set'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">End Time</p>
+                    <p className="font-medium">
+                      {jobCard.end_time ? format(new Date(jobCard.end_time), 'PPp') : 'Not set'}
+                    </p>
+                  </div>
+                </div>
+                
+                {jobCard.staff && (
+                  <div className="pt-2 border-t">
+                    <p className="text-gray-500 text-sm">Assigned Staff</p>
+                    <p className="font-medium">{jobCard.staff.full_name}</p>
+                  </div>
+                )}
 
-        {canPerformAction('view', 'material_costs') && (
+                {jobCard.business_locations && (
+                  <div className="pt-2 border-t">
+                    <p className="text-gray-500 text-sm">Location</p>
+                    <p className="font-medium">{jobCard.business_locations.name}</p>
+                  </div>
+                )}
+
+                {jobCard.notes && (
+                  <div className="pt-2 border-t">
+                    <p className="text-gray-500 text-sm">Notes</p>
+                    <p className="text-sm">{jobCard.notes}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="services" className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="w-5 h-5" /> Products / Materials Used
-              </CardTitle>
+            <CardHeader className="flex flex-row items-center space-y-0 pb-3">
+              <div className="flex items-center space-x-2">
+                <Wrench className="w-5 h-5 text-blue-600" />
+                <CardTitle className="text-lg">Services Performed</CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border">
+              {services.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead className="text-right">Quantity</TableHead>
-                      <TableHead className="text-right">Unit Cost</TableHead>
+                      <TableHead>Service</TableHead>
+                      <TableHead>Staff</TableHead>
+                      <TableHead>Quantity</TableHead>
+                      <TableHead>Unit Price</TableHead>
+                      <TableHead>Commission %</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {services.map((service) => (
+                      <TableRow key={service.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{service.services?.name || 'Unknown Service'}</p>
+                            {service.notes && (
+                              <p className="text-sm text-gray-500">{service.notes}</p>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {service.staff?.full_name || 'Unassigned'}
+                        </TableCell>
+                        <TableCell>{service.quantity || 1}</TableCell>
+                        <TableCell>{formatCurrency(service.unit_price || 0)}</TableCell>
+                        <TableCell>{service.commission_percentage || 0}%</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrency((service.quantity || 1) * (service.unit_price || 0))}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-6 text-gray-500">
+                  <Wrench className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                  <p>No services recorded for this job card</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="products" className="space-y-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center space-y-0 pb-3">
+              <div className="flex items-center space-x-2">
+                <Package className="w-5 h-5 text-orange-600" />
+                <CardTitle className="text-lg">Products Used</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {products.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Quantity Used</TableHead>
+                      <TableHead>Unit Cost</TableHead>
                       <TableHead className="text-right">Total Cost</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {products.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground">
-                          No products recorded
+                    {products.map((product) => (
+                      <TableRow key={product.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{product.inventory_items?.name || 'Unknown Product'}</p>
+                            <p className="text-sm text-gray-500">
+                              Unit: {product.inventory_items?.unit || 'Each'}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>{product.quantity_used || 0}</TableCell>
+                        <TableCell>{formatCurrency(product.unit_cost || 0)}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrency(product.total_cost || 0)}
                         </TableCell>
                       </TableRow>
-                    ) : (
-                      products.map((p) => (
-                        <TableRow key={p.id}>
-                          <TableCell className="font-medium">
-                            {p.inventory_items?.name || "Item"}
-                            {p.inventory_items?.unit ? (
-                              <span className="text-xs text-muted-foreground ml-2">({p.inventory_items.unit})</span>
-                            ) : null}
-                          </TableCell>
-                          <TableCell className="text-right">{p.quantity_used}</TableCell>
-                          <TableCell className="text-right">{Number(p.unit_cost || 0)}</TableCell>
-                          <TableCell className="text-right">{Number(p.total_cost || 0)}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                    {products.length > 0 && (
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-right font-medium">
-                          Subtotal
-                        </TableCell>
-                        <TableCell className="text-right font-medium">{productsSubtotal}</TableCell>
-                      </TableRow>
-                    )}
+                    ))}
                   </TableBody>
                 </Table>
-              </div>
+              ) : (
+                <div className="text-center py-6 text-gray-500">
+                  <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                  <p>No products used for this job card</p>
+                </div>
+              )}
             </CardContent>
           </Card>
-        )}
+        </TabsContent>
 
-        {parsedNotes?.technicianNotes || parsedNotes?.clientFeedback ? (
+        <TabsContent value="invoice" className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Notes</CardTitle>
+            <CardHeader className="flex flex-row items-center space-y-0 pb-3">
+              <div className="flex items-center space-x-2">
+                <Receipt className="w-5 h-5 text-purple-600" />
+                <CardTitle className="text-lg">Invoice Information</CardTitle>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {parsedNotes?.technicianNotes && (
-                <div>
-                  <div className="text-sm font-medium mb-1">Technician Notes</div>
-                  <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                    {parsedNotes.technicianNotes}
+            <CardContent>
+              {invoice ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-gray-500">Invoice Number</p>
+                      <p className="font-medium">{invoice.invoice_number}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Status</p>
+                      <Badge variant="outline" className="mt-1">
+                        {invoice.status?.toUpperCase()}
+                      </Badge>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Total Amount</p>
+                      <p className="font-medium text-green-600">{formatCurrency(invoice.total_amount || 0)}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Due Date</p>
+                      <p className="font-medium">
+                        {invoice.due_date ? format(new Date(invoice.due_date), 'PPP') : 'Not set'}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
-              {parsedNotes?.clientFeedback && (
-                <div>
-                  <div className="text-sm font-medium mb-1">Client Feedback</div>
-                  <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                    {parsedNotes.clientFeedback}
+                  
+                  <div className="flex gap-2 pt-4">
+                    <Button 
+                      onClick={() => navigate(`/invoices/${invoice.id}`)}
+                      variant="outline"
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      View Invoice
+                    </Button>
                   </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ) : null}
-          </div>
-        </div>
-        <div className="lg:col-span-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5" /> Invoice
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!invoice ? (
-                <div className="text-sm text-muted-foreground">
-                  No invoice linked. You can create one from the top right.
                 </div>
               ) : (
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Invoice #</span>
-                    <span className="font-medium">{invoice.invoice_number}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Status</span>
-                    <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize bg-secondary text-secondary-foreground">
-                      {invoice.status}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Total</span>
-                    <span className="font-semibold">{formatCurrency(Number(invoice.total_amount || 0))}</span>
-                  </div>
-                  <Separator />
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Customer</span>
-                      <span className="font-medium">{invoice.customer_name || '—'}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Date</span>
-                      <span className="font-medium">{invoice.created_at ? new Date(invoice.created_at).toLocaleDateString() : '—'}</span>
-                    </div>
-                    {invoice.due_date && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Due</span>
-                        <span className="font-medium">{new Date(invoice.due_date).toLocaleDateString()}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="pt-2 flex gap-2">
-                    <Button variant="outline" className="w-full" onClick={() => navigate(`/invoices/${invoice.id}/edit`)}>
-                      View / Edit
-                    </Button>
-                    <Button className="w-full" onClick={() => navigate(`/payments/received/new?invoiceId=${invoice.id}`)}>
-                      Record Payment
-                    </Button>
-                  </div>
+                <div className="text-center py-6 text-gray-500">
+                  <Receipt className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                  <p className="mb-3">No invoice has been created for this job card</p>
+                  <Button 
+                    onClick={() => navigate(`/invoices/new?fromJobCard=${id}`)}
+                    className="flex items-center gap-2"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Create Invoice
+                  </Button>
                 </div>
               )}
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
