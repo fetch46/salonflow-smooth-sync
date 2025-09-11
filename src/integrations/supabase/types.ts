@@ -1796,6 +1796,7 @@ export type Database = {
           id: string
           job_card_number: string | null
           job_number: string
+          location_id: string | null
           notes: string | null
           organization_id: string
           service_ids: string[] | null
@@ -1813,6 +1814,7 @@ export type Database = {
           id?: string
           job_card_number?: string | null
           job_number: string
+          location_id?: string | null
           notes?: string | null
           organization_id: string
           service_ids?: string[] | null
@@ -1830,6 +1832,7 @@ export type Database = {
           id?: string
           job_card_number?: string | null
           job_number?: string
+          location_id?: string | null
           notes?: string | null
           organization_id?: string
           service_ids?: string[] | null
@@ -1852,6 +1855,20 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_cards_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_cards_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
             referencedColumns: ["id"]
           },
           {
