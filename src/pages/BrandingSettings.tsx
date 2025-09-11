@@ -203,7 +203,7 @@ export default function BrandingSettings() {
 
       <div className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <Card className="lg:col-span-4 shadow-lg border-2 hover:shadow-xl transition-shadow animate-fade-in">
+          <Card className="lg:col-span-7 shadow-lg border-2 hover:shadow-xl transition-shadow animate-fade-in">
             <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b">
               <CardTitle className="flex items-center gap-2">
                 <Palette className="h-5 w-5 text-primary" />
@@ -238,7 +238,7 @@ export default function BrandingSettings() {
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-4 shadow-lg border-2 hover:shadow-xl transition-shadow animate-fade-in">
+          <Card className="lg:col-span-5 shadow-lg border-2 hover:shadow-xl transition-shadow animate-fade-in">
             <CardHeader className="bg-gradient-to-r from-secondary/5 to-secondary/10 border-b">
               <CardTitle className="flex items-center gap-2">
                 <Building className="h-5 w-5 text-primary" />
