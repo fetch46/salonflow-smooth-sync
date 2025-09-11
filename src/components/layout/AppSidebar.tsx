@@ -449,7 +449,7 @@ export function AppSidebar() {
               <div className="h-7 w-7 rounded-lg bg-muted border border-border flex-shrink-0 shadow-sm" />
               {!isCollapsed && (
                 <span className="font-semibold text-sm text-sidebar-foreground truncate animate-fade-in">
-                  SalonFlow
+                  AURA
                 </span>
               )}
             </div>
