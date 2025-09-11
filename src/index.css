@@ -14,17 +14,17 @@ All colors MUST be HSL.
   :root {
     /* Black and White Theme - Light Mode */
     --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    --foreground: 0 0% 12%;
     color-scheme: light;
     
     /* Clean modern font family */
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card-foreground: 0 0% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
+    --popover-foreground: 0 0% 12%;
 
     /* Theme-aware primary colors - can be overridden via CSS custom properties */
     --primary: var(--theme-primary, 0 0% 0%);
@@ -32,15 +32,15 @@ All colors MUST be HSL.
     --primary-light: var(--theme-primary-light, 0 0% 20%);
     --primary-lighter-70: color-mix(in hsl, hsl(var(--primary)) 30%, hsl(0 0% 100%) 70%);
 
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
+    --secondary: 0 0% 98%;
+    --secondary-foreground: 0 0% 12%;
 
     /* Muted: Subtle backgrounds */
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
+    --muted: 0 0% 97%;
+    --muted-foreground: 0 0% 40%;
 
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
+    --accent: 0 0% 98%;
+    --accent-foreground: 0 0% 12%;
 
     /* Status colors */
     --success: 142 71% 45%;
@@ -54,21 +54,21 @@ All colors MUST be HSL.
     --destructive-foreground: 0 0% 98%;
 
     /* Minimal borders */
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
+    --ring: var(--primary);
 
     /* Less rounded - smaller radius */
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 0 0% 99%;
     --sidebar-foreground: 0 0% 26.1%;
-    --sidebar-primary: 0 0% 10%;
+    --sidebar-primary: var(--primary);
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 0 0% 95.9%;
-    --sidebar-accent-foreground: 0 0% 10%;
-    --sidebar-border: 0 0% 91%;
-    --sidebar-ring: 0 0% 3.9%;
+    --sidebar-accent: 0 0% 98.5%;
+    --sidebar-accent-foreground: 0 0% 12%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: var(--primary);
 
     /* Brand colors - can be overridden */
     --brand-primary: var(--primary);
@@ -300,6 +300,7 @@ All colors MUST be HSL.
 }
 
 @layer utilities {
+  .btn-theme-primary { @apply bg-primary text-primary-foreground hover:bg-primary/90; }
   .mobile-container {
     @apply px-4 sm:px-6 lg:px-8;
   }

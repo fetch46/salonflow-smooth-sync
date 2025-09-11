@@ -15,7 +15,7 @@ if (typeof window !== 'undefined') {
 
 
 createRoot(document.getElementById("root")!).render(
-	<ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange storageKey="theme">
+	<ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange storageKey="theme">
 		<SaasProvider>
 			<App />
 		</SaasProvider>

@@ -106,6 +106,12 @@ export default function BrandingSettings() {
     const root = document.documentElement;
     root.style.setProperty('--theme-primary', colors.primary);
     root.style.setProperty('--theme-primary-foreground', computeForeground(colors.primary));
+    // compute lighter tone for disabled/hover in light theme
+    try {
+      const [h, s, l] = colors.primary.split(' ');
+      const lightVal = Math.min(parseInt((l || '0').replace('%','')) + 12, 92);
+      root.style.setProperty('--theme-primary-light', `${h} ${s} ${lightVal}%`);
+    } catch {}
     root.style.setProperty('--secondary', colors.secondary);
     root.style.setProperty('--secondary-foreground', computeForeground(colors.secondary));
     root.style.setProperty('--accent', colors.accent);
@@ -113,6 +119,11 @@ export default function BrandingSettings() {
 
     localStorage.setItem('theme-primary', colors.primary);
     localStorage.setItem('theme-primary-foreground', computeForeground(colors.primary));
+    try {
+      const [h, s, l] = colors.primary.split(' ');
+      const lightVal = Math.min(parseInt((l || '0').replace('%','')) + 12, 92);
+      localStorage.setItem('theme-primary-light', `${h} ${s} ${lightVal}%`);
+    } catch {}
     localStorage.setItem('theme-secondary', colors.secondary);
     localStorage.setItem('theme-secondary-foreground', computeForeground(colors.secondary));
     localStorage.setItem('theme-accent', colors.accent);

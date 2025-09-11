@@ -60,6 +60,32 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## Theming: Light theme and Quick Themes
+
+The app uses CSS variables with Tailwind to drive themes. Key tokens live in `src/index.css` under `:root` (light) and `.dark` (dark).
+
+- Primary tokens: `--primary`, `--primary-foreground`, `--primary-light`
+- Surfaces: `--background`, `--card`, `--popover`, `--secondary`, `--accent`
+- Text: `--foreground`, `--muted-foreground`
+- Borders/rings: `--border`, `--input`, `--ring`
+- Sidebar: `--sidebar-*` variables
+
+Quick Themes (Settings → Branding) updates these tokens at runtime:
+
+- Presets set HSL values for primary/secondary/accent and compute a lighter primary for hover/disabled states.
+- Selections persist via `localStorage` keys: `theme-primary`, `theme-primary-foreground`, `theme-primary-light`, etc.
+
+To brand your app:
+
+1. Go to Branding → Quick Themes and pick a preset.
+2. Optionally fine-tune in the Manual section by overriding sidebar, topbar, footer, tabs tokens.
+
+Developer notes:
+
+- Use semantic classes (e.g., `bg-background`, `text-foreground`, `bg-secondary`) instead of hardcoded colors.
+- For primary actions, prefer `btn-theme-primary` or `<Button>` default variant.
+- The default theme is light; `next-themes` controls `light/dark/system` via class on `html`.
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/bb6d0789-2c32-48f5-b56a-11b42b79556c) and click on Share -> Publish.
