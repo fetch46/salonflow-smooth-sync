@@ -12,63 +12,67 @@ All colors MUST be HSL.
     @apply bg-primary text-primary-foreground hover:bg-primary/90 border border-primary/20;
   }
   :root {
-    /* Black and White Theme - Light Mode */
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    /* Enhanced Light Theme - Modern & Clean */
+    --background: 0 0% 99%;
+    --foreground: 0 0% 9%;
     color-scheme: light;
     
     /* Clean modern font family */
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 
+    /* Enhanced card styling with subtle background */
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card-foreground: 0 0% 9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
+    --popover-foreground: 0 0% 9%;
 
     /* Theme-aware primary colors - can be overridden via CSS custom properties */
-    --primary: var(--theme-primary, 0 0% 0%);
+    --primary: var(--theme-primary, 220 70% 50%);
     --primary-foreground: var(--theme-primary-foreground, 0 0% 98%);
-    --primary-light: var(--theme-primary-light, 0 0% 20%);
+    --primary-light: var(--theme-primary-light, 220 70% 65%);
     --primary-lighter-70: color-mix(in hsl, hsl(var(--primary)) 30%, hsl(0 0% 100%) 70%);
 
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
+    /* Enhanced secondary colors */
+    --secondary: 0 0% 97%;
+    --secondary-foreground: 0 0% 15%;
 
-    /* Muted: Subtle backgrounds */
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
+    /* Refined muted colors for better contrast */
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 40%;
 
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
+    /* Enhanced accent colors */
+    --accent: 0 0% 95%;
+    --accent-foreground: 0 0% 15%;
 
-    /* Status colors */
+    /* Enhanced status colors with better contrast */
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
-    --warning-foreground: 38 30% 15%;
+    --warning-foreground: 0 0% 9%;
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    /* Minimal borders */
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
+    /* Enhanced borders with subtle colors */
+    --border: 0 0% 90%;
+    --input: 0 0% 92%;
+    --ring: var(--primary);
 
-    /* Less rounded - smaller radius */
-    --radius: 0.5rem;
+    /* Modern border radius */
+    --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 0 0% 26.1%;
-    --sidebar-primary: 0 0% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 0 0% 95.9%;
-    --sidebar-accent-foreground: 0 0% 10%;
-    --sidebar-border: 0 0% 91%;
-    --sidebar-ring: 0 0% 3.9%;
+    /* Enhanced sidebar colors for modern light theme */
+    --sidebar-background: 0 0% 99%;
+    --sidebar-foreground: 0 0% 20%;
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: 0 0% 94%;
+    --sidebar-accent-foreground: 0 0% 15%;
+    --sidebar-border: 0 0% 92%;
+    --sidebar-ring: var(--primary);
 
     /* Brand colors - can be overridden */
     --brand-primary: var(--primary);
@@ -134,10 +138,11 @@ All colors MUST be HSL.
   .icon-responsive-lg { width: var(--icon-lg); height: var(--icon-lg); }
   .icon-responsive-xl { width: var(--icon-xl); height: var(--icon-xl); }
 
-  /* Freshsales-style card styling */
+  /* Modern card styling for enhanced light theme */
   .freshsales-card {
-    @apply bg-card border border-border rounded-lg shadow-sm transition-all duration-200;
-    @apply hover:shadow-md hover:border-primary/20;
+    @apply bg-card border border-border rounded-lg shadow-sm transition-all duration-300;
+    @apply hover:shadow-lg hover:border-primary/30 hover:-translate-y-0.5;
+    background: linear-gradient(135deg, hsl(var(--card)), hsl(var(--muted) / 0.3));
   }
 
   .freshsales-card-compact {
@@ -145,13 +150,43 @@ All colors MUST be HSL.
     padding: var(--space-sm);
   }
 
-  /* Compact button styles */
+  /* Enhanced card with premium styling */
+  .card-premium {
+    @apply bg-gradient-to-br from-card to-muted/20 border border-border/60 rounded-xl shadow-md;
+    @apply hover:shadow-xl hover:border-primary/40 hover:-translate-y-1 transition-all duration-300;
+    backdrop-filter: blur(10px);
+  }
+
+  /* Modern glass-morphism effect */
+  .glass-card {
+    @apply bg-card/80 border border-border/50 rounded-xl shadow-lg backdrop-blur-sm;
+    @apply hover:shadow-xl hover:border-primary/30 transition-all duration-300;
+  }
+
+  /* Enhanced button styles for modern light theme */
   .btn-compact {
-    @apply h-8 px-3 text-responsive-sm;
+    @apply h-8 px-3 text-responsive-sm rounded-lg transition-all duration-200;
+    @apply hover:scale-105 active:scale-95;
   }
 
   .btn-compact-icon {
-    @apply h-8 w-8 p-0;
+    @apply h-8 w-8 p-0 rounded-lg transition-all duration-200;
+    @apply hover:scale-110 active:scale-95;
+  }
+
+  /* Premium button with gradient */
+  .btn-premium {
+    @apply bg-gradient-to-r from-primary to-primary/80 text-primary-foreground;
+    @apply hover:from-primary/90 hover:to-primary/70 hover:scale-105;
+    @apply active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg;
+    @apply rounded-xl px-6 py-3 font-medium;
+  }
+
+  /* Modern outline button */
+  .btn-outline-modern {
+    @apply border-2 border-primary/20 text-primary bg-transparent;
+    @apply hover:border-primary hover:bg-primary/5 hover:scale-105;
+    @apply active:scale-95 transition-all duration-200 rounded-xl;
   }
 
   /* Clean table styles */
@@ -316,17 +351,119 @@ All colors MUST be HSL.
     padding-bottom: calc(var(--footer-height) + env(safe-area-inset-bottom));
   }
 
-  /* Theme-neutral utilities for black and white theme */
+  /* Enhanced theme utilities for modern light theme */
   .btn-neutral {
-    @apply bg-muted text-muted-foreground hover:bg-muted/80 border border-muted/50 transition-all;
+    @apply bg-muted text-muted-foreground hover:bg-muted/80 border border-muted/50;
+    @apply transition-all duration-200 hover:scale-105 active:scale-95 rounded-lg;
   }
 
   .gradient-neutral {
-    @apply bg-gradient-to-r from-muted to-background;
+    @apply bg-gradient-to-br from-muted via-background to-muted/50;
   }
 
   .card-neutral {
-    @apply bg-card border border-border shadow-sm;
+    @apply bg-card border border-border shadow-sm rounded-xl;
+    @apply hover:shadow-md transition-all duration-300;
+  }
+
+  /* Modern background patterns */
+  .bg-pattern-dots {
+    background-image: radial-gradient(circle, hsl(var(--muted)) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .bg-pattern-grid {
+    background-image: 
+      linear-gradient(hsl(var(--border)) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  /* Enhanced animations and transitions */
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.6s ease-out forwards;
+  }
+
+  .animate-bounce-subtle {
+    animation: bounceSubtle 2s ease-in-out infinite;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes bounceSubtle {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
+  }
+
+  /* Interactive hover effects */
+  .hover-lift {
+    transition: all 0.3s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+
+  .hover-glow:hover {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+  }
+
+  /* Enhanced form styling */
+  .form-modern input,
+  .form-modern textarea,
+  .form-modern select {
+    @apply rounded-xl border-2 border-input bg-background px-4 py-3;
+    @apply focus:border-primary focus:ring-2 focus:ring-primary/20;
+    @apply transition-all duration-200 hover:border-primary/50;
+  }
+
+  .form-modern label {
+    @apply text-sm font-semibold text-foreground mb-2 block;
+  }
+
+  .form-group-modern {
+    @apply space-y-2;
+  }
+
+  /* Enhanced input focus states */
+  .input-modern {
+    @apply rounded-xl border-2 border-input bg-background px-4 py-3 text-foreground;
+    @apply focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none;
+    @apply transition-all duration-300 hover:border-primary/50;
+    @apply placeholder:text-muted-foreground;
+  }
+
+  .input-modern:focus {
+    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.1);
   }
 
   /* Ensure text readability in all button variants */

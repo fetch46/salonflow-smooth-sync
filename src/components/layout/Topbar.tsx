@@ -157,29 +157,32 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur border-b border-border px-3 md:px-4 lg:px-6 py-2.5"
-      style={{ backgroundColor: `hsl(var(--topbar-bg))`, color: `hsl(var(--topbar-foreground))` }}
+    <header className="sticky top-0 z-50 backdrop-blur-md border-b border-border/50 px-4 md:px-6 lg:px-8 py-3 bg-background/80 shadow-sm"
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-4">
         {/* Left side */}
-        <div className="flex items-center gap-4">
-          {/* Sidebar trigger removed */}
-          
-          <div className="hidden md:flex items-center gap-2 max-w-md px-2 py-1.5 rounded-md border bg-card">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-7 border-0 shadow-none focus-visible:ring-0 p-0"
-            />
+        <div className="flex items-center gap-6">
+          {/* Enhanced search with modern styling */}
+          <div className="hidden md:flex items-center gap-3 max-w-md">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search anything..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="input-modern pl-10 w-80 bg-muted/30 border-border/60 hover:bg-background focus:bg-background"
+              />
+            </div>
           </div>
         </div>
 
         {/* Right side */}
-        <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex items-center gap-3">
           <ThemeToggle />
-          <Button onClick={() => navigate('/pos')} className="hidden sm:inline-flex gap-2 btn-compact">
+          <Button 
+            onClick={() => navigate('/pos')} 
+            className="hidden sm:inline-flex gap-2 btn-premium px-4 py-2 hover-glow"
+          >
             <CreditCard className="h-4 w-4" />
             POS
           </Button>
@@ -187,31 +190,31 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
           {organizations.length > 1 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="flex items-center gap-2 btn-compact">
+                <Button variant="outline" className="flex items-center gap-2 btn-outline-modern px-4 py-2 hover-lift">
                   <Building2 className="h-4 w-4" />
-                  <span className="hidden sm:inline-block max-w-32 truncate">
+                  <span className="hidden sm:inline-block max-w-32 truncate font-medium">
                     {organization?.name || 'Select Organization'}
                   </span>
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                <DropdownMenuLabel>Switch Organization</DropdownMenuLabel>
+              <DropdownMenuContent align="end" className="w-72 glass-card border-border/60">
+                <DropdownMenuLabel className="text-foreground font-semibold">Switch Organization</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {organizations.map((org) => (
                   <DropdownMenuItem
                     key={org.id}
                     onClick={() => handleSwitchOrganization(org.id)}
-                    className="flex items-center justify-between"
+                    className="flex items-center justify-between p-3 rounded-lg hover:bg-primary/5 transition-all duration-200"
                   >
                     <div className="flex flex-col">
-                      <span className="font-medium">{org.organizations?.name || 'Unknown Organization'}</span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="font-semibold text-foreground">{org.organizations?.name || 'Unknown Organization'}</span>
+                      <span className="text-sm text-muted-foreground">
                         Role: {getUserRole(org.id)}
                       </span>
                     </div>
                     {organization?.id === org.id && (
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge variant="secondary" className="text-xs bg-primary/10 text-primary border-primary/20">
                         Current
                       </Badge>
                     )}
@@ -229,19 +232,19 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
           {/* Notifications */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative btn-compact-icon">
+              <Button variant="ghost" size="icon" className="relative btn-compact-icon hover-lift hover-glow">
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
                   <Badge 
                     variant="destructive" 
-                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs animate-bounce-subtle"
                   >
                     {unreadCount}
                   </Badge>
                 )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
+            <DropdownMenuContent align="end" className="w-80 glass-card border-border/60">
               <DropdownMenuLabel>Notifications</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {notifications.length === 0 ? (
@@ -287,10 +290,10 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-2 px-2 btn-compact bg-transparent hover:bg-transparent focus:bg-transparent active:bg-transparent">
-                <Avatar className="h-8 w-8">
+              <Button variant="ghost" className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-muted/50 hover-lift transition-all duration-200">
+                <Avatar className="h-9 w-9 ring-2 ring-primary/10 hover:ring-primary/30 transition-all">
                   <AvatarImage src={user?.user_metadata?.avatar_url} />
-                  <AvatarFallback>
+                  <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground font-semibold">
                     {user?.user_metadata?.full_name 
                       ? getInitials(user.user_metadata.full_name)
                       : user?.email?.charAt(0).toUpperCase() || 'U'
@@ -298,17 +301,17 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden sm:flex flex-col items-start">
-                  <span className="text-sm font-medium">
+                  <span className="text-sm font-semibold text-foreground">
                     {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground font-medium">
                     {organizationRole || 'Member'}
                   </span>
                 </div>
-                <ChevronDown className="h-4 w-4" />
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" className="w-60 glass-card border-border/60">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => navigate('/profile')}>
