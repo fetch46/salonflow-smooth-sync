@@ -167,7 +167,7 @@ const menuItems: MenuItem[] = [
       },
       {
         title: "Transfers",
-        url: "/stock-transfers",
+        url: "/inventory-transfers",
         icon: ArrowLeftRight,
         feature: "inventory",
       },
