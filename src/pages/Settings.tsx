@@ -143,7 +143,7 @@ export default function Settings() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-5 justify-start sm:justify-start">
           <TabsTrigger value="company" className="justify-start gap-2 data-[state=active]:bg-muted">
             <Building className="h-4 w-4" />
             Company
