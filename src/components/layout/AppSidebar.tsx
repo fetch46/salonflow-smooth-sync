@@ -389,9 +389,7 @@ export function AppSidebar() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
               <div className="h-7 w-7 rounded-lg bg-muted border border-border flex-shrink-0 shadow-sm" />
-              <span className="font-semibold text-sm text-sidebar-foreground truncate animate-fade-in">
-                SalonFlow
-              </span>
+
             </div>
           </div>
         </SidebarHeader>
