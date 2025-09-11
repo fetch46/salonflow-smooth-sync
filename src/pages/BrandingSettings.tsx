@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Palette, Building, Save, LayoutGrid } from "lucide-react";
+import { Palette, Building, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useOrganization } from "@/lib/saas/hooks";
 
@@ -43,32 +43,7 @@ export default function BrandingSettings() {
     { name: "Violet", id: "violet", description: "Creative violet theme", colors: { primary: "262 83% 58%", secondary: "0 0% 96.1%", accent: "0 0% 96.1%", preview: "hsl(262 83% 58%)" } },
   ];
 
-  const SHADCN_COLORS: { id: string; name: string; hsl: string }[] = [
-    { id: 'slate', name: 'Slate', hsl: '215 20.2% 65.1%' },
-    { id: 'gray', name: 'Gray', hsl: '220 9% 46%' },
-    { id: 'zinc', name: 'Zinc', hsl: '240 5% 64.9%' },
-    { id: 'neutral', name: 'Neutral', hsl: '0 0% 45%' },
-    { id: 'stone', name: 'Stone', hsl: '24 6% 55%' },
-    { id: 'red', name: 'Red', hsl: '0 72% 51%' },
-    { id: 'rose', name: 'Rose', hsl: '346 77% 50%' },
-    { id: 'orange', name: 'Orange', hsl: '25 95% 53%' },
-    { id: 'amber', name: 'Amber', hsl: '38 92% 50%' },
-    { id: 'yellow', name: 'Yellow', hsl: '48 96% 53%' },
-    { id: 'lime', name: 'Lime', hsl: '84 81% 44%' },
-    { id: 'green', name: 'Green', hsl: '142 76% 36%' },
-    { id: 'emerald', name: 'Emerald', hsl: '160 84% 39%' },
-    { id: 'teal', name: 'Teal', hsl: '173 80% 40%' },
-    { id: 'cyan', name: 'Cyan', hsl: '199 89% 48%' },
-    { id: 'sky', name: 'Sky', hsl: '202 89% 53%' },
-    { id: 'blue', name: 'Blue', hsl: '221 83% 53%' },
-    { id: 'indigo', name: 'Indigo', hsl: '239 84% 67%' },
-    { id: 'violet', name: 'Violet', hsl: '262 83% 58%' },
-    { id: 'purple', name: 'Purple', hsl: '270 70% 55%' },
-    { id: 'fuchsia', name: 'Fuchsia', hsl: '292 84% 61%' },
-    { id: 'pink', name: 'Pink', hsl: '330 81% 60%' },
-    { id: 'black', name: 'Black', hsl: '0 0% 9%' },
-    { id: 'white', name: 'White', hsl: '0 0% 96.1%' },
-  ];
+  
 
   useEffect(() => {
     const keys = [
@@ -190,29 +165,7 @@ export default function BrandingSettings() {
     }
   };
 
-  const setPrimaryColor = (hsl: string) => {
-    setBrandColors((prev) => {
-      const next = { ...prev, primary: hsl, theme: 'custom' } as any;
-      applyTheme(next as any);
-      return next;
-    });
-  };
-
-  const setSecondaryColor = (hsl: string) => {
-    setBrandColors((prev) => {
-      const next = { ...prev, secondary: hsl, theme: 'custom' } as any;
-      applyTheme(next as any);
-      return next;
-    });
-  };
-
-  const setAccentColor = (hsl: string) => {
-    setBrandColors((prev) => {
-      const next = { ...prev, accent: hsl, theme: 'custom' } as any;
-      applyTheme(next as any);
-      return next;
-    });
-  };
+  
 
   const saveBrandingSettings = async () => {
     if (!organization?.id || !updateOrganization) return;
@@ -263,111 +216,24 @@ export default function BrandingSettings() {
             <CardContent className="p-6">
               <div className="space-y-4">
                 <Label className="text-sm font-semibold">Select Theme Preset</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  {THEME_PRESETS.map((theme) => (
-                    <Button
-                      key={theme.id}
-                      variant={selectedTheme === theme.id ? "default" : "outline"}
-                      className={`flex flex-col items-center gap-2 h-auto p-3 transition-all duration-200 hover-scale ${
-                        selectedTheme === theme.id ? 'ring-2 ring-primary ring-offset-2' : ''
-                      }`}
-                      onClick={() => handleThemeChange(theme.id)}
-                    >
-                      <div className="w-8 h-8 rounded-full border-2 border-border shadow-sm" style={{ backgroundColor: theme.colors.preview }} />
-                      <span className="text-xs font-medium">{theme.name}</span>
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="lg:col-span-4 shadow-lg border-2 hover:shadow-xl transition-shadow animate-fade-in">
-            <CardHeader className="bg-gradient-to-r from-accent/5 to-accent/10 border-b">
-              <CardTitle className="flex items-center gap-2">
-                <LayoutGrid className="h-5 w-5 text-primary" />
-                Custom Colors
-              </CardTitle>
-              <CardDescription>
-                Fine-tune individual color elements
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold flex items-center gap-2">
-                    Primary Color
-                    <div className="w-4 h-4 rounded border shadow-sm" style={{ backgroundColor: `hsl(${brandColors.primary})` }} />
-                  </Label>
-                  <Select value={SHADCN_COLORS.find(c => c.hsl === brandColors.primary)?.id} onValueChange={(id) => {
-                    const c = SHADCN_COLORS.find(x => x.id === id);
-                    if (c) setPrimaryColor(c.hsl);
-                  }}>
-                    <SelectTrigger className="h-10">
-                      <SelectValue placeholder="Choose primary color" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SHADCN_COLORS.map((c) => (
-                        <SelectItem key={c.id} value={c.id} className="flex items-center gap-2">
-                          <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded border" style={{ backgroundColor: `hsl(${c.hsl})` }} />
-                            {c.name}
+                <Select value={selectedTheme} onValueChange={(v) => handleThemeChange(v)}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="Choose a theme" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {THEME_PRESETS.map((theme) => (
+                      <SelectItem key={theme.id} value={theme.id} className="flex items-center gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-full border" style={{ backgroundColor: theme.colors.preview }} />
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">{theme.name}</span>
+                            <span className="text-[10px] text-muted-foreground">{theme.description}</span>
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold flex items-center gap-2">
-                    Secondary Color
-                    <div className="w-4 h-4 rounded border shadow-sm" style={{ backgroundColor: `hsl(${(brandColors as any).secondary})` }} />
-                  </Label>
-                  <Select value={SHADCN_COLORS.find(c => c.hsl === (brandColors as any).secondary)?.id} onValueChange={(id) => {
-                    const c = SHADCN_COLORS.find(x => x.id === id);
-                    if (c) setSecondaryColor(c.hsl);
-                  }}>
-                    <SelectTrigger className="h-10">
-                      <SelectValue placeholder="Choose secondary color" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SHADCN_COLORS.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded border" style={{ backgroundColor: `hsl(${c.hsl})` }} />
-                            {c.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold flex items-center gap-2">
-                    Accent Color
-                    <div className="w-4 h-4 rounded border shadow-sm" style={{ backgroundColor: `hsl(${brandColors.accent})` }} />
-                  </Label>
-                  <Select value={SHADCN_COLORS.find(c => c.hsl === brandColors.accent)?.id} onValueChange={(id) => {
-                    const c = SHADCN_COLORS.find(x => x.id === id);
-                    if (c) setAccentColor(c.hsl);
-                  }}>
-                    <SelectTrigger className="h-10">
-                      <SelectValue placeholder="Choose accent color" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SHADCN_COLORS.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded border" style={{ backgroundColor: `hsl(${c.hsl})` }} />
-                            {c.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>
