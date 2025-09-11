@@ -86,16 +86,16 @@ const menuItems: MenuItem[] = [
         feature: "clients",
       },
       {
-        title: "Invoices",
-        url: "/invoices",
-        icon: FileText,
-        feature: "accounting",
-      },
-      {
         title: "Job Cards",
         url: "/job-cards",
         icon: Scissors,
         feature: "job_cards",
+      },
+      {
+        title: "Invoices",
+        url: "/invoices",
+        icon: FileText,
+        feature: "accounting",
       },
       {
         title: "Payments Received",
@@ -265,16 +265,16 @@ const menuItems: MenuItem[] = [
     feature: "settings",
     subItems: [
       {
-        title: "Staff",
-        url: "/staff",
-        icon: User,
-        feature: "staff",
-      },
-      {
         title: "General Settings",
         url: "/settings",
         icon: Settings,
         feature: "settings",
+      },
+      {
+        title: "Staff",
+        url: "/staff",
+        icon: User,
+        feature: "staff",
       },
       {
         title: "Modules",
