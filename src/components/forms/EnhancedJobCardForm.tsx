@@ -13,6 +13,7 @@ import { X, Plus, Calculator } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { JobCardCommissionCalculator } from '@/components/JobCardCommissionCalculator';
+import { JobCardCommissionManager } from '@/components/forms/JobCardCommissionManager';
 import { useSaas } from '@/lib/saas';
 
 const formSchema = z.object({
@@ -40,12 +41,14 @@ interface EnhancedJobCardFormProps {
   onSubmit: (data: any) => void;
   initialData?: any;
   isEditing?: boolean;
+  jobCardId?: string;
 }
 
 export const EnhancedJobCardForm: React.FC<EnhancedJobCardFormProps> = ({
   onSubmit,
   initialData,
   isEditing = false,
+  jobCardId,
 }) => {
   const [clients, setClients] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
@@ -55,6 +58,7 @@ export const EnhancedJobCardForm: React.FC<EnhancedJobCardFormProps> = ({
   const [selectedServices, setSelectedServices] = useState<any[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
   const [showCommissionCalc, setShowCommissionCalc] = useState(false);
+  const [showCommissionManager, setShowCommissionManager] = useState(false);
   const [loading, setLoading] = useState(false);
   const [defaultLocation, setDefaultLocation] = useState<string>('');
   const { organization } = useSaas();
@@ -678,6 +682,27 @@ export const EnhancedJobCardForm: React.FC<EnhancedJobCardFormProps> = ({
             setShowCommissionCalc(false);
           }}
         />
+      )}
+
+      {/* Commission Management */}
+      {jobCardId && showCommissionManager && (
+        <JobCardCommissionManager 
+          jobCardId={jobCardId}
+        />
+      )}
+
+      {/* Commission Management Toggle */}
+      {jobCardId && (
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCommissionManager(!showCommissionManager)}
+          >
+            {showCommissionManager ? 'Hide' : 'Show'} Commission Management
+          </Button>
+        </div>
       )}
     </div>
   );

@@ -3829,6 +3829,15 @@ export type Database = {
         }
         Returns: string
       }
+      pay_staff_commission: {
+        Args: {
+          p_bank_account_id?: string
+          p_commission_id: string
+          p_payment_date?: string
+          p_payment_reference?: string
+        }
+        Returns: boolean
+      }
       post_bank_transfer: {
         Args: {
           p_amount: number
