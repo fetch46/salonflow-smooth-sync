@@ -692,9 +692,9 @@ export async function recordInvoicePaymentWithFallback(
     const payload: any = {
       invoice_id: payment.invoice_id,
       amount: payment.amount,
-      payment_method: payment.method, // Use correct column name
-      reference: payment.reference_number || null,
-      payment_date: payment.payment_date ? new Date(payment.payment_date).toISOString() : new Date().toISOString(),
+      method: payment.method,
+      reference_number: payment.reference_number || null,
+      payment_date: payment.payment_date ? new Date(payment.payment_date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
       notes: null,
     };
     
@@ -837,7 +837,17 @@ export async function getAllInvoicePaymentsWithFallback(supabase: any): Promise<
       .select('*')
       .order('payment_date', { ascending: false });
     if (error) throw error;
-    return data || [];
+    // If table exists but is empty (e.g., earlier writes fell back to local storage),
+    // surface local fallback records so users still see their data.
+    if (data && data.length > 0) {
+      return data;
+    }
+    try {
+      const storage = getStorage();
+      return (storage.invoice_payments || []).slice().sort((a: any, b: any) => String(b.payment_date).localeCompare(String(a.payment_date)));
+    } catch {
+      return [];
+    }
   } catch (err) {
     console.log('Using mock database for fetching all invoice payments');
     const storage = getStorage();
