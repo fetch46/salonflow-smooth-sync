@@ -473,7 +473,7 @@ export default function StockTransfers() {
       </div>
 
       <Tabs defaultValue="new" className="space-y-6">
-        <TabsList>
+        <TabsList className="sm:!justify-start">
           <TabsTrigger value="new">New Transfer</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
