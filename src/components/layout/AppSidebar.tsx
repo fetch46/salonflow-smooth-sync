@@ -9,6 +9,7 @@ import {
   DollarSign,
   FileText,
   Settings,
+  Wrench,
   ChevronDown,
   ChevronRight,
   Building,
@@ -279,6 +280,12 @@ const menuItems: MenuItem[] = [
         title: "General Settings",
         url: "/settings",
         icon: Settings,
+        feature: "settings",
+      },
+      {
+        title: "Modules",
+        url: "/settings/modules",
+        icon: Wrench,
         feature: "settings",
       },
       {

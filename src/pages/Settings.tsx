@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Building, Wrench, CreditCard, Package, Users, UserCheck, MapPin, Warehouse, Save } from "lucide-react";
+import { Building, CreditCard, Package, UserCheck, MapPin, Warehouse, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useOrganization } from "@/lib/saas/hooks";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,7 +16,6 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Globe } from "lucide-react";
 import { useSaas } from "@/lib/saas";
-import { ModuleManagement } from "@/components/settings/ModuleManagement";
 import { LocationsSettings } from "@/components/settings/LocationsSettings";
 import { WarehousesSettings } from "@/components/settings/WarehousesSettings";
 import { AccountingSettings } from "@/components/settings/AccountingSettings";
@@ -144,7 +143,7 @@ export default function Settings() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-7">
+        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-5">
           <TabsTrigger value="company" className="justify-start gap-2 data-[state=active]:bg-muted">
             <Building className="h-4 w-4" />
             Company
@@ -164,14 +163,6 @@ export default function Settings() {
           <TabsTrigger value="warehouses" className="justify-start gap-2 data-[state=active]:bg-muted">
             <Warehouse className="h-4 w-4" />
             Warehouses
-          </TabsTrigger>
-          <TabsTrigger value="modules" className="justify-start gap-2 data-[state=active]:bg-muted">
-            <Wrench className="h-4 w-4" />
-            Modules
-          </TabsTrigger>
-          <TabsTrigger value="staff" className="justify-start gap-2 data-[state=active]:bg-muted">
-            <Users className="h-4 w-4" />
-            Staff
           </TabsTrigger>
         </TabsList>
 
@@ -277,29 +268,7 @@ export default function Settings() {
             <WarehousesSettings />
           </TabsContent>
 
-          {/* Modules Management */}
-          <TabsContent value="modules">
-            <ModuleManagement />
-          </TabsContent>
-
-          {/* Staff Management */}
-          <TabsContent value="staff">
-            <div className="grid gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Staff Management</CardTitle>
-                  <CardDescription>
-                    Manage your team members and their permissions
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8 text-muted-foreground">
-                    Staff management functionality will be implemented here.
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
+          
         </div>
       </Tabs>
     </div>
