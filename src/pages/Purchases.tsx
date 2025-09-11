@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import { Plus, Search, ShoppingCart, Package, TrendingUp, Truck, FileText } from "lucide-react";
+import { Plus, Search, ShoppingCart, Clock, DollarSign, Truck, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
@@ -646,46 +646,49 @@ export default function Purchases() {
         </div>
       </div>
 
-      {/* Enhanced Stats Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="relative overflow-hidden border-0 shadow-lg">
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-600 to-slate-700 opacity-95" />
-          <CardHeader className="relative pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Total Purchases</CardTitle>
+      {/* Enhanced Stats Cards (aligned with Invoices design) */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="bg-gradient-to-br from-blue-50 to-sky-50 border-blue-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-blue-700">Total Purchases</CardTitle>
+            <ShoppingCart className="h-4 w-4 text-blue-600" />
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{stats.total}</div>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-700">{stats.total}</div>
+            <p className="text-xs text-blue-600">{stats.pending} pending, {stats.received} received</p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg">
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-500 to-amber-600 opacity-95" />
-          <CardHeader className="relative pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Pending</CardTitle>
+        <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-orange-700">Pending</CardTitle>
+            <Clock className="h-4 w-4 text-orange-600" />
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{stats.pending}</div>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-700">{stats.pending}</div>
+            <p className="text-xs text-orange-600">Awaiting receipt</p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600 opacity-95" />
-          <CardHeader className="relative pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Received</CardTitle>
+        <Card className="bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-emerald-700">Received</CardTitle>
+            <Truck className="h-4 w-4 text-emerald-600" />
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{stats.received}</div>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-700">{stats.received}</div>
+            <p className="text-xs text-emerald-600">Fully received orders</p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-emerald-600 opacity-95" />
-          <CardHeader className="relative pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">Total Value</CardTitle>
+        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-green-700">Total Value</CardTitle>
+            <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-white">{formatMoney(stats.totalAmount)}</div>
-            <p className="text-xs text-white/80">Received orders</p>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-700">{formatMoney(stats.totalAmount)}</div>
+            <p className="text-xs text-green-600">Received orders</p>
           </CardContent>
         </Card>
       </div>
