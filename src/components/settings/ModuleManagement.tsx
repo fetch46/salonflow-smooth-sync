@@ -130,7 +130,7 @@ export function ModuleManagement() {
       </div>
 
       <Tabs defaultValue="modules" className="w-full">
-        <TabsList>
+        <TabsList className="justify-start sm:justify-start">
           <TabsTrigger value="modules">Modules</TabsTrigger>
           <TabsTrigger value="numbering">Transaction Numbering</TabsTrigger>
         </TabsList>
