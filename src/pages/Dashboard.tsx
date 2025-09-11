@@ -745,7 +745,7 @@ const Dashboard = () => {
                   <Button
                     key={index}
                     variant="outline"
-                    className={`${action.color} border-0 flex-col h-auto p-3 space-y-1`}
+                    className={`${action.color} border-0 flex-col h-auto p-3 space-y-1 text-black dark:text-white`}
                     onClick={action.action}
                   >
                     <action.icon className="w-5 h-5" />
