@@ -27,8 +27,6 @@ import {
   HelpCircle,
   ArrowLeftRight,
   Truck,
-  Menu,
-  X,
 } from "lucide-react";
 import {
   Sidebar,
@@ -41,12 +39,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
-  SidebarRail,
-  useSidebar,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useFeatureGating, usePermissions } from "@/lib/saas/hooks";
 import { useSaas } from "@/lib/saas";
@@ -315,24 +309,22 @@ export function AppSidebar() {
   const location = useLocation();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
-  const [submenuTimeout, setSubmenuTimeout] = useState<NodeJS.Timeout | null>(null);
+  
   const { hasFeature } = useFeatureGating();
   const { userRole: organizationRole } = usePermissions();
   const { subscriptionPlan, isSuperAdmin, systemSettings } = useSaas();
-  const { state, isMobile, setOpenMobile, open, setOpen } = useSidebar();
   const { canAccessModule, isModuleEnabled } = useModuleAccess();
 
   const isTrialing = systemSettings?.subscription_status === 'trial';
   const daysLeftInTrial = systemSettings?.trial_days_remaining || null;
-  const isCollapsed = state === 'collapsed';
 
   // Auto-expand parent menu if current page is a submenu item
   useEffect(() => {
     const activeParent = getActiveParentItem();
-    if (activeParent && !isCollapsed) {
+    if (activeParent) {
       setExpandedItem(activeParent.title);
     }
-  }, [location.pathname, isCollapsed]);
+  }, [location.pathname]);
 
   const isMenuItemAvailable = (item: MenuItem) => {
     if (['owner', 'admin'].includes(organizationRole || '')) return true;
@@ -342,56 +334,22 @@ export function AppSidebar() {
   };
 
   const handleNavClick = () => {
-    if (isMobile) setOpenMobile(false);
     setHoveredItem(null);
   };
 
   const handleItemClick = (itemTitle: string, hasSubItems: boolean) => {
     if (hasSubItems) {
-      if (isCollapsed) {
-        // In collapsed mode, toggle popout on click
-        setHoveredItem(hoveredItem === itemTitle ? null : itemTitle);
-      } else {
-        // In expanded mode, toggle expanded submenu
-        setExpandedItem(expandedItem === itemTitle ? null : itemTitle);
-      }
+      setExpandedItem(expandedItem === itemTitle ? null : itemTitle);
     }
   };
 
-  const handleMouseEnter = (itemTitle: string, hasSubItems: boolean) => {
-    if (hasSubItems && isCollapsed) {
-      if (submenuTimeout) {
-        clearTimeout(submenuTimeout);
-        setSubmenuTimeout(null);
-      }
-      setHoveredItem(itemTitle);
-    }
-  };
+  
 
-  const handleMouseLeave = () => {
-    if (isCollapsed) {
-      const timeout = setTimeout(() => {
-        setHoveredItem(null);
-      }, 200);
-      setSubmenuTimeout(timeout);
-    }
-  };
+  
 
-  const handleSubmenuMouseEnter = () => {
-    if (submenuTimeout) {
-      clearTimeout(submenuTimeout);
-      setSubmenuTimeout(null);
-    }
-  };
+  
 
-  const handleSubmenuMouseLeave = () => {
-    if (isCollapsed) {
-      const timeout = setTimeout(() => {
-        setHoveredItem(null);
-      }, 200);
-      setSubmenuTimeout(timeout);
-    }
-  };
+  
 
   const getActiveParentItem = () => {
     return menuItems.find(item => 
@@ -413,32 +371,16 @@ export function AppSidebar() {
     return location.pathname === subItem.url || (subItem.url === '/' && location.pathname === '/');
   };
 
-  // Custom toggle button component
-  const CustomSidebarToggle = () => (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={() => {
-        console.log('Toggle clicked, current open state:', open);
-        setOpen(!open);
-      }}
-      className="h-8 w-8 p-0 hover:bg-sidebar-accent/50 transition-colors"
-      aria-label={open ? "Collapse sidebar" : "Expand sidebar"}
-    >
-      {isCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}
-    </Button>
-  );
+  // Collapse disabled
 
   return (
     <Sidebar 
       role="navigation" 
       aria-label="Primary" 
-      variant="inset" 
-      collapsible="icon" 
+      collapsible="none" 
       className={cn(
-        "border-r border-sidebar-border bg-sidebar-background transition-all duration-300 ease-in-out",
+        "border-r border-sidebar-border bg-sidebar-background",
         "min-w-[240px] max-w-[240px]",
-        "data-[collapsible=icon]:min-w-[60px] data-[collapsible=icon]:max-w-[60px]",
         "shadow-sm"
       )}
     >
@@ -447,20 +389,15 @@ export function AppSidebar() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
               <div className="h-7 w-7 rounded-lg bg-muted border border-border flex-shrink-0 shadow-sm" />
-              {!isCollapsed && (
-                <span className="font-semibold text-sm text-sidebar-foreground truncate animate-fade-in">
-                  AURA
-                </span>
-              )}
+
             </div>
-            <CustomSidebarToggle />
           </div>
         </SidebarHeader>
 
         <SidebarGroup className="px-2 py-2">
           <SidebarGroupLabel className="flex items-center justify-between px-2 py-2 text-xs font-medium text-sidebar-foreground/70 uppercase tracking-wide">
-            {!isCollapsed && <span>Navigation</span>}
-            {!isCollapsed && isTrialing && daysLeftInTrial !== null && daysLeftInTrial <= 7 && (
+            <span>Navigation</span>
+            {isTrialing && daysLeftInTrial !== null && daysLeftInTrial <= 7 && (
               <Badge variant="outline" className="text-[10px] h-4 px-1 bg-amber-50 text-amber-700 border-amber-200">
                 <Crown className="w-2 h-2 mr-0.5" />
                 {daysLeftInTrial}d
@@ -474,20 +411,17 @@ export function AppSidebar() {
                 const isAvailable = isMenuItemAvailable(item);
                 const hasSubItems = item.subItems && item.subItems.length > 0;
                 const isActive = isItemActive(item);
-                const showPopoutSubmenu = hasSubItems && isCollapsed && hoveredItem === item.title;
-                const showExpandedSubmenu = hasSubItems && !isCollapsed && (expandedItem === item.title || isActive);
+                const showExpandedSubmenu = hasSubItems && (expandedItem === item.title || isActive);
 
                 return (
                   <div 
                     key={item.title} 
                     className="relative"
                     data-menu-item={item.title}
-                    onMouseEnter={() => handleMouseEnter(item.title, hasSubItems)}
-                    onMouseLeave={handleMouseLeave}
                   >
                     <SidebarMenuItem>
                       <SidebarMenuButton
-                        asChild={!!item.url && !(isCollapsed && hasSubItems)}
+                        asChild={!!item.url}
                         onClick={() => handleItemClick(item.title, hasSubItems)}
                         className={cn(
                           "h-10 text-sm font-medium px-3 transition-all duration-200 text-black dark:text-sidebar-foreground",
@@ -496,9 +430,8 @@ export function AppSidebar() {
                           !isAvailable && "opacity-50 pointer-events-none",
                           hasSubItems && "cursor-pointer"
                         )}
-                        tooltip={isCollapsed ? item.title : undefined}
                       >
-                        {item.url && !(isCollapsed && hasSubItems) ? (
+                        {item.url ? (
                           <NavLink 
                             to={item.url} 
                             onClick={handleNavClick}
@@ -508,29 +441,23 @@ export function AppSidebar() {
                               "h-5 w-5 flex-shrink-0 transition-colors",
                               isActive ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/70"
                             )} />
-                            {!isCollapsed && (
-                              <span className="flex-1 text-left truncate animate-fade-in">
-                                {item.title}
-                              </span>
-                            )}
+                            <span className="flex-1 text-left truncate animate-fade-in">
+                              {item.title}
+                            </span>
                           </NavLink>
                         ) : (
                           <div className="flex items-center gap-3 w-full text-black dark:text-sidebar-foreground font-medium">
                             <item.icon className="h-5 w-5 flex-shrink-0 text-sidebar-foreground/70" />
-                            {!isCollapsed && (
-                              <>
-                                <span className="flex-1 text-left truncate animate-fade-in">
-                                  {item.title}
-                                </span>
-                                <div className="flex items-center gap-1 flex-shrink-0">
-                                  {!isAvailable && <Lock className="w-3 h-3 text-sidebar-foreground/40" />}
-                                  <ChevronDown className={cn(
-                                    "w-3 h-3 text-sidebar-foreground/60 transition-transform duration-200",
-                                    showExpandedSubmenu && "rotate-180"
-                                  )} />
-                                </div>
-                              </>
-                            )}
+                            <span className="flex-1 text-left truncate animate-fade-in">
+                              {item.title}
+                            </span>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              {!isAvailable && <Lock className="w-3 h-3 text-sidebar-foreground/40" />}
+                              <ChevronDown className={cn(
+                                "w-3 h-3 text-sidebar-foreground/60 transition-transform duration-200",
+                                showExpandedSubmenu && "rotate-180"
+                              )} />
+                            </div>
                           </div>
                         )}
                       </SidebarMenuButton>
@@ -571,50 +498,6 @@ export function AppSidebar() {
                         </div>
                       )}
                     </SidebarMenuItem>
-
-                    {/* Popout submenu for collapsed state */}
-                    {showPopoutSubmenu && (
-                      <div 
-                        className={cn(
-                          "absolute left-full top-0 ml-1 z-[100]",
-                          "bg-popover border border-border rounded-lg shadow-xl",
-                          "min-w-[220px] max-w-[280px] p-3",
-                          "animate-fade-in animate-scale-in"
-                        )}
-                        onMouseEnter={handleSubmenuMouseEnter}
-                        onMouseLeave={handleSubmenuMouseLeave}
-                      >
-                        <div className="text-xs font-semibold text-foreground/70 px-2 py-1 border-b border-border/50 mb-3">
-                          {item.title}
-                        </div>
-                        <div className="space-y-1">
-                          {item.subItems?.map((subItem) => {
-                            const subItemAvailable = ['owner', 'admin'].includes(organizationRole || '') || hasFeature(subItem.feature);
-                            const subItemActive = isSubItemActive(subItem);
-                            
-                            return (
-                              <NavLink
-                                key={subItem.title}
-                                to={subItem.url}
-                                onClick={handleNavClick}
-                                className={cn(
-                                  "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all duration-200 text-black dark:text-foreground font-medium",
-                                  "hover:bg-accent hover:text-black dark:hover:text-accent-foreground hover:scale-[1.02]",
-                                  subItemActive && "bg-accent text-black dark:text-accent-foreground shadow-sm font-medium",
-                                  !subItemAvailable && "opacity-50 pointer-events-none"
-                                )}
-                              >
-                                <subItem.icon className="h-4 w-4 flex-shrink-0" />
-                                <span className="truncate">{subItem.title}</span>
-                                {!subItemAvailable && <Lock className="w-3 h-3 text-muted-foreground ml-auto" />}
-                              </NavLink>
-                            );
-                          })}
-                        </div>
-                        {/* Arrow pointer */}
-                        <div className="absolute left-[-6px] top-4 w-3 h-3 bg-popover border-l border-t border-border rotate-45"></div>
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -622,11 +505,9 @@ export function AppSidebar() {
               {/* Super Admin Section */}
               {isSuperAdmin && (
                 <div className="mt-4 pt-4 border-t border-sidebar-border/50">
-                  {!isCollapsed && (
-                    <SidebarGroupLabel className="px-2 py-1 text-xs font-medium text-amber-600/80 uppercase tracking-wide">
-                      System Admin
-                    </SidebarGroupLabel>
-                  )}
+                  <SidebarGroupLabel className="px-2 py-1 text-xs font-medium text-amber-600/80 uppercase tracking-wide">
+                    System Admin
+                  </SidebarGroupLabel>
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
@@ -635,7 +516,6 @@ export function AppSidebar() {
                         "hover:bg-amber-50 hover:text-amber-700 hover:scale-[1.02]",
                         location.pathname.startsWith("/admin") && "bg-amber-100 text-amber-800"
                       )}
-                      tooltip={isCollapsed ? superAdminMenuItem.title : undefined}
                     >
                       <NavLink 
                         to={superAdminMenuItem.url} 
@@ -643,11 +523,9 @@ export function AppSidebar() {
                         className="flex items-center gap-3 w-full"
                       >
                         <Crown className="h-5 w-5 flex-shrink-0 text-amber-600" />
-                        {!isCollapsed && (
-                          <span className="flex-1 text-left truncate animate-fade-in">
-                            {superAdminMenuItem.title}
-                          </span>
-                        )}
+                        <span className="flex-1 text-left truncate animate-fade-in">
+                          {superAdminMenuItem.title}
+                        </span>
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -659,35 +537,23 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-3 border-t border-sidebar-border">
-        {!isCollapsed ? (
-          <div className="space-y-2">
-            {subscriptionPlan && (
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-sidebar-foreground/60">Plan:</span>
-                <Badge variant="outline" className="text-[10px]">
-                  {subscriptionPlan.name}
-                </Badge>
-              </div>
-            )}
-            {isTrialing && daysLeftInTrial !== null && (
-              <div className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
-                <Crown className="w-3 h-3 inline mr-1" />
-                Trial: {daysLeftInTrial} days left
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="flex justify-center">
-            {isTrialing && (
-              <Badge variant="outline" className="w-8 h-8 p-0 rounded-full bg-amber-50 border-amber-200">
-                <Crown className="w-3 h-3 text-amber-600" />
+        <div className="space-y-2">
+          {subscriptionPlan && (
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-sidebar-foreground/60">Plan:</span>
+              <Badge variant="outline" className="text-[10px]">
+                {subscriptionPlan.name}
               </Badge>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+          {isTrialing && daysLeftInTrial !== null && (
+            <div className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
+              <Crown className="w-3 h-3 inline mr-1" />
+              Trial: {daysLeftInTrial} days left
+            </div>
+          )}
+        </div>
       </SidebarFooter>
-      
-      <SidebarRail />
     </Sidebar>
   );
 }

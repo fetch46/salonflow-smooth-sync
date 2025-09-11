@@ -29,9 +29,6 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-  SidebarTrigger,
-  SidebarRail,
-  useSidebar,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 
@@ -128,7 +125,7 @@ const superAdminMenuItems: SuperAdminMenuItem[] = [
 export function SuperAdminSidebar() {
   const location = useLocation();
   const [openSubmenus, setOpenSubmenus] = useState<string[]>([]);
-  const { state, isMobile, setOpenMobile } = useSidebar();
+  
 
   const toggleSubmenu = (title: string) => {
     setOpenSubmenus((prev) =>
@@ -138,9 +135,7 @@ export function SuperAdminSidebar() {
     );
   };
 
-  const handleNavClick = () => {
-    if (isMobile) setOpenMobile(false);
-  };
+  const handleNavClick = () => {};
 
   useEffect(() => {
     // Keep the parent of the active route expanded
@@ -154,15 +149,14 @@ export function SuperAdminSidebar() {
   }, [location.pathname]);
 
   return (
-    <Sidebar variant="inset" collapsible="icon" className="border-r max-w-[260px] md:max-w-[280px]">
+    <Sidebar collapsible="none" className="border-r max-w-[260px] md:max-w-[280px]">
       <SidebarContent>
         <SidebarHeader className="px-2 pt-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-purple-800">
               <Crown className="h-6 w-6" />
-              <span className="font-semibold group-data-[collapsible=icon]:hidden text-responsive-base">Admin Panel</span>
+              <span className="font-semibold text-responsive-base">Admin Panel</span>
             </div>
-            <SidebarTrigger className="hidden md:inline-flex text-purple-700 h-7 w-7" />
           </div>
         </SidebarHeader>
         <SidebarGroup>
@@ -185,18 +179,15 @@ export function SuperAdminSidebar() {
                       <SidebarMenuButton
                         onClick={() => toggleSubmenu(item.title)}
                         className="hover:bg-purple-100 text-black dark:text-slate-200 font-medium hover:text-purple-800 text-responsive-base h-12 px-3"
-                        tooltip={state === 'collapsed' ? item.title : undefined}
                         size="lg"
                       >
                         <item.icon className="w-6 h-6" />
                         <span className="flex-1">{item.title}</span>
-                        <div className="group-data-[collapsible=icon]:hidden">
-                          {isOpen ? (
-                            <ChevronDown className="w-6 h-6" />
-                          ) : (
-                            <ChevronRight className="w-6 h-6" />
-                          )}
-                        </div>
+                        {isOpen ? (
+                          <ChevronDown className="w-6 h-6" />
+                        ) : (
+                          <ChevronRight className="w-6 h-6" />
+                        )}
                       </SidebarMenuButton>
                       {isOpen && (
                         <SidebarMenuSub className="gap-2">
@@ -236,7 +227,6 @@ export function SuperAdminSidebar() {
                       asChild
                       className="hover:bg-purple-100 text-black dark:text-slate-200 font-medium text-responsive-base h-12 px-3"
                       isActive={location.pathname === item.url}
-                      tooltip={state === 'collapsed' ? item.title : undefined}
                       size="lg"
                     >
                       <NavLink
@@ -291,7 +281,6 @@ export function SuperAdminSidebar() {
           <div className="text-xs text-purple-700/80 px-2 py-2">Super Admin Suite</div>
         </SidebarFooter>
       </SidebarContent>
-      <SidebarRail />
     </Sidebar>
   );
 }
