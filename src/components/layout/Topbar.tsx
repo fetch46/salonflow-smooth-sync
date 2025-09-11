@@ -18,7 +18,7 @@ import { useSaas } from '@/lib/saas';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { SidebarTrigger } from '@/components/ui/sidebar';
+// Sidebar trigger removed as collapse is disabled
 
 interface TopbarProps {
   onMenuClick?: () => void;
@@ -163,9 +163,7 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
       <div className="flex items-center justify-between gap-2">
         {/* Left side */}
         <div className="flex items-center gap-4">
-          <div className="lg:hidden">
-            <SidebarTrigger className="h-8 w-8" />
-          </div>
+          {/* Sidebar trigger removed */}
           
           <div className="hidden md:flex items-center gap-2 max-w-md px-2 py-1.5 rounded-md border bg-card">
             <Search className="h-4 w-4 text-muted-foreground" />
