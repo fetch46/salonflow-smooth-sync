@@ -15,7 +15,6 @@ import { useSaas } from "@/lib/saas";
 import { tableExists } from "@/utils/mockDatabase";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
 interface Appointment {
   id: string;
   customer_name: string;
@@ -34,7 +33,6 @@ interface Appointment {
   client_id?: string;
   location_id?: string;
 }
-
 interface Staff {
   id: string;
   full_name: string;
@@ -42,7 +40,6 @@ interface Staff {
   phone: string;
   specialties: string[];
 }
-
 interface Service {
   id: string;
   name: string;
@@ -52,14 +49,12 @@ interface Service {
   category: string;
   commission_percentage?: number | null;
 }
-
 interface ClientRow {
   id: string;
   full_name: string;
   phone?: string | null;
   email?: string | null;
 }
-
 interface AppointmentServiceItem {
   id?: string;
   appointment_id?: string;
@@ -71,36 +66,45 @@ interface AppointmentServiceItem {
   sort_order?: number;
   commission_percentage?: number; // Commission % override
 }
-
 export default function Appointments() {
-  const { organization } = useSaas();
+  const {
+    organization
+  } = useSaas();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [services, setServices] = useState<Service[]>([]);
-  const [accounts, setAccounts] = useState<Array<{ id: string; account_code: string; account_name: string }>>([]);
-  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
+  const [accounts, setAccounts] = useState<Array<{
+    id: string;
+    account_code: string;
+    account_name: string;
+  }>>([]);
+  const [locations, setLocations] = useState<Array<{
+    id: string;
+    name: string;
+  }>>([]);
   const [defaultLocationId, setDefaultLocationId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [isReadOnly, setIsReadOnly] = useState<boolean>(false);
   const navigate = useNavigate();
-  
   const [appointmentServicesById, setAppointmentServicesById] = useState<Record<string, AppointmentServiceItem[]>>({});
   const [appointmentsWithJobcards, setAppointmentsWithJobcards] = useState<Set<string>>(new Set());
-
   const [clientsList, setClientsList] = useState<ClientRow[]>([]);
   const [clientSearch, setClientSearch] = useState<string>("");
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-
   const handleSendConfirmation = async (appointment: Appointment) => {
     try {
       const res = await fetch('/api/notifications/appointment/confirmation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appointment_id: appointment.id })
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          appointment_id: appointment.id
+        })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Failed to send confirmation');
@@ -109,13 +113,16 @@ export default function Appointments() {
       toast.error(e?.message || 'Failed to send confirmation');
     }
   };
-
   const handleSendReminder = async (appointment: Appointment) => {
     try {
       const res = await fetch('/api/notifications/appointment/reminder', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appointment_id: appointment.id })
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          appointment_id: appointment.id
+        })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Failed to send reminder');
@@ -124,7 +131,6 @@ export default function Appointments() {
       toast.error(e?.message || 'Failed to send reminder');
     }
   };
-
   const [form, setForm] = useState({
     customer_name: "",
     customer_email: "",
@@ -140,7 +146,7 @@ export default function Appointments() {
     notes: "",
     price: 0,
     serviceItems: [] as AppointmentServiceItem[],
-    location_id: "",
+    location_id: ""
   });
 
   // Booking fee UI state
@@ -149,24 +155,21 @@ export default function Appointments() {
   const [bookingPaymentMethod, setBookingPaymentMethod] = useState<string>("");
   const [bookingTxnNumber, setBookingTxnNumber] = useState<string>("");
   const [bookingAccountId, setBookingAccountId] = useState<string>("");
-
-  const { format: formatMoney } = useOrganizationCurrency();
-
+  const {
+    format: formatMoney
+  } = useOrganizationCurrency();
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [appointmentsRes, staffRes, servicesRes, locationsRes] = await Promise.all([
-        supabase.from("appointments").select("*").order("appointment_date", { ascending: true }),
-        supabase.from("staff").select("*").eq("is_active", true),
-        supabase.from("services").select("*").eq("is_active", true).eq('organization_id', organization?.id || ''),
-        supabase.from("business_locations").select("id, name").eq('organization_id', organization?.id || '').order("name", { ascending: true }),
-      ]);
-
+      const [appointmentsRes, staffRes, servicesRes, locationsRes] = await Promise.all([supabase.from("appointments").select("*").order("appointment_date", {
+        ascending: true
+      }), supabase.from("staff").select("*").eq("is_active", true), supabase.from("services").select("*").eq("is_active", true).eq('organization_id', organization?.id || ''), supabase.from("business_locations").select("id, name").eq('organization_id', organization?.id || '').order("name", {
+        ascending: true
+      })]);
       if (appointmentsRes.error) throw appointmentsRes.error;
       if (staffRes.error) throw staffRes.error;
       if (servicesRes.error) throw servicesRes.error;
       if (locationsRes.error) throw locationsRes.error;
-
       setAppointments(appointmentsRes.data || []);
       setStaff(staffRes.data || []);
       setServices(servicesRes.data || []);
@@ -176,7 +179,10 @@ export default function Appointments() {
       try {
         const posDefault = ((organization?.settings || {}) as any)?.pos_default_location_id as string | undefined;
         setDefaultLocationId(posDefault || "");
-        setForm((prev) => ({ ...prev, location_id: prev.location_id || posDefault || "" }));
+        setForm(prev => ({
+          ...prev,
+          location_id: prev.location_id || posDefault || ""
+        }));
       } catch {}
 
       // Fetch accounts only if org is selected and table exists
@@ -184,16 +190,21 @@ export default function Appointments() {
         if (organization?.id) {
           const hasAccounts = await tableExists(supabase, 'accounts');
           if (hasAccounts) {
-            const { data: accData, error: accErr } = await supabase
-              .from("accounts")
-              .select("id, account_code, account_name")
-              .eq("organization_id", organization.id)
-              .order("account_code", { ascending: true });
+            const {
+              data: accData,
+              error: accErr
+            } = await supabase.from("accounts").select("id, account_code, account_name").eq("organization_id", organization.id).order("account_code", {
+              ascending: true
+            });
             if (accErr) {
               console.warn('Accounts fetch failed, continuing without accounts', accErr);
               setAccounts([]);
             } else {
-              setAccounts((accData || []) as Array<{ id: string; account_code: string; account_name: string }>);
+              setAccounts((accData || []) as Array<{
+                id: string;
+                account_code: string;
+                account_name: string;
+              }>);
             }
           } else {
             setAccounts([]);
@@ -211,10 +222,10 @@ export default function Appointments() {
       if (appointmentIds.length > 0) {
         const hasApptServices = await tableExists(supabase, 'appointment_services');
         if (hasApptServices) {
-          const { data: apptServices, error: apptServicesError } = await supabase
-            .from("appointment_services")
-            .select("*")
-            .in("appointment_id", appointmentIds);
+          const {
+            data: apptServices,
+            error: apptServicesError
+          } = await supabase.from("appointment_services").select("*").in("appointment_id", appointmentIds);
           if (apptServicesError) throw apptServicesError;
           const grouped: Record<string, AppointmentServiceItem[]> = {};
           (apptServices || []).forEach((item: any) => {
@@ -228,7 +239,7 @@ export default function Appointments() {
               price: (item as any).price ?? (item as any).unit_price ?? undefined,
               notes: item.notes || undefined,
               sort_order: item.sort_order || 0,
-              commission_percentage: item.commission_percentage || undefined,
+              commission_percentage: item.commission_percentage || undefined
             });
           });
           setAppointmentServicesById(grouped);
@@ -245,7 +256,7 @@ export default function Appointments() {
               price: appt.price || undefined,
               notes: appt.notes || undefined,
               sort_order: 0,
-              commission_percentage: appt.commission_percentage || undefined,
+              commission_percentage: appt.commission_percentage || undefined
             }] : [];
             grouped[appt.id] = items;
           });
@@ -254,17 +265,15 @@ export default function Appointments() {
 
         // Build set of appointment IDs that already have job cards
         try {
-          const { data: apptJobcards, error: apptJobcardsErr } = await supabase
-            .from('job_cards')
-            .select('appointment_id')
-            .in('appointment_id', appointmentIds as string[]);
+          const {
+            data: apptJobcards,
+            error: apptJobcardsErr
+          } = await supabase.from('job_cards').select('appointment_id').in('appointment_id', appointmentIds as string[]);
           if (apptJobcardsErr) {
             console.warn('Could not fetch job cards by appointment_id (column may not exist). Continuing without linkage.');
             setAppointmentsWithJobcards(new Set());
           } else {
-            const apptIdsWithJc = new Set<string>((apptJobcards || [])
-              .map((r: any) => r.appointment_id)
-              .filter(Boolean));
+            const apptIdsWithJc = new Set<string>((apptJobcards || []).map((r: any) => r.appointment_id).filter(Boolean));
             setAppointmentsWithJobcards(apptIdsWithJc);
           }
         } catch (linkErr) {
@@ -282,7 +291,6 @@ export default function Appointments() {
       setLoading(false);
     }
   }, [organization]);
-
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -304,20 +312,32 @@ export default function Appointments() {
   const getDialCode = (country: string): string => {
     const c = String(country || '').toLowerCase();
     const map: Record<string, string> = {
-      ke: '+254', kenya: '+254',
-      ug: '+256', uganda: '+256',
-      tz: '+255', tanzania: '+255',
-      us: '+1', usa: '+1', 'united states': '+1', 'united states of america': '+1',
-      uk: '+44', gb: '+44', 'united kingdom': '+44',
-      in: '+91', india: '+91',
-      za: '+27', 'south africa': '+27',
-      ae: '+971', 'united arab emirates': '+971',
-      ca: '+1', canada: '+1',
-      au: '+61', australia: '+61',
+      ke: '+254',
+      kenya: '+254',
+      ug: '+256',
+      uganda: '+256',
+      tz: '+255',
+      tanzania: '+255',
+      us: '+1',
+      usa: '+1',
+      'united states': '+1',
+      'united states of america': '+1',
+      uk: '+44',
+      gb: '+44',
+      'united kingdom': '+44',
+      in: '+91',
+      india: '+91',
+      za: '+27',
+      'south africa': '+27',
+      ae: '+971',
+      'united arab emirates': '+971',
+      ca: '+1',
+      canada: '+1',
+      au: '+61',
+      australia: '+61'
     };
     return map[c] || '';
   };
-
   const handleSelectExistingClient = (clientId: string) => {
     setSelectedClientId(clientId);
     const c = clientsList.find(x => x.id === clientId);
@@ -326,18 +346,19 @@ export default function Appointments() {
         ...prev,
         customer_name: c.full_name || prev.customer_name,
         customer_email: c.email || prev.customer_email,
-        customer_phone: c.phone || prev.customer_phone,
+        customer_phone: c.phone || prev.customer_phone
       }));
     }
   };
-
   useEffect(() => {
     const loadClientsAndPrefill = async () => {
       try {
-        const { data, error } = await supabase
-          .from('clients')
-          .select('id, full_name, phone, email')
-          .order('full_name', { ascending: true });
+        const {
+          data,
+          error
+        } = await supabase.from('clients').select('id, full_name, phone, email').order('full_name', {
+          ascending: true
+        });
         if (error) throw error;
         setClientsList(data || []);
       } catch (err) {
@@ -350,12 +371,14 @@ export default function Appointments() {
       const dial = country ? getDialCode(country) : '';
       setForm(prev => {
         if (!prev.customer_phone && dial) {
-          return { ...prev, customer_phone: dial };
+          return {
+            ...prev,
+            customer_phone: dial
+          };
         }
         return prev;
       });
     };
-
     if (isModalOpen) {
       loadClientsAndPrefill();
     } else {
@@ -363,19 +386,25 @@ export default function Appointments() {
       setClientSearch("");
     }
   }, [isModalOpen, organization]);
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+    const {
+      name,
+      value
+    } = e.target;
     if (name === 'customer_phone') {
       setSelectedClientId("");
     }
-    setForm(prev => ({ ...prev, [name]: value }));
+    setForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
-
   const handleSelectChange = (name: string, value: string) => {
-    setForm(prev => ({ ...prev, [name]: value }));
+    setForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
-
   const resetForm = () => {
     setForm({
       customer_name: "",
@@ -389,8 +418,11 @@ export default function Appointments() {
       status: "scheduled",
       notes: "",
       price: 0,
-      serviceItems: [{ service_id: "", staff_id: "" }],
-      location_id: defaultLocationId || "",
+      serviceItems: [{
+        service_id: "",
+        staff_id: ""
+      }],
+      location_id: defaultLocationId || ""
     });
     setEditingAppointment(null);
     setIsReadOnly(false);
@@ -400,29 +432,35 @@ export default function Appointments() {
     setBookingTxnNumber("");
     setBookingAccountId("");
   };
-
   const addServiceItem = () => {
-    setForm(prev => ({ ...prev, serviceItems: [...prev.serviceItems, { service_id: "", staff_id: "", commission_percentage: undefined }] }));
+    setForm(prev => ({
+      ...prev,
+      serviceItems: [...prev.serviceItems, {
+        service_id: "",
+        staff_id: "",
+        commission_percentage: undefined
+      }]
+    }));
   };
-
   const removeServiceItem = (index: number) => {
-    setForm(prev => ({ ...prev, serviceItems: prev.serviceItems.filter((_, i) => i !== index) }));
+    setForm(prev => ({
+      ...prev,
+      serviceItems: prev.serviceItems.filter((_, i) => i !== index)
+    }));
   };
-
   const updateServiceItem = (index: number, field: keyof AppointmentServiceItem, value: string | number) => {
     setForm(prev => {
       const updated = [...prev.serviceItems];
-      const current = { ...updated[index] };
+      const current = {
+        ...updated[index]
+      };
       if (field === 'service_id') {
         const selectedService = services.find(s => s.id === value);
         current.service_id = String(value);
         if (selectedService) {
           current.duration_minutes = selectedService.duration_minutes;
           current.price = selectedService.price;
-          current.commission_percentage =
-            typeof selectedService.commission_percentage === 'number'
-              ? Number(selectedService.commission_percentage)
-              : undefined;
+          current.commission_percentage = typeof selectedService.commission_percentage === 'number' ? Number(selectedService.commission_percentage) : undefined;
         }
       } else if (field === 'staff_id') {
         current.staff_id = String(value);
@@ -438,22 +476,17 @@ export default function Appointments() {
       // Recompute aggregate fields
       const totalDuration = updated.reduce((sum, it) => sum + (it.duration_minutes || 0), 0);
       const totalPrice = updated.reduce((sum, it) => sum + (it.price || 0), 0);
-      const serviceNames = updated
-        .map(it => services.find(s => s.id === it.service_id)?.name)
-        .filter(Boolean)
-        .join(", ");
-
+      const serviceNames = updated.map(it => services.find(s => s.id === it.service_id)?.name).filter(Boolean).join(", ");
       return {
         ...prev,
         serviceItems: updated,
         duration_minutes: totalDuration || prev.duration_minutes,
-                  price: totalPrice || prev.price,
-          service_name: serviceNames,
-          staff_id: updated.length === 1 ? (updated[0].staff_id || "") : "",
-        };
+        price: totalPrice || prev.price,
+        service_name: serviceNames,
+        staff_id: updated.length === 1 ? updated[0].staff_id || "" : ""
+      };
     });
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -478,11 +511,10 @@ export default function Appointments() {
       const phoneValue = form.customer_phone.trim();
       try {
         if (!resolvedClientId) {
-          const { data: existingClient, error: findClientError } = await supabase
-            .from('clients')
-            .select('id, phone')
-            .eq('phone', phoneValue)
-            .maybeSingle();
+          const {
+            data: existingClient,
+            error: findClientError
+          } = await supabase.from('clients').select('id, phone').eq('phone', phoneValue).maybeSingle();
           if (findClientError && (findClientError as any).code !== 'PGRST116') {
             throw findClientError;
           }
@@ -492,16 +524,15 @@ export default function Appointments() {
             const clientInsert: any = {
               full_name: form.customer_name || '(No name)',
               email: form.customer_email || null,
-              phone: phoneValue,
+              phone: phoneValue
             };
             if (organization?.id) {
               (clientInsert as any).organization_id = organization.id;
             }
-            const { data: insertedClient, error: insertClientError } = await supabase
-              .from('clients')
-              .insert([clientInsert])
-              .select('id')
-              .single();
+            const {
+              data: insertedClient,
+              error: insertClientError
+            } = await supabase.from('clients').insert([clientInsert]).select('id').single();
             if (insertClientError) throw insertClientError;
             resolvedClientId = insertedClient?.id || null;
           }
@@ -514,11 +545,7 @@ export default function Appointments() {
       // Compute aggregates
       const totalDuration = form.serviceItems.reduce((sum, it) => sum + (it.duration_minutes || 0), 0);
       const totalPrice = form.serviceItems.reduce((sum, it) => sum + (it.price || 0), 0);
-      const serviceNames = form.serviceItems
-        .map(it => services.find(s => s.id === it.service_id)?.name)
-        .filter(Boolean)
-        .join(", ");
-
+      const serviceNames = form.serviceItems.map(it => services.find(s => s.id === it.service_id)?.name).filter(Boolean).join(", ");
       const appointmentPayload: any = {
         customer_name: form.customer_name,
         customer_email: form.customer_email || null,
@@ -528,7 +555,7 @@ export default function Appointments() {
         // Persist primary service_id for fallback UIs when appointment_services table is missing
         service_id: form.serviceItems.length >= 1 ? form.serviceItems[0].service_id : null,
         // Persist primary staff assignment from the first item for fallback display
-        staff_id: form.serviceItems.length >= 1 ? (form.serviceItems[0].staff_id || null) : null,
+        staff_id: form.serviceItems.length >= 1 ? form.serviceItems[0].staff_id || null : null,
         appointment_date: form.appointment_date,
         appointment_time: form.appointment_time,
         duration_minutes: totalDuration || form.duration_minutes,
@@ -536,27 +563,26 @@ export default function Appointments() {
         notes: form.notes || null,
         price: totalPrice || form.price,
         organization_id: organization.id,
-        location_id: form.location_id || null,
+        location_id: form.location_id || null
       };
-
       if (editingAppointment) {
         // Do not attempt to update organization_id to avoid schema mismatches
-        const { organization_id, ...updatePayload } = appointmentPayload;
-        const { error: updateError } = await supabase
-          .from("appointments")
-          .update(updatePayload)
-          .eq("id", editingAppointment.id);
+        const {
+          organization_id,
+          ...updatePayload
+        } = appointmentPayload;
+        const {
+          error: updateError
+        } = await supabase.from("appointments").update(updatePayload).eq("id", editingAppointment.id);
         if (updateError) throw updateError;
 
         // Replace appointment_services if table exists; otherwise rely on appointment fields
         const hasApptServices = await tableExists(supabase, 'appointment_services');
         if (hasApptServices) {
-          const { error: delError } = await supabase
-            .from("appointment_services")
-            .delete()
-            .eq("appointment_id", editingAppointment.id);
+          const {
+            error: delError
+          } = await supabase.from("appointment_services").delete().eq("appointment_id", editingAppointment.id);
           if (delError) throw delError;
-
           const rows = form.serviceItems.map((it, idx) => ({
             appointment_id: editingAppointment.id,
             service_id: it.service_id,
@@ -567,36 +593,41 @@ export default function Appointments() {
             total_price: (typeof it.price === 'number' ? it.price : null) || 0,
             notes: it.notes || null,
             sort_order: idx,
-            commission_percentage: typeof it.commission_percentage === 'number' ? it.commission_percentage : null,
+            commission_percentage: typeof it.commission_percentage === 'number' ? it.commission_percentage : null
           }));
           if (rows.length) {
-            const { error: insError } = await supabase.from("appointment_services").insert(rows);
+            const {
+              error: insError
+            } = await supabase.from("appointment_services").insert(rows);
             if (insError) throw insError;
           }
         }
         toast.success("Appointment updated successfully!");
       } else {
-        const { data: inserted, error: insertError } = await (async () => {
+        const {
+          data: inserted,
+          error: insertError
+        } = await (async () => {
           try {
-            const res = await supabase
-              .from("appointments")
-              .insert([appointmentPayload])
-              .select("id")
-              .maybeSingle();
+            const res = await supabase.from("appointments").insert([appointmentPayload]).select("id").maybeSingle();
             if (res.error) throw res.error;
-            return { data: res.data, error: null } as any;
+            return {
+              data: res.data,
+              error: null
+            } as any;
           } catch (err: any) {
             const message = String(err?.message || "");
             // Fallback: retry without organization_id if column missing in schema
-            if (message.toLowerCase().includes("organization_id") ||
-                (message.toLowerCase().includes("column") && message.toLowerCase().includes("organization_id"))) {
-              const { organization_id: _omit, ...payloadNoOrg } = appointmentPayload as any;
-              const retry = await supabase
-                .from("appointments")
-                .insert([payloadNoOrg])
-                .select("id")
-                .maybeSingle();
-              return { data: retry.data, error: retry.error } as any;
+            if (message.toLowerCase().includes("organization_id") || message.toLowerCase().includes("column") && message.toLowerCase().includes("organization_id")) {
+              const {
+                organization_id: _omit,
+                ...payloadNoOrg
+              } = appointmentPayload as any;
+              const retry = await supabase.from("appointments").insert([payloadNoOrg]).select("id").maybeSingle();
+              return {
+                data: retry.data,
+                error: retry.error
+              } as any;
             }
             throw err;
           }
@@ -618,10 +649,12 @@ export default function Appointments() {
             total_price: (typeof it.price === 'number' ? it.price : null) || 0,
             notes: it.notes || null,
             sort_order: idx,
-            commission_percentage: typeof it.commission_percentage === 'number' ? it.commission_percentage : null,
+            commission_percentage: typeof it.commission_percentage === 'number' ? it.commission_percentage : null
           }));
           if (rows.length) {
-            const { error: insError } = await supabase.from("appointment_services").insert(rows);
+            const {
+              error: insError
+            } = await supabase.from("appointment_services").insert(rows);
             if (insError) throw insError;
           }
         }
@@ -633,14 +666,16 @@ export default function Appointments() {
           if (inserted?.id) {
             await fetch('/api/notifications/appointment/confirmation', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ appointment_id: inserted.id })
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                appointment_id: inserted.id
+              })
             });
           }
         } catch {}
-
       }
-      
       fetchData();
       resetForm();
       setIsModalOpen(false);
@@ -649,32 +684,25 @@ export default function Appointments() {
       console.error(error);
     }
   };
-
   const handleEdit = async (appointment: Appointment) => {
     navigate(`/appointments/${appointment.id}/edit`);
   };
-
   const handleDelete = async (id: string) => {
     try {
       // Guard: prevent deletion if a job card exists for this appointment
-      const { data: existingJc, error: jcErr } = await supabase
-        .from('job_cards')
-        .select('id')
-        .eq('appointment_id', id)
-        .limit(1);
+      const {
+        data: existingJc,
+        error: jcErr
+      } = await supabase.from('job_cards').select('id').eq('appointment_id', id).limit(1);
       if (jcErr) throw jcErr;
       if (existingJc && existingJc.length > 0) {
         toast.error('Cannot delete appointment: a job card has been created for this appointment');
         return;
       }
-
       if (!confirm("Are you sure you want to delete this appointment?")) return;
-
-      const { error } = await supabase
-        .from("appointments")
-        .delete()
-        .eq("id", id);
-      
+      const {
+        error
+      } = await supabase.from("appointments").delete().eq("id", id);
       if (error) throw error;
       toast.success("Appointment deleted successfully!");
       fetchData();
@@ -683,11 +711,9 @@ export default function Appointments() {
       console.error(error);
     }
   };
-  
   const handleView = (appointment: Appointment) => {
     navigate(`/appointments/${appointment.id}/edit?view=1`);
   };
-
   const handleCreateJobcard = async (appointment: Appointment) => {
     // Enforce: Only confirmed bookings can raise a job card
     const status = String(appointment.status || '').toLowerCase();
@@ -698,58 +724,43 @@ export default function Appointments() {
     // Prefer navigating to the job card creation page with prefill via query param
     navigate(`/job-cards/new?appointment=${appointment.id}`);
   };
-
-
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "scheduled": return "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400";
-      case "confirmed": return "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400";
-      case "in_progress": return "bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400";
-      case "completed": return "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400";
-      case "cancelled": return "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400";
-      case "no_show": return "bg-slate-100 text-slate-700 dark:bg-slate-950/40 dark:text-slate-400";
-      default: return "bg-slate-100 text-slate-700 dark:bg-slate-950/40 dark:text-slate-400";
+      case "scheduled":
+        return "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400";
+      case "confirmed":
+        return "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400";
+      case "in_progress":
+        return "bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400";
+      case "completed":
+        return "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400";
+      case "cancelled":
+        return "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400";
+      case "no_show":
+        return "bg-slate-100 text-slate-700 dark:bg-slate-950/40 dark:text-slate-400";
+      default:
+        return "bg-slate-100 text-slate-700 dark:bg-slate-950/40 dark:text-slate-400";
     }
   };
-
   const filteredAppointments = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    return appointments.filter((appt) => {
+    return appointments.filter(appt => {
       if (statusFilter !== "all" && String(appt.status || "").toLowerCase() !== statusFilter) return false;
       if (!term) return true;
-
       const items = appointmentServicesById[appt.id] || [];
-      const serviceNames = items
-        .map((it) => services.find((s) => s.id === it.service_id)?.name)
-        .filter(Boolean)
-        .join(", ")
-        .toLowerCase();
-
-      return (
-        String(appt.customer_name || "").toLowerCase().includes(term) ||
-        String(appt.customer_email || "").toLowerCase().includes(term) ||
-        String(appt.customer_phone || "").toLowerCase().includes(term) ||
-        String(appt.service_name || "").toLowerCase().includes(term) ||
-        serviceNames.includes(term) ||
-        String(appt.appointment_date || "").toLowerCase().includes(term) ||
-        String(appt.appointment_time || "").toLowerCase().includes(term)
-      );
+      const serviceNames = items.map(it => services.find(s => s.id === it.service_id)?.name).filter(Boolean).join(", ").toLowerCase();
+      return String(appt.customer_name || "").toLowerCase().includes(term) || String(appt.customer_email || "").toLowerCase().includes(term) || String(appt.customer_phone || "").toLowerCase().includes(term) || String(appt.service_name || "").toLowerCase().includes(term) || serviceNames.includes(term) || String(appt.appointment_date || "").toLowerCase().includes(term) || String(appt.appointment_time || "").toLowerCase().includes(term);
     });
   }, [appointments, searchTerm, statusFilter, services, appointmentServicesById]);
-
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
+    return <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading appointments...</p>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <TooltipProvider>
+  return <TooltipProvider>
     <div className="p-6 w-full max-w-none mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <div>
@@ -757,21 +768,12 @@ export default function Appointments() {
           <p className="text-muted-foreground">Manage your salon appointments</p>
         </div>
         <div className="flex items-center gap-1.5">
-          <Button 
-            variant="outline"
-            size="icon"
-            onClick={() => fetchData()}
-            disabled={loading}
-            title="Refresh"
-          >
+          <Button variant="outline" size="icon" onClick={() => fetchData()} disabled={loading} title="Refresh">
             <RefreshCcw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
           </Button>
-          <Button 
-            onClick={() => {
-              navigate('/appointments/new');
-            }}
-            className="flex items-center gap-1.5"
-          >
+          <Button onClick={() => {
+            navigate('/appointments/new');
+          }} className="flex items-center gap-1.5">
             <Plus className="w-3.5 h-3.5" />
             New Appointment
           </Button>
@@ -879,12 +881,7 @@ export default function Appointments() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2.5 mb-3">
             <div className="relative w-full md:max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Search name, phone, email, or service"
-                className="pl-8 h-9"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+              <Input placeholder="Search name, phone, email, or service" className="pl-8 h-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
             </div>
             <div className="flex items-center gap-2 w-full md:w-auto">
               <div className="w-full md:w-48">
@@ -909,39 +906,25 @@ export default function Appointments() {
             </div>
           </div>
 
-          {filteredAppointments.length === 0 ? (
-              <div className="text-center py-8">
+          {filteredAppointments.length === 0 ? <div className="text-center py-8">
                 <CalendarDays className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">No appointments found</p>
                 <div className="mt-4 flex items-center justify-center gap-2">
-                  <Button 
-                    variant="outline"
-                    onClick={() => { setSearchTerm(""); setStatusFilter("all"); }}
-                  >
+                  <Button variant="outline" onClick={() => {
+                setSearchTerm("");
+                setStatusFilter("all");
+              }}>
                     Reset filters
                   </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={() => fetchData()}
-                    disabled={loading}
-                  >
+                  <Button variant="outline" onClick={() => fetchData()} disabled={loading}>
                     Refresh
                   </Button>
                 </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filteredAppointments.map((appointment) => {
-                  const items = appointmentServicesById[appointment.id] || [];
-                  const serviceNames = (items.length
-                    ? items.map(it => services.find(s => s.id === it.service_id)?.name).filter(Boolean).join(", ")
-                    : appointment.service_name) || "—";
-
-                  return (
-                    <div
-                      key={appointment.id}
-                      className="group relative w-full h-full rounded-lg border bg-gradient-to-br from-card to-card/80 p-3.5 md:p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-[13px] ring-1 ring-border/50 hover:ring-primary/20 flex flex-col overflow-hidden"
-                    >
+              </div> : <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                {filteredAppointments.map(appointment => {
+              const items = appointmentServicesById[appointment.id] || [];
+              const serviceNames = (items.length ? items.map(it => services.find(s => s.id === it.service_id)?.name).filter(Boolean).join(", ") : appointment.service_name) || "—";
+              return <div key={appointment.id} className="group relative w-full h-full rounded-lg border bg-gradient-to-br from-card to-card/80 p-3.5 md:p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-[13px] ring-1 ring-border/50 hover:ring-primary/20 flex flex-col overflow-hidden">
                       <div className="absolute top-2.5 right-2.5">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -954,12 +937,7 @@ export default function Appointments() {
                               <Eye className="mr-2 h-4 w-4" />
                               View Appointment
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleCreateJobcard(appointment)}
-                              disabled={String(appointment.status || '').toLowerCase() !== 'confirmed'}
-                              className={String(appointment.status || '').toLowerCase() !== 'confirmed' ? 'text-slate-400' : ''}
-                              title={String(appointment.status || '').toLowerCase() !== 'confirmed' ? 'Only confirmed bookings can create a job card' : undefined}
-                            >
+                            <DropdownMenuItem onClick={() => handleCreateJobcard(appointment)} disabled={String(appointment.status || '').toLowerCase() !== 'confirmed'} className={String(appointment.status || '').toLowerCase() !== 'confirmed' ? 'text-slate-400' : ''} title={String(appointment.status || '').toLowerCase() !== 'confirmed' ? 'Only confirmed bookings can create a job card' : undefined}>
                               <FilePlus className="mr-2 h-4 w-4" />
                               Create Jobcard
                             </DropdownMenuItem>
@@ -975,12 +953,7 @@ export default function Appointments() {
                               <Clock className="mr-2 h-4 w-4" />
                               Send Reminder
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(appointment.id)}
-                              disabled={appointmentsWithJobcards.has(appointment.id)}
-                              className={appointmentsWithJobcards.has(appointment.id) ? 'text-slate-400' : ''}
-                              title={appointmentsWithJobcards.has(appointment.id) ? 'Cannot delete: job card exists for this appointment' : undefined}
-                            >
+                            <DropdownMenuItem onClick={() => handleDelete(appointment.id)} disabled={appointmentsWithJobcards.has(appointment.id)} className={appointmentsWithJobcards.has(appointment.id) ? 'text-slate-400' : ''} title={appointmentsWithJobcards.has(appointment.id) ? 'Cannot delete: job card exists for this appointment' : undefined}>
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete Appointment
                             </DropdownMenuItem>
@@ -1028,9 +1001,7 @@ export default function Appointments() {
                           <div className="justify-self-center min-w-0 max-w-full">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <div className="text-sm font-medium text-muted-foreground truncate text-center">
-                                  {serviceNames}
-                                </div>
+                                
                               </TooltipTrigger>
                               <TooltipContent side="top">{serviceNames}</TooltipContent>
                             </Tooltip>
@@ -1043,8 +1014,7 @@ export default function Appointments() {
                           </div>
                         </div>
                         <div className="flex flex-col gap-1.5 text-[12px] text-muted-foreground ml-9 min-w-0">
-                          {appointment.customer_email && (
-                            <div className="inline-flex items-center gap-2 min-w-0">
+                          {appointment.customer_email && <div className="inline-flex items-center gap-2 min-w-0">
                               <Mail className="w-3.5 h-3.5 text-muted-foreground/70" />
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -1052,10 +1022,8 @@ export default function Appointments() {
                                 </TooltipTrigger>
                                 <TooltipContent side="top">{appointment.customer_email}</TooltipContent>
                               </Tooltip>
-                            </div>
-                          )}
-                          {appointment.customer_phone && (
-                            <div className="inline-flex items-center gap-2 min-w-0">
+                            </div>}
+                          {appointment.customer_phone && <div className="inline-flex items-center gap-2 min-w-0">
                               <Phone className="w-3.5 h-3.5 text-muted-foreground/70" />
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -1063,20 +1031,17 @@ export default function Appointments() {
                                 </TooltipTrigger>
                                 <TooltipContent side="top">{appointment.customer_phone}</TooltipContent>
                               </Tooltip>
-                            </div>
-                          )}
+                            </div>}
                         </div>
                       </div>
 
                       <div className="mt-2.5 mt-auto">
                         <div className="flex flex-wrap gap-1.5 min-w-0">
-                          {items.length ? (
-                            <>
+                          {items.length ? <>
                               {items.slice(0, 3).map((it, idx) => {
-                                const srvName = services.find(s => s.id === it.service_id)?.name || 'Service';
-                                const stfName = staff.find(s => s.id === it.staff_id)?.full_name || 'Unassigned';
-                                return (
-                                  <Tooltip key={idx}>
+                        const srvName = services.find(s => s.id === it.service_id)?.name || 'Service';
+                        const stfName = staff.find(s => s.id === it.staff_id)?.full_name || 'Unassigned';
+                        return <Tooltip key={idx}>
                                     <TooltipTrigger asChild>
                                       <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border border-blue-200 dark:border-blue-800 max-w-full">
                                         <div className="flex items-center gap-1">
@@ -1091,11 +1056,9 @@ export default function Appointments() {
                                       </div>
                                     </TooltipTrigger>
                                     <TooltipContent side="top">{srvName} • {stfName}</TooltipContent>
-                                  </Tooltip>
-                                );
-                              })}
-                              {items.length > 3 && (
-                                <Tooltip>
+                                  </Tooltip>;
+                      })}
+                              {items.length > 3 && <Tooltip>
                                   <TooltipTrigger asChild>
                                     <div className="px-2.5 py-1 rounded-md bg-muted/40 border border-border/60 text-[12px] text-muted-foreground cursor-default">
                                       +{items.length - 3} more
@@ -1104,19 +1067,14 @@ export default function Appointments() {
                                   <TooltipContent side="top">
                                     <div className="text-xs space-y-1">
                                       {items.slice(3).map((it, i) => {
-                                        const srvName = services.find(s => s.id === it.service_id)?.name || 'Service';
-                                        const stfName = staff.find(s => s.id === it.staff_id)?.full_name || 'Unassigned';
-                                        return (
-                                          <div key={i}>{srvName} • {stfName}</div>
-                                        );
-                                      })}
+                              const srvName = services.find(s => s.id === it.service_id)?.name || 'Service';
+                              const stfName = staff.find(s => s.id === it.staff_id)?.full_name || 'Unassigned';
+                              return <div key={i}>{srvName} • {stfName}</div>;
+                            })}
                                     </div>
                                   </TooltipContent>
-                                </Tooltip>
-                              )}
-                            </>
-                          ) : (
-                            <Tooltip>
+                                </Tooltip>}
+                            </> : <Tooltip>
                               <TooltipTrigger asChild>
                                 <div className="px-2.5 py-1 rounded-md bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-950/20 dark:to-gray-950/20 border border-slate-200 dark:border-slate-800 max-w-full">
                                   <span className="text-[12px] text-slate-600 dark:text-slate-400 truncate block">
@@ -1125,12 +1083,10 @@ export default function Appointments() {
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent side="top">{serviceNames}</TooltipContent>
-                            </Tooltip>
-                          )}
+                            </Tooltip>}
                         </div>
 
-                        {appointment.location_id && (
-                          <div className="mt-2.5 pt-2.5 border-t border-border/50">
+                        {appointment.location_id && <div className="mt-2.5 pt-2.5 border-t border-border/50">
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted/50 max-w-full min-w-0">
@@ -1144,20 +1100,16 @@ export default function Appointments() {
                                 {locations.find((l: any) => l.id === appointment.location_id)?.name || 'Location'}
                               </TooltipContent>
                             </Tooltip>
-                          </div>
-                        )}
+                          </div>}
                       </div>
-                    </div>
-                  );
-                })}
+                    </div>;
+            })}
                 <div className="col-span-full text-[11px] text-muted-foreground text-right">{filteredAppointments.length} appointments</div>
-              </div>
-            )}
+              </div>}
         </CardContent>
       </Card>
 
       {/* Appointment modal removed: converted to window-based routes */}
     </div>
-    </TooltipProvider>
-  );
+    </TooltipProvider>;
 }
