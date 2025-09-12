@@ -543,9 +543,9 @@ export default function InvoiceCreate() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!formData.customer_name.trim()) return toast.error('Customer name is mandatory');
     if (selectedItems.length === 0) return toast.error('Please add at least one item to the invoice');
     if (!formData.location_id) return toast.error('Please select a location');
-    if (jobcardRequired && !formData.jobcard_reference) return toast.error('Job card reference is required by settings');
     // Enforce invoice customer equals job card customer when a job card is selected
     if (formData.jobcard_reference) {
       try {
@@ -954,7 +954,7 @@ Thank you for your business!`;
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="jobcard_reference" className={jobcardRequired && !formData.jobcard_reference ? 'text-red-700' : ''}>Job Card Reference{jobcardRequired ? ' *' : ''}</Label>
+                <Label htmlFor="jobcard_reference">Job Card Reference</Label>
                 <Select 
                   value={formData.jobcard_reference} 
                   onValueChange={(value) => {
@@ -962,8 +962,8 @@ Thank you for your business!`;
                     handleJobCardSelection(value);
                   }}
                 >
-                  <SelectTrigger className={jobcardRequired && !formData.jobcard_reference ? 'border-red-500 ring-1 ring-red-500 bg-red-50' : ''}>
-                    <SelectValue placeholder={jobcardRequired ? 'Select a job card (required)' : 'Select a job card'} />
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a job card" />
                   </SelectTrigger>
                   <SelectContent>
                     {filteredJobCards.map((jc) => (
@@ -973,23 +973,26 @@ Thank you for your business!`;
                     ))}
                   </SelectContent>
                 </Select>
-                {jobcardRequired && !formData.jobcard_reference && (
-                  <p className="text-xs text-red-600 mt-1">Job card is required by accounting settings.</p>
+                {formData.customer_id && customerJobCards.length > 0 && (
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div className="text-blue-800">
+                        <p className="text-sm font-medium">Completed Job Cards Available</p>
+                        <p className="text-xs mt-1">This customer has {customerJobCards.length} completed job card{customerJobCards.length !== 1 ? 's' : ''}:</p>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {customerJobCards.map((jc) => (
+                            <span key={jc.id} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-medium">
+                              {jc.job_card_number}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
-            {customerJobCards.length > 0 && (
-              <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                <p className="text-sm text-slate-600 font-medium mb-2">Completed job cards for this customer:</p>
-                <div className="flex flex-wrap gap-2">
-                  {customerJobCards.map((jc) => (
-                    <span key={jc.id} className="text-sm text-red-600 font-medium bg-red-50 px-2 py-1 rounded">
-                      {jc.job_card_number}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
             {(taxEnabled !== false) ? (
               <div className="flex items-center gap-2 pt-1">
                 <Checkbox id="apply_tax" checked={applyTax} onCheckedChange={(c) => setApplyTax(Boolean(c))} />
