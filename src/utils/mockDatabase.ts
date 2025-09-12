@@ -456,6 +456,7 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
       notes: invoiceData.notes || null,
       location_id: invoiceData.location_id || null,
       jobcard_id: invoiceData.jobcard_id || invoiceData.jobcard_reference || null,
+      jobcard_reference: invoiceData.jobcard_reference || invoiceData.jobcard_id || null,
       // Ensure org is set for RLS visibility if column exists
       organization_id: invoiceData.organization_id || undefined,
     };
@@ -587,7 +588,7 @@ export async function getInvoicesWithFallback(supabase: any) {
         payment_method: null,
         notes: inv.notes,
         jobcard_id: inv.jobcard_id || null,
-        jobcard_reference: inv.jobcard_id || null,
+        jobcard_reference: inv.jobcard_reference || inv.jobcard_id || null,
         created_at: inv.created_at,
         updated_at: inv.updated_at,
         location_id: inv.location_id ?? null,
@@ -1028,6 +1029,7 @@ export async function updateInvoiceWithFallback(supabase: any, id: string, updat
     if (typeof updates.organization_id !== 'undefined') allowed.organization_id = updates.organization_id;
     if (typeof updates.jobcard_reference !== 'undefined' || typeof updates.jobcard_id !== 'undefined') {
       allowed.jobcard_id = updates.jobcard_id || updates.jobcard_reference || null;
+      allowed.jobcard_reference = updates.jobcard_reference || updates.jobcard_id || null;
     }
 
     const { error } = await supabase

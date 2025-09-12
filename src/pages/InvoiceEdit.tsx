@@ -30,6 +30,7 @@ export default function InvoiceEdit() {
   const [locations, setLocations] = useState<Array<{ id: string; name: string; is_default?: boolean; is_active?: boolean }>>([]);
   const [defaultLocationIdForUser, setDefaultLocationIdForUser] = useState<string | null>(null);
   const [customerJobCards, setCustomerJobCards] = useState<Array<{ id: string; job_card_number: string; total_amount: number }>>([]);
+  const [filteredJobCards, setFilteredJobCards] = useState<Array<{ id: string; job_card_number: string; client_name?: string; total_amount: number }>>([]);
   const [selectedJobCardInfo, setSelectedJobCardInfo] = useState<{
     id: string;
     job_card_number: string;
@@ -147,10 +148,27 @@ export default function InvoiceEdit() {
             payment_method: inv.payment_method || "",
             notes: inv.notes || "",
             jobcard_id: inv.jobcard_id || "",
-            jobcard_reference: (inv as any).jobcard_reference || "",
+            jobcard_reference: (inv as any).jobcard_reference || (inv as any).jobcard_id || "",
             location_id: (inv as any).location_id || prev.location_id,
           }));
           setInvoiceMeta(inv as any);
+          
+          // Load customer job cards if customer is selected
+          if (inv.customer_id) {
+            try {
+              const { data: customerJCs } = await supabase
+                .from("job_cards")
+                .select("id, job_card_number, total_amount")
+                .eq('client_id', inv.customer_id)
+                .eq('organization_id', organization?.id || '')
+                .eq('status', 'completed')
+                .order('created_at', { ascending: false });
+              setCustomerJobCards(customerJCs || []);
+            } catch (error) {
+              console.error("Error fetching customer job cards:", error);
+              setCustomerJobCards([]);
+            }
+          }
         }
         const items = await getInvoiceItemsWithFallback(supabase, id);
         setSelectedItems((items || []).map((it: any) => ({
@@ -203,6 +221,24 @@ export default function InvoiceEdit() {
     const candidate = defaultLocationIdForUser || (locations.find(l => (l as any).is_default)?.id || locations[0]?.id) || "";
     if (candidate) setFormData(prev => ({ ...prev, location_id: candidate }));
   }, [locations, defaultLocationIdForUser, formData.location_id]);
+
+  // Filter job cards based on selected customer
+  useEffect(() => {
+    if (formData.customer_id) {
+      // Filter job cards to show only those belonging to the selected customer
+      const filtered = jobCards.filter(jc => {
+        // Find the job card's client_id
+        return customerJobCards.some(cjc => cjc.id === jc.id);
+      });
+      setFilteredJobCards(filtered.length > 0 ? filtered : customerJobCards.map(cjc => {
+        const fullJc = jobCards.find(jc => jc.id === cjc.id);
+        return fullJc || { ...cjc, client_name: undefined };
+      }));
+    } else {
+      // Show all job cards when no customer is selected
+      setFilteredJobCards(jobCards);
+    }
+  }, [formData.customer_id, jobCards, customerJobCards]);
 
   const calculateTotals = useMemo(() => {
     return () => {
@@ -535,7 +571,7 @@ export default function InvoiceEdit() {
                   <SelectValue placeholder={jobcardRequired ? 'Select a job card (required)' : 'Select a job card'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {jobCards.map((jc) => (
+                  {filteredJobCards.map((jc) => (
                     <SelectItem key={jc.id} value={jc.id}>
                       {jc.job_card_number} {jc.client_name ? `- ${jc.client_name}` : ''} ({symbol}{jc.total_amount})
                     </SelectItem>

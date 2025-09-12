@@ -43,6 +43,7 @@ export default function InvoiceCreate() {
   const [locations, setLocations] = useState<Array<{ id: string; name: string; is_default?: boolean; is_active?: boolean }>>([]);
   const [defaultLocationIdForUser, setDefaultLocationIdForUser] = useState<string | null>(null);
   const [customerJobCards, setCustomerJobCards] = useState<Array<{ id: string; job_card_number: string; total_amount: number }>>([]);
+  const [filteredJobCards, setFilteredJobCards] = useState<Array<{ id: string; job_card_number: string; client_name?: string; total_amount: number }>>([]);
   const [selectedJobCardInfo, setSelectedJobCardInfo] = useState<{
     id: string;
     job_card_number: string;
@@ -216,6 +217,24 @@ export default function InvoiceCreate() {
       if (fallback) setFormData(prev => ({ ...prev, location_id: fallback }));
     }
   }, [uniqueLocations, formData.location_id]);
+
+  // Filter job cards based on selected customer
+  useEffect(() => {
+    if (formData.customer_id) {
+      // Filter job cards to show only those belonging to the selected customer
+      const filtered = jobCards.filter(jc => {
+        // Find the job card's client_id
+        return customerJobCards.some(cjc => cjc.id === jc.id);
+      });
+      setFilteredJobCards(filtered.length > 0 ? filtered : customerJobCards.map(cjc => {
+        const fullJc = jobCards.find(jc => jc.id === cjc.id);
+        return fullJc || { ...cjc, client_name: undefined };
+      }));
+    } else {
+      // Show all job cards when no customer is selected
+      setFilteredJobCards(jobCards);
+    }
+  }, [formData.customer_id, jobCards, customerJobCards]);
 
   // Prefill from Job Card
   useEffect(() => {
@@ -807,7 +826,7 @@ Thank you for your business!`;
                     <SelectValue placeholder={jobcardRequired ? 'Select a job card (required)' : 'Select a job card'} />
                   </SelectTrigger>
                   <SelectContent>
-                    {jobCards.map((jc) => (
+                    {filteredJobCards.map((jc) => (
                       <SelectItem key={jc.id} value={jc.id}>
                         {jc.job_card_number} {jc.client_name ? `- ${jc.client_name}` : ''} ({symbol}{jc.total_amount})
                       </SelectItem>
