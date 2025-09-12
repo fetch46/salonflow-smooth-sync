@@ -31,7 +31,7 @@ export default function UpgradePlan() {
     try {
       setSaving(planId)
       await SubscriptionService.updateSubscription(organization.id, planId)
-      navigate('/settings')
+      navigate('/settings/subscription')
     } finally {
       setSaving(null)
     }

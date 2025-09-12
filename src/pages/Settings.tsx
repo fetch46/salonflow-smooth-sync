@@ -23,7 +23,7 @@ import { ItemsSettings } from "@/components/settings/ItemsSettings";
 import { RegionalSettings } from "@/components/settings/RegionalSettings";
 // ThemeColorPicker removed in favor of dropdown-based selectors
 
-import { SubscriptionBilling } from "@/components/settings/SubscriptionBilling";
+// Subscription moved to dedicated page under Settings
 
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -241,8 +241,7 @@ export default function Settings() {
               {/* Regional Settings */}
               <RegionalSettings />
 
-              {/* Subscription & Billing */}
-              <SubscriptionBilling />
+              {/* Subscription & Billing moved to /settings/subscription */}
             </div>
           </TabsContent>
 
