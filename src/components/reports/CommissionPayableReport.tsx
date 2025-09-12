@@ -377,25 +377,6 @@ export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = (
         </CardContent>
       </Card>
 
-      {/* Example Section */}
-      <Card className="bg-blue-50 border-blue-200">
-        <CardHeader>
-          <CardTitle className="text-blue-800">Example: Commission Accounting</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-sm text-blue-700 space-y-2">
-            <p><strong>When commission is earned:</strong></p>
-            <p>Dr. Commission Expense: {formatMoney(5000, { decimals: 2 })}</p>
-            <p>Cr. Commission Payable: {formatMoney(5000, { decimals: 2 })}</p>
-            
-            <p className="pt-2"><strong>When commission is paid:</strong></p>
-            <p>Dr. Commission Payable: {formatMoney(3000, { decimals: 2 })}</p>
-            <p>Cr. Bank Account: {formatMoney(3000, { decimals: 2 })}</p>
-            
-            <p className="pt-2"><strong>Result:</strong> Balance of {formatMoney(2000, { decimals: 2 })} remains in Commission Payable (liability on balance sheet)</p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
