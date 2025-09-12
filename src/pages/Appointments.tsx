@@ -928,7 +928,7 @@ export default function Appointments() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                 {filteredAppointments.map((appointment) => {
                   const items = appointmentServicesById[appointment.id] || [];
                   const serviceNames = (items.length
@@ -938,7 +938,7 @@ export default function Appointments() {
                   return (
                     <div
                       key={appointment.id}
-                      className="group relative w-full h-full rounded-lg border bg-gradient-to-br from-card to-card/80 p-3 md:p-3.5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-[13px] ring-1 ring-border/50 hover:ring-primary/20 flex flex-col"
+                      className="group relative w-full h-full rounded-lg border bg-gradient-to-br from-card to-card/80 p-3.5 md:p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-[13px] ring-1 ring-border/50 hover:ring-primary/20 flex flex-col"
                     >
                       <div className="absolute top-2.5 right-2.5">
                         <DropdownMenu>
