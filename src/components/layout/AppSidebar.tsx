@@ -217,19 +217,19 @@ const menuItems: MenuItem[] = [
       },
       {
         title: "Profit and Loss",
-        url: "/reports?type=profit-loss",
+        url: "/specific-reports?type=profit-loss",
         icon: Calculator,
         feature: "reports",
       },
       {
         title: "Balance Sheet",
-        url: "/reports?type=balance-sheet",
+        url: "/specific-reports?type=balance-sheet",
         icon: FileText,
         feature: "reports",
       },
       {
         title: "Expense Report",
-        url: "/reports?type=expenses",
+        url: "/specific-reports?type=expenses",
         icon: CreditCard,
         feature: "reports",
       },
@@ -247,13 +247,13 @@ const menuItems: MenuItem[] = [
       },
       {
         title: "Customer Reports",
-        url: "/reports?type=customers",
+        url: "/specific-reports?type=customers",
         icon: Users,
         feature: "reports",
       },
       {
         title: "Commission Payable",
-        url: "/reports?type=commission-payable",
+        url: "/specific-reports?type=commission-payable",
         icon: DollarSign,
         feature: "reports",
       },
