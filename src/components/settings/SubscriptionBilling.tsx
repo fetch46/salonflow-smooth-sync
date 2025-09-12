@@ -151,76 +151,78 @@ export function SubscriptionBilling() {
 
   return (
     <div className="space-y-6">
-      {/* Current Subscription */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Crown className="w-5 h-5 text-amber-600" />
-            Current Subscription
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <h3 className="text-lg font-semibold">
-                {subscriptionPlan?.name || 'No Plan Selected'}
-              </h3>
-              <p className="text-sm text-gray-600">
-                {subscriptionPlan?.description || 'Select a subscription plan to get started'}
-              </p>
+      {/* Current Subscription + Plan Selection side-by-side */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Crown className="w-5 h-5 text-amber-600" />
+              Current Subscription
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <h3 className="text-lg font-semibold">
+                  {subscriptionPlan?.name || 'No Plan Selected'}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {subscriptionPlan?.description || 'Select a subscription plan to get started'}
+                </p>
+              </div>
+              <div className="text-right space-y-1">
+                <Badge className={getSubscriptionStatusColor()}>
+                  {getSubscriptionStatus()}
+                </Badge>
+                {subscriptionPlan && (
+                  <div className="text-sm text-gray-600">
+                    {formatPrice(subscriptionPlan.price_monthly)}/month
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="text-right space-y-1">
-              <Badge className={getSubscriptionStatusColor()}>
-                {getSubscriptionStatus()}
-              </Badge>
-              {subscriptionPlan && (
-                <div className="text-sm text-gray-600">
-                  {formatPrice(subscriptionPlan.price_monthly)}/month
+
+            {subscriptionPlan && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {subscriptionPlan.max_users || '∞'}
+                  </div>
+                  <div className="text-sm text-gray-600">Max Users</div>
                 </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">
+                    {subscriptionPlan.max_locations || '∞'}
+                  </div>
+                  <div className="text-sm text-gray-600">Max Locations</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {getFeatures(subscriptionPlan).length}
+                  </div>
+                  <div className="text-sm text-gray-600">Features</div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Button onClick={() => setIsUpgradeDialogOpen(true)}>
+                <Zap className="w-4 h-4 mr-2" />
+                Change Plan
+              </Button>
+              {subscription && (
+                <Button variant="outline" onClick={handleManageSubscription}>
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Manage Billing
+                </Button>
               )}
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          {subscriptionPlan && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">
-                  {subscriptionPlan.max_users || '∞'}
-                </div>
-                <div className="text-sm text-gray-600">Max Users</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
-                  {subscriptionPlan.max_locations || '∞'}
-                </div>
-                <div className="text-sm text-gray-600">Max Locations</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">
-                  {getFeatures(subscriptionPlan).length}
-                </div>
-                <div className="text-sm text-gray-600">Features</div>
-              </div>
-            </div>
-          )}
-
-          <div className="flex gap-2">
-            <Button onClick={() => setIsUpgradeDialogOpen(true)}>
-              <Zap className="w-4 h-4 mr-2" />
-              Change Plan
-            </Button>
-            {subscription && (
-              <Button variant="outline" onClick={handleManageSubscription}>
-                <CreditCard className="w-4 h-4 mr-2" />
-                Manage Billing
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Plan Selection */}
-      <SubscriptionPlanSelector />
+        {/* Plan Selection */}
+        <SubscriptionPlanSelector />
+      </div>
 
       {/* Billing History */}
       <Card>
