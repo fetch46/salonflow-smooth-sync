@@ -39,6 +39,9 @@ interface InvoiceLite {
   id: string;
   invoice_number: string;
   customer_id: string | null;
+  customer_name?: string;
+  customer_email?: string | null;
+  customer_phone?: string | null;
   total_amount: number;
   created_at: string;
   amount_paid?: number;
