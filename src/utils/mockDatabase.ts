@@ -443,8 +443,30 @@ export async function createSaleWithFallback(supabase: any, saleData: any, items
 // Wrapper function for Invoice operations
 export async function createInvoiceWithFallback(supabase: any, invoiceData: any, items: any[]) {
   try {
-    // Build payload with only existing DB columns
-    const dbInvoice = {
+    // Build payloads for both possible schemas and try in order
+    // New schema (preferred): customer_* columns, no issue_date column
+    const newSchemaPayload: any = {
+      invoice_number: invoiceData.invoice_number,
+      customer_id: invoiceData.customer_id || invoiceData.client_id || null,
+      customer_name: invoiceData.customer_name || null,
+      customer_email: invoiceData.customer_email || null,
+      customer_phone: invoiceData.customer_phone || null,
+      due_date: invoiceData.due_date || null,
+      subtotal: invoiceData.subtotal ?? 0,
+      tax_amount: invoiceData.tax_amount ?? 0,
+      discount_amount: invoiceData.discount_amount ?? 0,
+      total_amount: invoiceData.total_amount ?? 0,
+      status: invoiceData.status || 'draft',
+      payment_method: invoiceData.payment_method || null,
+      notes: invoiceData.notes || null,
+      location_id: invoiceData.location_id || null,
+      jobcard_id: invoiceData.jobcard_id || invoiceData.jobcard_reference || null,
+      jobcard_reference: invoiceData.jobcard_reference || invoiceData.jobcard_id || null,
+      organization_id: invoiceData.organization_id || undefined,
+    };
+
+    // Legacy schema: client_id and optional issue_date
+    const legacySchemaPayload: any = {
       invoice_number: invoiceData.invoice_number,
       client_id: invoiceData.customer_id || invoiceData.client_id || null,
       issue_date: invoiceData.issue_date || new Date().toISOString().split('T')[0],
@@ -457,32 +479,74 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
       location_id: invoiceData.location_id || null,
       jobcard_id: invoiceData.jobcard_id || invoiceData.jobcard_reference || null,
       jobcard_reference: invoiceData.jobcard_reference || invoiceData.jobcard_id || null,
-      // Ensure org is set for RLS visibility if column exists
       organization_id: invoiceData.organization_id || undefined,
     };
 
-    // Try insert with organization_id first. If column missing, retry without it
     let invoice: any = null;
+    // Attempt insert with new schema
     try {
       const { data, error } = await supabase
         .from('invoices')
-        .insert([dbInvoice])
+        .insert([newSchemaPayload])
         .select('id')
         .maybeSingle();
       if (error) throw error;
       invoice = data;
-    } catch (e: any) {
-      const msg = String(e?.message || '').toLowerCase();
-      const code = (e as any)?.code || '';
-      const missingOrg = code === '42703' || (msg.includes('column') && msg.includes('organization_id') && msg.includes('does not exist'));
-      if (!missingOrg) throw e;
-      const { data, error } = await supabase
-        .from('invoices')
-        .insert([{ ...dbInvoice, organization_id: undefined }])
-        .select('id')
-        .maybeSingle();
-      if (error) throw error;
-      invoice = data;
+    } catch (errNew: any) {
+      // Retry removing unknown columns progressively (organization_id, location_id, jobcard_reference)
+      const lowered = String(errNew?.message || '').toLowerCase();
+      let retryPayload = { ...newSchemaPayload } as any;
+      const stripAndRetry = async (key: string) => {
+        delete retryPayload[key];
+        const { data, error } = await supabase
+          .from('invoices')
+          .insert([retryPayload])
+          .select('id')
+          .maybeSingle();
+        if (error) throw error;
+        return data;
+      };
+      try {
+        if (lowered.includes('organization_id') && lowered.includes('does not exist')) {
+          delete retryPayload.organization_id;
+        }
+        if (lowered.includes('jobcard_reference') && lowered.includes('does not exist')) {
+          delete retryPayload.jobcard_reference;
+        }
+        if (lowered.includes('location_id') && lowered.includes('does not exist')) {
+          delete retryPayload.location_id;
+        }
+        const { data, error } = await supabase
+          .from('invoices')
+          .insert([retryPayload])
+          .select('id')
+          .maybeSingle();
+        if (error) throw error;
+        invoice = data;
+      } catch {
+        // Finally, attempt legacy schema (older columns)
+        try {
+          const { data, error } = await supabase
+            .from('invoices')
+            .insert([legacySchemaPayload])
+            .select('id')
+            .maybeSingle();
+          if (error) throw error;
+          invoice = data;
+        } catch (errLegacy: any) {
+          // As a last resort, strip organization_id and location_id for legacy
+          const legacyRetry: any = { ...legacySchemaPayload };
+          delete legacyRetry.organization_id;
+          delete legacyRetry.location_id;
+          delete legacyRetry.jobcard_reference;
+          const { data } = await supabase
+            .from('invoices')
+            .insert([legacyRetry])
+            .select('id')
+            .maybeSingle();
+          invoice = data;
+        }
+      }
     }
 
     if (!invoice?.id) throw new Error('Invoice created but no ID returned');
@@ -496,7 +560,7 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
       service_id: item.service_id || null,
       product_id: item.product_id || null,
       staff_id: item.staff_id || null,
-      location_id: (item.location_id ?? dbInvoice.location_id) || null,
+      location_id: (item.location_id ?? invoiceData.location_id) || null,
       commission_percentage: typeof item.commission_percentage === 'number' ? item.commission_percentage : null,
       commission_amount: typeof item.commission_percentage === 'number'
         ? Number(((item.commission_percentage / 100) * (item.total_price ?? (item.quantity * item.unit_price))).toFixed(2))
@@ -560,6 +624,45 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
 
 export async function getInvoicesWithFallback(supabase: any) {
   try {
+    // Prefer new schema columns first (customer_*)
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .select(`
+          id, invoice_number, customer_id, customer_name, customer_email, customer_phone,
+          due_date, subtotal, tax_amount, discount_amount, total_amount, status,
+          payment_method, notes, jobcard_id, jobcard_reference, location_id, created_at, updated_at
+        `)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      if ((data || []).length >= 0) {
+        return (data || []).map((inv: any) => ({
+          id: inv.id,
+          invoice_number: inv.invoice_number,
+          customer_id: inv.customer_id || null,
+          customer_name: inv.customer_name || '',
+          customer_email: inv.customer_email || null,
+          customer_phone: inv.customer_phone || null,
+          subtotal: Number(inv.subtotal || 0),
+          tax_amount: Number(inv.tax_amount || 0),
+          discount_amount: Number(inv.discount_amount || 0),
+          total_amount: Number(inv.total_amount || 0),
+          status: inv.status,
+          due_date: inv.due_date,
+          payment_method: inv.payment_method || null,
+          notes: inv.notes,
+          jobcard_id: inv.jobcard_id || null,
+          jobcard_reference: inv.jobcard_reference || inv.jobcard_id || null,
+          created_at: inv.created_at,
+          updated_at: inv.updated_at,
+          location_id: inv.location_id ?? null,
+        }));
+      }
+    } catch (errNewSel: any) {
+      // Fall through to legacy selection
+    }
+
+    // Legacy selection: client_id with join
     const { data, error } = await supabase
       .from('invoices')
       .select(`
@@ -571,7 +674,6 @@ export async function getInvoicesWithFallback(supabase: any) {
     if (error) throw error;
 
     if ((data || []).length > 0) {
-      // Map to the shape expected by the UI (with customer_*)
       return (data || []).map((inv: any) => ({
         id: inv.id,
         invoice_number: inv.invoice_number,
@@ -579,10 +681,10 @@ export async function getInvoicesWithFallback(supabase: any) {
         customer_name: inv.client?.full_name || '',
         customer_email: inv.client?.email || null,
         customer_phone: inv.client?.phone || null,
-        subtotal: inv.subtotal,
-        tax_amount: inv.tax_amount,
+        subtotal: Number(inv.subtotal || 0),
+        tax_amount: Number(inv.tax_amount || 0),
         discount_amount: 0,
-        total_amount: inv.total_amount,
+        total_amount: Number(inv.total_amount || 0),
         status: inv.status,
         due_date: inv.due_date,
         payment_method: null,
@@ -1017,28 +1119,52 @@ export async function updateInvoiceWithFallback(supabase: any, id: string, updat
     if (typeof updates.due_date !== 'undefined') allowed.due_date = updates.due_date;
     if (typeof updates.notes !== 'undefined') allowed.notes = updates.notes;
     if (typeof updates.location_id !== 'undefined') allowed.location_id = updates.location_id;
-    if (typeof updates.customer_id !== 'undefined') allowed.client_id = updates.customer_id;
-    if (typeof updates.customer_name !== 'undefined') allowed.customer_name = updates.customer_name;
-    if (typeof updates.customer_email !== 'undefined') allowed.customer_email = updates.customer_email;
-    if (typeof updates.customer_phone !== 'undefined') allowed.customer_phone = updates.customer_phone;
     if (typeof updates.payment_method !== 'undefined') allowed.payment_method = updates.payment_method;
     if (typeof updates.subtotal !== 'undefined') allowed.subtotal = updates.subtotal;
     if (typeof updates.tax_amount !== 'undefined') allowed.tax_amount = updates.tax_amount;
+    if (typeof updates.discount_amount !== 'undefined') allowed.discount_amount = updates.discount_amount;
     if (typeof updates.total_amount !== 'undefined') allowed.total_amount = updates.total_amount;
     if (typeof updates.issue_date !== 'undefined') allowed.issue_date = updates.issue_date;
     if (typeof updates.organization_id !== 'undefined') allowed.organization_id = updates.organization_id;
+    // Support both schemas: prefer new customer_* columns, fall back to client_id for older schema
+    if (typeof updates.customer_id !== 'undefined') {
+      allowed.customer_id = updates.customer_id;
+      allowed.client_id = updates.customer_id;
+    }
+    if (typeof updates.customer_name !== 'undefined') allowed.customer_name = updates.customer_name;
+    if (typeof updates.customer_email !== 'undefined') allowed.customer_email = updates.customer_email;
+    if (typeof updates.customer_phone !== 'undefined') allowed.customer_phone = updates.customer_phone;
     if (typeof updates.jobcard_reference !== 'undefined' || typeof updates.jobcard_id !== 'undefined') {
       allowed.jobcard_id = updates.jobcard_id || updates.jobcard_reference || null;
       allowed.jobcard_reference = updates.jobcard_reference || updates.jobcard_id || null;
     }
 
-    const { error } = await supabase
-      .from('invoices')
-      .update(allowed)
-      .eq('id', id);
-
-    if (error) throw error;
-    return true;
+    // Try updating with new schema columns first
+    try {
+      const { error } = await supabase
+        .from('invoices')
+        .update(allowed)
+        .eq('id', id);
+      if (error) throw error;
+      return true;
+    } catch (errNew: any) {
+      // Remove new-only fields and fall back to legacy
+      const legacyAllowed: any = { ...allowed };
+      delete legacyAllowed.customer_id;
+      delete legacyAllowed.customer_name;
+      delete legacyAllowed.customer_email;
+      delete legacyAllowed.customer_phone;
+      try {
+        const { error } = await supabase
+          .from('invoices')
+          .update(legacyAllowed)
+          .eq('id', id);
+        if (error) throw error;
+        return true;
+      } catch (errLegacy: any) {
+        throw errLegacy;
+      }
+    }
   } catch (error) {
     console.log('Using mock database for invoice update');
     return await mockDb.updateInvoice(id, updates);
