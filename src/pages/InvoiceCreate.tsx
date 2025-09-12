@@ -787,7 +787,7 @@ Thank you for your business!`;
   };
 
   return (
-    <div className="flex flex-col xl:flex-row gap-6 p-6 bg-slate-50/30 min-h-screen max-w-7xl mx-auto w-full">
+    <div className="flex flex-col xl:flex-row gap-6 px-3 lg:px-4 py-4 bg-slate-50/30 min-h-screen w-full">
       {/* Main Form */}
       <div className="flex-1 space-y-6">
         <div className="flex items-center justify-between">
