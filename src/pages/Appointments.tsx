@@ -928,7 +928,7 @@ export default function Appointments() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {filteredAppointments.map((appointment) => {
                   const items = appointmentServicesById[appointment.id] || [];
                   const serviceNames = (items.length
@@ -938,7 +938,7 @@ export default function Appointments() {
                   return (
                     <div
                       key={appointment.id}
-                      className="group relative w-full rounded-lg border bg-gradient-to-br from-card to-card/80 p-3 md:p-3.5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-[13px] ring-1 ring-border/50 hover:ring-primary/20"
+                      className="group relative w-full h-full rounded-lg border bg-gradient-to-br from-card to-card/80 p-3 md:p-3.5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-[13px] ring-1 ring-border/50 hover:ring-primary/20 flex flex-col"
                     >
                       <div className="absolute top-2.5 right-2.5">
                         <DropdownMenu>
@@ -1005,7 +1005,7 @@ export default function Appointments() {
                         </div>
                       </div>
 
-                      <div className="space-y-2.5">
+                      <div className="space-y-2.5 flex-1">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-0.5">
@@ -1038,38 +1038,40 @@ export default function Appointments() {
                         </div>
                       </div>
 
-                      <div className="mt-2.5 flex flex-wrap gap-1.5">
-                        {items.length ? (
-                          items.map((it, idx) => {
-                            const srvName = services.find(s => s.id === it.service_id)?.name || 'Service';
-                            const stfName = staff.find(s => s.id === it.staff_id)?.full_name || 'Unassigned';
-                            return (
-                              <div key={idx} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border border-blue-200 dark:border-blue-800">
-                                <div className="flex items-center gap-1">
-                                  <span className="text-[12px] font-medium text-blue-700 dark:text-blue-300">{srvName}</span>
-                                  <span className="text-blue-500 dark:text-blue-400">•</span>
-                                  <span className="text-[11px] text-blue-600 dark:text-blue-400">{stfName}</span>
+                      <div className="mt-2.5 mt-auto">
+                        <div className="flex flex-wrap gap-1.5">
+                          {items.length ? (
+                            items.map((it, idx) => {
+                              const srvName = services.find(s => s.id === it.service_id)?.name || 'Service';
+                              const stfName = staff.find(s => s.id === it.staff_id)?.full_name || 'Unassigned';
+                              return (
+                                <div key={idx} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border border-blue-200 dark:border-blue-800">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[12px] font-medium text-blue-700 dark:text-blue-300">{srvName}</span>
+                                    <span className="text-blue-500 dark:text-blue-400">•</span>
+                                    <span className="text-[11px] text-blue-600 dark:text-blue-400">{stfName}</span>
+                                  </div>
                                 </div>
-                              </div>
-                            );
-                          })
-                        ) : (
-                          <div className="px-2.5 py-1 rounded-md bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-950/20 dark:to-gray-950/20 border border-slate-200 dark:border-slate-800">
-                            <span className="text-[12px] text-slate-600 dark:text-slate-400">{serviceNames}</span>
+                              );
+                            })
+                          ) : (
+                            <div className="px-2.5 py-1 rounded-md bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-950/20 dark:to-gray-950/20 border border-slate-200 dark:border-slate-800">
+                              <span className="text-[12px] text-slate-600 dark:text-slate-400">{serviceNames}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {appointment.location_id && (
+                          <div className="mt-2.5 pt-2.5 border-t border-border/50">
+                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted/50">
+                              <MapPin className="w-3 h-3 text-muted-foreground" />
+                              <span className="text-[11px] font-medium text-muted-foreground">
+                                {locations.find((l: any) => l.id === appointment.location_id)?.name || 'Location'}
+                              </span>
+                            </div>
                           </div>
                         )}
                       </div>
-
-                      {appointment.location_id && (
-                        <div className="mt-2.5 pt-2.5 border-t border-border/50">
-                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted/50">
-                            <MapPin className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-[11px] font-medium text-muted-foreground">
-                              {locations.find((l: any) => l.id === appointment.location_id)?.name || 'Location'}
-                            </span>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   );
                 })}
