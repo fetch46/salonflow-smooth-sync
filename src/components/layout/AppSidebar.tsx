@@ -257,6 +257,12 @@ const menuItems: MenuItem[] = [
         icon: DollarSign,
         feature: "reports",
       },
+      {
+        title: "Commission Payable Report",
+        url: "/reports?type=commission-payable",
+        icon: Calculator,
+        feature: "reports",
+      },
     ],
   },
   {
