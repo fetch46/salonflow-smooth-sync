@@ -41,7 +41,7 @@ export const BalanceSheetReport: React.FC<BalanceSheetReportProps> = ({
   const calculateBalanceSheet = async () => {
     setLoading(true);
     try {
-      // Get all account transactions up to the end date
+      // Get all account transactions up to the end date with proper location filtering
       let transactionsQuery = supabase
         .from('account_transactions')
         .select(`
