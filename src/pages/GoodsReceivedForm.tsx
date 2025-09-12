@@ -97,12 +97,26 @@ export default function GoodsReceivedForm() {
 
   const loadWarehouses = useCallback(async () => {
     const orgId = organization?.id;
-    const { data } = await supabase
-      .from("warehouses")
-      .select("id, name, location_id")
-      .eq(orgId ? "organization_id" : "is_active", orgId ? orgId : true)
-      .order("name");
-    setWarehouses((data || []) as any);
+    if (!orgId) {
+      console.warn('No organization ID available for warehouse loading');
+      setWarehouses([]);
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from("warehouses")
+        .select("id, name, location_id")
+        .eq("organization_id", orgId)
+        .eq("is_active", true)
+        .order("name");
+      
+      if (error) throw error;
+      setWarehouses((data || []) as any);
+    } catch (error) {
+      console.error('Failed to load warehouses:', error);
+      setWarehouses([]);
+    }
   }, [organization?.id]);
 
   const loadPurchaseItems = useCallback(async (pid: string) => {
@@ -158,34 +172,50 @@ export default function GoodsReceivedForm() {
 
   const loadForEdit = useCallback(async () => {
     if (!id) return;
-    const { data: header, error: hErr } = await supabase
-      .from("goods_received")
-      .select("*, goods_received_items(*), purchases:purchase_id(id)")
-      .eq("id", id)
-      .single();
-    if (hErr) throw hErr;
-    setPurchaseId(header.purchases.id);
-    setReceivedDate((header.received_date || '').slice(0,10));
-    setWarehouseId((header as any).warehouse_id || "");
-    setNotes(header.notes || "");
-    await loadPurchaseItems(header.purchases.id);
-    const q: Record<string, number> = {};
-    const oq: Record<string, number> = {};
-    for (const gi of (header.goods_received_items || []) as any[]) {
-      q[gi.purchase_item_id] = Number(gi.quantity);
-      oq[gi.purchase_item_id] = Number(gi.quantity);
-    }
-    setQuantities(q);
-    setOriginalQuantities(oq);
+    try {
+      const { data: header, error: hErr } = await supabase
+        .from("goods_received")
+        .select("*, goods_received_items(*), purchases:purchase_id(id)")
+        .eq("id", id)
+        .single();
+      if (hErr) throw hErr;
+      
+      console.log('Loaded goods received header:', header); // Debug log
+      
+      setPurchaseId(header.purchases.id);
+      setReceivedDate((header.received_date || '').slice(0,10));
+      
+      // Ensure warehouse_id is properly set
+      const warehouseIdFromDB = header.warehouse_id;
+      console.log('Setting warehouse ID from DB:', warehouseIdFromDB); // Debug log
+      setWarehouseId(warehouseIdFromDB || "");
+      
+      setNotes(header.notes || "");
+      await loadPurchaseItems(header.purchases.id);
+      
+      const q: Record<string, number> = {};
+      const oq: Record<string, number> = {};
+      for (const gi of (header.goods_received_items || []) as any[]) {
+        q[gi.purchase_item_id] = Number(gi.quantity);
+        oq[gi.purchase_item_id] = Number(gi.quantity);
+      }
+      setQuantities(q);
+      setOriginalQuantities(oq);
 
-    // After header loads, also load related transactions
-    await loadTransactions();
+      // After header loads, also load related transactions
+      await loadTransactions();
+    } catch (error) {
+      console.error('Error loading goods received for edit:', error);
+      throw error;
+    }
   }, [id, loadPurchaseItems, loadTransactions]);
 
   useEffect(() => {
-    loadOpenPurchases();
-    loadWarehouses();
-  }, [loadOpenPurchases, loadWarehouses]);
+    if (organization?.id) {
+      loadOpenPurchases();
+      loadWarehouses();
+    }
+  }, [loadOpenPurchases, loadWarehouses, organization?.id]);
 
   useEffect(() => {
     if (purchaseId) loadPurchaseItems(purchaseId);
@@ -203,6 +233,9 @@ export default function GoodsReceivedForm() {
     try {
       if (!purchaseId) { toast({ title: "Purchase required", description: "Select an open purchase" , variant: "destructive"}); return; }
       if (!warehouseId) { toast({ title: "Warehouse required", description: "Select a warehouse to receive into" , variant: "destructive"}); return; }
+      
+      console.log('Saving with warehouse ID:', warehouseId); // Debug log
+      
       const orgId = organization?.id;
       if (!orgId) { toast({ title: "Organization missing", description: "Please reload and try again", variant: "destructive" }); return; }
       const selectedWarehouse = warehouses.find(w => w.id === warehouseId);
@@ -675,7 +708,10 @@ export default function GoodsReceivedForm() {
               </div>
               <div className="space-y-2">
                 <Label>Warehouse<span className="text-red-600">*</span></Label>
-                <Select value={warehouseId} onValueChange={setWarehouseId}>
+                <Select value={warehouseId} onValueChange={(value) => {
+                  console.log('Warehouse changed to:', value); // Debug log
+                  setWarehouseId(value);
+                }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select warehouse" />
                   </SelectTrigger>
@@ -685,6 +721,12 @@ export default function GoodsReceivedForm() {
                       ))}
                   </SelectContent>
                 </Select>
+                {warehouses.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No warehouses found. Check if warehouses are configured for this organization.</p>
+                )}
+                {warehouseId && (
+                  <p className="text-xs text-muted-foreground">Selected: {warehouses.find(w => w.id === warehouseId)?.name || warehouseId}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Notes</Label>

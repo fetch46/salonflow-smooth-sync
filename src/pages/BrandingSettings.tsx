@@ -11,12 +11,12 @@ export default function BrandingSettings() {
   const { organization, updateOrganization } = useOrganization();
 
   const [loading, setLoading] = useState(false);
-  const [selectedTheme, setSelectedTheme] = useState("default");
+  const [selectedTheme, setSelectedTheme] = useState("blue");
   const [brandColors, setBrandColors] = useState({
-    primary: "0 0% 9%",
-    secondary: "0 0% 96.1%",
-    accent: "0 0% 96.1%",
-    theme: "default",
+    primary: "221 83% 53%",
+    secondary: "217 19% 94%",
+    accent: "210 40% 96.1%",
+    theme: "blue",
   });
   const [manualTheme, setManualTheme] = useState({
     sidebarBg: '',
@@ -33,14 +33,138 @@ export default function BrandingSettings() {
   });
 
   const THEME_PRESETS = [
-    { name: "Default", id: "default", description: "Clean black and white theme", colors: { primary: "0 0% 9%", secondary: "0 0% 96.1%", accent: "0 0% 96.1%", preview: "hsl(0 0% 9%)" } },
-    { name: "Red", id: "red", description: "Bold red accent theme", colors: { primary: "0 72% 51%", secondary: "0 0% 96.1%", accent: "0 0% 96.1%", preview: "hsl(0 72% 51%)" } },
-    { name: "Rose", id: "rose", description: "Elegant rose theme", colors: { primary: "346 77% 50%", secondary: "0 0% 96.1%", accent: "0 0% 96.1%", preview: "hsl(346 77% 50%)" } },
-    { name: "Orange", id: "orange", description: "Vibrant orange theme", colors: { primary: "25 95% 53%", secondary: "0 0% 96.1%", accent: "0 0% 96.1%", preview: "hsl(25 95% 53%)" } },
-    { name: "Green", id: "green", description: "Nature green theme", colors: { primary: "142 76% 36%", secondary: "0 0% 96.1%", accent: "0 0% 96.1%", preview: "hsl(142 76% 36%)" } },
-    { name: "Blue", id: "blue", description: "Professional blue theme", colors: { primary: "221 83% 53%", secondary: "0 0% 96.1%", accent: "0 0% 96.1%", preview: "hsl(221 83% 53%)" } },
-    { name: "Yellow", id: "yellow", description: "Bright yellow theme", colors: { primary: "48 96% 53%", secondary: "0 0% 96.1%", accent: "0 0% 96.1%", preview: "hsl(48 96% 53%)" } },
-    { name: "Violet", id: "violet", description: "Creative violet theme", colors: { primary: "262 83% 58%", secondary: "0 0% 96.1%", accent: "0 0% 96.1%", preview: "hsl(262 83% 58%)" } },
+    { 
+      name: "Blue", 
+      id: "blue", 
+      description: "Professional blue theme", 
+      colors: { 
+        primary: "221 83% 53%", 
+        secondary: "217 19% 94%", 
+        accent: "210 40% 96.1%", 
+        preview: "hsl(221 83% 53%)" 
+      } 
+    },
+    { 
+      name: "Indigo", 
+      id: "indigo", 
+      description: "Deep indigo theme", 
+      colors: { 
+        primary: "234 89% 62%", 
+        secondary: "226 22% 94%", 
+        accent: "226 36% 95%", 
+        preview: "hsl(234 89% 62%)" 
+      } 
+    },
+    { 
+      name: "Green", 
+      id: "green", 
+      description: "Fresh nature theme", 
+      colors: { 
+        primary: "142 76% 36%", 
+        secondary: "138 16% 94%", 
+        accent: "141 32% 95%", 
+        preview: "hsl(142 76% 36%)" 
+      } 
+    },
+    { 
+      name: "Teal", 
+      id: "teal", 
+      description: "Modern teal theme", 
+      colors: { 
+        primary: "172 66% 50%", 
+        secondary: "174 20% 94%", 
+        accent: "173 36% 95%", 
+        preview: "hsl(172 66% 50%)" 
+      } 
+    },
+    { 
+      name: "Purple", 
+      id: "purple", 
+      description: "Royal purple theme", 
+      colors: { 
+        primary: "262 83% 58%", 
+        secondary: "261 20% 94%", 
+        accent: "261 36% 95%", 
+        preview: "hsl(262 83% 58%)" 
+      } 
+    },
+    { 
+      name: "Pink", 
+      id: "pink", 
+      description: "Playful pink theme", 
+      colors: { 
+        primary: "322 93% 64%", 
+        secondary: "324 20% 94%", 
+        accent: "323 36% 95%", 
+        preview: "hsl(322 93% 64%)" 
+      } 
+    },
+    { 
+      name: "Orange", 
+      id: "orange", 
+      description: "Energetic orange theme", 
+      colors: { 
+        primary: "25 95% 53%", 
+        secondary: "24 20% 94%", 
+        accent: "24 36% 95%", 
+        preview: "hsl(25 95% 53%)" 
+      } 
+    },
+    { 
+      name: "Red", 
+      id: "red", 
+      description: "Bold red theme", 
+      colors: { 
+        primary: "0 72% 51%", 
+        secondary: "0 20% 94%", 
+        accent: "0 36% 95%", 
+        preview: "hsl(0 72% 51%)" 
+      } 
+    },
+    { 
+      name: "Amber", 
+      id: "amber", 
+      description: "Warm amber theme", 
+      colors: { 
+        primary: "38 92% 50%", 
+        secondary: "37 20% 94%", 
+        accent: "37 36% 95%", 
+        preview: "hsl(38 92% 50%)" 
+      } 
+    },
+    { 
+      name: "Emerald", 
+      id: "emerald", 
+      description: "Luxurious emerald theme", 
+      colors: { 
+        primary: "160 84% 39%", 
+        secondary: "158 16% 94%", 
+        accent: "159 32% 95%", 
+        preview: "hsl(160 84% 39%)" 
+      } 
+    },
+    { 
+      name: "Slate", 
+      id: "slate", 
+      description: "Professional slate theme", 
+      colors: { 
+        primary: "215 19% 35%", 
+        secondary: "215 19% 94%", 
+        accent: "215 25% 95%", 
+        preview: "hsl(215 19% 35%)" 
+      } 
+    },
+    { 
+      name: "Zinc", 
+      id: "zinc", 
+      description: "Neutral zinc theme", 
+      colors: { 
+        primary: "240 6% 26%", 
+        secondary: "240 6% 94%", 
+        accent: "240 6% 95%", 
+        preview: "hsl(240 6% 26%)" 
+      } 
+    }
   ];
 
   
@@ -106,6 +230,12 @@ export default function BrandingSettings() {
     const root = document.documentElement;
     root.style.setProperty('--theme-primary', colors.primary);
     root.style.setProperty('--theme-primary-foreground', computeForeground(colors.primary));
+    // compute lighter tone for disabled/hover in light theme
+    try {
+      const [h, s, l] = colors.primary.split(' ');
+      const lightVal = Math.min(parseInt((l || '0').replace('%','')) + 12, 92);
+      root.style.setProperty('--theme-primary-light', `${h} ${s} ${lightVal}%`);
+    } catch {}
     root.style.setProperty('--secondary', colors.secondary);
     root.style.setProperty('--secondary-foreground', computeForeground(colors.secondary));
     root.style.setProperty('--accent', colors.accent);
@@ -113,6 +243,11 @@ export default function BrandingSettings() {
 
     localStorage.setItem('theme-primary', colors.primary);
     localStorage.setItem('theme-primary-foreground', computeForeground(colors.primary));
+    try {
+      const [h, s, l] = colors.primary.split(' ');
+      const lightVal = Math.min(parseInt((l || '0').replace('%','')) + 12, 92);
+      localStorage.setItem('theme-primary-light', `${h} ${s} ${lightVal}%`);
+    } catch {}
     localStorage.setItem('theme-secondary', colors.secondary);
     localStorage.setItem('theme-secondary-foreground', computeForeground(colors.secondary));
     localStorage.setItem('theme-accent', colors.accent);

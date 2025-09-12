@@ -43,6 +43,7 @@ import { ProfitLossReport } from '@/components/reports/ProfitLossReport';
 import { BalanceSheetReport } from '@/components/reports/BalanceSheetReport';
 import { ExpenseReport as NewExpenseReport } from '@/components/reports/ExpenseReport';
 import { CustomerReports } from '@/components/reports/CustomerReports';
+import { CommissionPayableReport } from '@/components/reports/CommissionPayableReport';
 
 const Reports = () => {
   const navigate = useNavigate();
@@ -1686,6 +1687,43 @@ const Reports = () => {
                       <Filter className="w-4 h-4 mr-2" /> Apply
                     </Button>
                   </div>
+
+                  {/* Commission Sub-tabs */}
+                  <div className="flex gap-2 border-b">
+                    <Button
+                      variant={activeSubTab.commissions === 'summary' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setActiveSubTab(prev => ({ ...prev, commissions: 'summary' }))}
+                    >
+                      Summary
+                    </Button>
+                    <Button
+                      variant={activeSubTab.commissions === 'detailed' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setActiveSubTab(prev => ({ ...prev, commissions: 'detailed' }))}
+                    >
+                      Detailed
+                    </Button>
+                    <Button
+                      variant={activeSubTab.commissions === 'payable' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setActiveSubTab(prev => ({ ...prev, commissions: 'payable' }))}
+                    >
+                      Payable
+                    </Button>
+                  </div>
+
+                  {activeSubTab.commissions === 'payable' && (
+                    <CommissionPayableReport
+                      locationFilter={locationFilter}
+                      setLocationFilter={setLocationFilter}
+                      locations={locations}
+                      startDate={startDate}
+                      setStartDate={setStartDate}
+                      endDate={endDate}
+                      setEndDate={setEndDate}
+                    />
+                  )}
 
                   {activeSubTab.commissions === 'summary' && (
                     <div className="space-y-4">

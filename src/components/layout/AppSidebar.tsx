@@ -252,6 +252,12 @@ const menuItems: MenuItem[] = [
         feature: "reports",
       },
       {
+        title: "Commission Payable",
+        url: "/reports?type=commission-payable",
+        icon: DollarSign,
+        feature: "reports",
+      },
+      {
         title: "Payments Report",
         url: "/payments",
         icon: DollarSign,
@@ -429,9 +435,6 @@ export function AppSidebar() {
                         asChild={!!item.url}
                         onClick={() => handleItemClick(item.title, hasSubItems)}
                         className={cn(
-                          "h-11 text-sm font-medium px-4 mx-2 rounded-xl transition-all duration-300 text-sidebar-foreground",
-                          "hover:bg-sidebar-accent hover:scale-[1.02] hover:shadow-sm hover:translate-x-1",
-                          isActive && "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-md scale-[1.02]",
                           !isAvailable && "opacity-50 pointer-events-none",
                           hasSubItems && "cursor-pointer"
                         )}
@@ -440,7 +443,6 @@ export function AppSidebar() {
                           <NavLink 
                             to={item.url} 
                             onClick={handleNavClick}
-                            className="flex items-center gap-3 w-full text-current font-medium"
                           >
                             <item.icon className={cn(
                               "h-5 w-5 flex-shrink-0 transition-colors",
@@ -451,8 +453,6 @@ export function AppSidebar() {
                             </span>
                           </NavLink>
                         ) : (
-                          <div className="flex items-center gap-3 w-full text-current font-medium">
-                            <item.icon className="h-5 w-5 flex-shrink-0 text-current opacity-70" />
                             <span className="flex-1 text-left truncate animate-fade-in">
                               {item.title}
                             </span>
@@ -479,16 +479,12 @@ export function AppSidebar() {
                                 key={subItem.title}
                                 asChild
                                 className={cn(
-                                  "h-9 text-sm px-3 rounded-lg transition-all duration-300 text-sidebar-foreground",
-                                  "hover:bg-sidebar-accent/50 hover:translate-x-1 hover:shadow-sm",
-                                  subItemActive && "bg-primary/10 text-primary font-medium border border-primary/20",
                                   !subItemAvailable && "opacity-50 pointer-events-none"
                                 )}
                               >
                                 <NavLink 
                                   to={subItem.url} 
                                   onClick={handleNavClick}
-                                  className="flex items-center gap-3 w-full text-current font-medium"
                                 >
                                   <subItem.icon className={cn(
                                     "h-4 w-4 flex-shrink-0",
