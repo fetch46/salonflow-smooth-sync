@@ -340,9 +340,9 @@ export default function InvoiceCreate() {
           setFormData(prev => ({
             ...prev,
             customer_id: client.id,
-            customer_name: client.full_name,
-            customer_email: client.email || '',
-            customer_phone: client.phone || '',
+            customer_name: prev.customer_name || client.full_name,
+            customer_email: prev.customer_email || client.email || '',
+            customer_phone: prev.customer_phone || client.phone || '',
             jobcard_id: jc.id,
           }));
         } else if (jc.client_id) {
@@ -352,9 +352,9 @@ export default function InvoiceCreate() {
             setFormData(prev => ({
               ...prev,
               customer_id: cli.id,
-              customer_name: (cli as any).full_name || '',
-              customer_email: (cli as any).email || '',
-              customer_phone: (cli as any).phone || '',
+              customer_name: prev.customer_name || (cli as any).full_name || '',
+              customer_email: prev.customer_email || (cli as any).email || '',
+              customer_phone: prev.customer_phone || (cli as any).phone || '',
               jobcard_id: jc.id,
             }));
           }
@@ -481,9 +481,9 @@ export default function InvoiceCreate() {
           setFormData(prev => ({
             ...prev,
             customer_id: (jcRow as any).client_id || prev.customer_id,
-            customer_name: cli?.full_name || prev.customer_name,
-            customer_email: cli?.email || prev.customer_email,
-            customer_phone: cli?.phone || prev.customer_phone,
+            customer_name: prev.customer_name || cli?.full_name || '',
+            customer_email: prev.customer_email || cli?.email || '',
+            customer_phone: prev.customer_phone || cli?.phone || '',
             jobcard_id: jobCardId,
           }));
         }
@@ -811,7 +811,7 @@ Thank you for your business!`;
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
               <Users className="w-4 h-4 text-blue-600" />
-              Customer Information
+              Customer & Bill To Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -831,8 +831,8 @@ Thank you for your business!`;
                   );
                   
                   if (hasManuallyModifiedDetails) {
-                    // Ask user if they want to update customer details from selected customer
-                    if (window.confirm("You have manually modified customer details. Do you want to update them with the selected customer's information?")) {
+                    // Ask user if they want to update bill-to details from selected customer
+                    if (window.confirm("You have manually modified bill-to details. Do you want to update them with the selected customer's information?")) {
                       setFormData({
                         ...formData,
                         customer_id: value,
@@ -841,20 +841,21 @@ Thank you for your business!`;
                         customer_phone: customer?.phone || "",
                       });
                     } else {
-                      // Keep manually entered details, just update customer_id
+                      // Keep manually entered bill-to details, just update customer_id
                       setFormData({
                         ...formData,
                         customer_id: value,
                       });
                     }
                   } else {
-                    // No manual modifications, update all fields
+                    // Only update customer_id, keep bill-to fields separate
                     setFormData({
                       ...formData,
                       customer_id: value,
-                      customer_name: customer?.full_name || "",
-                      customer_email: customer?.email || "",
-                      customer_phone: customer?.phone || "",
+                      // Only populate bill-to fields if they are currently empty
+                      customer_name: formData.customer_name || customer?.full_name || "",
+                      customer_email: formData.customer_email || customer?.email || "",
+                      customer_phone: formData.customer_phone || customer?.phone || "",
                     });
                   }
                   
@@ -888,18 +889,18 @@ Thank you for your business!`;
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="customer_name">Customer Name *</Label>
-                <Input id="customer_name" value={formData.customer_name} onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })} required readOnly={Boolean(formData.jobcard_reference)} />
+                <Label htmlFor="customer_name">Bill To Name *</Label>
+                <Input id="customer_name" value={formData.customer_name} onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })} required readOnly={Boolean(formData.jobcard_reference)} placeholder="Enter billing name (can be different from customer)" />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="customer_email">Email</Label>
-                <Input id="customer_email" type="email" value={formData.customer_email} onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })} />
+                <Label htmlFor="customer_email">Bill To Email</Label>
+                <Input id="customer_email" type="email" value={formData.customer_email} onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })} placeholder="Enter billing email" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="customer_phone">Phone</Label>
-                <Input id="customer_phone" value={formData.customer_phone} onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })} />
+                <Label htmlFor="customer_phone">Bill To Phone</Label>
+                <Input id="customer_phone" value={formData.customer_phone} onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })} placeholder="Enter billing phone number" />
               </div>
             </div>
           </div>
@@ -918,8 +919,8 @@ Thank you for your business!`;
                 <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
                   <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
                   <div className="text-amber-800">
-                    <p className="font-medium">Customer details have been customized</p>
-                    <p className="text-xs mt-1">The invoice will use the custom details you've entered, not the selected customer's default information.</p>
+                    <p className="font-medium">Bill-to details have been customized</p>
+                    <p className="text-xs mt-1">The invoice will use the custom bill-to details you've entered, not the selected customer's default information.</p>
                   </div>
                 </div>
               );
