@@ -268,7 +268,7 @@ export default function CreateJobCard() {
           service_id,
           staff_id,
           duration_minutes,
-          price,
+          unit_price:price,
           commission_percentage,
           services ( id, name, description, price, duration_minutes, category )
         `)
