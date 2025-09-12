@@ -363,13 +363,35 @@ export default function AppointmentForm() {
         return;
       }
 
+      // Validate mandatory fields
+      if (!form.location_id) {
+        toast.error("Location is mandatory. Please select a location.");
+        return;
+      }
+
       if (!form.serviceItems.length || form.serviceItems.some(it => !it.service_id)) {
         toast.error("Please select at least one service");
         return;
       }
 
+      // Validate that all service items have staff assigned
+      if (form.serviceItems.some(it => !it.staff_id)) {
+        toast.error("Staff assignment is mandatory for all services. Please assign staff to each service.");
+        return;
+      }
+
       if (!form.customer_phone || !form.customer_phone.trim()) {
         toast.error("Mobile number is required");
+        return;
+      }
+
+      if (!form.appointment_date) {
+        toast.error("Appointment date is mandatory. Please select a date.");
+        return;
+      }
+
+      if (!form.appointment_time) {
+        toast.error("Appointment time is mandatory. Please select a time.");
         return;
       }
 
@@ -565,13 +587,14 @@ export default function AppointmentForm() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               <div>
-                <Label htmlFor="location_id">Location</Label>
+                <Label htmlFor="location_id">Location<span className="text-red-500">*</span></Label>
                 <Select 
                   value={form.location_id}
                   onValueChange={(value) => setForm(prev => ({ ...prev, location_id: value }))}
+                  required
                 >
-                  <SelectTrigger disabled={isReadOnly}>
-                    <SelectValue placeholder={locations.length ? "Select location" : "No locations"} />
+                  <SelectTrigger disabled={isReadOnly} className={!form.location_id ? "border-red-500" : ""}>
+                    <SelectValue placeholder={locations.length ? "Select location (Required)" : "No locations"} />
                   </SelectTrigger>
                   <SelectContent>
                     {locations.map((loc) => (
@@ -646,7 +669,7 @@ export default function AppointmentForm() {
 
               <div className="sm:col-span-2 lg:col-span-3 xl:col-span-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label>Services and Staff</Label>
+                  <Label>Services and Staff<span className="text-red-500">*</span></Label>
                   {!isReadOnly && (
                     <Button type="button" variant="outline" size="sm" onClick={addServiceItem} className="gap-1">
                       <Plus className="w-3 h-3" /> Add Service
@@ -657,13 +680,14 @@ export default function AppointmentForm() {
                 {form.serviceItems.map((item, idx) => (
                   <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end border rounded-md p-3">
                     <div className="md:col-span-5">
-                      <Label>Service</Label>
+                      <Label>Service<span className="text-red-500">*</span></Label>
                       <Select 
                         value={item.service_id}
                         onValueChange={(value) => updateServiceItem(idx, 'service_id', value)}
+                        required
                       >
-                        <SelectTrigger disabled={isReadOnly}>
-                          <SelectValue placeholder="Select Service" />
+                        <SelectTrigger disabled={isReadOnly} className={!item.service_id ? "border-red-500" : ""}>
+                          <SelectValue placeholder="Select Service (Required)" />
                         </SelectTrigger>
                         <SelectContent className="z-[100]">
                           {services.map((service) => (
@@ -675,13 +699,14 @@ export default function AppointmentForm() {
                       </Select>
                     </div>
                     <div className="md:col-span-4">
-                      <Label>Staff</Label>
+                      <Label>Staff<span className="text-red-500">*</span></Label>
                       <Select 
                         value={item.staff_id}
                         onValueChange={(value) => updateServiceItem(idx, 'staff_id', value)}
+                        required
                       >
-                        <SelectTrigger disabled={isReadOnly}>
-                          <SelectValue placeholder="Assign Staff" />
+                        <SelectTrigger disabled={isReadOnly} className={!item.staff_id ? "border-red-500" : ""}>
+                          <SelectValue placeholder="Assign Staff (Required)" />
                         </SelectTrigger>
                         <SelectContent className="z-[100]">
                           {staff.map((member) => (
@@ -738,7 +763,7 @@ export default function AppointmentForm() {
               </div>
 
               <div>
-                <Label htmlFor="appointment_date">Date</Label>
+                <Label htmlFor="appointment_date">Date<span className="text-red-500">*</span></Label>
                 <Input
                   id="appointment_date"
                   name="appointment_date"
@@ -747,10 +772,11 @@ export default function AppointmentForm() {
                   onChange={handleInputChange}
                   disabled={isReadOnly}
                   required
+                  className={!form.appointment_date ? "border-red-500" : ""}
                 />
               </div>
               <div>
-                <Label htmlFor="appointment_time">Time</Label>
+                <Label htmlFor="appointment_time">Time<span className="text-red-500">*</span></Label>
                 <Input
                   id="appointment_time"
                   name="appointment_time"
@@ -759,6 +785,7 @@ export default function AppointmentForm() {
                   onChange={handleInputChange}
                   disabled={isReadOnly}
                   required
+                  className={!form.appointment_time ? "border-red-500" : ""}
                 />
               </div>
               <div>
