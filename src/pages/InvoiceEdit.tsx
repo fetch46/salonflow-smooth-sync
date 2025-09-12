@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Users, Receipt, Trash2, Plus } from "lucide-react";
+import { Users, Receipt, Trash2, Plus, AlertCircle } from "lucide-react";
 import { useOrganizationCurrency, useOrganizationTaxRate, useOrganization } from "@/lib/saas/hooks";
 import { getInvoiceItemsWithFallback, getInvoicesWithFallback, updateInvoiceWithFallback } from "@/utils/mockDatabase";
 import { formatNumber } from "@/lib/currencyUtils";
@@ -485,13 +485,42 @@ export default function InvoiceEdit() {
                   return;
                 }
                 const customer = customers.find(c => c.id === value);
-                setFormData(prev => ({ 
-                  ...prev, 
-                  customer_id: value,
-                  customer_name: customer?.full_name || prev.customer_name,
-                  customer_email: customer?.email || prev.customer_email,
-                  customer_phone: customer?.phone || prev.customer_phone,
-                }));
+                
+                // Check if customer details have been manually modified
+                const currentCustomer = formData.customer_id ? customers.find(c => c.id === formData.customer_id) : null;
+                const hasManuallyModifiedDetails = formData.customer_id && currentCustomer && (
+                  formData.customer_name !== currentCustomer.full_name ||
+                  formData.customer_email !== (currentCustomer.email || "") ||
+                  formData.customer_phone !== (currentCustomer.phone || "")
+                );
+                
+                if (hasManuallyModifiedDetails) {
+                  // Ask user if they want to update customer details from selected customer
+                  if (window.confirm("You have manually modified customer details. Do you want to update them with the selected customer's information?")) {
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      customer_id: value,
+                      customer_name: customer?.full_name || prev.customer_name,
+                      customer_email: customer?.email || prev.customer_email,
+                      customer_phone: customer?.phone || prev.customer_phone,
+                    }));
+                  } else {
+                    // Keep manually entered details, just update customer_id
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      customer_id: value,
+                    }));
+                  }
+                } else {
+                  // No manual modifications or no previous customer, update all fields
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    customer_id: value,
+                    customer_name: customer?.full_name || prev.customer_name,
+                    customer_email: customer?.email || prev.customer_email,
+                    customer_phone: customer?.phone || prev.customer_phone,
+                  }));
+                }
                 
                 // Fetch job cards for this customer (only completed ones)
                 if (value) {
@@ -532,6 +561,29 @@ export default function InvoiceEdit() {
             </div>
           </div>
         </div>
+        
+        {/* Show warning if customer details differ from selected customer */}
+        {formData.customer_id && (() => {
+          const selectedCustomer = customers.find(c => c.id === formData.customer_id);
+          const detailsDiffer = selectedCustomer && (
+            formData.customer_name !== selectedCustomer.full_name ||
+            formData.customer_email !== (selectedCustomer.email || "") ||
+            formData.customer_phone !== (selectedCustomer.phone || "")
+          );
+          
+          if (detailsDiffer) {
+            return (
+              <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+                <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div className="text-amber-800">
+                  <p className="font-medium">Customer details have been customized</p>
+                  <p className="text-xs mt-1">The invoice will use the custom details you've entered, not the selected customer's default information.</p>
+                </div>
+              </div>
+            );
+          }
+          return null;
+        })()}
 
         <Separator />
 
