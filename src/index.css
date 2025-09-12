@@ -83,12 +83,6 @@ All colors MUST be HSL.
     --footer-foreground: 215 16% 37%;
     --nav-link-color: 215 16% 37%;
 
-    /* Accessible hyperlink colors */
-    --link: var(--theme-link, var(--primary));
-    --link-hover: color-mix(in hsl, hsl(var(--link)) 85%, hsl(0 0% 0%) 15%);
-    --link-visited: var(--theme-link-visited, 262 83% 54%);
-    --link-underline: hsl(var(--link) / 0.45);
-
     /* Enhanced tabs for light theme */
     --tabs-bg: 210 40% 97%;
     --tabs-foreground: 215 16% 47%;
@@ -307,35 +301,6 @@ All colors MUST be HSL.
   ::selection {
     background-color: hsl(var(--primary) / 0.35);
     color: hsl(var(--foreground));
-  }
-
-  /* Hyperlink styles for readability and accessibility */
-  a {
-    color: hsl(var(--link));
-    text-decoration-line: underline;
-    text-underline-offset: 3px;
-    text-decoration-thickness: 1.5px;
-    text-decoration-color: var(--link-underline);
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  a:hover {
-    color: hsl(var(--link-hover));
-    text-decoration-thickness: 2px;
-  }
-
-  a:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.3), 0 0 0 1px hsl(var(--ring));
-    border-radius: 4px;
-  }
-
-  a:active {
-    color: hsl(var(--link-hover));
-  }
-
-  a:visited {
-    color: hsl(var(--link-visited));
   }
 }
 
