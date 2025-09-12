@@ -328,99 +328,161 @@ export default function BrandingSettings() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Branding</h1>
-          <p className="text-muted-foreground">Customize your application's visual identity</p>
+    <div className="container mx-auto py-8 space-y-8 bg-pattern-dots min-h-screen">
+      <div className="card-premium p-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-2xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg">
+              <Palette className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Branding & Themes</h1>
+              <p className="text-muted-foreground text-lg mt-1">Customize your application's visual identity and color scheme</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <Card className="lg:col-span-7 shadow-lg border-2 hover:shadow-xl transition-shadow animate-fade-in">
-            <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b">
-              <CardTitle className="flex items-center gap-2">
-                <Palette className="h-5 w-5 text-primary" />
-                Quick Themes
-              </CardTitle>
-              <CardDescription>
-                Choose from pre-designed color schemes
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-6">
+      <div className="space-y-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          <div className="xl:col-span-2 space-y-6">
+            <div className="card-premium p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 text-primary">
+                  <Palette className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground">Quick Themes</h2>
+                  <p className="text-muted-foreground text-sm">Choose from professionally designed color schemes</p>
+                </div>
+              </div>
+
               <div className="space-y-4">
-                <Label className="text-sm font-semibold">Select Theme Preset</Label>
+                <Label className="text-sm font-semibold text-foreground">Select Theme Preset</Label>
                 <Select value={selectedTheme} onValueChange={(v) => handleThemeChange(v)}>
-                  <SelectTrigger className="h-10">
+                  <SelectTrigger className="h-12 rounded-xl border-2 hover:border-primary/30 transition-colors">
                     <SelectValue placeholder="Choose a theme" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-xl">
                     {THEME_PRESETS.map((theme) => (
-                      <SelectItem key={theme.id} value={theme.id} className="flex items-center gap-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 rounded-full border" style={{ backgroundColor: theme.colors.preview }} />
+                      <SelectItem key={theme.id} value={theme.id} className="rounded-lg my-1">
+                        <div className="flex items-center gap-3">
+                          <div 
+                            className="w-5 h-5 rounded-full border-2 border-white shadow-sm" 
+                            style={{ backgroundColor: theme.colors.preview }} 
+                          />
                           <div className="flex flex-col">
                             <span className="text-sm font-medium">{theme.name}</span>
-                            <span className="text-[10px] text-muted-foreground">{theme.description}</span>
+                            <span className="text-xs text-muted-foreground">{theme.description}</span>
                           </div>
                         </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-            </CardContent>
-          </Card>
 
-          <Card className="lg:col-span-5 shadow-lg border-2 hover:shadow-xl transition-shadow animate-fade-in">
-            <CardHeader className="bg-gradient-to-r from-secondary/5 to-secondary/10 border-b">
-              <CardTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5 text-primary" />
-                Live Preview
-              </CardTitle>
-              <CardDescription>
-                See how your colors look in action
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              <div className="grid grid-cols-3 gap-3">
-                <div className="text-center space-y-2">
-                  <div className="h-12 w-full rounded-lg border-2 shadow-sm transition-all hover-scale" style={{ backgroundColor: `hsl(${brandColors.primary})` }} />
-                  <span className="text-xs font-medium text-muted-foreground">Primary</span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+                  {THEME_PRESETS.slice(0, 8).map((theme) => (
+                    <button
+                      key={theme.id}
+                      onClick={() => handleThemeChange(theme.id)}
+                      className={`
+                        relative p-4 rounded-xl border-2 transition-all duration-300 group
+                        ${selectedTheme === theme.id 
+                          ? 'border-current shadow-lg scale-105' 
+                          : 'border-border hover:border-current hover:scale-105'
+                        }
+                      `}
+                      style={{
+                        backgroundColor: theme.colors.preview,
+                        color: theme.id === 'default' ? '#ffffff' : '#ffffff'
+                      }}
+                    >
+                      <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/10 to-transparent" />
+                      <div className="relative text-center">
+                        <div className="text-sm font-medium">{theme.name}</div>
+                        {selectedTheme === theme.id && (
+                          <div className="absolute -top-2 -right-2 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow-md">
+                            <div className="w-2 h-2 bg-green-500 rounded-full" />
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
                 </div>
-                <div className="text-center space-y-2">
-                  <div className="h-12 w-full rounded-lg border-2 shadow-sm transition-all hover-scale" style={{ backgroundColor: `hsl(${(brandColors as any).secondary})` }} />
-                  <span className="text-xs font-medium text-muted-foreground">Secondary</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="glass-card p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 text-primary">
+                  <Building className="h-5 w-5" />
                 </div>
-                <div className="text-center space-y-2">
-                  <div className="h-12 w-full rounded-lg border-2 shadow-sm transition-all hover-scale" style={{ backgroundColor: `hsl(${brandColors.accent})` }} />
-                  <span className="text-xs font-medium text-muted-foreground">Accent</span>
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground">Live Preview</h2>
+                  <p className="text-muted-foreground text-sm">See your theme in action</p>
                 </div>
               </div>
 
-              <div className="space-y-4 p-4 rounded-lg bg-background border">
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm">Primary Button</Button>
-                  <Button variant="secondary" size="sm">Secondary</Button>
-                  <Button variant="outline" size="sm">Outline</Button>
+              <div className="space-y-6">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="text-center space-y-2">
+                    <div 
+                      className="h-16 w-full rounded-xl border shadow-md transition-all hover:scale-105" 
+                      style={{ backgroundColor: `hsl(${brandColors.primary})` }} 
+                    />
+                    <span className="text-xs font-medium text-muted-foreground">Primary</span>
+                  </div>
+                  <div className="text-center space-y-2">
+                    <div 
+                      className="h-16 w-full rounded-xl border shadow-md transition-all hover:scale-105" 
+                      style={{ backgroundColor: `hsl(${(brandColors as any).secondary})` }} 
+                    />
+                    <span className="text-xs font-medium text-muted-foreground">Secondary</span>
+                  </div>
+                  <div className="text-center space-y-2">
+                    <div 
+                      className="h-16 w-full rounded-xl border shadow-md transition-all hover:scale-105" 
+                      style={{ backgroundColor: `hsl(${brandColors.accent})` }} 
+                    />
+                    <span className="text-xs font-medium text-muted-foreground">Accent</span>
+                  </div>
                 </div>
-                <div className="p-3 rounded-md bg-accent text-accent-foreground text-sm">Accent surface example</div>
-                <div className="p-3 rounded-md bg-secondary text-secondary-foreground text-sm">Secondary surface example</div>
-                <div className="text-xs text-muted-foreground">
-                  HSL Values:<br />
-                  Primary: {brandColors.primary}<br />
-                  Secondary: {(brandColors as any).secondary}<br />
-                  Accent: {brandColors.accent}
+
+                <div className="space-y-4 p-4 rounded-xl bg-background/50 border backdrop-blur-sm">
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" className="btn-premium">Primary</Button>
+                    <Button variant="secondary" size="sm" className="rounded-lg">Secondary</Button>
+                    <Button variant="outline" size="sm" className="btn-outline-modern">Outline</Button>
+                  </div>
+                  <div className="p-3 rounded-xl bg-accent text-accent-foreground text-sm font-medium">
+                    Accent surface example with modern styling
+                  </div>
+                  <div className="p-3 rounded-xl bg-secondary text-secondary-foreground text-sm font-medium">
+                    Secondary surface with enhanced design
+                  </div>
+                </div>
+
+                <div className="glass-card p-3 text-xs text-muted-foreground space-y-1">
+                  <div className="font-semibold text-foreground mb-2">Current HSL Values:</div>
+                  <div>Primary: {brandColors.primary}</div>
+                  <div>Secondary: {(brandColors as any).secondary}</div>
+                  <div>Accent: {brandColors.accent}</div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
-        <div className="flex justify-center pt-2">
-          <Button onClick={saveBrandingSettings} disabled={loading} className="flex items-center gap-2 px-8 py-3 text-lg hover-scale shadow-lg" size="lg">
-            <Save className="h-5 w-5" />
+        <div className="flex justify-center pt-6">
+          <Button 
+            onClick={saveBrandingSettings} 
+            disabled={loading} 
+            className="btn-premium px-12 py-4 text-lg shadow-xl"
+          >
+            <Save className="h-5 w-5 mr-2" />
             {loading ? 'Saving Theme...' : 'Save Brand Settings'}
           </Button>
         </div>
