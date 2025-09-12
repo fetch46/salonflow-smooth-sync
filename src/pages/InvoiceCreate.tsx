@@ -39,6 +39,7 @@ export default function InvoiceCreate() {
   const persistKeyCustomer = useMemo(() => (
     organization?.id ? `invoice_customer_persist_v1_${organization.id}` : null
   ), [organization?.id]);
+  const persistKeyCustomerGlobal = 'invoice_customer_persist_v1__global';
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -87,14 +88,20 @@ export default function InvoiceCreate() {
 
   const persistCustomerDetails = () => {
     try {
-      if (!persistKeyCustomer) return;
       const payload = {
         customer_id: formData.customer_id || "",
         customer_name: formData.customer_name || "",
         customer_email: formData.customer_email || "",
         customer_phone: formData.customer_phone || "",
       };
-      localStorage.setItem(persistKeyCustomer, JSON.stringify(payload));
+      const hasAny = payload.customer_id || payload.customer_name || payload.customer_email || payload.customer_phone;
+      if (!hasAny) return;
+      // Always write global fallback
+      localStorage.setItem(persistKeyCustomerGlobal, JSON.stringify(payload));
+      // Also write org-specific when available
+      if (persistKeyCustomer) {
+        localStorage.setItem(persistKeyCustomer, JSON.stringify(payload));
+      }
     } catch {}
   };
 
@@ -158,7 +165,7 @@ export default function InvoiceCreate() {
   // Restore last used customer details (per organization) when starting a new invoice
   useEffect(() => {
     try {
-      if (!persistKeyCustomer) return;
+      // Try org-specific first, then global fallback
       const fromJobCard = searchParams.get("fromJobCard");
       const duplicateId = searchParams.get("duplicateId");
       if (fromJobCard || duplicateId) return; // don't override explicit prefill flows
@@ -166,9 +173,11 @@ export default function InvoiceCreate() {
       // If form already has values (e.g., user started typing), do nothing
       if (formData.customer_id || formData.customer_name || formData.customer_email || formData.customer_phone) return;
 
-      const raw = localStorage.getItem(persistKeyCustomer);
-      if (!raw) return;
-      const saved = JSON.parse(raw || '{}') || {};
+      const raw = persistKeyCustomer ? localStorage.getItem(persistKeyCustomer) : null;
+      const rawGlobal = localStorage.getItem(persistKeyCustomerGlobal);
+      const chosenRaw = raw || rawGlobal;
+      if (!chosenRaw) return;
+      const saved = JSON.parse(chosenRaw || '{}') || {};
       if (!saved) return;
 
       if (saved.customer_id) {
@@ -206,6 +215,14 @@ export default function InvoiceCreate() {
     } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [persistKeyCustomer, customers, searchParams, organization?.id]);
+
+  // Auto-persist customer details when they change (only when non-empty)
+  useEffect(() => {
+    const hasAny = formData.customer_id || formData.customer_name || formData.customer_email || formData.customer_phone;
+    if (!hasAny) return;
+    persistCustomerDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.customer_id, formData.customer_name, formData.customer_email, formData.customer_phone, persistKeyCustomer]);
 
   // Initialize applyTax from org settings and lock when tax disabled
   useEffect(() => {
