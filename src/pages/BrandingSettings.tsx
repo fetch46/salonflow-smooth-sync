@@ -13,9 +13,9 @@ export default function BrandingSettings() {
   const [loading, setLoading] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState("blue");
   const [brandColors, setBrandColors] = useState({
-    primary: "221 83% 53%",
-    secondary: "217 19% 94%",
-    accent: "210 40% 96.1%",
+    primary: "217 91% 60%",
+    secondary: "220 14% 96%",
+    accent: "220 14% 96%",
     theme: "blue",
   });
   const [manualTheme, setManualTheme] = useState({
@@ -34,135 +34,135 @@ export default function BrandingSettings() {
 
   const THEME_PRESETS = [
     { 
-      name: "Blue", 
+      name: "Ocean Blue", 
       id: "blue", 
-      description: "Professional blue theme", 
+      description: "Professional ocean blue with excellent readability", 
       colors: { 
-        primary: "221 83% 53%", 
-        secondary: "217 19% 94%", 
-        accent: "210 40% 96.1%", 
-        preview: "hsl(221 83% 53%)" 
+        primary: "217 91% 60%", 
+        secondary: "220 14% 96%", 
+        accent: "220 14% 96%", 
+        preview: "hsl(217 91% 60%)" 
       } 
     },
     { 
-      name: "Indigo", 
+      name: "Deep Indigo", 
       id: "indigo", 
-      description: "Deep indigo theme", 
+      description: "Rich indigo with strong contrast", 
       colors: { 
-        primary: "234 89% 62%", 
-        secondary: "226 22% 94%", 
-        accent: "226 36% 95%", 
-        preview: "hsl(234 89% 62%)" 
+        primary: "239 84% 67%", 
+        secondary: "220 14% 96%", 
+        accent: "220 14% 96%", 
+        preview: "hsl(239 84% 67%)" 
       } 
     },
     { 
-      name: "Green", 
+      name: "Forest Green", 
       id: "green", 
-      description: "Fresh nature theme", 
+      description: "Natural forest green with clarity", 
       colors: { 
-        primary: "142 76% 36%", 
-        secondary: "138 16% 94%", 
-        accent: "141 32% 95%", 
-        preview: "hsl(142 76% 36%)" 
+        primary: "142 71% 45%", 
+        secondary: "220 14% 96%", 
+        accent: "220 14% 96%", 
+        preview: "hsl(142 71% 45%)" 
       } 
     },
     { 
-      name: "Teal", 
+      name: "Modern Teal", 
       id: "teal", 
-      description: "Modern teal theme", 
+      description: "Contemporary teal with balanced contrast", 
       colors: { 
         primary: "172 66% 50%", 
-        secondary: "174 20% 94%", 
-        accent: "173 36% 95%", 
+        secondary: "220 14% 96%", 
+        accent: "220 14% 96%", 
         preview: "hsl(172 66% 50%)" 
       } 
     },
     { 
-      name: "Purple", 
+      name: "Royal Purple", 
       id: "purple", 
-      description: "Royal purple theme", 
+      description: "Elegant purple with premium feel", 
       colors: { 
         primary: "262 83% 58%", 
-        secondary: "261 20% 94%", 
-        accent: "261 36% 95%", 
+        secondary: "220 14% 96%", 
+        accent: "220 14% 96%", 
         preview: "hsl(262 83% 58%)" 
       } 
     },
     { 
-      name: "Pink", 
+      name: "Vibrant Pink", 
       id: "pink", 
-      description: "Playful pink theme", 
+      description: "Bold pink with modern appeal", 
       colors: { 
-        primary: "322 93% 64%", 
-        secondary: "324 20% 94%", 
-        accent: "323 36% 95%", 
-        preview: "hsl(322 93% 64%)" 
+        primary: "322 84% 55%", 
+        secondary: "220 14% 96%", 
+        accent: "220 14% 96%", 
+        preview: "hsl(322 84% 55%)" 
       } 
     },
     { 
-      name: "Orange", 
+      name: "Warm Orange", 
       id: "orange", 
-      description: "Energetic orange theme", 
+      description: "Energetic orange with high visibility", 
       colors: { 
         primary: "25 95% 53%", 
-        secondary: "24 20% 94%", 
-        accent: "24 36% 95%", 
+        secondary: "220 14% 96%", 
+        accent: "220 14% 96%", 
         preview: "hsl(25 95% 53%)" 
       } 
     },
     { 
-      name: "Red", 
+      name: "Confident Red", 
       id: "red", 
-      description: "Bold red theme", 
+      description: "Strong red with clear contrast", 
       colors: { 
-        primary: "0 72% 51%", 
-        secondary: "0 20% 94%", 
-        accent: "0 36% 95%", 
-        preview: "hsl(0 72% 51%)" 
+        primary: "0 84% 60%", 
+        secondary: "220 14% 96%", 
+        accent: "220 14% 96%", 
+        preview: "hsl(0 84% 60%)" 
       } 
     },
     { 
-      name: "Amber", 
+      name: "Golden Amber", 
       id: "amber", 
-      description: "Warm amber theme", 
+      description: "Rich amber with warmth and clarity", 
       colors: { 
         primary: "38 92% 50%", 
-        secondary: "37 20% 94%", 
-        accent: "37 36% 95%", 
+        secondary: "220 14% 96%", 
+        accent: "220 14% 96%", 
         preview: "hsl(38 92% 50%)" 
       } 
     },
     { 
-      name: "Emerald", 
+      name: "Emerald Gem", 
       id: "emerald", 
-      description: "Luxurious emerald theme", 
+      description: "Luxurious emerald with sophistication", 
       colors: { 
         primary: "160 84% 39%", 
-        secondary: "158 16% 94%", 
-        accent: "159 32% 95%", 
+        secondary: "220 14% 96%", 
+        accent: "220 14% 96%", 
         preview: "hsl(160 84% 39%)" 
       } 
     },
     { 
-      name: "Slate", 
+      name: "Professional Slate", 
       id: "slate", 
-      description: "Professional slate theme", 
+      description: "Clean slate gray for business use", 
       colors: { 
-        primary: "215 19% 35%", 
-        secondary: "215 19% 94%", 
-        accent: "215 25% 95%", 
-        preview: "hsl(215 19% 35%)" 
+        primary: "215 25% 27%", 
+        secondary: "220 14% 96%", 
+        accent: "220 14% 96%", 
+        preview: "hsl(215 25% 27%)" 
       } 
     },
     { 
-      name: "Zinc", 
+      name: "Modern Charcoal", 
       id: "zinc", 
-      description: "Neutral zinc theme", 
+      description: "Sophisticated charcoal with modern edge", 
       colors: { 
-        primary: "240 6% 26%", 
-        secondary: "240 6% 94%", 
-        accent: "240 6% 95%", 
-        preview: "hsl(240 6% 26%)" 
+        primary: "240 9% 30%", 
+        secondary: "220 14% 96%", 
+        accent: "220 14% 96%", 
+        preview: "hsl(240 9% 30%)" 
       } 
     }
   ];
@@ -248,10 +248,11 @@ export default function BrandingSettings() {
       const parts = hsl.split(' ');
       const lightnessStr = parts[2] || '';
       const lightness = parseInt(lightnessStr.replace('%', ''));
-      if (isNaN(lightness)) return '0 0% 98%';
-      return lightness < 55 ? '0 0% 98%' : '0 0% 9%';
+      if (isNaN(lightness)) return '0 0% 100%';
+      // Improved threshold for better readability
+      return lightness < 60 ? '0 0% 100%' : '0 0% 9%';
     } catch {
-      return '0 0% 98%';
+      return '0 0% 100%';
     }
   };
 
@@ -334,7 +335,7 @@ export default function BrandingSettings() {
                 Quick Themes
               </CardTitle>
               <CardDescription>
-                Choose from pre-designed color schemes
+                Choose from readability-optimized color schemes designed for modern interfaces
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6">

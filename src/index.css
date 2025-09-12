@@ -12,62 +12,65 @@ All colors MUST be HSL.
     @apply bg-primary text-primary-foreground hover:bg-primary/90 border border-primary/20;
   }
   :root {
-    /* Modern Light Theme with Quick Theme Integration */
-    --background: 0 0% 98.5%;
-    --foreground: 0 0% 13%;
+    /* Modern Light Theme with Enhanced Readability */
+    --background: 0 0% 99%;
+    --foreground: 0 0% 9%;
     color-scheme: light;
     
     /* Clean modern font family */
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 13%;
+    --card-foreground: 0 0% 9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 13%;
+    --popover-foreground: 0 0% 9%;
 
-    /* Theme-aware primary colors - can be overridden via CSS custom properties */
+    /* Theme-aware primary colors - optimized for readability */
     --primary: var(--theme-primary, 221 83% 53%);
     --primary-foreground: var(--theme-primary-foreground, 0 0% 100%);
     --primary-light: var(--theme-primary-light, 221 83% 70%);
     --primary-lighter-70: color-mix(in hsl, hsl(var(--primary)) 30%, hsl(0 0% 100%) 70%);
 
-    --secondary: 217 19% 94%;
-    --secondary-foreground: 0 0% 13%;
+    /* Improved secondary colors with better contrast */
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 0 0% 9%;
 
-    /* Muted: Subtle backgrounds with slight blue tint */
-    --muted: 214 20% 96%;
-    --muted-foreground: 215 16% 47%;
+    /* Enhanced muted colors for better text hierarchy */
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 16% 46%;
 
-    --accent: 210 40% 96.1%;
+    /* Refined accent colors */
+    --accent: 220 14% 96%;
     --accent-foreground: 222.2 47.4% 11.2%;
 
-    /* Enhanced Status colors for light theme */
-    --success: 142 76% 36%;
+    /* Optimized status colors for better accessibility */
+    --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Softer borders for light theme */
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
+    /* Improved borders with better definition */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
     --ring: var(--primary);
 
-    /* Slightly more rounded for modern look */
-    --radius: 0.75rem;
+    /* Modern rounded corners */
+    --radius: 0.5rem;
 
+    /* Improved sidebar with better contrast */
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 215 16% 37%;
+    --sidebar-foreground: 215 16% 35%;
     --sidebar-primary: var(--primary);
     --sidebar-primary-foreground: var(--primary-foreground);
-    --sidebar-accent: 210 40% 96.1%;
-    --sidebar-accent-foreground: 215 16% 27%;
-    --sidebar-border: 214 32% 91%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 215 16% 25%;
+    --sidebar-border: 220 13% 91%;
     --sidebar-ring: var(--primary);
 
     /* Brand colors - can be overridden */
@@ -76,16 +79,16 @@ All colors MUST be HSL.
     --brand-accent: var(--accent);
     --brand-accent-foreground: var(--accent-foreground);
 
-    /* App structure variables with better light theme colors */
+    /* App structure variables with enhanced readability */
     --topbar-bg: 0 0% 100%;
     --topbar-foreground: var(--foreground);
-    --footer-bg: 210 40% 98%;
-    --footer-foreground: 215 16% 37%;
-    --nav-link-color: 215 16% 37%;
+    --footer-bg: 220 14% 98%;
+    --footer-foreground: 215 16% 35%;
+    --nav-link-color: 215 16% 35%;
 
-    /* Enhanced tabs for light theme */
-    --tabs-bg: 210 40% 97%;
-    --tabs-foreground: 215 16% 47%;
+    /* Modern tabs with better definition */
+    --tabs-bg: 220 14% 97%;
+    --tabs-foreground: 215 16% 45%;
     --tabs-active-bg: 0 0% 100%;
     --tabs-active-foreground: var(--primary);
 
@@ -602,12 +605,17 @@ html, body, #root {
   
   /* Light theme specific enhancements */
   :root:not(.dark) {
-    /* Subtle shadows for depth */
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    /* Enhanced shadows for modern depth */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.03);
+    
+    /* Improved glass morphism effects */
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --glass-backdrop: blur(12px);
   }
 
   /* Light theme: Enhanced card styles */
@@ -623,30 +631,44 @@ html, body, #root {
     transform: translateY(-1px);
   }
 
-  /* Light theme: Button enhancements */
+  /* Light theme: Enhanced button styling */
   :root:not(.dark) button {
     box-shadow: var(--shadow-sm);
-    transition: all 0.15s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
   }
 
   :root:not(.dark) button:hover:not(:disabled) {
     box-shadow: var(--shadow);
     transform: translateY(-1px);
+    border-color: hsl(var(--border));
   }
 
   :root:not(.dark) button:active:not(:disabled) {
-    box-shadow: none;
+    box-shadow: var(--shadow-sm);
     transform: translateY(0);
   }
 
-  /* Light theme: Input field enhancements */
+  /* Primary button enhancements */
+  :root:not(.dark) button[class*="bg-primary"] {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary)) 100%);
+    border-color: hsl(var(--primary) / 0.3);
+  }
+
+  :root:not(.dark) button[class*="bg-primary"]:hover:not(:disabled) {
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.9), hsl(var(--primary) / 0.9) 100%);
+    box-shadow: var(--shadow-md);
+  }
+
+  /* Light theme: Enhanced input field styling */
   :root:not(.dark) input,
   :root:not(.dark) textarea,
   :root:not(.dark) select,
   :root:not(.dark) [role="combobox"] {
     background-color: hsl(0 0% 100%);
     border-color: hsl(var(--input));
-    transition: all 0.15s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-sm);
   }
 
   :root:not(.dark) input:focus,
@@ -655,7 +677,30 @@ html, body, #root {
   :root:not(.dark) [role="combobox"]:focus {
     background-color: hsl(0 0% 100%);
     border-color: hsl(var(--primary));
-    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.12), var(--shadow);
+    outline: none;
+  }
+
+  /* Enhanced text contrast for readability */
+  :root:not(.dark) {
+    --text-high-contrast: 0 0% 5%;
+    --text-medium-contrast: 0 0% 25%;
+    --text-low-contrast: 0 0% 45%;
+  }
+
+  :root:not(.dark) h1, :root:not(.dark) h2, :root:not(.dark) h3, 
+  :root:not(.dark) h4, :root:not(.dark) h5, :root:not(.dark) h6 {
+    color: hsl(var(--text-high-contrast));
+    font-weight: 600;
+    letter-spacing: -0.025em;
+  }
+
+  :root:not(.dark) p, :root:not(.dark) span, :root:not(.dark) div {
+    color: hsl(var(--text-medium-contrast));
+  }
+
+  :root:not(.dark) .text-muted-foreground {
+    color: hsl(var(--text-low-contrast)) !important;
   }
 
   /* Light theme: Sidebar enhancements */
