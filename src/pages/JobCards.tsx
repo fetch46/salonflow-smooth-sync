@@ -294,7 +294,7 @@ export default function JobCards() {
   }, [jobCards]);
 
   return (
-    <div className="container mx-auto p-1 sm:p-2 space-y-3 max-w-[1600px]">
+    <div className="mx-auto px-1 sm:px-2 py-2 space-y-3 w-full max-w-[1920px]">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div>
