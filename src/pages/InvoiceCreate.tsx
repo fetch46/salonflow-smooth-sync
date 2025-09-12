@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Users, Receipt, Trash2, Plus, Printer, ChevronDown } from "lucide-react";
+import { Users, Receipt, Trash2, Plus, Printer, ChevronDown, AlertCircle } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { createInvoiceWithFallback, getInvoicesWithFallback, getInvoiceItemsWithFallback } from "@/utils/mockDatabase";
@@ -734,13 +734,41 @@ Thank you for your business!`;
                     return;
                   }
                   const customer = customers.find(c => c.id === value);
-                  setFormData({
-                    ...formData,
-                    customer_id: value,
-                    customer_name: customer?.full_name || "",
-                    customer_email: customer?.email || "",
-                    customer_phone: customer?.phone || "",
-                  });
+                  
+                  // Check if customer details have been manually modified
+                  const hasManuallyModifiedDetails = formData.customer_id && (
+                    formData.customer_name !== customers.find(c => c.id === formData.customer_id)?.full_name ||
+                    formData.customer_email !== (customers.find(c => c.id === formData.customer_id)?.email || "") ||
+                    formData.customer_phone !== (customers.find(c => c.id === formData.customer_id)?.phone || "")
+                  );
+                  
+                  if (hasManuallyModifiedDetails) {
+                    // Ask user if they want to update customer details from selected customer
+                    if (window.confirm("You have manually modified customer details. Do you want to update them with the selected customer's information?")) {
+                      setFormData({
+                        ...formData,
+                        customer_id: value,
+                        customer_name: customer?.full_name || "",
+                        customer_email: customer?.email || "",
+                        customer_phone: customer?.phone || "",
+                      });
+                    } else {
+                      // Keep manually entered details, just update customer_id
+                      setFormData({
+                        ...formData,
+                        customer_id: value,
+                      });
+                    }
+                  } else {
+                    // No manual modifications, update all fields
+                    setFormData({
+                      ...formData,
+                      customer_id: value,
+                      customer_name: customer?.full_name || "",
+                      customer_email: customer?.email || "",
+                      customer_phone: customer?.phone || "",
+                    });
+                  }
                   
                   // Fetch job cards for this customer (only completed ones)
                   if (value) {
@@ -787,6 +815,29 @@ Thank you for your business!`;
               </div>
             </div>
           </div>
+          
+          {/* Show warning if customer details differ from selected customer */}
+          {formData.customer_id && (() => {
+            const selectedCustomer = customers.find(c => c.id === formData.customer_id);
+            const detailsDiffer = selectedCustomer && (
+              formData.customer_name !== selectedCustomer.full_name ||
+              formData.customer_email !== (selectedCustomer.email || "") ||
+              formData.customer_phone !== (selectedCustomer.phone || "")
+            );
+            
+            if (detailsDiffer) {
+              return (
+                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+                  <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-amber-800">
+                    <p className="font-medium">Customer details have been customized</p>
+                    <p className="text-xs mt-1">The invoice will use the custom details you've entered, not the selected customer's default information.</p>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
 
           <Separator />
 
