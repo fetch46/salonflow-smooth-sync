@@ -84,7 +84,7 @@ export function generateInvoicePDF(invoice: Invoice, items: InvoiceItem[], forma
   doc.text('Bill To:', margin, yPosition);
   yPosition += lineHeight;
   
-  doc.text(invoice.customer_name, margin, yPosition);
+  doc.text(invoice.customer_name || 'No customer name', margin, yPosition);
   yPosition += lineHeight;
   
   if (invoice.customer_email) {

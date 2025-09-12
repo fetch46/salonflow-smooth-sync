@@ -39,6 +39,9 @@ interface InvoiceLite {
   id: string;
   invoice_number: string;
   customer_id: string | null;
+  customer_name?: string;
+  customer_email?: string | null;
+  customer_phone?: string | null;
   total_amount: number;
   created_at: string;
   amount_paid?: number;
@@ -433,6 +436,9 @@ export default function PaymentsNew() {
         id: invoiceId,
         invoice_number: invoice.invoice_number,
         client_id: invoice.customer_id,
+        customer_name: invoice.customer_name || '',
+        customer_email: invoice.customer_email || null,
+        customer_phone: invoice.customer_phone || null,
         total_amount: invoice.total_amount,
         issue_date: invoice.created_at,
         status: invoice.status || 'sent'
