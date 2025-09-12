@@ -994,13 +994,13 @@ export default function Appointments() {
                             {String(appointment.status || 'scheduled').replace('_', ' ')}
                           </Badge>
                         </div>
-                        <div className="justify-self-center text-[11px] text-muted-foreground flex items-center gap-2 text-center">
-                          <div className="flex items-center gap-1">
+                        <div className="justify-self-center text-[11px] text-muted-foreground flex items-center gap-1.5 text-center whitespace-nowrap flex-nowrap">
+                          <div className="flex items-center gap-1 whitespace-nowrap">
                             <CalendarDays className="w-3 h-3" />
                             <span className="font-medium leading-none">{appointment.appointment_date}</span>
                           </div>
                           <span className="text-muted-foreground/50">•</span>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 whitespace-nowrap">
                             <Clock className="w-3 h-3" />
                             <span className="font-medium leading-none">
                               {appointment.appointment_time} ({Number(appointment.duration_minutes ?? 0)}min)
