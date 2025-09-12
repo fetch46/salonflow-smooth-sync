@@ -315,7 +315,7 @@ const Dashboard = () => {
       previousValue: metrics.revenueYesterday,
       change: safePercent(metrics.revenueToday, metrics.revenueYesterday),
       icon: DollarSign,
-      bgClass: "bg-gradient-to-br from-green-50 to-emerald-50 border-green-200",
+      bgClass: "bg-slate-100 border-slate-300",
       textColor: "text-green-700",
       valueColor: "text-green-700",
       subtextColor: "text-green-600",
@@ -328,7 +328,7 @@ const Dashboard = () => {
       previousValue: metrics.appointmentsYesterday,
       change: safePercent(metrics.appointmentsToday, metrics.appointmentsYesterday),
       icon: Calendar,
-      bgClass: "bg-gradient-to-br from-blue-50 to-sky-50 border-blue-200",
+      bgClass: "bg-slate-100 border-slate-300",
       textColor: "text-blue-700",
       valueColor: "text-blue-700",
       subtextColor: "text-blue-600",
@@ -341,7 +341,7 @@ const Dashboard = () => {
       previousValue: metrics.newClientsYesterday,
       change: safePercent(metrics.newClientsToday, metrics.newClientsYesterday),
       icon: Users,
-      bgClass: "bg-gradient-to-br from-yellow-50 to-amber-50 border-amber-200",
+      bgClass: "bg-slate-100 border-slate-300",
       textColor: "text-amber-700",
       valueColor: "text-amber-700",
       subtextColor: "text-amber-600",
@@ -354,7 +354,7 @@ const Dashboard = () => {
       previousValue: metrics.staffUtilizationYesterday,
       change: safePercent(metrics.staffUtilizationToday, metrics.staffUtilizationYesterday),
       icon: TrendingUp,
-      bgClass: "bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200",
+      bgClass: "bg-slate-100 border-slate-300",
       textColor: "text-orange-700",
       valueColor: "text-orange-700",
       subtextColor: "text-orange-600",
@@ -367,7 +367,7 @@ const Dashboard = () => {
       previousValue: metrics.completionRateYesterday,
       change: safePercent(metrics.completionRateToday, metrics.completionRateYesterday),
       icon: CheckCircle,
-      bgClass: "bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200",
+      bgClass: "bg-slate-100 border-slate-300",
       textColor: "text-green-700",
       valueColor: "text-green-700",
       subtextColor: "text-green-600",
@@ -380,7 +380,7 @@ const Dashboard = () => {
       previousValue: metrics.avgServiceTimeYesterday,
       change: safePercent(metrics.avgServiceTimeToday, metrics.avgServiceTimeYesterday),
       icon: Timer,
-      bgClass: "bg-gradient-to-br from-cyan-50 to-teal-50 border-cyan-200",
+      bgClass: "bg-slate-100 border-slate-300",
       textColor: "text-cyan-700",
       valueColor: "text-cyan-700",
       subtextColor: "text-cyan-600",
@@ -457,28 +457,28 @@ const Dashboard = () => {
       title: "New Appointment",
       description: "Book appointment for client",
       icon: Calendar,
-      color: "bg-blue-50 text-blue-600 hover:bg-blue-100",
+      accent: "text-blue-600 bg-blue-100",
       action: () => navigate("/appointments/new")
     },
     {
       title: "Add Client",
       description: "Register new customer",
       icon: Users,
-      color: "bg-green-50 text-green-600 hover:bg-green-100",
+      accent: "text-green-600 bg-green-100",
       action: () => navigate("/clients?create=1")
     },
     {
       title: "Process Payment",
       description: "Handle transaction",
       icon: DollarSign,
-      color: "bg-emerald-50 text-emerald-600 hover:bg-emerald-100",
+      accent: "text-emerald-600 bg-emerald-100",
       action: () => navigate("/pos")
     },
     {
       title: "View Reports",
       description: "Analytics & insights",
       icon: BarChart3,
-      color: "bg-amber-50 text-amber-600 hover:bg-amber-100",
+      accent: "text-amber-600 bg-amber-100",
       action: () => navigate("/reports")
     }
   ];
@@ -742,15 +742,24 @@ const Dashboard = () => {
             <CardContent className="p-4">
               <div className="grid grid-cols-2 gap-3">
                 {roleQuickActions.map((action, index) => (
-                  <Button
+                  <div
                     key={index}
-                    variant="outline"
-                    className={`${action.color} border-0 flex-col h-auto p-3 space-y-1 text-black dark:text-white`}
+                    role="button"
+                    tabIndex={0}
                     onClick={action.action}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); action.action(); } }}
+                    className="freshsales-card p-3 hover:shadow-md transition cursor-pointer group bg-slate-100 border-slate-300"
                   >
-                    <action.icon className="w-5 h-5" />
-                    <span className="text-xs font-medium">{action.title}</span>
-                  </Button>
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-md ${action.accent}`}>
+                        <action.icon className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-medium text-slate-900 truncate">{action.title}</div>
+                        <div className="text-[11px] text-slate-600 truncate">{action.description}</div>
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
             </CardContent>
