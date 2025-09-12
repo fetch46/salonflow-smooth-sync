@@ -294,6 +294,12 @@ const menuItems: MenuItem[] = [
         icon: Palette,
         feature: "settings",
       },
+      {
+        title: "Subscription",
+        url: "/settings/subscription",
+        icon: CreditCard,
+        feature: "settings",
+      },
     ],
   },
   {

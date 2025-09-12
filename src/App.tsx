@@ -50,6 +50,7 @@ const PurchaseView = lazyWithRetry(() => import("./pages/PurchaseView"));
 const ExpenseForm = lazyWithRetry(() => import("./pages/ExpenseForm"));
 const StaffProfile = lazyWithRetry(() => import("./pages/StaffProfile"));
 const Settings = lazyWithRetry(() => import("./pages/Settings"));
+const SettingsSubscription = lazyWithRetry(() => import("./pages/SettingsSubscription"));
 const ModulesSettings = lazyWithRetry(() => import("./pages/ModulesSettings"));
 const BrandingSettings = lazyWithRetry(() => import("./pages/BrandingSettings"));
 const Profile = lazyWithRetry(() => import("./pages/Profile"));
@@ -308,6 +309,7 @@ const AppRoutes = () => {
           
           {/* Settings & Support */}
           <Route path="settings" element={<Settings />} />
+          <Route path="settings/subscription" element={<SettingsSubscription />} />
           <Route path="settings/modules" element={<ModulesSettings />} />
           <Route path="settings/branding" element={<BrandingSettings />} />
           <Route path="profile" element={<Profile />} />
