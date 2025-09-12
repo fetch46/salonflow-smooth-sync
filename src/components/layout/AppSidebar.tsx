@@ -27,6 +27,7 @@ import {
   HelpCircle,
   ArrowLeftRight,
   Truck,
+  Activity,
 } from "lucide-react";
 import {
   Sidebar,
@@ -249,6 +250,12 @@ const menuItems: MenuItem[] = [
         title: "Customer Reports",
         url: "/reports?type=customers",
         icon: Users,
+        feature: "reports",
+      },
+      {
+        title: "Commission Payable",
+        url: "/reports?tab=commissions&sub=payable",
+        icon: Activity,
         feature: "reports",
       },
       {
