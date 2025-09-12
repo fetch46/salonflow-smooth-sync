@@ -184,6 +184,7 @@ export type Database = {
           appointment_id: string
           commission_percentage: number | null
           created_at: string
+          duration_minutes: number | null
           id: string
           notes: string | null
           quantity: number
@@ -197,6 +198,7 @@ export type Database = {
           appointment_id: string
           commission_percentage?: number | null
           created_at?: string
+          duration_minutes?: number | null
           id?: string
           notes?: string | null
           quantity?: number
@@ -210,6 +212,7 @@ export type Database = {
           appointment_id?: string
           commission_percentage?: number | null
           created_at?: string
+          duration_minutes?: number | null
           id?: string
           notes?: string | null
           quantity?: number

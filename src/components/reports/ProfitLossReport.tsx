@@ -47,19 +47,19 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({
     setLoading(true);
     try {
       // Revenue from invoice payments with location filtering
-      let revenueQuery = supabase
-        .from('invoice_payments')
-        .select(`
-          amount, 
-          payment_date,
-          invoices!inner(location_id)
-        `)
-        .gte('payment_date', startDate)
-        .lte('payment_date', endDate);
+        let revenueQuery = supabase
+          .from('invoice_payments')
+          .select(`
+            amount, 
+            payment_date,
+            invoices!inner(location_id)
+          `)
+          .gte('payment_date', startDate)
+          .lte('payment_date', endDate);
 
-      if (locationFilter !== 'all') {
-        revenueQuery = revenueQuery.eq('invoices.location_id', locationFilter);
-      }
+        if (locationFilter !== 'all') {
+          revenueQuery = revenueQuery.eq('invoices.location_id', locationFilter);
+        }
 
       const { data: payments } = await revenueQuery;
       const invoiceRevenue = (payments || []).reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);

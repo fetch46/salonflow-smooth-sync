@@ -71,12 +71,12 @@ export default function InvoiceCreate() {
     customer_name: "",
     customer_email: "",
     customer_phone: "",
-    due_date: "",
+    due_date: new Date().toISOString().split('T')[0], // Automatically pick today's date
     payment_method: "",
     notes: "",
     jobcard_id: "",
     jobcard_reference: "",
-    location_id: "",
+    location_id: "", // Don't prefill location
   });
   const jobcardRequired = Boolean(((organization as any)?.settings || {})?.jobcard_required_on_invoice);
 
@@ -206,12 +206,7 @@ export default function InvoiceCreate() {
     })();
   }, [organization?.id]);
 
-  // Apply default location: user's default, else org default flag, else first
-  useEffect(() => {
-    if (formData.location_id) return;
-    const candidate = defaultLocationIdForUser || (locations.find(l => (l as any).is_default)?.id || locations[0]?.id) || "";
-    if (candidate) setFormData(prev => ({ ...prev, location_id: candidate }));
-  }, [locations, defaultLocationIdForUser, formData.location_id]);
+  // Don't automatically prefill location - let user select
 
   // Ensure selected location exists after deduping
   useEffect(() => {
