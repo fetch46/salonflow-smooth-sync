@@ -527,13 +527,13 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-3 overflow-hidden rounded-md p-3 text-left text-base text-sidebar-foreground font-medium outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-primary/10 hover:text-sidebar-foreground dark:hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-primary/20 active:text-sidebar-foreground dark:active:text-primary-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-10 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-primary data-[active=true]:font-medium data-[active=true]:text-primary-foreground data-[state=open]:hover:bg-primary/20 data-[state=open]:hover:text-sidebar-foreground dark:data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-5 [&>svg]:shrink-0",
+  "peer/menu-button flex w-full items-center gap-3 overflow-hidden rounded-md p-3 text-left text-base text-black dark:text-sidebar-foreground font-medium outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-primary/10 hover:text-black dark:hover:text-primary focus-visible:ring-2 active:bg-primary/20 active:text-black dark:active:text-primary disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-10 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-primary data-[active=true]:font-medium data-[active=true]:text-black dark:data-[active=true]:text-primary-foreground data-[state=open]:hover:bg-primary/20 data-[state=open]:hover:text-black dark:data-[state=open]:hover:text-primary group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-5 [&>svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "hover:bg-sidebar-accent hover:text-sidebar-foreground dark:hover:text-sidebar-accent-foreground",
+        default: "hover:bg-sidebar-accent hover:text-black dark:hover:text-sidebar-accent-foreground",
         outline:
-          "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent hover:text-sidebar-foreground dark:hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
+          "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent hover:text-black dark:hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
       },
       size: {
         default: "h-10 text-base",
@@ -737,8 +737,8 @@ const SidebarMenuSubButton = React.forwardRef<
       data-size={size}
       data-active={isActive}
       className={cn(
-        "flex h-9 min-w-0 -translate-x-px items-center gap-3 overflow-hidden rounded-md px-3 text-sidebar-foreground dark:text-sidebar-foreground font-medium outline-none ring-sidebar-ring hover:bg-primary/10 hover:text-sidebar-foreground dark:hover:text-primary focus-visible:ring-2 active:bg-primary/20 active:text-sidebar-foreground dark:active:text-primary disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-5 [&>svg]:shrink-0",
-        "data-[active=true]:bg-primary data-[active=true]:text-primary-foreground",
+        "flex h-9 min-w-0 -translate-x-px items-center gap-3 overflow-hidden rounded-md px-3 text-black dark:text-sidebar-foreground font-medium outline-none ring-sidebar-ring hover:bg-primary/10 hover:text-black dark:hover:text-primary focus-visible:ring-2 active:bg-primary/20 active:text-black dark:active:text-primary disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-5 [&>svg]:shrink-0",
+        "data-[active=true]:bg-primary data-[active=true]:text-black dark:data-[active=true]:text-primary-foreground",
         size === "sm" && "text-sm",
         size === "md" && "text-base",
         "group-data-[collapsible=icon]:hidden",

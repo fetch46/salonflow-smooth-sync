@@ -386,21 +386,16 @@ export function AppSidebar() {
       collapsible="none" 
       className={cn(
         "border-r border-sidebar-border bg-sidebar-background",
-        "min-w-[260px] max-w-[260px]",
-        "shadow-lg"
+        "min-w-[240px] max-w-[240px]",
+        "shadow-sm"
       )}
     >
       <SidebarContent className="px-0">
-        <SidebarHeader className="px-4 py-4 border-b border-sidebar-border bg-gradient-to-r from-sidebar-background to-sidebar-accent/30">
+        <SidebarHeader className="px-3 py-3 border-b border-sidebar-border">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-primary to-primary/80 border border-primary/20 flex-shrink-0 shadow-md flex items-center justify-center">
-                <div className="w-4 h-4 bg-white/90 rounded-sm" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-sidebar-foreground">Your App</span>
-                <span className="text-xs text-sidebar-foreground/60">Dashboard</span>
-              </div>
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="h-7 w-7 rounded-lg bg-muted border border-border flex-shrink-0 shadow-sm" />
+
             </div>
           </div>
         </SidebarHeader>
@@ -435,6 +430,9 @@ export function AppSidebar() {
                         asChild={!!item.url}
                         onClick={() => handleItemClick(item.title, hasSubItems)}
                         className={cn(
+                          "h-10 text-sm font-medium px-3 transition-all duration-200 text-black dark:text-sidebar-foreground",
+                          "hover:bg-sidebar-accent/60 hover:scale-[1.02]",
+                          isActive && "bg-sidebar-accent text-black dark:text-sidebar-accent-foreground shadow-sm",
                           !isAvailable && "opacity-50 pointer-events-none",
                           hasSubItems && "cursor-pointer"
                         )}
@@ -443,23 +441,26 @@ export function AppSidebar() {
                           <NavLink 
                             to={item.url} 
                             onClick={handleNavClick}
+                            className="flex items-center gap-3 w-full text-black dark:text-sidebar-foreground font-medium"
                           >
                             <item.icon className={cn(
                               "h-5 w-5 flex-shrink-0 transition-colors",
-                              isActive ? "text-current" : "text-sidebar-foreground/70"
+                              isActive ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/70"
                             )} />
                             <span className="flex-1 text-left truncate animate-fade-in">
                               {item.title}
                             </span>
                           </NavLink>
                         ) : (
+                          <div className="flex items-center gap-3 w-full text-black dark:text-sidebar-foreground font-medium">
+                            <item.icon className="h-5 w-5 flex-shrink-0 text-sidebar-foreground/70" />
                             <span className="flex-1 text-left truncate animate-fade-in">
                               {item.title}
                             </span>
                             <div className="flex items-center gap-1 flex-shrink-0">
-                              {!isAvailable && <Lock className="w-3 h-3 text-current opacity-40" />}
+                              {!isAvailable && <Lock className="w-3 h-3 text-sidebar-foreground/40" />}
                               <ChevronDown className={cn(
-                                "w-3 h-3 text-current opacity-60 transition-transform duration-300",
+                                "w-3 h-3 text-sidebar-foreground/60 transition-transform duration-200",
                                 showExpandedSubmenu && "rotate-180"
                               )} />
                             </div>
@@ -469,7 +470,7 @@ export function AppSidebar() {
 
                       {/* Submenu for expanded state */}
                       {showExpandedSubmenu && (
-                        <div className="ml-6 mt-2 space-y-1 animate-fade-in border-l-2 border-sidebar-border/30 pl-4">
+                        <div className="ml-4 mt-1 space-y-1 animate-fade-in">
                           {item.subItems?.map((subItem) => {
                             const subItemAvailable = ['owner', 'admin'].includes(organizationRole || '') || hasFeature(subItem.feature);
                             const subItemActive = isSubItemActive(subItem);
@@ -479,19 +480,23 @@ export function AppSidebar() {
                                 key={subItem.title}
                                 asChild
                                 className={cn(
+                                  "h-8 text-xs px-3 ml-2 transition-all duration-200 text-black dark:text-sidebar-foreground",
+                                  "hover:bg-sidebar-accent/40 hover:translate-x-1 hover:text-black dark:hover:text-sidebar-accent-foreground",
+                                  subItemActive && "bg-sidebar-accent/60 text-black dark:text-sidebar-accent-foreground",
                                   !subItemAvailable && "opacity-50 pointer-events-none"
                                 )}
                               >
                                 <NavLink 
                                   to={subItem.url} 
                                   onClick={handleNavClick}
+                                  className="flex items-center gap-2 w-full text-black dark:text-sidebar-foreground font-medium"
                                 >
                                   <subItem.icon className={cn(
                                     "h-4 w-4 flex-shrink-0",
-                                    subItemActive ? "text-current" : "text-sidebar-foreground/60"
+                                    subItemActive ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/60"
                                   )} />
                                   <span className="truncate">{subItem.title}</span>
-                                  {!subItemAvailable && <Lock className="w-2.5 h-2.5 text-current opacity-40" />}
+                                  {!subItemAvailable && <Lock className="w-2.5 h-2.5 text-sidebar-foreground/40" />}
                                 </NavLink>
                               </SidebarMenuButton>
                             );
@@ -505,27 +510,26 @@ export function AppSidebar() {
 
               {/* Super Admin Section */}
               {isSuperAdmin && (
-                <div className="mt-6 pt-4 mx-2 border-t border-sidebar-border/50">
-                  <SidebarGroupLabel className="px-2 py-2 text-xs font-semibold text-amber-600 uppercase tracking-wide flex items-center gap-2">
-                    <Crown className="w-3 h-3" />
+                <div className="mt-4 pt-4 border-t border-sidebar-border/50">
+                  <SidebarGroupLabel className="px-2 py-1 text-xs font-medium text-amber-600/80 uppercase tracking-wide">
                     System Admin
                   </SidebarGroupLabel>
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
                       className={cn(
-                        "h-11 text-sm font-medium px-4 rounded-xl transition-all duration-300",
-                        "hover:bg-gradient-to-r hover:from-amber-50 hover:to-amber-100 hover:text-amber-700 hover:scale-[1.02] hover:shadow-sm",
-                        location.pathname.startsWith("/admin") && "bg-gradient-to-r from-amber-100 to-amber-200 text-amber-800 shadow-md scale-[1.02]"
+                        "h-10 text-sm font-medium px-3 transition-all duration-200",
+                        "hover:bg-amber-50 hover:text-amber-700 hover:scale-[1.02]",
+                        location.pathname.startsWith("/admin") && "bg-amber-100 text-amber-800"
                       )}
                     >
                       <NavLink 
                         to={superAdminMenuItem.url} 
                         onClick={handleNavClick}
-                        className="flex items-center gap-3 w-full text-current"
+                        className="flex items-center gap-3 w-full"
                       >
                         <Crown className="h-5 w-5 flex-shrink-0 text-amber-600" />
-                        <span className="flex-1 text-left truncate animate-fade-in font-medium">
+                        <span className="flex-1 text-left truncate animate-fade-in">
                           {superAdminMenuItem.title}
                         </span>
                       </NavLink>
@@ -538,22 +542,20 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t border-sidebar-border bg-gradient-to-r from-sidebar-background to-sidebar-accent/20">
-        <div className="space-y-3">
+      <SidebarFooter className="p-3 border-t border-sidebar-border">
+        <div className="space-y-2">
           {subscriptionPlan && (
-            <div className="flex items-center justify-between p-2 rounded-lg bg-sidebar-accent/30">
-              <span className="text-xs font-medium text-sidebar-foreground/70">Current Plan</span>
-              <Badge variant="outline" className="text-[10px] font-semibold border-primary/20 text-primary">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-sidebar-foreground/60">Plan:</span>
+              <Badge variant="outline" className="text-[10px]">
                 {subscriptionPlan.name}
               </Badge>
             </div>
           )}
           {isTrialing && daysLeftInTrial !== null && (
-            <div className="text-xs text-amber-700 bg-gradient-to-r from-amber-50 to-amber-100 px-3 py-2 rounded-lg border border-amber-200 shadow-sm">
-              <div className="flex items-center gap-2">
-                <Crown className="w-3 h-3" />
-                <span className="font-medium">Trial: {daysLeftInTrial} days left</span>
-              </div>
+            <div className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
+              <Crown className="w-3 h-3 inline mr-1" />
+              Trial: {daysLeftInTrial} days left
             </div>
           )}
         </div>

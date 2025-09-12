@@ -21,42 +21,42 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   className,
 }) => {
   return (
-    <div className={cn("flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 p-6 bg-gradient-to-r from-background via-muted/20 to-background rounded-2xl border border-border/50 shadow-sm", className)}>
-      <div className="space-y-3 min-w-0">
+    <div className={cn("flex flex-col lg:flex-row lg:items-center lg:justify-between gap-responsive-sm", className)}>
+      <div className="space-y-responsive-xs min-w-0">
         {breadcrumbs && breadcrumbs.length > 0 && (
-          <nav className="text-sm text-muted-foreground" aria-label="Breadcrumb">
-            <ol className="flex items-center gap-2">
+          <nav className="text-responsive-xs text-muted-foreground" aria-label="Breadcrumb">
+            <ol className="flex items-center gap-1">
               {breadcrumbs.map((bc, idx) => (
-                <li key={`${bc.label}-${idx}`} className="flex items-center gap-2">
-                  {idx > 0 && <span className="text-muted-foreground/60">•</span>}
+                <li key={`${bc.label}-${idx}`} className="flex items-center gap-1">
+                  {idx > 0 && <span className="text-muted-foreground">/</span>}
                   {bc.href ? (
-                    <a href={bc.href} className="hover:text-primary transition-colors duration-200 font-medium">
+                    <a href={bc.href} className="hover:text-foreground transition-colors">
                       {bc.label}
                     </a>
                   ) : (
-                    <span className="font-medium text-foreground">{bc.label}</span>
+                    <span>{bc.label}</span>
                   )}
                 </li>
               ))}
             </ol>
           </nav>
         )}
-        <div className="flex items-center gap-4 min-w-0">
+        <div className="flex items-center gap-responsive-sm min-w-0">
           {icon && (
-            <div className={cn("p-3 rounded-2xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110", iconClassName)}>
+            <div className={cn("p-2 rounded-lg bg-gradient-to-br from-primary to-primary/80 text-white shadow-sm", iconClassName)}>
               {icon}
             </div>
           )}
           <div className="min-w-0">
-            <h1 className="text-3xl font-bold tracking-tight truncate text-foreground bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">{title}</h1>
+            <h1 className="text-responsive-2xl font-semibold tracking-tight truncate">{title}</h1>
             {subtitle && (
-              <p className="text-muted-foreground text-base truncate mt-1 font-medium">{subtitle}</p>
+              <p className="text-muted-foreground text-responsive-sm truncate">{subtitle}</p>
             )}
           </div>
         </div>
       </div>
       {actions && (
-        <div className="flex w-full lg:w-auto flex-wrap items-center gap-3">
+        <div className="flex w-full lg:w-auto flex-wrap items-center gap-responsive-xs">
           {actions}
         </div>
       )}
