@@ -13,7 +13,7 @@ const TabsList = React.forwardRef<
     ref={ref}
     className={cn(
       "!inline-flex w-full overflow-x-auto flex-nowrap h-10 items-center justify-start sm:justify-center rounded-md p-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden gap-1.5",
-      "bg-[hsl(var(--tabs-bg))] text-[hsl(var(--tabs-foreground))]",
+      "bg-[hsl(var(--tabs-bg))] text-[hsl(var(--tabs-foreground))] border border-border",
       className
     )}
     {...props}
@@ -32,7 +32,7 @@ const TabsTrigger = React.forwardRef<
       // Default/inactive
       "bg-[hsl(var(--tabs-bg))] text-[hsl(var(--tabs-foreground))] hover:bg-[hsl(var(--tabs-bg))]/80",
       // Active state
-      "data-[state=active]:bg-[hsl(var(--tabs-active-bg))] data-[state=active]:text-[hsl(var(--tabs-active-foreground))] data-[state=active]:border-primary",
+      "data-[state=active]:bg-[hsl(var(--tabs-active-bg))] data-[state=active]:text-[hsl(var(--tabs-active-foreground))] data-[state=active]:border-primary data-[state=active]:shadow-sm",
       className
     )}
     {...props}
