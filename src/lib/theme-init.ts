@@ -3,12 +3,12 @@ export function initializeTheme() {
   // Check if theme colors are already stored
   const storedPrimary = localStorage.getItem('theme-primary');
   
-  // If no theme is stored, apply the default Ocean Blue theme
+  // If no theme is stored, apply the default Blue theme
   if (!storedPrimary) {
     const defaultTheme = {
-      primary: '217 91% 60%',
-      secondary: '220 14% 96%',
-      accent: '220 14% 96%',
+      primary: '221 83% 53%',
+      secondary: '217 19% 94%',
+      accent: '210 40% 96.1%',
     };
     
     // Apply theme to CSS variables
@@ -36,8 +36,7 @@ function computeForeground(hsl: string): string {
     const lightnessStr = parts[2] || '';
     const lightness = parseInt(lightnessStr.replace('%', ''));
     if (isNaN(lightness)) return '0 0% 100%';
-    // Improved threshold for better readability
-    return lightness < 60 ? '0 0% 100%' : '0 0% 9%';
+    return lightness < 50 ? '0 0% 100%' : '0 0% 13%';
   } catch {
     return '0 0% 100%';
   }
