@@ -82,6 +82,7 @@ export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = (
 
       // Group by staff and calculate totals
       const staffMap = new Map<string, CommissionPayableData>();
+      const commissionIdToStaffId = new Map<string, string>();
 
       (commissions || []).forEach((commission: any) => {
         const staffId = commission.staff_id;
@@ -110,16 +111,40 @@ export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = (
         });
 
         staffData.total_accrued += amount;
-        if (commission.status === 'paid') {
-          staffData.total_paid += amount;
-        }
+        commissionIdToStaffId.set(commission.id, staffId);
       });
 
-      // Calculate balance payable
-      const finalData = Array.from(staffMap.values()).map(staff => ({
-        ...staff,
-        balance_payable: staff.total_accrued - staff.total_paid
-      }));
+      // Fetch payments posted to Commission Payable (debits) for these commissions
+      const commissionIds = Array.from(commissionIdToStaffId.keys());
+      let staffPaidTotals = new Map<string, number>();
+      if (commissionIds.length > 0) {
+        const { data: paymentTxns, error: paymentsError } = await supabase
+          .from('account_transactions')
+          .select('reference_id, debit_amount, reference_type')
+          .eq('reference_type', 'commission_payment')
+          .gt('debit_amount', 0)
+          .in('reference_id', commissionIds);
+
+        if (paymentsError) throw paymentsError;
+
+        (paymentTxns || []).forEach((txn: any) => {
+          const commissionId = txn.reference_id as string;
+          const staffId = commissionIdToStaffId.get(commissionId);
+          if (!staffId) return;
+          const paid = Number(txn.debit_amount || 0);
+          staffPaidTotals.set(staffId, (staffPaidTotals.get(staffId) || 0) + paid);
+        });
+      }
+
+      // Apply paid totals and calculate balance payable
+      const finalData = Array.from(staffMap.values()).map(staff => {
+        const totalPaid = staffPaidTotals.get(staff.staff_id) || 0;
+        return {
+          ...staff,
+          total_paid: totalPaid,
+          balance_payable: staff.total_accrued - totalPaid
+        };
+      });
 
       setCommissionData(finalData);
     } catch (error) {
