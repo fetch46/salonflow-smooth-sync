@@ -988,11 +988,13 @@ export default function Appointments() {
                         </DropdownMenu>
                       </div>
 
-                      <div className="flex items-center justify-between mb-2">
-                        <Badge className={`${getStatusColor(appointment.status || 'scheduled')} capitalize px-2 py-0.5 text-[11px] font-medium rounded-full`}>
-                           {String(appointment.status || 'scheduled').replace('_', ' ')}
-                         </Badge>
-                        <div className="text-[11px] text-muted-foreground flex items-center gap-2">
+                      <div className="grid grid-cols-3 items-center mb-2">
+                        <div className="justify-self-start">
+                          <Badge className={`${getStatusColor(appointment.status || 'scheduled')} capitalize px-2 py-0.5 text-[11px] font-medium rounded-full`}>
+                            {String(appointment.status || 'scheduled').replace('_', ' ')}
+                          </Badge>
+                        </div>
+                        <div className="justify-self-center text-[11px] text-muted-foreground flex items-center gap-2 text-center">
                           <div className="flex items-center gap-1">
                             <CalendarDays className="w-3 h-3" />
                             <span className="font-medium leading-none">{appointment.appointment_date}</span>
@@ -1005,55 +1007,64 @@ export default function Appointments() {
                             </span>
                           </div>
                         </div>
+                        <div className="justify-self-end"></div>
                       </div>
 
                       <div className="space-y-2.5 flex-1 min-w-0">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5 min-w-0">
-                              <div className="w-7 h-7 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center">
-                                <User className="w-3.5 h-3.5 text-primary" />
-                              </div>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <h3 className="font-semibold text-foreground text-base leading-tight truncate">
-                                    {appointment.customer_name}
-                                  </h3>
-                                </TooltipTrigger>
-                                <TooltipContent side="top">{appointment.customer_name}</TooltipContent>
-                              </Tooltip>
+                        <div className="grid grid-cols-3 items-center gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-7 h-7 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center">
+                              <User className="w-3.5 h-3.5 text-primary" />
                             </div>
-                            <div className="flex flex-col gap-1.5 text-[12px] text-muted-foreground ml-9 min-w-0">
-                              {appointment.customer_email && (
-                                <div className="inline-flex items-center gap-2 min-w-0">
-                                  <Mail className="w-3.5 h-3.5 text-muted-foreground/70" />
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="truncate">{appointment.customer_email}</span>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top">{appointment.customer_email}</TooltipContent>
-                                  </Tooltip>
-                                </div>
-                              )}
-                              {appointment.customer_phone && (
-                                <div className="inline-flex items-center gap-2 min-w-0">
-                                  <Phone className="w-3.5 h-3.5 text-muted-foreground/70" />
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="font-medium leading-none truncate">{appointment.customer_phone}</span>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top">{appointment.customer_phone}</TooltipContent>
-                                  </Tooltip>
-                                </div>
-                              )}
-                            </div>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <h3 className="font-semibold text-foreground text-base leading-tight truncate">
+                                  {appointment.customer_name}
+                                </h3>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">{appointment.customer_name}</TooltipContent>
+                            </Tooltip>
                           </div>
-                          <div className="text-right">
+                          <div className="justify-self-center min-w-0 max-w-full">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="text-sm font-medium text-muted-foreground truncate text-center">
+                                  {serviceNames}
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">{serviceNames}</TooltipContent>
+                            </Tooltip>
+                          </div>
+                          <div className="justify-self-end text-right">
                             <div className="text-[11px] text-muted-foreground leading-none">Amount</div>
                             <div className="text-base font-bold text-primary">
                               {Number(appointment.price || 0) > 0 ? formatMoney(Number(appointment.price || 0)) : '—'}
                             </div>
                           </div>
+                        </div>
+                        <div className="flex flex-col gap-1.5 text-[12px] text-muted-foreground ml-9 min-w-0">
+                          {appointment.customer_email && (
+                            <div className="inline-flex items-center gap-2 min-w-0">
+                              <Mail className="w-3.5 h-3.5 text-muted-foreground/70" />
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="truncate">{appointment.customer_email}</span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">{appointment.customer_email}</TooltipContent>
+                              </Tooltip>
+                            </div>
+                          )}
+                          {appointment.customer_phone && (
+                            <div className="inline-flex items-center gap-2 min-w-0">
+                              <Phone className="w-3.5 h-3.5 text-muted-foreground/70" />
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="font-medium leading-none truncate">{appointment.customer_phone}</span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">{appointment.customer_phone}</TooltipContent>
+                              </Tooltip>
+                            </div>
+                          )}
                         </div>
                       </div>
 
