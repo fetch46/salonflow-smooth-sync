@@ -36,6 +36,10 @@ export default function InvoiceCreate() {
   const { getNextNumber } = useTransactionNumbers();
   const { formatCurrency: formatRegionalCurrency, settings: regionalSettings } = useRegionalSettings();
 
+  const persistKeyCustomer = useMemo(() => (
+    organization?.id ? `invoice_customer_persist_v1_${organization.id}` : null
+  ), [organization?.id]);
+
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -80,6 +84,19 @@ export default function InvoiceCreate() {
     location_id: "", // Don't prefill location
   });
   const jobcardRequired = Boolean(((organization as any)?.settings || {})?.jobcard_required_on_invoice);
+
+  const persistCustomerDetails = () => {
+    try {
+      if (!persistKeyCustomer) return;
+      const payload = {
+        customer_id: formData.customer_id || "",
+        customer_name: formData.customer_name || "",
+        customer_email: formData.customer_email || "",
+        customer_phone: formData.customer_phone || "",
+      };
+      localStorage.setItem(persistKeyCustomer, JSON.stringify(payload));
+    } catch {}
+  };
 
   const [newItem, setNewItem] = useState({
     service_id: "",
@@ -137,6 +154,58 @@ export default function InvoiceCreate() {
       } catch {}
     })();
   }, [organization?.id]);
+
+  // Restore last used customer details (per organization) when starting a new invoice
+  useEffect(() => {
+    try {
+      if (!persistKeyCustomer) return;
+      const fromJobCard = searchParams.get("fromJobCard");
+      const duplicateId = searchParams.get("duplicateId");
+      if (fromJobCard || duplicateId) return; // don't override explicit prefill flows
+
+      // If form already has values (e.g., user started typing), do nothing
+      if (formData.customer_id || formData.customer_name || formData.customer_email || formData.customer_phone) return;
+
+      const raw = localStorage.getItem(persistKeyCustomer);
+      if (!raw) return;
+      const saved = JSON.parse(raw || '{}') || {};
+      if (!saved) return;
+
+      if (saved.customer_id) {
+        const existing = customers.find(c => c.id === saved.customer_id);
+        setFormData(prev => ({
+          ...prev,
+          customer_id: saved.customer_id,
+          customer_name: saved.customer_name || existing?.full_name || prev.customer_name,
+          customer_email: saved.customer_email || existing?.email || prev.customer_email,
+          customer_phone: saved.customer_phone || existing?.phone || prev.customer_phone,
+        }));
+        // Prefetch customer job cards for convenience
+        (async () => {
+          try {
+            const { data: customerJCs } = await supabase
+              .from("job_cards")
+              .select("id, job_card_number, total_amount")
+              .eq('client_id', saved.customer_id)
+              .eq('organization_id', organization?.id || '')
+              .eq('status', 'completed')
+              .order('created_at', { ascending: false });
+            setCustomerJobCards(customerJCs || []);
+          } catch {
+            setCustomerJobCards([]);
+          }
+        })();
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          customer_name: saved.customer_name || prev.customer_name,
+          customer_email: saved.customer_email || prev.customer_email,
+          customer_phone: saved.customer_phone || prev.customer_phone,
+        }));
+      }
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [persistKeyCustomer, customers, searchParams, organization?.id]);
 
   // Initialize applyTax from org settings and lock when tax disabled
   useEffect(() => {
@@ -529,6 +598,8 @@ export default function InvoiceCreate() {
           }
         }
       }
+      // Persist customer fields for next invoice session
+      persistCustomerDetails();
       toast.success('Invoice created');
       navigate('/invoices');
     } catch (e) {
