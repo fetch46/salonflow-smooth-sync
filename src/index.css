@@ -12,35 +12,17 @@ All colors MUST be HSL.
     @apply bg-primary text-primary-foreground hover:bg-primary/90 border border-primary/20;
   }
   :root {
-    /* Modern Light Theme with Quick Theme Integration */
-    --background: 0 0% 98.5%;
-    --foreground: 0 0% 13%;
-    color-scheme: light;
     
     /* Clean modern font family */
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 13%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 13%;
-
     /* Theme-aware primary colors - can be overridden via CSS custom properties */
     --primary: var(--theme-primary, 221 83% 53%);
     --primary-foreground: var(--theme-primary-foreground, 0 0% 100%);
     --primary-light: var(--theme-primary-light, 221 83% 70%);
     --primary-lighter-70: color-mix(in hsl, hsl(var(--primary)) 30%, hsl(0 0% 100%) 70%);
 
-    --secondary: 217 19% 94%;
-    --secondary-foreground: 0 0% 13%;
-
-    /* Muted: Subtle backgrounds with slight blue tint */
-    --muted: 214 20% 96%;
-    --muted-foreground: 215 16% 47%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
 
     /* Enhanced Status colors for light theme */
     --success: 142 76% 36%;
@@ -53,21 +35,11 @@ All colors MUST be HSL.
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Softer borders for light theme */
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
     --ring: var(--primary);
 
     /* Slightly more rounded for modern look */
     --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 215 16% 37%;
-    --sidebar-primary: var(--primary);
-    --sidebar-primary-foreground: var(--primary-foreground);
-    --sidebar-accent: 210 40% 96.1%;
-    --sidebar-accent-foreground: 215 16% 27%;
-    --sidebar-border: 214 32% 91%;
     --sidebar-ring: var(--primary);
 
     /* Brand colors - can be overridden */
@@ -305,6 +277,7 @@ All colors MUST be HSL.
 }
 
 @layer utilities {
+  .btn-theme-primary { @apply bg-primary text-primary-foreground hover:bg-primary/90; }
   .mobile-container {
     @apply px-4 sm:px-6 lg:px-8;
   }
