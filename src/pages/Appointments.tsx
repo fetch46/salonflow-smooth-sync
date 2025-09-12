@@ -14,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { useSaas } from "@/lib/saas";
 import { tableExists } from "@/utils/mockDatabase";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Appointment {
   id: string;
@@ -748,6 +749,7 @@ export default function Appointments() {
   }
 
   return (
+    <TooltipProvider>
     <div className="p-6 w-full max-w-none mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <div>
@@ -938,7 +940,7 @@ export default function Appointments() {
                   return (
                     <div
                       key={appointment.id}
-                      className="group relative w-full h-full rounded-lg border bg-gradient-to-br from-card to-card/80 p-3.5 md:p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-[13px] ring-1 ring-border/50 hover:ring-primary/20 flex flex-col"
+                      className="group relative w-full h-full rounded-lg border bg-gradient-to-br from-card to-card/80 p-3.5 md:p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-[13px] ring-1 ring-border/50 hover:ring-primary/20 flex flex-col overflow-hidden"
                     >
                       <div className="absolute top-2.5 right-2.5">
                         <DropdownMenu>
@@ -1005,26 +1007,43 @@ export default function Appointments() {
                         </div>
                       </div>
 
-                      <div className="space-y-2.5 flex-1">
+                      <div className="space-y-2.5 flex-1 min-w-0">
                         <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-0.5">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5 min-w-0">
                               <div className="w-7 h-7 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center">
                                 <User className="w-3.5 h-3.5 text-primary" />
                               </div>
-                              <h3 className="font-semibold text-foreground text-base leading-tight">{appointment.customer_name}</h3>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <h3 className="font-semibold text-foreground text-base leading-tight truncate">
+                                    {appointment.customer_name}
+                                  </h3>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">{appointment.customer_name}</TooltipContent>
+                              </Tooltip>
                             </div>
-                            <div className="flex flex-col gap-1.5 text-[12px] text-muted-foreground ml-9">
+                            <div className="flex flex-col gap-1.5 text-[12px] text-muted-foreground ml-9 min-w-0">
                               {appointment.customer_email && (
-                                <div className="inline-flex items-center gap-2">
+                                <div className="inline-flex items-center gap-2 min-w-0">
                                   <Mail className="w-3.5 h-3.5 text-muted-foreground/70" />
-                                  <span>{appointment.customer_email}</span>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="truncate">{appointment.customer_email}</span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">{appointment.customer_email}</TooltipContent>
+                                  </Tooltip>
                                 </div>
                               )}
                               {appointment.customer_phone && (
-                                <div className="inline-flex items-center gap-2">
+                                <div className="inline-flex items-center gap-2 min-w-0">
                                   <Phone className="w-3.5 h-3.5 text-muted-foreground/70" />
-                                  <span className="font-medium leading-none">{appointment.customer_phone}</span>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="font-medium leading-none truncate">{appointment.customer_phone}</span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">{appointment.customer_phone}</TooltipContent>
+                                  </Tooltip>
                                 </div>
                               )}
                             </div>
@@ -1039,36 +1058,81 @@ export default function Appointments() {
                       </div>
 
                       <div className="mt-2.5 mt-auto">
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap gap-1.5 min-w-0">
                           {items.length ? (
-                            items.map((it, idx) => {
-                              const srvName = services.find(s => s.id === it.service_id)?.name || 'Service';
-                              const stfName = staff.find(s => s.id === it.staff_id)?.full_name || 'Unassigned';
-                              return (
-                                <div key={idx} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border border-blue-200 dark:border-blue-800">
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-[12px] font-medium text-blue-700 dark:text-blue-300">{srvName}</span>
-                                    <span className="text-blue-500 dark:text-blue-400">•</span>
-                                    <span className="text-[11px] text-blue-600 dark:text-blue-400">{stfName}</span>
-                                  </div>
-                                </div>
-                              );
-                            })
+                            <>
+                              {items.slice(0, 3).map((it, idx) => {
+                                const srvName = services.find(s => s.id === it.service_id)?.name || 'Service';
+                                const stfName = staff.find(s => s.id === it.staff_id)?.full_name || 'Unassigned';
+                                return (
+                                  <Tooltip key={idx}>
+                                    <TooltipTrigger asChild>
+                                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border border-blue-200 dark:border-blue-800 max-w-full">
+                                        <div className="flex items-center gap-1">
+                                          <span className="text-[12px] font-medium text-blue-700 dark:text-blue-300 truncate max-w-[10rem]">
+                                            {srvName}
+                                          </span>
+                                          <span className="text-blue-500 dark:text-blue-400">•</span>
+                                          <span className="text-[11px] text-blue-600 dark:text-blue-400 truncate max-w-[8rem]">
+                                            {stfName}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">{srvName} • {stfName}</TooltipContent>
+                                  </Tooltip>
+                                );
+                              })}
+                              {items.length > 3 && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="px-2.5 py-1 rounded-md bg-muted/40 border border-border/60 text-[12px] text-muted-foreground cursor-default">
+                                      +{items.length - 3} more
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">
+                                    <div className="text-xs space-y-1">
+                                      {items.slice(3).map((it, i) => {
+                                        const srvName = services.find(s => s.id === it.service_id)?.name || 'Service';
+                                        const stfName = staff.find(s => s.id === it.staff_id)?.full_name || 'Unassigned';
+                                        return (
+                                          <div key={i}>{srvName} • {stfName}</div>
+                                        );
+                                      })}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </>
                           ) : (
-                            <div className="px-2.5 py-1 rounded-md bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-950/20 dark:to-gray-950/20 border border-slate-200 dark:border-slate-800">
-                              <span className="text-[12px] text-slate-600 dark:text-slate-400">{serviceNames}</span>
-                            </div>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="px-2.5 py-1 rounded-md bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-950/20 dark:to-gray-950/20 border border-slate-200 dark:border-slate-800 max-w-full">
+                                  <span className="text-[12px] text-slate-600 dark:text-slate-400 truncate block">
+                                    {serviceNames}
+                                  </span>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">{serviceNames}</TooltipContent>
+                            </Tooltip>
                           )}
                         </div>
 
                         {appointment.location_id && (
                           <div className="mt-2.5 pt-2.5 border-t border-border/50">
-                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted/50">
-                              <MapPin className="w-3 h-3 text-muted-foreground" />
-                              <span className="text-[11px] font-medium text-muted-foreground">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted/50 max-w-full min-w-0">
+                                  <MapPin className="w-3 h-3 text-muted-foreground" />
+                                  <span className="text-[11px] font-medium text-muted-foreground truncate">
+                                    {locations.find((l: any) => l.id === appointment.location_id)?.name || 'Location'}
+                                  </span>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
                                 {locations.find((l: any) => l.id === appointment.location_id)?.name || 'Location'}
-                              </span>
-                            </div>
+                              </TooltipContent>
+                            </Tooltip>
                           </div>
                         )}
                       </div>
@@ -1083,5 +1147,6 @@ export default function Appointments() {
 
       {/* Appointment modal removed: converted to window-based routes */}
     </div>
+    </TooltipProvider>
   );
 }
