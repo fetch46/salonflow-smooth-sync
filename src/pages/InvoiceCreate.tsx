@@ -817,18 +817,20 @@ Thank you for your business!`;
                 {jobcardRequired && !formData.jobcard_reference && (
                   <p className="text-xs text-red-600 mt-1">Job card is required by accounting settings.</p>
                 )}
-                {customerJobCards.length > 0 && (
-                  <div className="mt-2 space-y-1">
-                    <p className="text-sm text-slate-600">Completed job cards for this customer:</p>
-                    {customerJobCards.map((jc) => (
-                      <p key={jc.id} className="text-sm text-red-600 font-medium">
-                        {jc.job_card_number}
-                      </p>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
+            {customerJobCards.length > 0 && (
+              <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <p className="text-sm text-slate-600 font-medium mb-2">Completed job cards for this customer:</p>
+                <div className="flex flex-wrap gap-2">
+                  {customerJobCards.map((jc) => (
+                    <span key={jc.id} className="text-sm text-red-600 font-medium bg-red-50 px-2 py-1 rounded">
+                      {jc.job_card_number}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
             {(taxEnabled !== false) ? (
               <div className="flex items-center gap-2 pt-1">
                 <Checkbox id="apply_tax" checked={applyTax} onCheckedChange={(c) => setApplyTax(Boolean(c))} />
