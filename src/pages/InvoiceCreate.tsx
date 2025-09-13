@@ -811,7 +811,7 @@ Thank you for your business!`;
             </div>
           </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
+          <Button variant="outline" onClick={() => navigate('/invoices')}>Cancel</Button>
           <Button variant="secondary" onClick={handleSubmit}>Save Invoice</Button>
           <Button onClick={handleSubmit}>Create Invoice</Button>
         </div>
