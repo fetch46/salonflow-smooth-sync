@@ -13,14 +13,14 @@ import { toast } from "sonner";
 import { Users, Receipt, Trash2, Plus, Printer, ChevronDown, AlertCircle } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { createInvoiceWithFallback, getInvoicesWithFallback, getInvoiceItemsWithFallback } from "@/utils/mockDatabase";
+import { createInvoiceWithFallback } from "@/utils/mockDatabase";
 import { useOrganizationCurrency, useOrganizationTaxRate, useOrganization } from "@/lib/saas/hooks";
 import { useTransactionNumbers } from "@/hooks/useTransactionNumbers";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { recordInvoicePaymentWithFallback } from "@/utils/mockDatabase";
 import { useRegionalSettings } from "@/hooks/useRegionalSettings";
-import { formatCurrency as formatCurrencyWithSeparators, formatNumber } from "@/lib/currencyUtils";
+// import { formatCurrency as formatCurrencyWithSeparators, formatNumber } from "@/lib/currencyUtils";
 
 
 interface Customer { id: string; full_name: string; email: string | null; phone: string | null }
@@ -77,7 +77,7 @@ export default function InvoiceCreate() {
     customer_name: "",
     customer_email: "",
     customer_phone: "",
-    due_date: new Date().toISOString().split('T')[0], // Automatically pick today's date
+    due_date: "", // Leave blank; do not prefill
     payment_method: "",
     notes: "",
     jobcard_id: "",
@@ -116,7 +116,7 @@ export default function InvoiceCreate() {
   });
 
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
-  const [applyTax, setApplyTax] = useState<boolean>(true);
+  const [applyTax, setApplyTax] = useState<boolean>(false);
   const [receivedPayment, setReceivedPayment] = useState<boolean>(false);
   const [depositAccounts, setDepositAccounts] = useState<Array<{ id: string; account_code: string; account_name: string; account_subtype?: string | null }>>([]);
   const [paymentData, setPaymentData] = useState<{ method: string; account_id: string; reference: string; amount: string }>({ method: "", account_id: "", reference: "", amount: "" });
@@ -162,59 +162,6 @@ export default function InvoiceCreate() {
     })();
   }, [organization?.id]);
 
-  // Restore last used customer details (per organization) when starting a new invoice
-  useEffect(() => {
-    try {
-      // Try org-specific first, then global fallback
-      const fromJobCard = searchParams.get("fromJobCard");
-      const duplicateId = searchParams.get("duplicateId");
-      if (fromJobCard || duplicateId) return; // don't override explicit prefill flows
-
-      // If form already has values (e.g., user started typing), do nothing
-      if (formData.customer_id || formData.customer_name || formData.customer_email || formData.customer_phone) return;
-
-      const raw = persistKeyCustomer ? localStorage.getItem(persistKeyCustomer) : null;
-      const rawGlobal = localStorage.getItem(persistKeyCustomerGlobal);
-      const chosenRaw = raw || rawGlobal;
-      if (!chosenRaw) return;
-      const saved = JSON.parse(chosenRaw || '{}') || {};
-      if (!saved) return;
-
-      if (saved.customer_id) {
-        const existing = customers.find(c => c.id === saved.customer_id);
-        setFormData(prev => ({
-          ...prev,
-          customer_id: saved.customer_id,
-          customer_name: saved.customer_name || existing?.full_name || prev.customer_name,
-          customer_email: saved.customer_email || existing?.email || prev.customer_email,
-          customer_phone: saved.customer_phone || existing?.phone || prev.customer_phone,
-        }));
-        // Prefetch customer job cards for convenience
-        (async () => {
-          try {
-            const { data: customerJCs } = await supabase
-              .from("job_cards")
-              .select("id, job_card_number, total_amount")
-              .eq('client_id', saved.customer_id)
-              .eq('organization_id', organization?.id || '')
-              .eq('status', 'completed')
-              .order('created_at', { ascending: false });
-            setCustomerJobCards(customerJCs || []);
-          } catch {
-            setCustomerJobCards([]);
-          }
-        })();
-      } else {
-        setFormData(prev => ({
-          ...prev,
-          customer_name: saved.customer_name || prev.customer_name,
-          customer_email: saved.customer_email || prev.customer_email,
-          customer_phone: saved.customer_phone || prev.customer_phone,
-        }));
-      }
-    } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [persistKeyCustomer, customers, searchParams, organization?.id]);
 
   // Auto-persist customer details when they change (only when non-empty)
   useEffect(() => {
@@ -224,12 +171,10 @@ export default function InvoiceCreate() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.customer_id, formData.customer_name, formData.customer_email, formData.customer_phone, persistKeyCustomer]);
 
-  // Initialize applyTax from org settings and lock when tax disabled
+  // Ensure tax is off when tax is disabled in settings; otherwise leave as chosen by user
   useEffect(() => {
     if (taxEnabled === false) {
       setApplyTax(false);
-    } else {
-      setApplyTax(true);
     }
   }, [taxEnabled]);
 
@@ -343,107 +288,7 @@ export default function InvoiceCreate() {
     }
   }, [formData.customer_id, customers, formData.customer_name, formData.customer_email, formData.customer_phone]);
 
-  // Prefill from Job Card
-  useEffect(() => {
-    const fromJobCard = searchParams.get("fromJobCard");
-    if (!fromJobCard) return;
-    (async () => {
-      try {
-        const { data: jc } = await supabase
-          .from('job_cards')
-          .select('id, client_id, staff_id')
-          .eq('id', fromJobCard)
-          .maybeSingle();
-        if (!jc) return;
-        // Prefill client
-        const client = customers.find(c => c.id === jc.client_id);
-        if (client) {
-          setFormData(prev => ({
-            ...prev,
-            customer_id: client.id,
-            customer_name: prev.customer_name || client.full_name,
-            customer_email: prev.customer_email || client.email || '',
-            customer_phone: prev.customer_phone || client.phone || '',
-            jobcard_id: jc.id,
-          }));
-        } else if (jc.client_id) {
-          const { data: cli } = await supabase.from('clients').select('id, full_name, email, phone').eq('id', jc.client_id).maybeSingle();
-          if (cli) {
-            setCustomers(prev => (prev.some(c => c.id === cli.id) ? prev : [...prev, cli as any]));
-            setFormData(prev => ({
-              ...prev,
-              customer_id: cli.id,
-              customer_name: prev.customer_name || (cli as any).full_name || '',
-              customer_email: prev.customer_email || (cli as any).email || '',
-              customer_phone: prev.customer_phone || (cli as any).phone || '',
-              jobcard_id: jc.id,
-            }));
-          }
-        }
-        // Prefill items from job_card_services
-        const { data: jcs } = await supabase
-          .from('job_card_services')
-          .select('service_id, staff_id, quantity, unit_price, commission_percentage, services:service_id(name)')
-          .eq('job_card_id', fromJobCard);
-        const preItems = (jcs || []).map((row: any, idx: number) => ({
-          id: `prefill-${Date.now()}-${idx}`,
-          invoice_id: '',
-          product_id: row.service_id,
-          service_id: row.service_id,
-          description: row.services?.name || 'Service',
-          quantity: Number(row.quantity || 1),
-          unit_price: Number(row.unit_price || 0),
-          discount_percentage: 0,
-          staff_id: row.staff_id || (jc as any)?.staff_id || '',
-          commission_percentage: typeof row.commission_percentage === 'number' ? Number(row.commission_percentage) : 0,
-          total_price: Number(row.quantity || 1) * Number(row.unit_price || 0),
-        }));
-        if (preItems.length > 0) setSelectedItems(preItems as any);
-      } catch (err) {
-        console.error('Failed to prefill from job card:', err);
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, customers]);
-
-  // Prefill from duplicateId
-  useEffect(() => {
-    const duplicateId = searchParams.get('duplicateId');
-    if (!duplicateId) return;
-    (async () => {
-      try {
-        const all = await getInvoicesWithFallback(supabase);
-        const inv = (all || []).find(i => i.id === duplicateId);
-        if (!inv) return;
-        setFormData(prev => ({
-          ...prev,
-          customer_id: inv.customer_id || "",
-          customer_name: inv.customer_name || "",
-          customer_email: inv.customer_email || "",
-          customer_phone: inv.customer_phone || "",
-          due_date: "",
-          payment_method: inv.payment_method || "",
-          notes: inv.notes || "",
-          jobcard_id: inv.jobcard_id || "",
-          location_id: inv.location_id || prev.location_id,
-        }));
-        const items = await getInvoiceItemsWithFallback(supabase, duplicateId);
-        setSelectedItems((items || []).map((it: any) => ({
-          service_id: it.service_id || "",
-          description: it.description,
-          quantity: it.quantity,
-          unit_price: String(it.unit_price ?? 0),
-          discount_percentage: it.discount_percentage ?? 0,
-          staff_id: it.staff_id || "",
-          commission_percentage: it.commission_percentage ?? 0,
-          total_price: it.total_price,
-        })));
-        toast.success('Duplicated invoice loaded');
-      } catch (e) {
-        console.error(e);
-      }
-    })();
-  }, [searchParams]);
+  // Do not auto-prefill from URL parameters; all selections should be user-initiated
 
   
 
