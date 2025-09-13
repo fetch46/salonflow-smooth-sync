@@ -322,15 +322,26 @@ export default function InvoiceCreate() {
     }
   }, [formData.customer_id, jobCards, customerJobCards]);
 
-  // Ensure Bill To Name always mirrors the selected customer's name
+  // Ensure Bill To details always mirror the selected customer's defaults
   useEffect(() => {
     if (!formData.customer_id) return;
     const selected = customers.find(c => c.id === formData.customer_id);
     if (!selected) return;
-    if (formData.customer_name !== selected.full_name) {
-      setFormData(prev => ({ ...prev, customer_name: selected.full_name }));
+    const nextEmail = selected.email || "";
+    const nextPhone = selected.phone || "";
+    if (
+      formData.customer_name !== selected.full_name ||
+      formData.customer_email !== nextEmail ||
+      formData.customer_phone !== nextPhone
+    ) {
+      setFormData(prev => ({
+        ...prev,
+        customer_name: selected.full_name,
+        customer_email: nextEmail,
+        customer_phone: nextPhone,
+      }));
     }
-  }, [formData.customer_id, customers, formData.customer_name]);
+  }, [formData.customer_id, customers, formData.customer_name, formData.customer_email, formData.customer_phone]);
 
   // Prefill from Job Card
   useEffect(() => {
@@ -579,12 +590,17 @@ export default function InvoiceCreate() {
       // Generate next invoice number from configured series
       const invoiceNumber = await getNextNumber('invoice');
       const totals = calculateTotals();
+      // Always use selected customer's default bill-to details when a customer is selected
+      const selectedCustomer = formData.customer_id ? customers.find(c => c.id === formData.customer_id) : null;
+      const customerNameForInvoice = selectedCustomer ? selectedCustomer.full_name : formData.customer_name;
+      const customerEmailForInvoice = selectedCustomer ? (selectedCustomer.email || null) : (formData.customer_email || null);
+      const customerPhoneForInvoice = selectedCustomer ? (selectedCustomer.phone || null) : (formData.customer_phone || null);
       const invoiceData = {
         invoice_number: invoiceNumber,
         customer_id: formData.customer_id || null,
-        customer_name: formData.customer_name,
-        customer_email: formData.customer_email || null,
-        customer_phone: formData.customer_phone || null,
+        customer_name: customerNameForInvoice,
+        customer_email: customerEmailForInvoice,
+        customer_phone: customerPhoneForInvoice,
         subtotal: totals.subtotal,
         tax_amount: totals.taxAmount,
         discount_amount: 0,
@@ -833,13 +849,13 @@ Thank you for your business!`;
                   }
                   const customer = customers.find(c => c.id === value);
                   
-                  // Always sync bill-to name with selected customer
+                  // Always sync bill-to fields with selected customer's defaults
                   setFormData({
                     ...formData,
                     customer_id: value,
                     customer_name: customer?.full_name || "",
-                    customer_email: formData.customer_email || customer?.email || "",
-                    customer_phone: formData.customer_phone || customer?.phone || "",
+                    customer_email: customer?.email || "",
+                    customer_phone: customer?.phone || "",
                   });
                   
                   // Fetch job cards for this customer (only completed ones)
@@ -879,37 +895,16 @@ Thank you for your business!`;
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="customer_email">Bill To Email</Label>
-                <Input id="customer_email" type="email" value={formData.customer_email} onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })} placeholder="Enter billing email" />
+                <Input id="customer_email" type="email" value={formData.customer_email} onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })} readOnly={Boolean(formData.jobcard_reference) || Boolean(formData.customer_id)} placeholder="Auto-filled from selected customer" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="customer_phone">Bill To Phone</Label>
-                <Input id="customer_phone" value={formData.customer_phone} onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })} placeholder="Enter billing phone number" />
+                <Input id="customer_phone" value={formData.customer_phone} onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })} readOnly={Boolean(formData.jobcard_reference) || Boolean(formData.customer_id)} placeholder="Auto-filled from selected customer" />
               </div>
             </div>
           </div>
           
-          {/* Show warning if customer details differ from selected customer */}
-          {formData.customer_id && (() => {
-            const selectedCustomer = customers.find(c => c.id === formData.customer_id);
-            const detailsDiffer = selectedCustomer && (
-              formData.customer_name !== selectedCustomer.full_name ||
-              formData.customer_email !== (selectedCustomer.email || "") ||
-              formData.customer_phone !== (selectedCustomer.phone || "")
-            );
-            
-            if (detailsDiffer) {
-              return (
-                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
-                  <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                  <div className="text-amber-800">
-                    <p className="font-medium">Bill-to details have been customized</p>
-                    <p className="text-xs mt-1">The invoice will use the custom bill-to details you've entered, not the selected customer's default information.</p>
-                  </div>
-                </div>
-              );
-            }
-            return null;
-          })()}
+          
 
           <Separator />
 
