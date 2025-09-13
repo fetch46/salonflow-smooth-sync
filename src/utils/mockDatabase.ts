@@ -631,7 +631,8 @@ export async function getInvoicesWithFallback(supabase: any) {
         .select(`
           id, invoice_number, customer_id, customer_name, customer_email, customer_phone,
           due_date, subtotal, tax_amount, discount_amount, total_amount, status,
-          payment_method, notes, jobcard_id, jobcard_reference, location_id, created_at, updated_at
+          payment_method, notes, jobcard_id, jobcard_reference, location_id, created_at, updated_at,
+          client:customer_id (id, full_name, email, phone)
         `)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -640,9 +641,10 @@ export async function getInvoicesWithFallback(supabase: any) {
           id: inv.id,
           invoice_number: inv.invoice_number,
           customer_id: inv.customer_id || null,
-          customer_name: inv.customer_name || '',
-          customer_email: inv.customer_email || null,
-          customer_phone: inv.customer_phone || null,
+          // Backfill Bill To details from linked client when customer_* are missing
+          customer_name: inv.customer_name || inv.client?.full_name || '',
+          customer_email: inv.customer_email || inv.client?.email || null,
+          customer_phone: inv.customer_phone || inv.client?.phone || null,
           subtotal: Number(inv.subtotal || 0),
           tax_amount: Number(inv.tax_amount || 0),
           discount_amount: Number(inv.discount_amount || 0),
