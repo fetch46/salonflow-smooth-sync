@@ -448,6 +448,8 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
       throw new Error('Organization ID is required to create an invoice');
     }
     
+    console.log('Creating invoice with data:', invoiceData);
+    
     // Build payloads for both possible schemas and try in order
     // New schema (preferred): customer_* columns, no issue_date column
     const newSchemaPayload: any = {
@@ -494,10 +496,14 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
         .from('invoices')
         .insert([newSchemaPayload])
         .select('id')
-        .maybeSingle();
-      if (error) throw error;
+        .single();
+      if (error) {
+        console.error('Error creating invoice with new schema:', error);
+        throw error;
+      }
       invoice = data;
     } catch (errNew: any) {
+      console.log('New schema failed, trying alternative approaches:', errNew.message);
       // Retry removing unknown columns progressively (organization_id, location_id, jobcard_reference)
       const lowered = String(errNew?.message || '').toLowerCase();
       let retryPayload = { ...newSchemaPayload } as any;
@@ -507,7 +513,7 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
           .from('invoices')
           .insert([retryPayload])
           .select('id')
-          .maybeSingle();
+          .single();
         if (error) throw error;
         return data;
       };
@@ -525,7 +531,7 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
           .from('invoices')
           .insert([retryPayload])
           .select('id')
-          .maybeSingle();
+          .single();
         if (error) throw error;
         invoice = data;
       } catch {
@@ -535,7 +541,7 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
             .from('invoices')
             .insert([legacySchemaPayload])
             .select('id')
-            .maybeSingle();
+            .single();
           if (error) throw error;
           invoice = data;
         } catch (errLegacy: any) {
@@ -544,17 +550,26 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
           delete legacyRetry.organization_id;
           delete legacyRetry.location_id;
           delete legacyRetry.jobcard_reference;
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from('invoices')
             .insert([legacyRetry])
             .select('id')
-            .maybeSingle();
+            .single();
+          if (error) {
+            console.error('Final legacy retry failed:', error);
+            throw error;
+          }
           invoice = data;
         }
       }
     }
 
-    if (!invoice?.id) throw new Error('Invoice created but no ID returned');
+    if (!invoice?.id) {
+      console.error('Invoice creation failed - no ID returned. Invoice object:', invoice);
+      throw new Error('Invoice created but no ID returned');
+    }
+    
+    console.log('Invoice created successfully with ID:', invoice.id);
 
     const itemsData = items.map((item: any) => ({
       invoice_id: invoice.id,
