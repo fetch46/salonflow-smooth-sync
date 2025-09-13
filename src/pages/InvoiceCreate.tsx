@@ -322,6 +322,16 @@ export default function InvoiceCreate() {
     }
   }, [formData.customer_id, jobCards, customerJobCards]);
 
+  // Ensure Bill To Name always mirrors the selected customer's name
+  useEffect(() => {
+    if (!formData.customer_id) return;
+    const selected = customers.find(c => c.id === formData.customer_id);
+    if (!selected) return;
+    if (formData.customer_name !== selected.full_name) {
+      setFormData(prev => ({ ...prev, customer_name: selected.full_name }));
+    }
+  }, [formData.customer_id, customers, formData.customer_name]);
+
   // Prefill from Job Card
   useEffect(() => {
     const fromJobCard = searchParams.get("fromJobCard");
@@ -823,41 +833,14 @@ Thank you for your business!`;
                   }
                   const customer = customers.find(c => c.id === value);
                   
-                  // Check if customer details have been manually modified
-                  const hasManuallyModifiedDetails = formData.customer_id && (
-                    formData.customer_name !== customers.find(c => c.id === formData.customer_id)?.full_name ||
-                    formData.customer_email !== (customers.find(c => c.id === formData.customer_id)?.email || "") ||
-                    formData.customer_phone !== (customers.find(c => c.id === formData.customer_id)?.phone || "")
-                  );
-                  
-                  if (hasManuallyModifiedDetails) {
-                    // Ask user if they want to update bill-to details from selected customer
-                    if (window.confirm("You have manually modified bill-to details. Do you want to update them with the selected customer's information?")) {
-                      setFormData({
-                        ...formData,
-                        customer_id: value,
-                        customer_name: customer?.full_name || "",
-                        customer_email: customer?.email || "",
-                        customer_phone: customer?.phone || "",
-                      });
-                    } else {
-                      // Keep manually entered bill-to details, just update customer_id
-                      setFormData({
-                        ...formData,
-                        customer_id: value,
-                      });
-                    }
-                  } else {
-                    // Only update customer_id, keep bill-to fields separate
-                    setFormData({
-                      ...formData,
-                      customer_id: value,
-                      // Only populate bill-to fields if they are currently empty
-                      customer_name: formData.customer_name || customer?.full_name || "",
-                      customer_email: formData.customer_email || customer?.email || "",
-                      customer_phone: formData.customer_phone || customer?.phone || "",
-                    });
-                  }
+                  // Always sync bill-to name with selected customer
+                  setFormData({
+                    ...formData,
+                    customer_id: value,
+                    customer_name: customer?.full_name || "",
+                    customer_email: formData.customer_email || customer?.email || "",
+                    customer_phone: formData.customer_phone || customer?.phone || "",
+                  });
                   
                   // Fetch job cards for this customer (only completed ones)
                   if (value) {
@@ -890,7 +873,7 @@ Thank you for your business!`;
               </div>
               <div className="space-y-2">
                 <Label htmlFor="customer_name">Bill To Name *</Label>
-                <Input id="customer_name" value={formData.customer_name} onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })} required readOnly={Boolean(formData.jobcard_reference)} placeholder="Enter billing name (can be different from customer)" />
+                <Input id="customer_name" value={formData.customer_name} onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })} required readOnly={Boolean(formData.jobcard_reference) || Boolean(formData.customer_id)} placeholder="Auto-filled from selected customer" />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
