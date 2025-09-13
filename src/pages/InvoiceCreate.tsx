@@ -444,6 +444,35 @@ export default function InvoiceCreate() {
       toast.error('Organization not loaded. Please refresh and try again.');
       return;
     }
+    
+    // Verify user has organization access
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Not authenticated. Please log in and try again.');
+        return;
+      }
+      
+      const { data: orgUser, error: orgError } = await supabase
+        .from('organization_users')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('organization_id', organization.id)
+        .eq('is_active', true)
+        .single();
+        
+      if (orgError || !orgUser) {
+        console.error('Organization access check failed:', orgError);
+        toast.error('You do not have access to create invoices for this organization.');
+        return;
+      }
+      
+      console.log('User organization access verified:', orgUser);
+    } catch (error) {
+      console.error('Error checking organization access:', error);
+      toast.error('Failed to verify organization access.');
+      return;
+    }
     if (!formData.customer_name.trim()) return toast.error('Customer name is mandatory');
     if (selectedItems.length === 0) return toast.error('Please add at least one item to the invoice');
     if (!formData.location_id) return toast.error('Please select a location');
