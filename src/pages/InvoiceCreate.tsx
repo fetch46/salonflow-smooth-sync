@@ -704,14 +704,10 @@ Thank you for your business!`;
               <p className="text-slate-600">Full-page invoice creation</p>
             </div>
           </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate('/invoices')}>Cancel</Button>
-          <Button variant="secondary" onClick={handleSubmit}>Save Invoice</Button>
-          <Button onClick={handleSubmit}>Create Invoice</Button>
-        </div>
+        
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form id="invoice-form" onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
               <Users className="w-4 h-4 text-blue-600" />
@@ -1073,6 +1069,11 @@ Thank you for your business!`;
           </div>
           
         </form>
+        {/* Bottom Action Buttons */}
+        <div className="flex justify-end gap-2 pt-4">
+          <Button type="button" variant="outline" onClick={() => navigate('/invoices')}>Cancel</Button>
+          <Button type="submit" form="invoice-form" variant="secondary">Save Invoice</Button>
+        </div>
       </div>
 
       {/* Invoice Preview Sidebar */}
