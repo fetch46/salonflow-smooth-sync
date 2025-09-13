@@ -1563,6 +1563,10 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          customer_email: string | null
+          customer_id: string | null
+          customer_name: string | null
+          customer_phone: string | null
           id: string
           invoice_id: string
           notes: string | null
@@ -1574,6 +1578,10 @@ export type Database = {
         Insert: {
           amount?: number
           created_at?: string
+          customer_email?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
           id?: string
           invoice_id: string
           notes?: string | null
@@ -1585,6 +1593,10 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string
+          customer_email?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
           id?: string
           invoice_id?: string
           notes?: string | null

@@ -21,7 +21,6 @@ interface AppointmentServiceItem {
   duration_minutes?: number;
   price?: number;
   notes?: string;
-  sort_order?: number;
   commission_percentage?: number;
 }
 
@@ -186,7 +185,7 @@ export default function AppointmentForm() {
             .select("*")
             .eq("appointment_id", id);
           if (error) throw error;
-          items = (apptServices || []).map((it: any) => ({
+           items = (apptServices || []).map((it: any) => ({
             id: it.id,
             appointment_id: it.appointment_id,
             service_id: it.service_id,
@@ -194,11 +193,10 @@ export default function AppointmentForm() {
             duration_minutes: it.duration_minutes || undefined,
             price: (it as any).price ?? (it as any).unit_price ?? undefined,
             notes: it.notes || undefined,
-            sort_order: it.sort_order || 0,
             commission_percentage: it.commission_percentage || undefined,
           }));
-        } else {
-          items = appt.service_id ? [{
+         } else {
+           items = appt.service_id ? [{
             id: undefined,
             appointment_id: appt.id,
             service_id: appt.service_id,
@@ -206,7 +204,6 @@ export default function AppointmentForm() {
             duration_minutes: appt.duration_minutes || undefined,
             price: appt.price || undefined,
             notes: appt.notes || undefined,
-            sort_order: 0,
             commission_percentage: (appt as any)?.commission_percentage || undefined,
           }] : [];
         }
