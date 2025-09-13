@@ -1318,11 +1318,11 @@ const Reports = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-4 md:grid-cols-2">
-                    <div className="p-4 border rounded-md hover:bg-slate-50 cursor-pointer" onClick={() => setActiveTab('pnl')}>
+                    <div className="p-4 border rounded-md hover:bg-slate-50 cursor-pointer" onClick={() => navigate('/specific-reports?type=profit-loss')}>
                       <div className="font-semibold flex items-center gap-2"><DollarSign className="w-4 h-4" /> Profit & Loss</div>
                       <div className="text-sm text-slate-500">Income, COGS and Expenses for the selected period</div>
                     </div>
-                    <div className="p-4 border rounded-md hover:bg-slate-50 cursor-pointer" onClick={() => setActiveTab('balancesheet')}>
+                    <div className="p-4 border rounded-md hover:bg-slate-50 cursor-pointer" onClick={() => navigate('/specific-reports?type=balance-sheet')}>
                       <div className="font-semibold flex items-center gap-2"><PieChart className="w-4 h-4" /> Balance Sheet</div>
                       <div className="text-sm text-slate-500">Assets, Liabilities and Equity as of end date</div>
                     </div>

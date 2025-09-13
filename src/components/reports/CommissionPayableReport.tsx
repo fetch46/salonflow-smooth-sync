@@ -5,10 +5,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Download, DollarSign } from 'lucide-react';
+import { Calculator, RefreshCw, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useOrganizationCurrency } from '@/lib/saas/hooks';
+import { useOrganization, useOrganizationCurrency } from '@/lib/saas/hooks';
 
 interface CommissionPayableReportProps {
   locationFilter: string;
@@ -28,10 +27,10 @@ interface CommissionPayableData {
   balance_payable: number;
   commissions: Array<{
     id: string;
-    commission_amount: number;
-    status: string;
-    accrued_date: string;
-    paid_date?: string;
+    amount: number;
+    date: string;
+    client_name?: string;
+    job_card_number?: string;
   }>;
 }
 
@@ -48,48 +47,82 @@ export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = (
   const [commissionData, setCommissionData] = useState<CommissionPayableData[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-
+  
+  const { organization } = useOrganization();
   const { format: formatMoney } = useOrganizationCurrency();
 
   const loadCommissionPayableData = async () => {
     setLoading(true);
     try {
-      // Get all staff commissions within date range
-      let commissionsQuery = supabase
-        .from('staff_commissions')
+      if (!organization?.id) return;
+
+      // Get staff list
+      const { data: staffData, error: staffError } = await supabase
+        .from('staff')
+        .select('id, full_name')
+        .eq('organization_id', organization.id)
+        .eq('is_active', true);
+
+      if (staffError) throw staffError;
+
+      const staff = staffData || [];
+      const staffMap = new Map(staff.map(s => [s.id, s.full_name]));
+
+      // Get job card services with commissions in date range
+      let servicesQuery = supabase
+        .from('job_card_services')
         .select(`
           id,
           staff_id,
           commission_amount,
-          status,
-          accrued_date,
-          paid_date,
-          staff!inner(full_name, organization_id)
+          created_at,
+          job_card_id,
+          job_cards!inner(
+            organization_id,
+            location_id,
+            client_id,
+            job_card_number,
+            clients(full_name)
+          )
         `)
-        .gte('accrued_date', startDate)
-        .lte('accrued_date', endDate);
+        .eq('job_cards.organization_id', organization.id)
+        .gte('created_at', startDate)
+        .lte('created_at', endDate)
+        .not('staff_id', 'is', null)
+        .not('commission_amount', 'is', null)
+        .gt('commission_amount', 0);
 
-      // Apply location filter if selected
+      // Apply location filter with workaround for joins
       if (locationFilter !== 'all') {
-        commissionsQuery = commissionsQuery.or(`
-          job_card_id.in.(${await getJobCardIdsForLocation(locationFilter)}),
-          invoice_id.in.(${await getInvoiceIdsForLocation(locationFilter)})
-        `);
+        const { data: locationJobCards } = await supabase
+          .from('job_cards')
+          .select('id')
+          .eq('location_id', locationFilter)
+          .eq('organization_id', organization.id);
+        
+        const locationJobCardIds = (locationJobCards || []).map(jc => jc.id);
+        if (locationJobCardIds.length > 0) {
+          servicesQuery = servicesQuery.in('job_card_id', locationJobCardIds);
+        } else {
+          // No job cards for this location, return empty
+          setCommissionData([]);
+          return;
+        }
       }
 
-      const { data: commissions, error } = await commissionsQuery;
-      if (error) throw error;
+      const { data: services, error: servicesError } = await servicesQuery;
+      if (servicesError) throw servicesError;
 
       // Group by staff and calculate totals
-      const staffMap = new Map<string, CommissionPayableData>();
-      const commissionIdToStaffId = new Map<string, string>();
+      const staffCommissions = new Map<string, CommissionPayableData>();
 
-      (commissions || []).forEach((commission: any) => {
-        const staffId = commission.staff_id;
-        const staffName = commission.staff?.full_name || 'Unknown Staff';
-        
-        if (!staffMap.has(staffId)) {
-          staffMap.set(staffId, {
+      (services || []).forEach((service: any) => {
+        const staffId = service.staff_id;
+        const staffName = staffMap.get(staffId) || 'Unknown Staff';
+        const amount = Number(service.commission_amount || 0);
+
+        if (!staffCommissions.has(staffId)) {
+          staffCommissions.set(staffId, {
             staff_id: staffId,
             staff_name: staffName,
             total_accrued: 0,
@@ -99,24 +132,21 @@ export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = (
           });
         }
 
-        const staffData = staffMap.get(staffId)!;
-        const amount = Number(commission.commission_amount || 0);
-        
-        staffData.commissions.push({
-          id: commission.id,
-          commission_amount: amount,
-          status: commission.status,
-          accrued_date: commission.accrued_date,
-          paid_date: commission.paid_date
-        });
-
+        const staffData = staffCommissions.get(staffId)!;
         staffData.total_accrued += amount;
-        commissionIdToStaffId.set(commission.id, staffId);
+        staffData.commissions.push({
+          id: service.id,
+          amount: amount,
+          date: service.created_at,
+          client_name: service.job_cards?.clients?.full_name,
+          job_card_number: service.job_cards?.job_card_number
+        });
       });
 
-      // Fetch payments posted to Commission Payable (debits) for these commissions
-      const commissionIds = Array.from(commissionIdToStaffId.keys());
+      // Get payment data for commissions
+      const commissionIds = (services || []).map(s => s.id);
       let staffPaidTotals = new Map<string, number>();
+      
       if (commissionIds.length > 0) {
         const { data: paymentTxns, error: paymentsError } = await supabase
           .from('account_transactions')
@@ -129,15 +159,17 @@ export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = (
 
         (paymentTxns || []).forEach((txn: any) => {
           const commissionId = txn.reference_id as string;
-          const staffId = commissionIdToStaffId.get(commissionId);
-          if (!staffId) return;
+          const service = (services || []).find(s => s.id === commissionId);
+          if (!service) return;
+          
+          const staffId = service.staff_id;
           const paid = Number(txn.debit_amount || 0);
           staffPaidTotals.set(staffId, (staffPaidTotals.get(staffId) || 0) + paid);
         });
       }
 
       // Apply paid totals and calculate balance payable
-      const finalData = Array.from(staffMap.values()).map(staff => {
+      const finalData = Array.from(staffCommissions.values()).map(staff => {
         const totalPaid = staffPaidTotals.get(staff.staff_id) || 0;
         return {
           ...staff,
@@ -154,33 +186,9 @@ export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = (
     }
   };
 
-  const getJobCardIdsForLocation = async (locationId: string): Promise<string> => {
-    try {
-      const { data } = await supabase
-        .from('job_cards')
-        .select('id')
-        .eq('location_id', locationId);
-      return (data || []).map(jc => jc.id).join(',') || '';
-    } catch {
-      return '';
-    }
-  };
-
-  const getInvoiceIdsForLocation = async (locationId: string): Promise<string> => {
-    try {
-      const { data } = await supabase
-        .from('invoices')
-        .select('id')
-        .eq('location_id', locationId);
-      return (data || []).map(inv => inv.id).join(',') || '';
-    } catch {
-      return '';
-    }
-  };
-
   useEffect(() => {
     loadCommissionPayableData();
-  }, [startDate, endDate, locationFilter]);
+  }, [startDate, endDate, locationFilter, organization?.id]);
 
   const exportToPDF = () => {
     window.print();
@@ -189,31 +197,30 @@ export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = (
   // Filter data based on selected filters
   const filteredData = commissionData.filter(staff => {
     if (selectedStaff !== 'all' && staff.staff_id !== selectedStaff) return false;
-    if (statusFilter === 'outstanding' && staff.balance_payable <= 0) return false;
+    
+    if (statusFilter === 'pending' && staff.balance_payable <= 0) return false;
     if (statusFilter === 'paid' && staff.balance_payable > 0) return false;
+    
     return true;
   });
 
   // Calculate totals
-  const totals = filteredData.reduce(
-    (acc, staff) => ({
-      totalAccrued: acc.totalAccrued + staff.total_accrued,
-      totalPaid: acc.totalPaid + staff.total_paid,
-      totalBalance: acc.totalBalance + staff.balance_payable,
-    }),
-    { totalAccrued: 0, totalPaid: 0, totalBalance: 0 }
-  );
+  const totals = filteredData.reduce((acc, staff) => ({
+    total_accrued: acc.total_accrued + staff.total_accrued,
+    total_paid: acc.total_paid + staff.total_paid,
+    balance_payable: acc.balance_payable + staff.balance_payable
+  }), { total_accrued: 0, total_paid: 0, balance_payable: 0 });
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-muted rounded-xl shadow-lg border">
-            <DollarSign className="h-5 w-5 text-foreground" />
+            <Calculator className="h-5 w-5 text-foreground" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-900">Commission Payable Report</h2>
-            <p className="text-slate-600 text-sm">Outstanding and paid staff commissions</p>
+            <p className="text-slate-600 text-sm">Staff commission accruals and payments</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -231,7 +238,7 @@ export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = (
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="flex flex-wrap items-end gap-4">
             <div>
               <Label>Start Date</Label>
               <Input 
@@ -251,7 +258,7 @@ export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = (
             <div>
               <Label>Location</Label>
               <Select value={locationFilter} onValueChange={setLocationFilter}>
-                <SelectTrigger>
+                <SelectTrigger className="w-48">
                   <SelectValue placeholder="All locations" />
                 </SelectTrigger>
                 <SelectContent>
@@ -267,7 +274,7 @@ export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = (
             <div>
               <Label>Staff Member</Label>
               <Select value={selectedStaff} onValueChange={setSelectedStaff}>
-                <SelectTrigger>
+                <SelectTrigger className="w-48">
                   <SelectValue placeholder="All staff" />
                 </SelectTrigger>
                 <SelectContent>
@@ -283,13 +290,13 @@ export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = (
             <div>
               <Label>Status</Label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All statuses" />
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="All status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="outstanding">Outstanding Only</SelectItem>
-                  <SelectItem value="paid">Paid Only</SelectItem>
+                  <SelectItem value="pending">Pending Payment</SelectItem>
+                  <SelectItem value="paid">Fully Paid</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -303,7 +310,7 @@ export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = (
           <CardContent className="pt-6">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
-                {formatMoney(totals.totalAccrued, { decimals: 2 })}
+                {formatMoney(totals.total_accrued, { decimals: 2 })}
               </div>
               <div className="text-sm text-slate-600">Total Accrued</div>
             </div>
@@ -312,8 +319,8 @@ export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = (
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {formatMoney(totals.totalPaid, { decimals: 2 })}
+              <div className="text-2xl font-bold text-emerald-600">
+                {formatMoney(totals.total_paid, { decimals: 2 })}
               </div>
               <div className="text-sm text-slate-600">Total Paid</div>
             </div>
@@ -323,9 +330,9 @@ export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = (
           <CardContent className="pt-6">
             <div className="text-center">
               <div className="text-2xl font-bold text-orange-600">
-                {formatMoney(totals.totalBalance, { decimals: 2 })}
+                {formatMoney(totals.balance_payable, { decimals: 2 })}
               </div>
-              <div className="text-sm text-slate-600">Outstanding Balance</div>
+              <div className="text-sm text-slate-600">Balance Payable</div>
             </div>
           </CardContent>
         </Card>
@@ -334,74 +341,41 @@ export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = (
       {/* Commission Payable Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Commission Payable Details</CardTitle>
+          <CardTitle>Commission Payable by Staff</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Staff Member</TableHead>
-                  <TableHead className="text-right">Total Accrued</TableHead>
-                  <TableHead className="text-right">Total Paid</TableHead>
-                  <TableHead className="text-right">Balance Payable</TableHead>
-                  <TableHead>Status</TableHead>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Staff Member</TableHead>
+                <TableHead className="text-right">Total Accrued</TableHead>
+                <TableHead className="text-right">Total Paid</TableHead>
+                <TableHead className="text-right">Balance Payable</TableHead>
+                <TableHead className="text-center">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredData.map((staff) => (
+                <TableRow key={staff.staff_id}>
+                  <TableCell className="font-medium">{staff.staff_name}</TableCell>
+                  <TableCell className="text-right">{formatMoney(staff.total_accrued, { decimals: 2 })}</TableCell>
+                  <TableCell className="text-right">{formatMoney(staff.total_paid, { decimals: 2 })}</TableCell>
+                  <TableCell className="text-right">{formatMoney(staff.balance_payable, { decimals: 2 })}</TableCell>
+                  <TableCell className="text-center">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      staff.balance_payable <= 0 
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-orange-100 text-orange-800'
+                    }`}>
+                      {staff.balance_payable <= 0 ? 'Paid' : 'Pending'}
+                    </span>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredData.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                      No commission data found for the selected criteria
-                    </TableCell>
-                  </TableRow>
-                )}
-                {filteredData.map((staff) => (
-                  <TableRow key={staff.staff_id}>
-                    <TableCell className="font-medium">{staff.staff_name}</TableCell>
-                    <TableCell className="text-right">
-                      {formatMoney(staff.total_accrued, { decimals: 2 })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatMoney(staff.total_paid, { decimals: 2 })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className={staff.balance_payable > 0 ? 'font-semibold text-orange-600' : 'text-green-600'}>
-                        {formatMoney(staff.balance_payable, { decimals: 2 })}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={staff.balance_payable > 0 ? 'destructive' : 'default'}>
-                        {staff.balance_payable > 0 ? 'Outstanding' : 'Paid in Full'}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                
-                {/* Totals Row */}
-                {filteredData.length > 0 && (
-                  <TableRow className="font-semibold bg-muted/50">
-                    <TableCell>TOTALS</TableCell>
-                    <TableCell className="text-right">
-                      {formatMoney(totals.totalAccrued, { decimals: 2 })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatMoney(totals.totalPaid, { decimals: 2 })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className={totals.totalBalance > 0 ? 'text-orange-600' : 'text-green-600'}>
-                        {formatMoney(totals.totalBalance, { decimals: 2 })}
-                      </span>
-                    </TableCell>
-                    <TableCell>—</TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
-
     </div>
   );
 };
