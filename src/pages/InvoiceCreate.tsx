@@ -440,6 +440,10 @@ export default function InvoiceCreate() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!organization?.id) {
+      toast.error('Organization not loaded. Please refresh and try again.');
+      return;
+    }
     if (!formData.customer_name.trim()) return toast.error('Customer name is mandatory');
     if (selectedItems.length === 0) return toast.error('Please add at least one item to the invoice');
     if (!formData.location_id) return toast.error('Please select a location');
@@ -490,8 +494,15 @@ export default function InvoiceCreate() {
         jobcard_id: formData.jobcard_id || null,
         jobcard_reference: formData.jobcard_reference || null,
         location_id: formData.location_id || null,
-        organization_id: organization?.id || undefined,
+        organization_id: organization?.id || '',
       };
+      
+      console.log('Invoice data being sent:', invoiceData);
+      console.log('Organization ID:', organization?.id);
+      
+      if (!organization?.id) {
+        throw new Error('Organization ID is missing');
+      }
       const created = await createInvoiceWithFallback(supabase, invoiceData, selectedItems);
 
       // If payment was received, record it immediately
@@ -524,8 +535,9 @@ export default function InvoiceCreate() {
       toast.success('Invoice created');
       navigate('/invoices');
     } catch (e) {
-      console.error(e);
-      toast.error('Failed to create invoice');
+      console.error('Invoice creation error:', e);
+      const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+      toast.error(`Failed to create invoice: ${errorMessage}`);
     }
   };
 

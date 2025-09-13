@@ -443,6 +443,11 @@ export async function createSaleWithFallback(supabase: any, saleData: any, items
 // Wrapper function for Invoice operations
 export async function createInvoiceWithFallback(supabase: any, invoiceData: any, items: any[]) {
   try {
+    // Ensure organization_id is provided
+    if (!invoiceData.organization_id) {
+      throw new Error('Organization ID is required to create an invoice');
+    }
+    
     // Build payloads for both possible schemas and try in order
     // New schema (preferred): customer_* columns, no issue_date column
     const newSchemaPayload: any = {
@@ -462,7 +467,7 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
       location_id: invoiceData.location_id || null,
       jobcard_id: invoiceData.jobcard_id || invoiceData.jobcard_reference || null,
       jobcard_reference: invoiceData.jobcard_reference || invoiceData.jobcard_id || null,
-      organization_id: invoiceData.organization_id || undefined,
+      organization_id: invoiceData.organization_id,
     };
 
     // Legacy schema: client_id and optional issue_date
@@ -479,7 +484,7 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
       location_id: invoiceData.location_id || null,
       jobcard_id: invoiceData.jobcard_id || invoiceData.jobcard_reference || null,
       jobcard_reference: invoiceData.jobcard_reference || invoiceData.jobcard_id || null,
-      organization_id: invoiceData.organization_id || undefined,
+      organization_id: invoiceData.organization_id,
     };
 
     let invoice: any = null;
@@ -574,8 +579,23 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
     if (itemsError) throw itemsError;
 
     return invoice;
-  } catch (error) {
-    console.log('Using mock database for invoices');
+  } catch (error: any) {
+    console.error('Failed to save invoice to database:', error);
+    
+    // Only fallback to mock database for development/demo purposes
+    // In production, this should throw the error
+    if (error.message?.includes('Organization ID is required')) {
+      throw error;
+    }
+    
+    // Check if it's a network error or authentication issue
+    if (error.message?.includes('NetworkError') || error.message?.includes('Failed to fetch')) {
+      console.log('Network error detected, using mock database for invoices');
+    } else {
+      // For other errors, re-throw to surface the actual problem
+      throw error;
+    }
+    
     // Fallback to mock database
     const invoice = await mockDb.createReceipt({
       receipt_number: invoiceData.invoice_number,
