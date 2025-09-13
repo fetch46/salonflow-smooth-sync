@@ -482,7 +482,6 @@ export default function AppointmentForm() {
             unit_price: (typeof it.price === 'number' ? it.price : null) || 0,
             total_price: (typeof it.price === 'number' ? it.price : null) || 0,
             notes: it.notes || null,
-            sort_order: idx,
             commission_percentage: typeof it.commission_percentage === 'number' ? it.commission_percentage : null,
           }));
           if (rows.length) {
@@ -532,7 +531,6 @@ export default function AppointmentForm() {
             unit_price: (typeof it.price === 'number' ? it.price : null) || 0,
             total_price: (typeof it.price === 'number' ? it.price : null) || 0,
             notes: it.notes || null,
-            sort_order: idx,
             commission_percentage: typeof it.commission_percentage === 'number' ? it.commission_percentage : null,
           }));
           if (rows.length) {

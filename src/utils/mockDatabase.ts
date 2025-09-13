@@ -792,6 +792,13 @@ export async function recordInvoicePaymentWithFallback(
   payment: { invoice_id: string; amount: number; method: string; reference_number?: string | null; payment_date?: string; location_id?: string | null; account_id?: string }
 ): Promise<{ success: boolean; payment_id?: string; error?: string }> {
   try {
+    // First get the invoice details to ensure customer information is available
+    const { data: invoice } = await supabase
+      .from('invoices')
+      .select('id, customer_id, customer_name, customer_email, customer_phone, client_id')
+      .eq('id', payment.invoice_id)
+      .maybeSingle();
+
     const payload: any = {
       invoice_id: payment.invoice_id,
       amount: payment.amount,
@@ -800,6 +807,14 @@ export async function recordInvoicePaymentWithFallback(
       payment_date: payment.payment_date ? new Date(payment.payment_date).toISOString() : new Date().toISOString(),
       notes: null,
     };
+
+    // Try to include customer details if columns exist (will silently fail if not)
+    if (invoice) {
+      payload.customer_id = invoice.customer_id || invoice.client_id || null;
+      payload.customer_name = invoice.customer_name || null;
+      payload.customer_email = invoice.customer_email || null;
+      payload.customer_phone = invoice.customer_phone || null;
+    }
     
     const { data: insertedPayment, error } = await supabase
       .from('invoice_payments')
