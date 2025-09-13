@@ -115,6 +115,37 @@ export default function InvoiceCreate() {
     commission_percentage: 0,
   });
 
+  // Initialize invoice date (using due_date field as Invoice Date) to today if empty
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      due_date: prev.due_date || new Date().toISOString().slice(0, 10),
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Load last used Bill To details (persisted) on mount/org change
+  useEffect(() => {
+    try {
+      const readJson = (key: string | null) => {
+        if (!key) return null;
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : null;
+      };
+      const persisted = readJson(persistKeyCustomer) || readJson(persistKeyCustomerGlobal);
+      if (persisted) {
+        setFormData(prev => ({
+          ...prev,
+          customer_id: prev.customer_id || persisted.customer_id || "",
+          customer_name: prev.customer_name || persisted.customer_name || "",
+          customer_email: prev.customer_email || persisted.customer_email || "",
+          customer_phone: prev.customer_phone || persisted.customer_phone || "",
+        }));
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [persistKeyCustomer]);
+
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
   const [applyTax, setApplyTax] = useState<boolean>(false);
   const [receivedPayment, setReceivedPayment] = useState<boolean>(false);
@@ -412,6 +443,7 @@ export default function InvoiceCreate() {
     if (!formData.customer_name.trim()) return toast.error('Customer name is mandatory');
     if (selectedItems.length === 0) return toast.error('Please add at least one item to the invoice');
     if (!formData.location_id) return toast.error('Please select a location');
+    if (!formData.due_date) return toast.error('Invoice date is required');
     // Enforce invoice customer equals job card customer when a job card is selected
     if (formData.jobcard_reference) {
       try {
@@ -452,6 +484,7 @@ export default function InvoiceCreate() {
         total_amount: totals.total,
         status: 'draft',
         due_date: formData.due_date || null,
+        issue_date: formData.due_date || new Date().toISOString().slice(0, 10),
         payment_method: formData.payment_method || null,
         notes: formData.notes || null,
         jobcard_id: formData.jobcard_id || null,
@@ -532,7 +565,7 @@ export default function InvoiceCreate() {
       customer_name: formData.customer_name,
       customer_email: formData.customer_email,
       customer_phone: formData.customer_phone,
-      issue_date: new Date().toLocaleDateString(),
+      issue_date: new Date(formData.due_date || new Date().toISOString().slice(0, 10)).toLocaleDateString(),
       due_date: formData.due_date ? new Date(formData.due_date).toLocaleDateString() : '',
       items: selectedItems,
       subtotal: totals.subtotal,
@@ -760,8 +793,8 @@ Thank you for your business!`;
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
               <div className="space-y-2">
-                <Label htmlFor="due_date">Invoice Date</Label>
-                <Input className="w-full" id="due_date" type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} />
+                <Label htmlFor="due_date">Invoice Date *</Label>
+                <Input className="w-full" id="due_date" type="date" required value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="location_id">Location *</Label>
@@ -1089,14 +1122,8 @@ Thank you for your business!`;
               </div>
               <div className="flex justify-between">
                 <span>Date:</span>
-                <span className="font-medium">{new Date().toLocaleDateString()}</span>
+                <span className="font-medium">{new Date(formData.due_date).toLocaleDateString()}</span>
               </div>
-              {formData.due_date && (
-                <div className="flex justify-between">
-                  <span>Due:</span>
-                  <span className="font-medium">{new Date(formData.due_date).toLocaleDateString()}</span>
-                </div>
-              )}
             </div>
 
             <Separator />
