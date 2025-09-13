@@ -298,26 +298,20 @@ export default function InvoiceCreate() {
     }
   }, [formData.customer_id, jobCards, customerJobCards]);
 
-  // Ensure Bill To details always mirror the selected customer's defaults
+  // Only populate bill to details when customer is first selected and fields are empty
   useEffect(() => {
     if (!formData.customer_id) return;
     const selected = customers.find(c => c.id === formData.customer_id);
     if (!selected) return;
-    const nextEmail = selected.email || "";
-    const nextPhone = selected.phone || "";
-    if (
-      formData.customer_name !== selected.full_name ||
-      formData.customer_email !== nextEmail ||
-      formData.customer_phone !== nextPhone
-    ) {
-      setFormData(prev => ({
-        ...prev,
-        customer_name: selected.full_name,
-        customer_email: nextEmail,
-        customer_phone: nextPhone,
-      }));
-    }
-  }, [formData.customer_id, customers, formData.customer_name, formData.customer_email, formData.customer_phone]);
+    
+    // Only populate if the bill to fields are currently empty
+    setFormData(prev => ({
+      ...prev,
+      customer_name: prev.customer_name || selected.full_name,
+      customer_email: prev.customer_email || selected.email || "",
+      customer_phone: prev.customer_phone || selected.phone || "",
+    }));
+  }, [formData.customer_id]); // Remove other dependencies to prevent overwriting user changes
 
   // Do not auto-prefill from URL parameters; all selections should be user-initiated
 
@@ -467,11 +461,10 @@ export default function InvoiceCreate() {
       // Generate next invoice number from configured series
       const invoiceNumber = await getNextNumber('invoice');
       const totals = calculateTotals();
-      // Always use selected customer's default bill-to details when a customer is selected
-      const selectedCustomer = formData.customer_id ? customers.find(c => c.id === formData.customer_id) : null;
-      const customerNameForInvoice = selectedCustomer ? selectedCustomer.full_name : formData.customer_name;
-      const customerEmailForInvoice = selectedCustomer ? (selectedCustomer.email || null) : (formData.customer_email || null);
-      const customerPhoneForInvoice = selectedCustomer ? (selectedCustomer.phone || null) : (formData.customer_phone || null);
+      // Use the bill to details as entered in the form
+      const customerNameForInvoice = formData.customer_name;
+      const customerEmailForInvoice = formData.customer_email || null;
+      const customerPhoneForInvoice = formData.customer_phone || null;
       const invoiceData = {
         invoice_number: invoiceNumber,
         customer_id: formData.customer_id || null,
@@ -723,14 +716,14 @@ Thank you for your business!`;
                   }
                   const customer = customers.find(c => c.id === value);
                   
-                  // Always sync bill-to fields with selected customer's defaults
-                  setFormData({
-                    ...formData,
+                  // Update customer ID and populate bill-to fields only if they're empty
+                  setFormData(prev => ({
+                    ...prev,
                     customer_id: value,
-                    customer_name: customer?.full_name || "",
-                    customer_email: customer?.email || "",
-                    customer_phone: customer?.phone || "",
-                  });
+                    customer_name: prev.customer_name || customer?.full_name || "",
+                    customer_email: prev.customer_email || customer?.email || "",
+                    customer_phone: prev.customer_phone || customer?.phone || "",
+                  }));
                   
                   // Fetch job cards for this customer (only completed ones)
                   if (value) {
@@ -763,22 +756,43 @@ Thank you for your business!`;
               </div>
               <div className="space-y-2">
                 <Label htmlFor="customer_name">Bill To Name *</Label>
-                <Input id="customer_name" value={formData.customer_name} onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })} required readOnly={Boolean(formData.jobcard_reference) || Boolean(formData.customer_id)} placeholder="Auto-filled from selected customer" />
+                <Input id="customer_name" value={formData.customer_name} onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })} required readOnly={Boolean(formData.jobcard_reference)} placeholder="Enter billing name" />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="customer_email">Bill To Email</Label>
-                <Input id="customer_email" type="email" value={formData.customer_email} onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })} readOnly={Boolean(formData.jobcard_reference) || Boolean(formData.customer_id)} placeholder="Auto-filled from selected customer" />
+                <Input id="customer_email" type="email" value={formData.customer_email} onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })} readOnly={Boolean(formData.jobcard_reference)} placeholder="Enter billing email" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="customer_phone">Bill To Phone</Label>
-                <Input id="customer_phone" value={formData.customer_phone} onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })} readOnly={Boolean(formData.jobcard_reference) || Boolean(formData.customer_id)} placeholder="Auto-filled from selected customer" />
+                <Input id="customer_phone" value={formData.customer_phone} onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })} readOnly={Boolean(formData.jobcard_reference)} placeholder="Enter billing phone" />
               </div>
             </div>
           </div>
           
-          
+          {/* Show warning if customer details differ from selected customer */}
+          {formData.customer_id && (() => {
+            const selectedCustomer = customers.find(c => c.id === formData.customer_id);
+            const detailsDiffer = selectedCustomer && (
+              formData.customer_name !== selectedCustomer.full_name ||
+              formData.customer_email !== (selectedCustomer.email || "") ||
+              formData.customer_phone !== (selectedCustomer.phone || "")
+            );
+            
+            if (detailsDiffer) {
+              return (
+                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+                  <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-amber-800">
+                      <p className="font-medium">Bill-to details have been customized</p>
+                      <p className="text-xs mt-1">The invoice will use the custom bill-to details you've entered, not the selected customer's default information.</p>
+                    </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
 
           <Separator />
 
