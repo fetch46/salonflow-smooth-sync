@@ -446,10 +446,10 @@ export default function InvoiceEdit() {
   }, [selectedItems, staff]);
 
   return (
-    <div className="flex flex-col xl:flex-row gap-6 p-6 bg-slate-50/30 min-h-screen max-w-7xl mx-auto w-full">
+    <div className="flex flex-col xl:flex-row gap-6 p-4 sm:p-6 bg-slate-50/30 min-h-screen w-full">
       {/* Main Form */}
       <div className="flex-1 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-xl shadow-lg">
             <Receipt className="h-6 w-6 text-white" />
@@ -459,7 +459,7 @@ export default function InvoiceEdit() {
             <p className="text-slate-600">Full-page invoice editing</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
           <Button variant="secondary" onClick={handleSubmit}>Save Invoice</Button>
           <Button onClick={handleSubmit}>Save Changes</Button>
@@ -665,12 +665,12 @@ export default function InvoiceEdit() {
               <CardTitle className="text-sm text-purple-800">Add Item</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-8 gap-3 items-end">
-                <div className="col-span-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 items-end">
+                <div className="col-span-1 sm:col-span-2 lg:col-span-2">
                   <Label className="text-xs font-medium text-gray-700 mb-1 block">Description *</Label>
                   <Input className="h-9 text-sm" value={newItem.description} onChange={(e) => setNewItem({ ...newItem, description: e.target.value })} placeholder="Item description" />
                 </div>
-                <div>
+                <div className="col-span-1">
                   <Label className="text-xs font-medium text-gray-700 mb-1 block">Service *</Label>
                   <Select value={newItem.service_id} onValueChange={async (value) => {
                     const service = services.find(s => s.id === value);
@@ -763,34 +763,165 @@ export default function InvoiceEdit() {
                 <CardTitle className="text-sm">Invoice Items ({selectedItems.length})</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Qty</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Discount</TableHead>
-                      <TableHead>Total</TableHead>
-                      <TableHead className="w-12"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedItems.map((item, idx) => (
-                      <TableRow key={idx}>
-                        <TableCell className="font-medium">{item.description}</TableCell>
-                        <TableCell>{item.quantity}</TableCell>
-                        <TableCell>{symbol}{parseFloat(String(item.unit_price)).toFixed(2)}</TableCell>
-                        <TableCell>{item.discount_percentage}%</TableCell>
-                        <TableCell className="font-semibold">{symbol}{Number(item.total_price).toFixed(2)}</TableCell>
-                        <TableCell>
-                          <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => removeItemFromInvoice(idx)}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[200px]">Description</TableHead>
+                        <TableHead className="min-w-[80px]">Qty</TableHead>
+                        <TableHead className="min-w-[100px]">Price</TableHead>
+                        <TableHead className="min-w-[100px]">Discount</TableHead>
+                        <TableHead className="min-w-[150px]">Staff</TableHead>
+                        <TableHead className="min-w-[120px]">Commission %</TableHead>
+                        <TableHead className="min-w-[120px]">Total</TableHead>
+                        <TableHead className="w-12"></TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedItems.map((item, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell className="font-medium">
+                            <Input 
+                              className="h-8 text-sm" 
+                              value={item.description} 
+                              onChange={(e) => {
+                                const newItems = [...selectedItems];
+                                newItems[idx] = { ...newItems[idx], description: e.target.value };
+                                setSelectedItems(newItems);
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input 
+                              className="h-8 text-sm w-20" 
+                              type="number" 
+                              min="1" 
+                              value={item.quantity} 
+                              onChange={(e) => {
+                                const newItems = [...selectedItems];
+                                const quantity = parseInt(e.target.value) || 1;
+                                const unitPrice = parseFloat(String(newItems[idx].unit_price)) || 0;
+                                const discount = newItems[idx].discount_percentage || 0;
+                                const totalPrice = quantity * unitPrice * (1 - discount / 100);
+                                newItems[idx] = { 
+                                  ...newItems[idx], 
+                                  quantity,
+                                  total_price: Number(totalPrice.toFixed(2))
+                                };
+                                setSelectedItems(newItems);
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              <span className="mr-1">{symbol}</span>
+                              <Input 
+                                className="h-8 text-sm w-24" 
+                                type="number" 
+                                step="0.01" 
+                                value={item.unit_price} 
+                                onChange={(e) => {
+                                  const newItems = [...selectedItems];
+                                  const unitPrice = parseFloat(e.target.value) || 0;
+                                  const quantity = newItems[idx].quantity || 1;
+                                  const discount = newItems[idx].discount_percentage || 0;
+                                  const totalPrice = quantity * unitPrice * (1 - discount / 100);
+                                  newItems[idx] = { 
+                                    ...newItems[idx], 
+                                    unit_price: unitPrice,
+                                    total_price: Number(totalPrice.toFixed(2))
+                                  };
+                                  setSelectedItems(newItems);
+                                }}
+                              />
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              <Input 
+                                className="h-8 text-sm w-16" 
+                                type="number" 
+                                min="0" 
+                                max="100" 
+                                value={item.discount_percentage} 
+                                onChange={(e) => {
+                                  const newItems = [...selectedItems];
+                                  const discount = parseFloat(e.target.value) || 0;
+                                  const quantity = newItems[idx].quantity || 1;
+                                  const unitPrice = parseFloat(String(newItems[idx].unit_price)) || 0;
+                                  const totalPrice = quantity * unitPrice * (1 - discount / 100);
+                                  newItems[idx] = { 
+                                    ...newItems[idx], 
+                                    discount_percentage: discount,
+                                    total_price: Number(totalPrice.toFixed(2))
+                                  };
+                                  setSelectedItems(newItems);
+                                }}
+                              />
+                              <span className="ml-1">%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Select 
+                              value={item.staff_id} 
+                              onValueChange={(value) => {
+                                const newItems = [...selectedItems];
+                                const selectedStaff = staff.find(s => s.id === value);
+                                newItems[idx] = { 
+                                  ...newItems[idx], 
+                                  staff_id: value,
+                                  // Update commission if staff has default rate and item doesn't have service-specific rate
+                                  commission_percentage: item.commission_percentage > 0 
+                                    ? item.commission_percentage 
+                                    : selectedStaff?.commission_rate || 0
+                                };
+                                setSelectedItems(newItems);
+                              }}
+                            >
+                              <SelectTrigger className="h-8 text-sm">
+                                <SelectValue placeholder="Select staff" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {staff.map((s: any) => (
+                                  <SelectItem key={s.id} value={s.id} className="text-sm">
+                                    {s.full_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              <Input 
+                                className="h-8 text-sm w-20" 
+                                type="number" 
+                                min="0" 
+                                max="100" 
+                                step="0.1" 
+                                value={item.commission_percentage} 
+                                onChange={(e) => {
+                                  const newItems = [...selectedItems];
+                                  newItems[idx] = { 
+                                    ...newItems[idx], 
+                                    commission_percentage: parseFloat(e.target.value) || 0
+                                  };
+                                  setSelectedItems(newItems);
+                                }}
+                              />
+                              <span className="ml-1">%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-semibold">{symbol}{Number(item.total_price).toFixed(2)}</TableCell>
+                          <TableCell>
+                            <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => removeItemFromInvoice(idx)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -811,7 +942,7 @@ export default function InvoiceEdit() {
       </div>
 
       {/* Invoice Preview Sidebar */}
-      <div className="w-full xl:w-80 space-y-4">
+      <div className="w-full xl:w-96 space-y-4 xl:sticky xl:top-6 xl:h-fit">
         {/* Job Card Summary (replaces Invoice Details) */}
         {selectedJobCardInfo && (
           <Card className="bg-white border border-slate-200">
