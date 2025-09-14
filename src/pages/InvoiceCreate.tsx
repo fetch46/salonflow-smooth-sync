@@ -359,6 +359,32 @@ export default function InvoiceCreate() {
 
   const removeItemFromInvoice = (idx: number) => setSelectedItems(selectedItems.filter((_, i) => i !== idx));
 
+  // Update a specific invoice item field(s) and recalculate line total
+  const updateItem = (index: number, changes: Partial<any>) => {
+    setSelectedItems(prev => {
+      const updated = [...prev];
+      const current = { ...updated[index], ...changes } as any;
+      const nextQuantity = Math.max(1, Number(current.quantity) || 1);
+      const nextUnit = Number(current.unit_price) || 0;
+      const nextDiscount = Math.min(100, Math.max(0, Number(current.discount_percentage) || 0));
+      current.quantity = nextQuantity;
+      current.unit_price = nextUnit;
+      current.discount_percentage = nextDiscount;
+      current.total_price = Number((nextQuantity * nextUnit * (1 - (nextDiscount / 100))).toFixed(2));
+      updated[index] = current;
+      return updated;
+    });
+  };
+
+  const handleStaffChange = (index: number, staffId: string) => {
+    let nextCommission = selectedItems[index]?.commission_percentage;
+    if (!nextCommission || Number(nextCommission) <= 0) {
+      const staffRow = staff.find(s => (s as any).id === staffId) as any;
+      nextCommission = staffRow?.commission_rate || 0;
+    }
+    updateItem(index, { staff_id: staffId, commission_percentage: Number(nextCommission || 0) });
+  };
+
   const handleJobCardSelection = async (jobCardId: string) => {
     if (!jobCardId) return;
     
@@ -1028,13 +1054,75 @@ Thank you for your business!`;
                     <TableBody>
                       {selectedItems.map((item, idx) => (
                         <TableRow key={idx}>
-                          <TableCell>{item.description}</TableCell>
-                          <TableCell>{item.quantity}</TableCell>
-                          <TableCell>{symbol}{item.unit_price}</TableCell>
-                          <TableCell>{item.discount_percentage}%</TableCell>
-                          <TableCell>{staff.find(s => s.id === item.staff_id)?.full_name || '-'}</TableCell>
-                          <TableCell>{item.commission_percentage}%</TableCell>
-                          <TableCell>{symbol}{item.total_price}</TableCell>
+                          <TableCell>
+                            <Input 
+                              value={item.description || ''}
+                              onChange={(e) => updateItem(idx, { description: e.target.value })}
+                              className="h-9 text-sm"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input 
+                              type="number" 
+                              min="1"
+                              value={item.quantity}
+                              onChange={(e) => updateItem(idx, { quantity: parseInt(e.target.value || '1', 10) })}
+                              className="h-9 text-sm w-24"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <span className="text-slate-500 text-xs">{symbol}</span>
+                              <Input 
+                                type="number" 
+                                step="0.01"
+                                value={item.unit_price}
+                                onChange={(e) => updateItem(idx, { unit_price: parseFloat(e.target.value || '0') })}
+                                className="h-9 text-sm w-28"
+                              />
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Input 
+                                type="number" 
+                                min="0" 
+                                max="100"
+                                step="0.1"
+                                value={item.discount_percentage}
+                                onChange={(e) => updateItem(idx, { discount_percentage: parseFloat(e.target.value || '0') })}
+                                className="h-9 text-sm w-24"
+                              />
+                              <span className="text-slate-500 text-xs">%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Select value={item.staff_id || ''} onValueChange={(v) => handleStaffChange(idx, v)}>
+                              <SelectTrigger className="h-9 text-sm w-40">
+                                <SelectValue placeholder="Select staff" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
+                                {staff.map((s: any) => (
+                                  <SelectItem key={s.id} value={s.id} className="text-sm">{s.full_name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Input 
+                                type="number" 
+                                min="0" 
+                                max="100"
+                                step="0.1"
+                                value={item.commission_percentage}
+                                onChange={(e) => updateItem(idx, { commission_percentage: parseFloat(e.target.value || '0') })}
+                                className="h-9 text-sm w-24"
+                              />
+                              <span className="text-slate-500 text-xs">%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>{symbol}{Number(item.total_price || 0).toFixed(2)}</TableCell>
                           <TableCell>
                             <Button type="button" variant="ghost" size="sm" onClick={() => removeItemFromInvoice(idx)}>
                               <Trash2 className="w-4 h-4" />
