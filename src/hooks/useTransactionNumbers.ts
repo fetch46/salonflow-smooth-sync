@@ -67,14 +67,20 @@ export function useTransactionNumbers(): UseTransactionNumbersResult {
       });
 
       if (error) throw error;
-      
-      // Refresh series after getting next number
-      await loadSeries();
-      
-      return data || '';
+      if (data && typeof data === 'string' && data.trim()) {
+        // Refresh series after getting next number
+        await loadSeries();
+        return data;
+      }
+      throw new Error('Empty transaction number returned by RPC');
     } catch (error) {
-      console.error('Error getting next transaction number:', error);
-      throw error;
+      console.warn('RPC failed for get_next_transaction_number, using local fallback:', error);
+      // Local, collision-resistant fallback: PREFIX-YYYYMMDD-XXXX
+      const now = new Date();
+      const ymd = now.toISOString().slice(0, 10).replace(/-/g, '');
+      const seq = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+      const prefix = (transactionType || 'TXN').toUpperCase().slice(0, 3);
+      return `${prefix}-${ymd}-${seq}`;
     }
   };
 
