@@ -703,7 +703,7 @@ export async function getInvoicesWithFallback(supabase: any) {
     const { data, error } = await supabase
       .from('invoices')
       .select(`
-        id, invoice_number, client_id, issue_date, due_date, subtotal, tax_amount, total_amount, status, notes, location_id, jobcard_id, created_at, updated_at,
+        id, invoice_number, client_id, issue_date, due_date, subtotal, tax_amount, total_amount, status, notes, location_id, created_at, updated_at,
         client:client_id (id, full_name, email, phone)
       `)
       .order('created_at', { ascending: false });
@@ -725,9 +725,6 @@ export async function getInvoicesWithFallback(supabase: any) {
         status: inv.status,
         due_date: inv.due_date,
         payment_method: null,
-        notes: inv.notes,
-        jobcard_id: inv.jobcard_id || null,
-        jobcard_reference: inv.jobcard_reference || inv.jobcard_id || null,
         created_at: inv.created_at,
         updated_at: inv.updated_at,
         location_id: inv.location_id ?? null,
