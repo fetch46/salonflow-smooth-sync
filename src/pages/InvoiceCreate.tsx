@@ -565,7 +565,26 @@ export default function InvoiceCreate() {
       navigate('/invoices');
     } catch (e) {
       console.error('Invoice creation error:', e);
-      const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+      
+      // Extract meaningful error messages from PostgREST responses
+      let errorMessage = 'Unknown error';
+      if (e instanceof Error) {
+        errorMessage = e.message;
+        
+        // Parse PostgREST error details
+        if (errorMessage.includes('violates')) {
+          errorMessage = 'Database constraint violation - please check your data';
+        } else if (errorMessage.includes('does not exist')) {
+          errorMessage = 'Database schema mismatch - please contact support';
+        } else if (errorMessage.includes('duplicate key')) {
+          errorMessage = 'Invoice number already exists - please try again';
+        } else if (errorMessage.includes('permission denied') || errorMessage.includes('insufficient_privilege')) {
+          errorMessage = 'You do not have permission to create invoices';
+        } else if (errorMessage.includes('NetworkError') || errorMessage.includes('Failed to fetch')) {
+          errorMessage = 'Network connection error - please check your internet';
+        }
+      }
+      
       toast.error(`Failed to create invoice: ${errorMessage}`);
     }
   };

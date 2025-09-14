@@ -450,8 +450,28 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
     
     console.log('Creating invoice with data:', invoiceData);
     
-    // Build payloads for both possible schemas and try in order
-    // New schema (preferred): customer_* columns, no issue_date column
+    // Progressive fallback approach: try legacy-first with minimal fields
+    // Legacy minimal schema (most compatible)
+    const minimalPayload: any = {
+      invoice_number: invoiceData.invoice_number,
+      client_id: invoiceData.customer_id || invoiceData.client_id || null,
+      issue_date: invoiceData.issue_date || new Date().toISOString().split('T')[0],
+      due_date: invoiceData.due_date || null,
+      subtotal: invoiceData.subtotal ?? 0,
+      tax_amount: invoiceData.tax_amount ?? 0,
+      total_amount: invoiceData.total_amount ?? 0,
+      status: invoiceData.status || 'draft',
+      notes: invoiceData.notes || null
+    };
+
+    // Enhanced payload with additional fields
+    const enhancedPayload: any = {
+      ...minimalPayload,
+      organization_id: invoiceData.organization_id,
+      location_id: invoiceData.location_id || null,
+    };
+
+    // New schema payload with customer fields
     const newSchemaPayload: any = {
       invoice_number: invoiceData.invoice_number,
       customer_id: invoiceData.customer_id || invoiceData.client_id || null,
@@ -461,107 +481,51 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
       due_date: invoiceData.due_date || null,
       subtotal: invoiceData.subtotal ?? 0,
       tax_amount: invoiceData.tax_amount ?? 0,
-      discount_amount: invoiceData.discount_amount ?? 0,
-      total_amount: invoiceData.total_amount ?? 0,
-      status: invoiceData.status || 'draft',
-      payment_method: invoiceData.payment_method || null,
-      notes: invoiceData.notes || null,
-      location_id: invoiceData.location_id || null,
-      jobcard_id: invoiceData.jobcard_id || invoiceData.jobcard_reference || null,
-      jobcard_reference: invoiceData.jobcard_reference || invoiceData.jobcard_id || null,
-      organization_id: invoiceData.organization_id,
-    };
-
-    // Legacy schema: client_id and optional issue_date
-    const legacySchemaPayload: any = {
-      invoice_number: invoiceData.invoice_number,
-      client_id: invoiceData.customer_id || invoiceData.client_id || null,
-      issue_date: invoiceData.issue_date || new Date().toISOString().split('T')[0],
-      due_date: invoiceData.due_date || null,
-      subtotal: invoiceData.subtotal ?? 0,
-      tax_amount: invoiceData.tax_amount ?? 0,
       total_amount: invoiceData.total_amount ?? 0,
       status: invoiceData.status || 'draft',
       notes: invoiceData.notes || null,
-      location_id: invoiceData.location_id || null,
-      jobcard_id: invoiceData.jobcard_id || invoiceData.jobcard_reference || null,
-      jobcard_reference: invoiceData.jobcard_reference || invoiceData.jobcard_id || null,
       organization_id: invoiceData.organization_id,
+      location_id: invoiceData.location_id || null
     };
 
     let invoice: any = null;
-    // Attempt insert with new schema
-    try {
-      const { data, error } = await supabase
-        .from('invoices')
-        .insert([newSchemaPayload])
-        .select('id')
-        .single();
-      if (error) {
-        console.error('Error creating invoice with new schema:', error);
-        throw error;
-      }
-      invoice = data;
-    } catch (errNew: any) {
-      console.log('New schema failed, trying alternative approaches:', errNew.message);
-      // Retry removing unknown columns progressively (organization_id, location_id, jobcard_reference)
-      const lowered = String(errNew?.message || '').toLowerCase();
-      let retryPayload = { ...newSchemaPayload } as any;
-      const stripAndRetry = async (key: string) => {
-        delete retryPayload[key];
-        const { data, error } = await supabase
-          .from('invoices')
-          .insert([retryPayload])
-          .select('id')
-          .single();
-        if (error) throw error;
-        return data;
-      };
+    let lastError: any = null;
+
+    // Try strategies in order of preference
+    const strategies = [
+      { name: 'enhanced', payload: enhancedPayload },
+      { name: 'new_schema', payload: newSchemaPayload },
+      { name: 'minimal', payload: minimalPayload }
+    ];
+
+    for (const strategy of strategies) {
       try {
-        if (lowered.includes('organization_id') && lowered.includes('does not exist')) {
-          delete retryPayload.organization_id;
-        }
-        if (lowered.includes('jobcard_reference') && lowered.includes('does not exist')) {
-          delete retryPayload.jobcard_reference;
-        }
-        if (lowered.includes('location_id') && lowered.includes('does not exist')) {
-          delete retryPayload.location_id;
-        }
+        console.log(`Trying ${strategy.name} strategy for invoice creation`);
         const { data, error } = await supabase
           .from('invoices')
-          .insert([retryPayload])
+          .insert([strategy.payload])
           .select('id')
           .single();
-        if (error) throw error;
-        invoice = data;
-      } catch {
-        // Finally, attempt legacy schema (older columns)
-        try {
-          const { data, error } = await supabase
-            .from('invoices')
-            .insert([legacySchemaPayload])
-            .select('id')
-            .single();
-          if (error) throw error;
-          invoice = data;
-        } catch (errLegacy: any) {
-          // As a last resort, strip organization_id and location_id for legacy
-          const legacyRetry: any = { ...legacySchemaPayload };
-          delete legacyRetry.organization_id;
-          delete legacyRetry.location_id;
-          delete legacyRetry.jobcard_reference;
-          const { data, error } = await supabase
-            .from('invoices')
-            .insert([legacyRetry])
-            .select('id')
-            .single();
-          if (error) {
-            console.error('Final legacy retry failed:', error);
-            throw error;
-          }
-          invoice = data;
+          
+        if (error) {
+          console.error(`${strategy.name} strategy failed:`, error);
+          lastError = error;
+          continue;
         }
+        
+        invoice = data;
+        console.log(`Invoice created successfully with ${strategy.name} strategy, ID:`, invoice.id);
+        break;
+      } catch (err: any) {
+        console.error(`${strategy.name} strategy error:`, err);
+        lastError = err;
+        continue;
       }
+    }
+
+    if (!invoice?.id) {
+      console.error('All invoice creation strategies failed. Last error:', lastError);
+      throw lastError || new Error('Invoice creation failed - no strategy worked');
     }
 
     if (!invoice?.id) {
@@ -571,12 +535,17 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
     
     console.log('Invoice created successfully with ID:', invoice.id);
 
-    const itemsData = items.map((item: any) => ({
+    // Create invoice items with progressive fallback
+    const baseItemsData = items.map((item: any) => ({
       invoice_id: invoice.id,
       description: item.description,
       quantity: item.quantity,
       unit_price: item.unit_price,
-      total_price: item.total_price,
+      total_price: item.total_price
+    }));
+
+    const enhancedItemsData = items.map((item: any) => ({
+      ...baseItemsData.find(base => base.description === item.description),
       service_id: item.service_id || null,
       product_id: item.product_id || null,
       staff_id: item.staff_id || null,
@@ -587,11 +556,44 @@ export async function createInvoiceWithFallback(supabase: any, invoiceData: any,
         : null,
     }));
 
-    const { error: itemsError } = await supabase
-      .from('invoice_items')
-      .insert(itemsData);
+    let itemsInserted = false;
+    let itemsError: any = null;
 
-    if (itemsError) throw itemsError;
+    // Try enhanced items first, fall back to basic items
+    try {
+      const { error } = await supabase
+        .from('invoice_items')
+        .insert(enhancedItemsData);
+      
+      if (error) {
+        console.error('Enhanced items insert failed:', error);
+        itemsError = error;
+      } else {
+        itemsInserted = true;
+        console.log('Invoice items created with enhanced data');
+      }
+    } catch (err: any) {
+      console.error('Enhanced items insert exception:', err);
+      itemsError = err;
+    }
+
+    if (!itemsInserted) {
+      console.log('Trying basic items insert as fallback');
+      try {
+        const { error } = await supabase
+          .from('invoice_items')
+          .insert(baseItemsData);
+        
+        if (error) {
+          console.error('Basic items insert failed:', error);
+          throw error;
+        }
+        console.log('Invoice items created with basic data');
+      } catch (err: any) {
+        console.error('Basic items insert failed:', err);
+        throw err;
+      }
+    }
 
     return invoice;
   } catch (error: any) {
