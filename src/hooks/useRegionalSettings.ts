@@ -41,7 +41,7 @@ export function useRegionalSettings() {
   useEffect(() => {
     // Try to determine regional settings from organization
     if (organization?.settings) {
-      const orgSettings = organization.settings as any;
+      const orgSettings = (organization.settings as Record<string, any>) || {};
       let detectedSettings = { ...defaultSettings };
 
       // Check for country information in organization settings

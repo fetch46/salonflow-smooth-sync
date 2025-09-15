@@ -3,7 +3,7 @@ import { useSaas } from "@/lib/saas";
 
 export default function AppFooter() {
   const { systemSettings } = useSaas();
-  const appName = (systemSettings as any)?.app_name || 'AURA OS';
+  const appName = (systemSettings as Record<string, any>)?.app_name || 'AURA OS';
   return (
     <footer className="fixed bottom-0 inset-x-0 z-20 border-t backdrop-blur">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between text-xs sm:text-sm"

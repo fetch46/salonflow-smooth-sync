@@ -31,7 +31,7 @@ export default function ServiceCategoriesManager({ open, onOpenChange, organizat
     try {
       if (!organizationId) return;
       setLoading(true);
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("service_categories")
         .select("id, name, description, is_active")
         .eq("organization_id", organizationId)
@@ -57,7 +57,7 @@ export default function ServiceCategoriesManager({ open, onOpenChange, organizat
         return;
       }
       setLoading(true);
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("service_categories")
         .insert([{ name: newName.trim(), description: newDescription || null, organization_id: organizationId }]);
       if (error) throw error;
@@ -91,7 +91,7 @@ export default function ServiceCategoriesManager({ open, onOpenChange, organizat
         .eq("category", cat.name);
       if (svcErr) throw svcErr;
       // Update the category record
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("service_categories")
         .update({ name: trimmed })
         .eq("id", cat.id);
@@ -124,7 +124,7 @@ export default function ServiceCategoriesManager({ open, onOpenChange, organizat
         toast.error("Cannot delete: category is used by existing services");
         return;
       }
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("service_categories")
         .delete()
         .eq("id", cat.id);

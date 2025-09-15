@@ -30,7 +30,7 @@ export function ItemsSettings() {
         .single();
 
       if (orgData?.settings && typeof orgData.settings === 'object') {
-        const settings = orgData.settings as any;
+        const settings = (orgData.settings as Record<string, any>) || {};
         setAllowNegativeStock(settings.allow_negative_stock || false);
       }
 
@@ -50,7 +50,7 @@ export function ItemsSettings() {
         .eq("id", organization?.id)
         .single();
 
-      const settings = (currentSettings.data?.settings as any) || {};
+      const settings = (currentSettings.data?.settings as Record<string, any>) || {};
 
       const { error } = await supabase
         .from("organizations")

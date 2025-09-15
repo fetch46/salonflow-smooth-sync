@@ -35,7 +35,7 @@ export default function Accounts() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const { systemSettings } = useSaas();
-  const appName = (systemSettings as any)?.app_name || 'AURA OS';
+  const appName = (systemSettings as Record<string, any>)?.app_name || 'AURA OS';
   // Prefill search from query param for report drill-downs
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

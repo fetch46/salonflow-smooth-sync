@@ -68,7 +68,7 @@ export function AccountingSettings() {
         .single();
 
       if (orgData?.settings && typeof orgData.settings === 'object') {
-        const settings = orgData.settings as any;
+        const settings = (orgData.settings as Record<string, any>) || {};
         setTaxEnabled(settings.tax_enabled || false);
         setJobcardRequired(settings.jobcard_required_on_invoice || false);
         setPaymentMethodAccounts(settings.payment_method_accounts || []);
@@ -90,7 +90,7 @@ export function AccountingSettings() {
         .eq("id", organization?.id)
         .single();
 
-      const settings = (currentSettings.data?.settings as any) || {};
+      const settings = (currentSettings.data?.settings as Record<string, any>) || {};
 
       const { error } = await supabase
         .from("organizations")
@@ -120,7 +120,7 @@ export function AccountingSettings() {
         .eq("id", organization?.id)
         .single();
 
-      const settings = (currentSettings.data?.settings as any) || {};
+      const settings = (currentSettings.data?.settings as Record<string, any>) || {};
 
       const { error } = await supabase
         .from("organizations")
@@ -150,7 +150,7 @@ export function AccountingSettings() {
         .eq("id", organization?.id)
         .single();
 
-      const settings = (currentSettings.data?.settings as any) || {};
+      const settings = (currentSettings.data?.settings as Record<string, any>) || {};
       const currentAccounts = settings.payment_method_accounts || [];
       
       const updatedAccounts = currentAccounts.filter((pma: PaymentMethodAccount) => 

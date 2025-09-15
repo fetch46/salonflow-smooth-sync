@@ -4,7 +4,7 @@ import { useSaas } from "@/lib/saas";
 
 const SimpleDashboard = () => {
   const { organization, user, systemSettings } = useSaas();
-  const appName = (systemSettings as any)?.app_name || 'AURA OS';
+  const appName = (systemSettings as Record<string, any>)?.app_name || 'AURA OS';
 
   return (
     <div className="container mx-auto px-4 py-8">

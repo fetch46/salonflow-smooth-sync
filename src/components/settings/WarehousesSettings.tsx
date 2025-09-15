@@ -131,7 +131,7 @@ export function WarehousesSettings() {
         .single();
 
       if (orgData?.settings && typeof orgData.settings === 'object') {
-        const settings = orgData.settings as any;
+        const settings = (orgData.settings as Record<string, any>) || {};
         setDefaultPOSWarehouse(settings.default_pos_warehouse || "");
       }
 

@@ -127,7 +127,7 @@ export function LocationsSettings() {
         .single();
 
       if (orgData?.settings && typeof orgData.settings === 'object') {
-        const settings = orgData.settings as any;
+        const settings = (orgData.settings as Record<string, any>) || {};
         setDefaultAppointmentLocation(settings.default_appointment_location || "");
         setDefaultPOSLocation(settings.default_pos_location || "");
       }

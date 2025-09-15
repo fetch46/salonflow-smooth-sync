@@ -345,7 +345,7 @@ export const useOrganizationTaxRate = () => {
   const { organization } = useSaas()
 
   // Pull percent value and enabled flag from organization settings
-  const settings = (organization?.settings as any) || {}
+  const settings = (organization?.settings as Record<string, any>) || {}
   const rawRate = settings?.tax_rate_percent
   const parsedRate = typeof rawRate === 'number' ? rawRate : typeof rawRate === 'string' ? parseFloat(rawRate) : 0
   const safeRate = Number.isFinite(parsedRate) ? parsedRate : 0

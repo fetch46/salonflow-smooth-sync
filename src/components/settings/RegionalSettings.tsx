@@ -65,7 +65,7 @@ export function RegionalSettings() {
 
   useEffect(() => {
     if (organization?.settings) {
-      const settings = organization.settings as any;
+      const settings = (organization.settings as Record<string, any>) || {};
       if (settings.regional) {
         setFormats({
           currency: settings.regional.currency || 'USD',
@@ -97,10 +97,10 @@ export function RegionalSettings() {
       setLoading(true);
 
       // Update organization settings with regional formats
-      const currentSettings = organization.settings as any || {};
+      const currentSettings = (organization.settings as Record<string, any>) || {};
       const updatedSettings = {
         ...currentSettings,
-        regional: formats,
+        regional: formats as any, // Cast to any for Json compatibility
       };
 
       const { error } = await supabase
@@ -113,7 +113,7 @@ export function RegionalSettings() {
       // Update local state through the hook
       if (updateOrganization) {
         await updateOrganization(organization.id, {
-          settings: updatedSettings,
+          settings: updatedSettings as any, // Cast to any for Json compatibility
         });
       }
 
