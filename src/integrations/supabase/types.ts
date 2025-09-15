@@ -2997,42 +2997,67 @@ export type Database = {
       }
       staff_commissions: {
         Row: {
+          accrued_date: string | null
           commission_amount: number
+          commission_percentage: number | null
           commission_rate: number
           created_at: string
           gross_amount: number
           id: string
           invoice_id: string | null
+          invoice_item_id: string | null
           job_card_id: string | null
           job_card_service_id: string | null
+          paid_date: string | null
+          payment_reference: string | null
           service_id: string | null
           staff_id: string | null
+          status: string | null
         }
         Insert: {
+          accrued_date?: string | null
           commission_amount?: number
+          commission_percentage?: number | null
           commission_rate?: number
           created_at?: string
           gross_amount?: number
           id?: string
           invoice_id?: string | null
+          invoice_item_id?: string | null
           job_card_id?: string | null
           job_card_service_id?: string | null
+          paid_date?: string | null
+          payment_reference?: string | null
           service_id?: string | null
           staff_id?: string | null
+          status?: string | null
         }
         Update: {
+          accrued_date?: string | null
           commission_amount?: number
+          commission_percentage?: number | null
           commission_rate?: number
           created_at?: string
           gross_amount?: number
           id?: string
           invoice_id?: string | null
+          invoice_item_id?: string | null
           job_card_id?: string | null
           job_card_service_id?: string | null
+          paid_date?: string | null
+          payment_reference?: string | null
           service_id?: string | null
           staff_id?: string | null
+          status?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_staff_commissions_invoice_item"
+            columns: ["invoice_item_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "staff_commissions_invoice_id_fkey"
             columns: ["invoice_id"]

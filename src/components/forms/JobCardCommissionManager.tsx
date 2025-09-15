@@ -10,9 +10,13 @@ interface StaffCommission {
   staff_id: string;
   commission_percentage?: number;
   commission_amount: number;
-  status?: 'accrued' | 'paid';
+  status: 'accrued' | 'paid';
   accrued_date?: string;
   paid_date?: string;
+  invoice_id?: string;
+  invoice_item_id?: string;
+  job_card_id?: string;
+  payment_reference?: string;
   staff?: {
     full_name: string;
   };
@@ -29,7 +33,7 @@ export const JobCardCommissionManager: React.FC<JobCardCommissionManagerProps> =
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const loadCommissions = async () => {
+const loadCommissions = async () => {
     try {
       const { data, error } = await supabase
         .from('staff_commissions')
@@ -39,10 +43,11 @@ export const JobCardCommissionManager: React.FC<JobCardCommissionManagerProps> =
             full_name
           )
         `)
-        .eq('job_card_id', jobCardId);
+        .eq('job_card_id', jobCardId)
+        .order('accrued_date', { ascending: false });
 
       if (error) throw error;
-      setCommissions(data || []);
+      setCommissions((data as StaffCommission[]) || []);
     } catch (error) {
       console.error('Error loading commissions:', error);
       toast({
@@ -162,7 +167,7 @@ export const JobCardCommissionManager: React.FC<JobCardCommissionManagerProps> =
                     {commission.commission_percentage}% = ${commission.commission_amount.toFixed(2)}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Accrued: {new Date(commission.accrued_date).toLocaleDateString()}
+                    Accrued: {commission.accrued_date ? new Date(commission.accrued_date).toLocaleDateString() : 'N/A'}
                     {commission.paid_date && ` | Paid: ${new Date(commission.paid_date).toLocaleDateString()}`}
                   </p>
                 </div>

@@ -25,14 +25,8 @@ interface CommissionPayableData {
   staff_name: string;
   total_accrued: number;
   total_paid: number;
-  balance_payable: number;
-  commissions: Array<{
-    id: string;
-    commission_amount: number;
-    status: string;
-    accrued_date: string;
-    paid_date?: string;
-  }>;
+  balance: number;
+  status: 'pending' | 'paid';
 }
 
 export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = ({
@@ -52,101 +46,88 @@ export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = (
   const { format: formatMoney } = useOrganizationCurrency();
 
   const loadCommissionPayableData = async () => {
+    if (!startDate || !endDate) return;
+    
     setLoading(true);
     try {
-      // Get all staff commissions within date range
-      let commissionsQuery = supabase
+      let query = supabase
         .from('staff_commissions')
         .select(`
-          id,
           staff_id,
           commission_amount,
           status,
           accrued_date,
           paid_date,
-          staff!inner(full_name, organization_id)
-        `)
-        .gte('accrued_date', startDate)
-        .lte('accrued_date', endDate);
-
-      // Apply location filter if selected
-      if (locationFilter !== 'all') {
-        commissionsQuery = commissionsQuery.or(`
-          job_card_id.in.(${await getJobCardIdsForLocation(locationFilter)}),
-          invoice_id.in.(${await getInvoiceIdsForLocation(locationFilter)})
+          commission_percentage,
+          invoice_id,
+          job_card_id,
+          staff:staff_id (
+            full_name
+          )
         `);
+
+      // Add date filter based on accrued_date
+      query = query.gte('accrued_date', startDate);
+      query = query.lte('accrued_date', endDate);
+
+      // Add location filter if specified
+      if (locationFilter && locationFilter !== 'all') {
+        // Get job card IDs for the location
+        const jobCardIds = await getJobCardIdsForLocation(locationFilter);
+        const invoiceIds = await getInvoiceIdsForLocation(locationFilter);
+        
+        if (jobCardIds.length > 0 || invoiceIds.length > 0) {
+          // Apply location filter
+          query = query.or(`job_card_id.in.(${jobCardIds.join(',')}),invoice_id.in.(${invoiceIds.join(',')})`);
+        } else {
+          // No data for this location
+          setCommissionData([]);
+          setLoading(false);
+          return;
+        }
       }
 
-      const { data: commissions, error } = await commissionsQuery;
+      const { data, error } = await query;
       if (error) throw error;
 
       // Group by staff and calculate totals
-      const staffMap = new Map<string, CommissionPayableData>();
-      const commissionIdToStaffId = new Map<string, string>();
-
-      (commissions || []).forEach((commission: any) => {
+      const groupedData: { [staffId: string]: CommissionPayableData } = {};
+      
+      data?.forEach((commission) => {
         const staffId = commission.staff_id;
         const staffName = commission.staff?.full_name || 'Unknown Staff';
         
-        if (!staffMap.has(staffId)) {
-          staffMap.set(staffId, {
+        if (!groupedData[staffId]) {
+          groupedData[staffId] = {
             staff_id: staffId,
             staff_name: staffName,
             total_accrued: 0,
             total_paid: 0,
-            balance_payable: 0,
-            commissions: []
-          });
+            balance: 0,
+            status: 'pending'
+          };
         }
-
-        const staffData = staffMap.get(staffId)!;
-        const amount = Number(commission.commission_amount || 0);
         
-        staffData.commissions.push({
-          id: commission.id,
-          commission_amount: amount,
-          status: commission.status,
-          accrued_date: commission.accrued_date,
-          paid_date: commission.paid_date
-        });
-
-        staffData.total_accrued += amount;
-        commissionIdToStaffId.set(commission.id, staffId);
+        // Add to total accrued for all commissions
+        groupedData[staffId].total_accrued += commission.commission_amount;
+        
+        // Add to total paid only for paid commissions
+        if (commission.status === 'paid') {
+          groupedData[staffId].total_paid += commission.commission_amount;
+        }
       });
 
-      // Fetch payments posted to Commission Payable (debits) for these commissions
-      const commissionIds = Array.from(commissionIdToStaffId.keys());
-      let staffPaidTotals = new Map<string, number>();
-      if (commissionIds.length > 0) {
-        const { data: paymentTxns, error: paymentsError } = await supabase
-          .from('account_transactions')
-          .select('reference_id, debit_amount, reference_type')
-          .eq('reference_type', 'commission_payment')
-          .gt('debit_amount', 0)
-          .in('reference_id', commissionIds);
-
-        if (paymentsError) throw paymentsError;
-
-        (paymentTxns || []).forEach((txn: any) => {
-          const commissionId = txn.reference_id as string;
-          const staffId = commissionIdToStaffId.get(commissionId);
-          if (!staffId) return;
-          const paid = Number(txn.debit_amount || 0);
-          staffPaidTotals.set(staffId, (staffPaidTotals.get(staffId) || 0) + paid);
-        });
-      }
-
-      // Apply paid totals and calculate balance payable
-      const finalData = Array.from(staffMap.values()).map(staff => {
-        const totalPaid = staffPaidTotals.get(staff.staff_id) || 0;
+      // Calculate balances and determine status
+      const processedData = Object.values(groupedData).map(item => {
+        const balance = item.total_accrued - item.total_paid;
         return {
-          ...staff,
-          total_paid: totalPaid,
-          balance_payable: staff.total_accrued - totalPaid
+          ...item,
+          balance,
+          status: (balance <= 0 ? 'paid' : 'pending') as 'paid' | 'pending'
         };
       });
 
-      setCommissionData(finalData);
+      setCommissionData(processedData);
     } catch (error) {
       console.error('Error loading commission payable data:', error);
     } finally {
@@ -154,27 +135,27 @@ export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = (
     }
   };
 
-  const getJobCardIdsForLocation = async (locationId: string): Promise<string> => {
+  const getJobCardIdsForLocation = async (locationId: string): Promise<string[]> => {
     try {
       const { data } = await supabase
         .from('job_cards')
         .select('id')
         .eq('location_id', locationId);
-      return (data || []).map(jc => jc.id).join(',') || '';
+      return (data || []).map(jc => jc.id);
     } catch {
-      return '';
+      return [];
     }
   };
 
-  const getInvoiceIdsForLocation = async (locationId: string): Promise<string> => {
+  const getInvoiceIdsForLocation = async (locationId: string): Promise<string[]> => {
     try {
       const { data } = await supabase
         .from('invoices')
         .select('id')
         .eq('location_id', locationId);
-      return (data || []).map(inv => inv.id).join(',') || '';
+      return (data || []).map(inv => inv.id);
     } catch {
-      return '';
+      return [];
     }
   };
 
@@ -189,8 +170,8 @@ export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = (
   // Filter data based on selected filters
   const filteredData = commissionData.filter(staff => {
     if (selectedStaff !== 'all' && staff.staff_id !== selectedStaff) return false;
-    if (statusFilter === 'outstanding' && staff.balance_payable <= 0) return false;
-    if (statusFilter === 'paid' && staff.balance_payable > 0) return false;
+    if (statusFilter === 'outstanding' && staff.balance <= 0) return false;
+    if (statusFilter === 'paid' && staff.balance > 0) return false;
     return true;
   });
 
@@ -199,7 +180,7 @@ export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = (
     (acc, staff) => ({
       totalAccrued: acc.totalAccrued + staff.total_accrued,
       totalPaid: acc.totalPaid + staff.total_paid,
-      totalBalance: acc.totalBalance + staff.balance_payable,
+      totalBalance: acc.totalBalance + staff.balance,
     }),
     { totalAccrued: 0, totalPaid: 0, totalBalance: 0 }
   );
@@ -366,13 +347,13 @@ export const CommissionPayableReport: React.FC<CommissionPayableReportProps> = (
                       {formatMoney(staff.total_paid, { decimals: 2 })}
                     </TableCell>
                     <TableCell className="text-right">
-                      <span className={staff.balance_payable > 0 ? 'font-semibold text-orange-600' : 'text-green-600'}>
-                        {formatMoney(staff.balance_payable, { decimals: 2 })}
+                      <span className={staff.balance > 0 ? 'font-semibold text-orange-600' : 'text-green-600'}>
+                        {formatMoney(staff.balance, { decimals: 2 })}
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={staff.balance_payable > 0 ? 'destructive' : 'default'}>
-                        {staff.balance_payable > 0 ? 'Outstanding' : 'Paid in Full'}
+                      <Badge variant={staff.balance > 0 ? 'destructive' : 'default'}>
+                        {staff.balance > 0 ? 'Outstanding' : 'Paid in Full'}
                       </Badge>
                     </TableCell>
                   </TableRow>
