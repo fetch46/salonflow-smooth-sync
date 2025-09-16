@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Minus, BookOpen, RefreshCw } from "lucide-react";
+import { Plus, Minus, BookOpen, RefreshCw, Calculator } from "lucide-react";
 import { useSaas } from "@/lib/saas";
 import { supabase } from "@/integrations/supabase/client";
 import { postMultiLineEntry } from "@/utils/ledger";
+import { JournalsList } from '@/components/journals/JournalsList';
 
 interface AccountOption {
   id: string;
@@ -322,12 +323,13 @@ export default function Journal() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base sm:text-lg">Looking for Trial Balance?</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Calculator className="h-5 w-5" />
+            Posted Journals
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-sm text-slate-600">
-            Trial Balance has moved to Reports. Go to Reports → Trial Balance to view debits and credits by account.
-          </div>
+          <JournalsList />
         </CardContent>
       </Card>
     </div>

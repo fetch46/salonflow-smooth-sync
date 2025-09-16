@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useSaas } from "@/lib/saas";
 import { postExpensePaymentWithAccount } from "@/utils/ledger";
 import ExpenseSummary from "@/components/expense/ExpenseSummary";
+import { ExpenseLineItems } from "@/components/expense/ExpenseLineItems";
+import { Switch } from "@/components/ui/switch";
 
 interface ExpenseRecord {
   id: string;
@@ -66,6 +68,10 @@ export default function ExpenseForm() {
     location_id: "",
   });
   const [paidFromAccountId, setPaidFromAccountId] = useState<string>("");
+  const [isItemized, setIsItemized] = useState(false);
+  const [expenseLines, setExpenseLines] = useState([
+    { account_id: '', description: '', amount: 0 }
+  ]);
 
   const generateExpenseNumber = () => `EXP-${Date.now().toString().slice(-6)}`;
 
@@ -305,47 +311,67 @@ export default function ExpenseForm() {
                 <Input id="description" placeholder="Expense description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} required />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="amount">Amount</Label>
-                  <Input id="amount" type="number" step="0.01" placeholder="0.00" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} required />
+              <div className="flex items-center space-x-2">
+                <Switch id="itemize" checked={isItemized} onCheckedChange={setIsItemized} />
+                <Label htmlFor="itemize">Itemize</Label>
+              </div>
+
+              {!isItemized ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="amount">Amount</Label>
+                    <Input id="amount" type="number" step="0.01" placeholder="0.00" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="expense_date">Expense Date</Label>
+                    <Input id="expense_date" type="date" value={formData.expense_date} onChange={(e) => setFormData({ ...formData, expense_date: e.target.value })} required />
+                  </div>
                 </div>
+              ) : (
                 <div className="space-y-2">
                   <Label htmlFor="expense_date">Expense Date</Label>
                   <Input id="expense_date" type="date" value={formData.expense_date} onChange={(e) => setFormData({ ...formData, expense_date: e.target.value })} required />
                 </div>
-              </div>
+              )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="category">Account</Label>
-                  <Select value={formData.category} onValueChange={(value) => { const acc = expenseAccounts.find(a => a.account_name === value || a.id === value); setFormData({ ...formData, category: acc?.account_name || '' }); }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select expense account" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {expenseAccounts.map(acc => (
-                        <SelectItem key={acc.id} value={acc.account_name || acc.id}>{acc.account_code} - {acc.account_name || 'Unnamed Account'}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              {isItemized ? (
+                <ExpenseLineItems 
+                  lines={expenseLines}
+                  onLinesChange={setExpenseLines}
+                  accounts={expenseAccounts}
+                />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Account</Label>
+                    <Select value={formData.category} onValueChange={(value) => { const acc = expenseAccounts.find(a => a.account_name === value || a.id === value); setFormData({ ...formData, category: acc?.account_name || '' }); }}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select expense account" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {expenseAccounts.map(acc => (
+                          <SelectItem key={acc.id} value={acc.account_name || acc.id}>{acc.account_code} - {acc.account_name || 'Unnamed Account'}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="payment_method">Payment Method</Label>
+                    <Select value={formData.payment_method} onValueChange={(value) => setFormData({ ...formData, payment_method: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select payment method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Cash">Cash</SelectItem>
+                        <SelectItem value="Credit Card">Credit Card</SelectItem>
+                        <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                        <SelectItem value="Check">Check</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="payment_method">Payment Method</Label>
-                  <Select value={formData.payment_method} onValueChange={(value) => setFormData({ ...formData, payment_method: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select payment method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Cash">Cash</SelectItem>
-                      <SelectItem value="Credit Card">Credit Card</SelectItem>
-                      <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-                      <SelectItem value="Check">Check</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">

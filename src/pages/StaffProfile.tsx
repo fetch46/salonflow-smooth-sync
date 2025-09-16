@@ -98,37 +98,39 @@ export default function StaffProfile() {
     if (!id) return;
     setLoading(true);
     try {
-      // Load commission entries from job_card_services for this staff within date range
-      const { data: jcs, error: jcsErr } = await supabase
-        .from('job_card_services')
+      // Load commission data from staff_commissions table (linked to invoices)
+      const { data: commissions, error: commErr } = await supabase
+        .from('staff_commissions')
         .select(`
-          id, created_at, quantity, unit_price, commission_percentage,
-          services:service_id ( id, name, commission_percentage ),
-          job_cards:job_card_id ( id, created_at )
+          id, commission_amount, commission_percentage, status, accrued_date,
+          invoice_items!inner(
+            id, description, unit_price, quantity, total_price,
+            invoices!inner(
+              id, invoice_number, issue_date, status
+            ),
+            services(id, name)
+          )
         `)
         .eq('staff_id', id)
-        .gte('created_at', startDate)
-        .lte('created_at', endDate);
-      if (jcsErr) throw jcsErr;
+        .gte('accrued_date', startDate)
+        .lte('accrued_date', endDate);
+      
+      if (commErr) throw commErr;
 
-      const normalized = (jcs || []).map((row: any) => {
-        const qty = Number(row.quantity || 1);
-        const unit = Number(row.unit_price || 0);
-        const gross = qty * unit;
-        // Commission rate preference: explicit row.commission_percentage -> service default -> 0
-        const rate = typeof row.commission_percentage === 'number' && !isNaN(row.commission_percentage)
-          ? Number(row.commission_percentage)
-          : (typeof row.services?.commission_percentage === 'number' && !isNaN(row.services?.commission_percentage)
-            ? Number(row.services?.commission_percentage)
-            : 0);
-        const commission = Number(((gross * rate) / 100).toFixed(2));
+      const normalized = (commissions || []).map((row: any) => {
+        const invoiceItem = row.invoice_items;
+        const invoice = invoiceItem?.invoices;
+        const service = invoiceItem?.services;
+        
         return {
           id: row.id,
-          date: (row.created_at || (Array.isArray(row.job_cards) ? row.job_cards[0]?.created_at : row.job_cards?.created_at)) || null,
-          service: (Array.isArray(row.services) ? row.services[0] : row.services)?.name || 'Service',
-          gross,
-          rate,
-          commission,
+          date: row.accrued_date || invoice?.issue_date || null,
+          service: service?.name || invoiceItem?.description || 'Service',
+          gross: Number(invoiceItem?.total_price || 0),
+          rate: Number(row.commission_percentage || 0),
+          commission: Number(row.commission_amount || 0),
+          status: row.status,
+          invoice_number: invoice?.invoice_number
         };
       });
       setCommissionRows(normalized);
