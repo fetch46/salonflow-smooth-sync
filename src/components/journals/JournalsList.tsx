@@ -27,39 +27,14 @@ export function JournalsList() {
   const loadJournals = async () => {
     try {
       setLoading(true);
-      // For now, use account_transactions to simulate journal entries
       const { data, error } = await supabase
-        .from('account_transactions')
-        .select('id, transaction_date as entry_date, description as memo, debit_amount, credit_amount, created_at')
-        .order('transaction_date', { ascending: false })
+        .from('journal_entries')
+        .select('*')
+        .order('entry_date', { ascending: false })
         .limit(50);
       
       if (error) throw error;
-      
-      // Group by transaction date and description to simulate journal entries
-      const groupedEntries = (data || []).reduce((acc: any[], transaction: any) => {
-        const existing = acc.find(entry => 
-          entry.entry_date === transaction.entry_date && 
-          entry.memo === transaction.memo
-        );
-        
-        if (existing) {
-          existing.total_debit += transaction.debit_amount;
-          existing.total_credit += transaction.credit_amount;
-        } else {
-          acc.push({
-            id: transaction.id,
-            entry_date: transaction.entry_date,
-            memo: transaction.memo,
-            total_debit: transaction.debit_amount,
-            total_credit: transaction.credit_amount,
-            created_at: transaction.created_at
-          });
-        }
-        return acc;
-      }, []);
-      
-      setJournals(groupedEntries);
+      setJournals(data || []);
     } catch (err) {
       console.error('Failed to load journals:', err);
       toast({ title: 'Error', description: 'Failed to load journal entries', variant: 'destructive' });
@@ -92,8 +67,15 @@ export function JournalsList() {
     if (!confirm('Are you sure you want to delete this journal entry? This action cannot be undone.')) return;
     
     try {
-      // For now, just show a message that this feature requires proper journal entry table
-      toast({ title: 'Feature Unavailable', description: 'Delete functionality requires proper journal entry structure' });
+      const { error } = await supabase
+        .from('journal_entries')
+        .delete()
+        .eq('id', journalId);
+      
+      if (error) throw error;
+      
+      toast({ title: 'Success', description: 'Journal entry deleted successfully' });
+      loadJournals();
     } catch (err) {
       console.error('Failed to delete journal:', err);
       toast({ title: 'Error', description: 'Failed to delete journal entry', variant: 'destructive' });

@@ -36,6 +36,7 @@ export default function Journal() {
   const [loadingAccounts, setLoadingAccounts] = useState<boolean>(false);
   const [posting, setPosting] = useState<boolean>(false);
   const [search, setSearch] = useState<string>("");
+  const [refreshKey, setRefreshKey] = useState<number>(0);
 
   // Replace server-based account loading with Supabase chart of accounts
   const { organization } = useSaas();
@@ -153,6 +154,7 @@ export default function Journal() {
       }
       setPosting(true);
       const success = await postMultiLineEntry({
+        organizationId: organization?.id,
         date,
         description: memo || undefined,
         referenceType: 'manual_journal',
@@ -172,6 +174,8 @@ export default function Journal() {
         { accountId: "", description: "", debit: "0.00", credit: "0.00" },
         { accountId: "", description: "", debit: "0.00", credit: "0.00" },
       ]);
+      // Refresh the journals list
+      setRefreshKey(prev => prev + 1);
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message || "Failed to post entry");
@@ -329,7 +333,7 @@ export default function Journal() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <JournalsList />
+          <JournalsList key={refreshKey} />
         </CardContent>
       </Card>
     </div>

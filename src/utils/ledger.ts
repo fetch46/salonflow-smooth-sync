@@ -685,6 +685,7 @@ export type MultiLineEntry = {
 };
 
 export async function postMultiLineEntry(opts: {
+  organizationId?: string;
   date?: string;
   description?: string;
   lines: MultiLineEntry[];
@@ -753,6 +754,7 @@ export async function postSaleCOGSAndInventory(opts: {
     if (!invAccId || !cogsAccId) return false;
 
     return await postMultiLineEntry({
+      organizationId,
       date,
       description: "COGS posting",
       referenceType: "sale_cogs",
@@ -805,6 +807,7 @@ export async function postPurchaseInventoryCapitalization(opts: {
     if (!creditAccId) return false;
 
     return await postMultiLineEntry({
+      organizationId,
       date,
       description: "Inventory capitalization",
       referenceType: "purchase_receive",

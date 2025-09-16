@@ -22,6 +22,7 @@ export type Database = {
           debit_amount: number
           description: string | null
           id: string
+          journal_entry_id: string | null
           location_id: string | null
           reference_id: string | null
           reference_type: string | null
@@ -34,6 +35,7 @@ export type Database = {
           debit_amount?: number
           description?: string | null
           id?: string
+          journal_entry_id?: string | null
           location_id?: string | null
           reference_id?: string | null
           reference_type?: string | null
@@ -46,6 +48,7 @@ export type Database = {
           debit_amount?: number
           description?: string | null
           id?: string
+          journal_entry_id?: string | null
           location_id?: string | null
           reference_id?: string | null
           reference_type?: string | null
@@ -57,6 +60,13 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_transactions_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
             referencedColumns: ["id"]
           },
           {
@@ -1901,6 +1911,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      journal_entries: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          entry_date: string
+          id: string
+          memo: string | null
+          organization_id: string
+          reference_id: string | null
+          reference_type: string | null
+          total_credit: number
+          total_debit: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          entry_date: string
+          id?: string
+          memo?: string | null
+          organization_id: string
+          reference_id?: string | null
+          reference_type?: string | null
+          total_credit?: number
+          total_debit?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          entry_date?: string
+          id?: string
+          memo?: string | null
+          organization_id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          total_credit?: number
+          total_debit?: number
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       landing_settings: {
         Row: {
