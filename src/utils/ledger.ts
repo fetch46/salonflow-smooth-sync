@@ -692,9 +692,42 @@ export async function postMultiLineEntry(opts: {
   referenceType?: string;
   referenceId?: string;
 }): Promise<boolean> {
-  const { date, description, lines, referenceType, referenceId } = opts;
+  const { organizationId, date, description, lines, referenceType, referenceId } = opts;
   try {
     const txDate = date || new Date().toISOString().slice(0, 10);
+    
+    // Calculate totals for validation
+    const totalDebit = lines.reduce((sum, l) => sum + Number(l.debit || 0), 0);
+    const totalCredit = lines.reduce((sum, l) => sum + Number(l.credit || 0), 0);
+    const total = totalDebit - totalCredit;
+    
+    if (Math.abs(total) > 0.0001) {
+      console.warn("Unbalanced multi-line entry", { total, totalDebit, totalCredit });
+      return false;
+    }
+
+    // Create journal entry header if organizationId is provided
+    let journalEntryId: string | null = null;
+    if (organizationId) {
+      const { data: journalEntry, error: journalError } = await supabase
+        .from("journal_entries")
+        .insert({
+          organization_id: organizationId,
+          entry_date: txDate,
+          memo: description || null,
+          total_debit: totalDebit,
+          total_credit: totalCredit,
+          reference_type: referenceType || 'manual_journal',
+          reference_id: referenceId || null,
+        })
+        .select('id')
+        .single();
+      
+      if (journalError) throw journalError;
+      journalEntryId = journalEntry.id;
+    }
+    
+    // Create account transaction rows
     const rows = lines.map((l) => ({
       account_id: l.accountId,
       transaction_date: txDate,
@@ -704,12 +737,9 @@ export async function postMultiLineEntry(opts: {
       reference_type: referenceType || null,
       reference_id: referenceId || null,
       location_id: l.locationId || null,
+      journal_entry_id: journalEntryId,
     }));
-    const total = rows.reduce((s, r) => s + Number(r.debit_amount) - Number(r.credit_amount), 0);
-    if (Math.abs(total) > 0.0001) {
-      console.warn("Unbalanced multi-line entry", { total });
-      return false;
-    }
+    
     const { error } = await supabase.from("account_transactions").insert(rows);
     if (error) throw error;
     return true;

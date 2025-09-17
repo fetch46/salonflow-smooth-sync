@@ -22,6 +22,13 @@ export default function Journal() {
     setRefreshKey(prev => prev + 1);
   };
 
+  const handleOpenModal = () => {
+    if (!organization?.id) {
+      console.error('No organization found');
+      return;
+    }
+    setModalOpen(true);
+  };
 
   return (
     <div className="flex-1 space-y-6 p-6 bg-gradient-to-br from-background to-muted/20 min-h-screen">
@@ -35,7 +42,7 @@ export default function Journal() {
             <p className="text-muted-foreground">View and manage posted journal entries</p>
           </div>
         </div>
-        <Button onClick={() => setModalOpen(true)}>
+        <Button onClick={handleOpenModal}>
           <Plus className="w-4 h-4 mr-2" />
           New Journal Entry
         </Button>

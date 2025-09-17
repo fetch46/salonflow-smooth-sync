@@ -1580,41 +1580,49 @@ function StepProductsMaterials({
                   const kits = kitsByService[svc.id] || [];
                   return (
                     <TabsContent key={svc.id} value={svc.id} className="space-y-4">
-                      {kits.map((kit) => {
-                        const quantity = productsUsed[kit.good_id] || kit.default_quantity || 0;
-                        const totalItemCost = quantity * (kit.inventory_items.cost_price || 0);
-                        const availableQty = inventoryByItemId[kit.good_id] ?? 0;
-                        return (
-                          <div key={kit.id} className="border border-border rounded-lg p-4 bg-card">
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                    <Package className="w-5 h-5 text-green-600" />
-                                  </div>
-                                  <div>
-                                    <div className="font-medium text-slate-900">{kit.inventory_items.name}</div>
-                                    <div className="text-sm text-slate-600">
-                                      {kit.inventory_items.type} • {formatMoney(kit.inventory_items.cost_price)} per {kit.inventory_items.unit || 'unit'}
+                      <div className="overflow-hidden border border-border rounded-lg">
+                        <table className="w-full">
+                          <thead className="bg-muted/50">
+                            <tr>
+                              <th className="text-left p-3 font-medium text-sm text-muted-foreground">Item</th>
+                              <th className="text-left p-3 font-medium text-sm text-muted-foreground">Type</th>
+                              <th className="text-left p-3 font-medium text-sm text-muted-foreground">Unit</th>
+                              <th className="text-right p-3 font-medium text-sm text-muted-foreground">Default Qty</th>
+                              <th className="text-right p-3 font-medium text-sm text-muted-foreground">Available</th>
+                              <th className="text-right p-3 font-medium text-sm text-muted-foreground">Quantity Used</th>
+                              <th className="text-right p-3 font-medium text-sm text-muted-foreground">Unit Cost</th>
+                              <th className="text-right p-3 font-medium text-sm text-muted-foreground">Total Cost</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {kits.map((kit, kitIndex) => {
+                              const quantity = productsUsed[kit.good_id] || kit.default_quantity || 0;
+                              const totalItemCost = quantity * (kit.inventory_items.cost_price || 0);
+                              const availableQty = inventoryByItemId[kit.good_id] ?? 0;
+                              return (
+                                <tr key={kit.id} className={kitIndex % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                                  <td className="p-3">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                                        <Package className="w-4 h-4 text-green-600" />
+                                      </div>
+                                      <div className="font-medium text-foreground">{kit.inventory_items.name}</div>
                                     </div>
-                                  </div>
-                                </div>
-                                <div className="mt-4 grid grid-cols-3 gap-4">
-                                  <div>
-                                    <Label className="text-sm text-slate-600">Default Quantity</Label>
-                                    <div className="text-sm font-medium">{kit.default_quantity}</div>
-                                  </div>
-                                  <div>
-                                    <Label className="text-sm text-slate-600">Available</Label>
-                                    <div className={`text-sm font-medium ${availableQty <= 0 ? 'text-red-600' : 'text-emerald-600'}`}>{availableQty}</div>
-                                  </div>
-                                  <div>
-                                    <Label className="text-sm text-slate-600">Quantity Used</Label>
-                                    <div className="flex items-center gap-2 mt-1">
+                                  </td>
+                                  <td className="p-3 text-sm text-muted-foreground">{kit.inventory_items.type}</td>
+                                  <td className="p-3 text-sm text-muted-foreground">{kit.inventory_items.unit || 'unit'}</td>
+                                  <td className="p-3 text-right text-sm text-foreground">{kit.default_quantity}</td>
+                                  <td className="p-3 text-right">
+                                    <span className={`text-sm font-medium ${availableQty <= 0 ? 'text-destructive' : 'text-emerald-600'}`}>
+                                      {availableQty}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 text-right">
+                                    <div className="flex items-center justify-end gap-1">
                                       <Button
                                         variant="outline"
                                         size="icon"
-                                        className="h-8 w-8"
+                                        className="h-7 w-7"
                                         onClick={() => onQuantityChange(kit.good_id, Math.max(0, quantity - 1))}
                                       >
                                         <Minus className="w-3 h-3" />
@@ -1625,30 +1633,26 @@ function StepProductsMaterials({
                                         step="0.1"
                                         value={quantity}
                                         onChange={(e) => onQuantityChange(kit.good_id, parseFloat(e.target.value) || 0)}
-                                        className="w-20 text-center"
+                                        className="w-16 text-center text-sm h-7"
                                       />
                                       <Button
                                         variant="outline"
                                         size="icon"
-                                        className="h-8 w-8"
+                                        className="h-7 w-7"
                                         onClick={() => onQuantityChange(kit.good_id, quantity + 1)}
                                       >
                                         <Plus className="w-3 h-3" />
                                       </Button>
                                     </div>
-                                  </div>
-                                  <div>
-                                    <Label className="text-sm text-slate-600">Total Cost</Label>
-                                    <div className="text-sm font-medium text-green-600">
-                                      {formatMoney(totalItemCost)}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                                  </td>
+                                  <td className="p-3 text-right text-sm text-foreground">{formatMoney(kit.inventory_items.cost_price)}</td>
+                                  <td className="p-3 text-right text-sm font-medium text-green-600">{formatMoney(totalItemCost)}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </TabsContent>
                   );
                 })}
@@ -1660,77 +1664,79 @@ function StepProductsMaterials({
                   if (kits.length === 0) return null;
                   return (
                     <div key={svc.id} className="space-y-4">
-                      <div className="text-base font-semibold text-slate-900">{svc.name}</div>
-                      <div className="space-y-4">
-                        {kits.map((kit) => {
-                          const quantity = productsUsed[kit.good_id] || kit.default_quantity || 0;
-                          const totalItemCost = quantity * (kit.inventory_items.cost_price || 0);
-                          const availableQty = inventoryByItemId[kit.good_id] ?? 0;
-                          return (
-                            <div key={kit.id} className="border border-border rounded-lg p-4 bg-card">
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                      <Package className="w-5 h-5 text-green-600" />
-                                    </div>
-                                    <div>
-                                      <div className="font-medium text-slate-900">{kit.inventory_items.name}</div>
-                                      <div className="text-sm text-slate-600">
-                                        {kit.inventory_items.type} • {formatMoney(kit.inventory_items.cost_price)} per {kit.inventory_items.unit || 'unit'}
+                      <div className="text-base font-semibold text-foreground">{svc.name}</div>
+                      <div className="overflow-hidden border border-border rounded-lg">
+                        <table className="w-full">
+                          <thead className="bg-muted/50">
+                            <tr>
+                              <th className="text-left p-3 font-medium text-sm text-muted-foreground">Item</th>
+                              <th className="text-left p-3 font-medium text-sm text-muted-foreground">Type</th>
+                              <th className="text-left p-3 font-medium text-sm text-muted-foreground">Unit</th>
+                              <th className="text-right p-3 font-medium text-sm text-muted-foreground">Default Qty</th>
+                              <th className="text-right p-3 font-medium text-sm text-muted-foreground">Available</th>
+                              <th className="text-right p-3 font-medium text-sm text-muted-foreground">Quantity Used</th>
+                              <th className="text-right p-3 font-medium text-sm text-muted-foreground">Unit Cost</th>
+                              <th className="text-right p-3 font-medium text-sm text-muted-foreground">Total Cost</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {kits.map((kit, kitIndex) => {
+                              const quantity = productsUsed[kit.good_id] || kit.default_quantity || 0;
+                              const totalItemCost = quantity * (kit.inventory_items.cost_price || 0);
+                              const availableQty = inventoryByItemId[kit.good_id] ?? 0;
+                              return (
+                                <tr key={kit.id} className={kitIndex % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                                  <td className="p-3">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                                        <Package className="w-4 h-4 text-green-600" />
                                       </div>
+                                      <div className="font-medium text-foreground">{kit.inventory_items.name}</div>
                                     </div>
-                                  </div>
-                                  <div className="mt-4 grid grid-cols-3 gap-4">
-                                    <div>
-                                      <Label className="text-sm text-slate-600">Default Quantity</Label>
-                                      <div className="text-sm font-medium">{kit.default_quantity}</div>
+                                  </td>
+                                  <td className="p-3 text-sm text-muted-foreground">{kit.inventory_items.type}</td>
+                                  <td className="p-3 text-sm text-muted-foreground">{kit.inventory_items.unit || 'unit'}</td>
+                                  <td className="p-3 text-right text-sm text-foreground">{kit.default_quantity}</td>
+                                  <td className="p-3 text-right">
+                                    <span className={`text-sm font-medium ${availableQty <= 0 ? 'text-destructive' : 'text-emerald-600'}`}>
+                                      {availableQty}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 text-right">
+                                    <div className="flex items-center justify-end gap-1">
+                                      <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() => onQuantityChange(kit.good_id, Math.max(0, quantity - 1))}
+                                      >
+                                        <Minus className="w-3 h-3" />
+                                      </Button>
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        step="0.1"
+                                        value={quantity}
+                                        onChange={(e) => onQuantityChange(kit.good_id, parseFloat(e.target.value) || 0)}
+                                        className="w-16 text-center text-sm h-7"
+                                      />
+                                      <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() => onQuantityChange(kit.good_id, quantity + 1)}
+                                      >
+                                        <Plus className="w-3 h-3" />
+                                      </Button>
                                     </div>
-                                    <div>
-                                      <Label className="text-sm text-slate-600">Available</Label>
-                                      <div className={`text-sm font-medium ${availableQty <= 0 ? 'text-red-600' : 'text-emerald-600'}`}>{availableQty}</div>
-                                    </div>
-                                    <div>
-                                      <Label className="text-sm text-slate-600">Quantity Used</Label>
-                                      <div className="flex items-center gap-2 mt-1">
-                                        <Button
-                                          variant="outline"
-                                          size="icon"
-                                          className="h-8 w-8"
-                                          onClick={() => onQuantityChange(kit.good_id, Math.max(0, quantity - 1))}
-                                        >
-                                          <Minus className="w-3 h-3" />
-                                        </Button>
-                                        <Input
-                                          type="number"
-                                          min="0"
-                                          step="0.1"
-                                          value={quantity}
-                                          onChange={(e) => onQuantityChange(kit.good_id, parseFloat(e.target.value) || 0)}
-                                          className="w-20 text-center"
-                                        />
-                                        <Button
-                                          variant="outline"
-                                          size="icon"
-                                          className="h-8 w-8"
-                                          onClick={() => onQuantityChange(kit.good_id, quantity + 1)}
-                                        >
-                                          <Plus className="w-3 h-3" />
-                                        </Button>
-                                      </div>
-                                    </div>
-                                    <div>
-                                      <Label className="text-sm text-slate-600">Total Cost</Label>
-                                      <div className="text-sm font-medium text-green-600">
-                                        {formatMoney(totalItemCost)}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
+                                  </td>
+                                  <td className="p-3 text-right text-sm text-foreground">{formatMoney(kit.inventory_items.cost_price)}</td>
+                                  <td className="p-3 text-right text-sm font-medium text-green-600">{formatMoney(totalItemCost)}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   );

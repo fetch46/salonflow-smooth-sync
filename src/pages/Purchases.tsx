@@ -388,7 +388,28 @@ export default function Purchases() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this purchase?")) {
+    // Get purchase details to check status
+    const { data: purchase, error: fetchError } = await supabase
+      .from("purchases")
+      .select("status")
+      .eq("id", id)
+      .single();
+
+    if (fetchError) {
+      toast({ title: "Error", description: "Failed to fetch purchase details", variant: "destructive" });
+      return;
+    }
+
+    if (purchase.status !== 'pending') {
+      toast({ 
+        title: "Not allowed", 
+        description: "Only purchases with 'pending' status can be deleted.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    if (confirm("Are you sure you want to delete this purchase? This action cannot be undone.")) {
       try {
         // Check if any items have been received; if so, block deletion until undone
         const { data: items, error: itemsErr } = await supabase
@@ -810,7 +831,7 @@ export default function Purchases() {
                               disabled={purchase.status !== 'pending'}
                               onClick={() => handleDelete(purchase.id)}
                             >
-                              <Trash2 className="h-4 w-4" /> Delete
+                              <Trash2 className="h-4 w-4" /> Delete {purchase.status !== 'pending' ? '(Pending Only)' : ''}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
