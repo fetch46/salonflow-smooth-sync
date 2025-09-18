@@ -2244,7 +2244,7 @@ function StepPaymentReceipt({
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    Complete Job Card
+                    Submit Job Card
                   </>
                 )}
               </Button>

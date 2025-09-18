@@ -103,9 +103,9 @@ export default function StaffProfile() {
         .from('staff_commissions')
         .select(`
           id, commission_amount, commission_percentage, status, accrued_date,
-          invoice_items!inner(
+          invoice_items(
             id, description, unit_price, quantity, total_price,
-            invoices!inner(
+            invoices(
               id, invoice_number, issue_date, status
             ),
             services(id, name)
