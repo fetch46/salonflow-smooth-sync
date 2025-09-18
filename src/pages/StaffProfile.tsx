@@ -202,9 +202,16 @@ export default function StaffProfile() {
   }, [commissionRows, appointments]);
 
   const commissionTotals = useMemo(() => {
+    const earnedCommission = commissionRows.reduce((sum, r) => sum + (r.commission || 0), 0);
+    const paidCommission = commissionRows
+      .filter(r => r.status === 'paid')
+      .reduce((sum, r) => sum + (r.commission || 0), 0);
+    
     return {
       gross: commissionRows.reduce((sum, r) => sum + (r.gross || 0), 0),
-      commission: commissionRows.reduce((sum, r) => sum + (r.commission || 0), 0),
+      earned: earnedCommission,
+      paid: paidCommission,
+      pending: earnedCommission - paidCommission,
       count: commissionRows.length,
     };
   }, [commissionRows]);
@@ -394,7 +401,7 @@ export default function StaffProfile() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card className="border-0 shadow-lg">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-slate-600 flex items-center gap-2"><DollarSign className="w-4 h-4 text-green-600"/>Revenue (Gross)</CardTitle>
@@ -406,29 +413,38 @@ export default function StaffProfile() {
         </Card>
         <Card className="border-0 shadow-lg">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-slate-600 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-violet-600"/>Commission</CardTitle>
+            <CardTitle className="text-sm text-slate-600 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-green-600"/>Earned Commission</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatMoney(totals.commission)}</div>
-            <div className="text-xs text-slate-600">Based on service/staff rates</div>
+            <div className="text-2xl font-bold text-green-600">{formatMoney(commissionTotals.earned)}</div>
+            <div className="text-xs text-slate-600">Total commission earned</div>
           </CardContent>
         </Card>
         <Card className="border-0 shadow-lg">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-slate-600 flex items-center gap-2"><Star className="w-4 h-4 text-amber-600"/>Avg. Rate</CardTitle>
+            <CardTitle className="text-sm text-slate-600 flex items-center gap-2"><DollarSign className="w-4 h-4 text-blue-600"/>Paid Commission</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{formatMoney(commissionTotals.paid)}</div>
+            <div className="text-xs text-slate-600">Commission already paid</div>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-slate-600 flex items-center gap-2"><Star className="w-4 h-4 text-amber-600"/>Pending Payment</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-amber-600">{formatMoney(commissionTotals.pending)}</div>
+            <div className="text-xs text-slate-600">Awaiting payment</div>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-slate-600 flex items-center gap-2"><Zap className="w-4 h-4 text-violet-600"/>Avg. Rate</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totals.avgRate.toFixed(2)}%</div>
             <div className="text-xs text-slate-600">Average commission rate</div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-slate-600 flex items-center gap-2"><Zap className="w-4 h-4 text-blue-600"/>Efficiency</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatMoney(totals.avgPerService)}</div>
-            <div className="text-xs text-slate-600">Revenue per service</div>
           </CardContent>
         </Card>
       </div>
@@ -437,110 +453,63 @@ export default function StaffProfile() {
         <div className="space-y-4 lg:col-span-2 xl:col-span-3">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <div className="overflow-x-auto -mx-1 px-1">
-              <TabsList className="min-w-max justify-start sm:justify-start">
-                <TabsTrigger value="activity" className="justify-start gap-2 data-[state=active]:bg-muted">Activities</TabsTrigger>
-                <TabsTrigger value="schedule" className="justify-start gap-2 data-[state=active]:bg-muted">Schedule</TabsTrigger>
-                <TabsTrigger value="commissions" className="justify-start gap-2 data-[state=active]:bg-muted">Commissions</TabsTrigger>
-                <TabsTrigger value="gallery" className="justify-start gap-2 data-[state=active]:bg-muted">Gallery</TabsTrigger>
+              <TabsList className="bg-white border shadow-sm h-auto p-1 w-full justify-start">
+                <TabsTrigger value="activity" className="text-sm">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Activity ({appointments.length})
+                </TabsTrigger>
+                <TabsTrigger value="commissions" className="text-sm">
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Commissions ({commissionTotals.count})
+                </TabsTrigger>
+                <TabsTrigger value="gallery" className="text-sm">
+                  <Camera className="w-4 h-4 mr-2" />
+                  Gallery ({gallery.length})
+                </TabsTrigger>
               </TabsList>
             </div>
-
-            <TabsContent value="commissions">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Commission Details</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between text-sm text-slate-600 mb-3">
-                    <div>Entries: <span className="font-medium text-slate-900">{commissionTotals.count}</span></div>
-                    <div className="flex items-center gap-4">
-                      <div>Gross: <span className="font-medium text-slate-900">{formatMoney(commissionTotals.gross)}</span></div>
-                      <Separator orientation="vertical" className="h-4" />
-                      <div>Commission: <span className="font-medium text-slate-900">{formatMoney(commissionTotals.commission)}</span></div>
-                    </div>
-                  </div>
-                  {commissionRows.length === 0 ? (
-                    <div className="text-sm text-muted-foreground p-6">No commissions in this period</div>
-                  ) : (
-                    <div className="rounded-md border overflow-x-auto">
-                      <Table className="min-w-[640px]">
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Service</TableHead>
-                            <TableHead className="text-right">Gross</TableHead>
-                            <TableHead className="text-right">Rate %</TableHead>
-                            <TableHead className="text-right">Commission</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {commissionRows.map((r) => (
-                            <TableRow key={r.id}>
-                              <TableCell>{String(r.date || '').slice(0,10)}</TableCell>
-                              <TableCell>{r.service}</TableCell>
-                              <TableCell className="text-right">{formatMoney(r.gross)}</TableCell>
-                              <TableCell className="text-right">{r.rate.toFixed(2)}</TableCell>
-                              <TableCell className="text-right">{formatMoney(r.commission)}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
 
             <TabsContent value="activity" className="space-y-4">
               <Card className="shadow-sm">
                 <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2"><Calendar className="w-4 h-4"/> Period Summary</CardTitle>
+                  <CardTitle className="text-base">Upcoming & Recent Appointments</CardTitle>
                 </CardHeader>
-                <CardContent className="grid gap-4 md:grid-cols-3">
-                  <div>
-                    <div className="text-sm text-slate-600">Appointments</div>
-                    <div className="text-xl font-semibold">{totals.apptCount}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-slate-600">Services</div>
-                    <div className="text-xl font-semibold">{totals.services}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-slate-600">Avg. {symbol}/Service</div>
-                    <div className="text-xl font-semibold">{formatMoney(totals.avgPerService)}</div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Appointments</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
+                <CardContent>
                   {appointments.length === 0 ? (
-                    <div className="text-sm text-muted-foreground p-6">No appointments in this period</div>
+                    <div className="text-center py-8 text-slate-500">
+                      <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No appointments found for the selected period.</p>
+                    </div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <Table className="min-w-[480px]">
+                      <Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>Date</TableHead>
-                            <TableHead>Status</TableHead>
+                            <TableHead>Time</TableHead>
                             <TableHead>Service</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Value</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {appointments.map((a) => (
-                            <TableRow key={a.id}>
-                              <TableCell>{a.appointment_date}</TableCell>
-                              <TableCell>
-                                {a.status ? (
-                                  <Badge variant={a.status === 'completed' ? 'default' : a.status === 'cancelled' ? 'secondary' : 'outline'} className="capitalize">
-                                    {a.status}
-                                  </Badge>
-                                ) : '—'}
+                          {appointments.map((appt) => (
+                            <TableRow key={appt.id}>
+                              <TableCell className="font-medium">
+                                {appt.appointment_date ? formatDate(new Date(appt.appointment_date), 'MMM dd, yyyy') : 'N/A'}
                               </TableCell>
-                              <TableCell>{a.service_name || '—'}</TableCell>
+                              <TableCell>{appt.appointment_time || 'N/A'}</TableCell>
+                              <TableCell>{appt.service_name || 'Service'}</TableCell>
+                              <TableCell>
+                                <Badge variant={
+                                  appt.status === 'completed' ? 'default' :
+                                  appt.status === 'cancelled' ? 'destructive' :
+                                  appt.status === 'no_show' ? 'secondary' : 'outline'
+                                }>
+                                  {appt.status || 'scheduled'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{formatMoney(appt.price || 0)}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -551,103 +520,109 @@ export default function StaffProfile() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="schedule">
-              <Card>
+            <TabsContent value="commissions" className="space-y-4">
+              <Card className="shadow-sm">
                 <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2"><Calendar className="w-4 h-4"/> Schedule</CardTitle>
+                  <CardTitle className="text-base">Commission History</CardTitle>
                 </CardHeader>
-                <CardContent className="grid gap-6 md:grid-cols-2">
-                  <div className="rounded-lg border p-3 bg-card">
-                    <CalendarPicker
-                      mode="single"
-                      selected={scheduleDate}
-                      onSelect={(d) => d && setScheduleDate(d)}
-                      className="rounded-md"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm text-slate-600">Selected date</div>
-                      <div className="text-sm font-medium text-slate-900">{formatDate(scheduleDate, 'yyyy-MM-dd')}</div>
+                <CardContent>
+                  {commissionRows.length === 0 ? (
+                    <div className="text-center py-8 text-slate-500">
+                      <DollarSign className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No commissions found for the selected period.</p>
                     </div>
-                    <div className="rounded-md border overflow-x-auto">
-                      <Table className="min-w-[480px]">
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Time</TableHead>
-                            <TableHead>Status</TableHead>
+                            <TableHead>Date</TableHead>
                             <TableHead>Service</TableHead>
+                            <TableHead>Invoice</TableHead>
+                            <TableHead>Gross</TableHead>
+                            <TableHead>Rate</TableHead>
+                            <TableHead>Commission</TableHead>
+                            <TableHead>Status</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {appointments.filter((a) => String(a.appointment_date).slice(0,10) === formatDate(scheduleDate, 'yyyy-MM-dd')).length === 0 ? (
-                            <TableRow>
-                              <TableCell colSpan={3} className="text-sm text-muted-foreground">No appointments on this date</TableCell>
+                          {commissionRows.map((row) => (
+                            <TableRow key={row.id}>
+                              <TableCell className="font-medium">
+                                {row.date ? formatDate(new Date(row.date), 'MMM dd, yyyy') : 'N/A'}
+                              </TableCell>
+                              <TableCell>{row.service}</TableCell>
+                              <TableCell className="text-sm text-slate-600">{row.invoice_number || 'N/A'}</TableCell>
+                              <TableCell>{formatMoney(row.gross)}</TableCell>
+                              <TableCell>{row.rate.toFixed(1)}%</TableCell>
+                              <TableCell className="font-medium">{formatMoney(row.commission)}</TableCell>
+                              <TableCell>
+                                <Badge variant={row.status === 'paid' ? 'default' : 'secondary'}>
+                                  {row.status}
+                                </Badge>
+                              </TableCell>
                             </TableRow>
-                          ) : (
-                            appointments
-                              .filter((a) => String(a.appointment_date).slice(0,10) === formatDate(scheduleDate, 'yyyy-MM-dd'))
-                              .map((a) => (
-                                <TableRow key={a.id}>
-                                  <TableCell>{a.appointment_time ? String(a.appointment_time).slice(0,5) : '—'}</TableCell>
-                                  <TableCell>
-                                    {a.status ? (
-                                      <Badge variant={a.status === 'completed' ? 'default' : a.status === 'cancelled' ? 'secondary' : 'outline'} className="capitalize">
-                                        {a.status}
-                                      </Badge>
-                                    ) : '—'}
-                                  </TableCell>
-                                  <TableCell>{a.service_name || '—'}</TableCell>
-                                </TableRow>
-                              ))
-                          )}
+                          ))}
                         </TableBody>
                       </Table>
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
 
-            <TabsContent value="gallery">
-              <Card>
-                <CardHeader className="flex items-center justify-between">
-                  <CardTitle className="text-base">Work Gallery</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="text-sm text-slate-600">Showcase this staff member's work</div>
-                    <div className="flex items-center gap-2">
+            <TabsContent value="gallery" className="space-y-4">
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center justify-between">
+                    Work Gallery
+                    <div>
                       <input
                         type="file"
                         accept="image/*"
+                        multiple
                         ref={galleryInputRef}
                         className="hidden"
-                        multiple
                         onChange={handleGalleryUpload}
                       />
-                      <Button onClick={handleGalleryPick} disabled={galleryUploading}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleGalleryPick}
+                        disabled={galleryUploading}
+                      >
                         <ImagePlus className="w-4 h-4 mr-2" />
-                        {galleryUploading ? 'Uploading...' : 'Add Images'}
+                        {galleryUploading ? 'Uploading...' : 'Add Photos'}
                       </Button>
                     </div>
-                  </div>
-
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
                   {gallery.length === 0 ? (
-                    <div className="text-sm text-muted-foreground p-6">No images yet. Click "Add Images" to upload.</div>
+                    <div className="text-center py-8 text-slate-500">
+                      <Camera className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No photos in gallery yet.</p>
+                      <Button variant="outline" className="mt-4" onClick={handleGalleryPick}>
+                        <ImagePlus className="w-4 h-4 mr-2" />
+                        Upload First Photo
+                      </Button>
+                    </div>
                   ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                       {gallery.map((item) => (
-                        <div key={item.id} className="group relative overflow-hidden rounded-lg border bg-card shadow-sm">
+                        <div key={item.id} className="relative group aspect-square">
                           <img
                             src={item.public_url}
-                            alt={item.caption || 'Work photo'}
-                            className="h-40 w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                            loading="lazy"
+                            alt={item.caption || 'Gallery item'}
+                            className="w-full h-full object-cover rounded-lg shadow-sm"
                           />
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
-                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button size="icon" variant="destructive" className="h-8 w-8" onClick={() => handleDeleteGalleryItem(item)}>
+                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDeleteGalleryItem(item)}
+                              className="w-8 h-8 p-0"
+                            >
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
@@ -664,91 +639,56 @@ export default function StaffProfile() {
         <div className="space-y-4">
           <Card className="shadow-sm">
             <CardHeader>
-              <CardTitle className="text-base">Profile</CardTitle>
+              <CardTitle className="text-base flex items-center justify-between">
+                Settings
+                <Switch checked={staff.is_active} onCheckedChange={handleToggleActive} />
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-slate-600">Status</div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-600">Inactive</span>
-                  <Switch checked={staff.is_active} onCheckedChange={handleToggleActive} />
-                  <span className="text-xs text-slate-900 font-medium">Active</span>
-                </div>
-              </div>
-              <Separator />
-              <div className="grid grid-cols-1 gap-3 text-sm">
-                {staff.email && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-600">Email</span>
-                    <span className="font-medium text-slate-900 truncate max-w-[180px]">{staff.email}</span>
-                  </div>
-                )}
-                {staff.phone && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-600">Phone</span>
-                    <span className="font-medium text-slate-900">{staff.phone}</span>
-                  </div>
-                )}
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-slate-600">Commission</span>
-                  {commissionEditing ? (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={100}
-                        step={0.5}
-                        value={commissionDraft}
-                        onChange={(e) => setCommissionDraft(e.target.value === '' ? '' : Number(e.target.value))}
-                        className="h-8 w-24"
-                      />
-                      <Button size="sm" onClick={handleSaveCommission}>Save</Button>
-                      <Button size="sm" variant="outline" onClick={() => { setCommissionEditing(false); setCommissionDraft(typeof staff.commission_rate === 'number' ? Number(staff.commission_rate) : ''); }}>Cancel</Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-slate-900">{typeof staff.commission_rate === 'number' ? `${staff.commission_rate}%` : '—'}</span>
-                      <Button size="sm" variant="outline" onClick={() => setCommissionEditing(true)}>Edit</Button>
-                    </div>
+              <div>
+                <div className="text-sm font-medium mb-2 flex items-center justify-between">
+                  Commission Rate
+                  {!commissionEditing && (
+                    <Button size="sm" variant="ghost" onClick={() => setCommissionEditing(true)}>
+                      Edit
+                    </Button>
                   )}
                 </div>
-                {staff.hire_date && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-600">Hired</span>
-                    <span className="font-medium text-slate-900">{staff.hire_date}</span>
+                {commissionEditing ? (
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={commissionDraft}
+                      onChange={(e) => setCommissionDraft(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="flex-1"
+                    />
+                    <Button size="sm" onClick={handleSaveCommission}>Save</Button>
+                    <Button size="sm" variant="outline" onClick={() => {
+                      setCommissionEditing(false);
+                      setCommissionDraft(typeof staff.commission_rate === 'number' ? Number(staff.commission_rate) : '');
+                    }}>Cancel</Button>
+                  </div>
+                ) : (
+                  <div className="text-lg font-semibold">
+                    {typeof staff.commission_rate === 'number' ? `${staff.commission_rate}%` : 'Not set'}
                   </div>
                 )}
               </div>
-              {staff.specialties && staff.specialties.length > 0 && (
-                <div>
-                  <div className="text-sm text-slate-600 mb-2">Specialties</div>
-                  <div className="flex flex-wrap gap-1">
-                    {staff.specialties.slice(0, 8).map((s) => (
-                      <Badge key={s} variant="outline" className="text-xs">{s}</Badge>
-                    ))}
-                    {staff.specialties.length > 8 && (
-                      <Badge variant="outline" className="text-xs">+{staff.specialties.length - 8} more</Badge>
-                    )}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-base">Notes</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Textarea
-                placeholder="Add private notes about this staff member (visible to admins only)"
-                value={notesDraft}
-                onChange={(e) => setNotesDraft(e.target.value)}
-                rows={6}
-              />
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setNotesDraft('')}>Reset</Button>
-                <Button onClick={handleSaveNotes}>Save Notes</Button>
+              <Separator />
+
+              <div>
+                <div className="text-sm font-medium mb-2">Quick Notes</div>
+                <Textarea
+                  placeholder="Add notes about this staff member..."
+                  value={notesDraft}
+                  onChange={(e) => setNotesDraft(e.target.value)}
+                  className="min-h-[80px]"
+                />
+                <Button size="sm" className="mt-2" onClick={handleSaveNotes}>
+                  Save Notes
+                </Button>
               </div>
             </CardContent>
           </Card>
