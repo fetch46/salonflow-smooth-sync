@@ -19,19 +19,9 @@ export const ModalTrigger = DialogTrigger;
 
 export const ModalContent = ({ children, className, ...props }: React.ComponentProps<typeof DialogContent>) => {
 	return (
-		<AnimatePresence>
-			<motion.div
-				initial={{ opacity: 0 }}
-				animate={{ opacity: 1 }}
-				exit={{ opacity: 0 }}
-				transition={{ duration: 0.12 }}
-				className="fixed inset-0 z-50"
-			>
-				<DialogContent className={className} {...props}>
-					{children}
-				</DialogContent>
-			</motion.div>
-		</AnimatePresence>
+		<DialogContent className={className} {...props}>
+			{children}
+		</DialogContent>
 	);
 };
 
