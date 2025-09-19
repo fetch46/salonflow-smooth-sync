@@ -53,6 +53,7 @@ const Settings = lazyWithRetry(() => import("./pages/Settings"));
 const SettingsSubscription = lazyWithRetry(() => import("./pages/SettingsSubscription"));
 const ModulesSettings = lazyWithRetry(() => import("./pages/ModulesSettings"));
 const BrandingSettings = lazyWithRetry(() => import("./pages/BrandingSettings"));
+const WhatsAppSettings = lazyWithRetry(() => import("./pages/WhatsAppSettings"));
 const Profile = lazyWithRetry(() => import("./pages/Profile"));
 const Help = lazyWithRetry(() => import("./pages/Help"));
 const Reports = lazyWithRetry(() => import("./pages/Reports"));
@@ -312,6 +313,7 @@ const AppRoutes = () => {
           <Route path="settings/subscription" element={<SettingsSubscription />} />
           <Route path="settings/modules" element={<ModulesSettings />} />
           <Route path="settings/branding" element={<BrandingSettings />} />
+          <Route path="settings/whatsapp" element={<WhatsAppSettings />} />
           <Route path="profile" element={<Profile />} />
           <Route path="help" element={<Help />} />
         </Route>

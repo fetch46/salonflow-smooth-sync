@@ -28,6 +28,7 @@ import {
   ArrowLeftRight,
   Truck,
 } from "lucide-react";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import {
   Sidebar,
   SidebarContent,
@@ -298,6 +299,12 @@ const menuItems: MenuItem[] = [
         title: "Subscription",
         url: "/settings/subscription",
         icon: CreditCard,
+        feature: "settings",
+      },
+      {
+        title: "WhatsApp",
+        url: "/settings/whatsapp",
+        icon: WhatsAppIcon,
         feature: "settings",
       },
     ],
