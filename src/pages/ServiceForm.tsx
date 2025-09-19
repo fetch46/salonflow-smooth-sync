@@ -717,7 +717,7 @@ export default function ServiceForm() {
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-1">
                             <Label htmlFor={`qty-${kit.good_id}`} className="text-xs">Qty:</Label>
-                            <Input id={`qty-${kit.good_id}`} type="number" min="0" step="0.1" value={kit.default_quantity} onChange={(e) => updateKitQuantity(kit.good_id, parseFloat(e.target.value) || 0)} className="w-20 h-8 text-xs" />
+                            <Input id={`qty-${kit.good_id}`} type="number" min="0" step="0.0001" value={kit.default_quantity} onChange={(e) => updateKitQuantity(kit.good_id, parseFloat(e.target.value) || 0)} className="w-20 h-8 text-xs" />
                           </div>
                           <Button type="button" variant="ghost" size="sm" onClick={() => removeKitItem(kit.good_id)} className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50">
                             ✕
