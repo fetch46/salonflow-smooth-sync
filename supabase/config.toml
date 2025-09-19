@@ -1,1 +1,4 @@
 project_id = "eoxeoyyunhsdvjiwkttx"
+
+[functions.test-whatsapp]
+verify_jwt = false
