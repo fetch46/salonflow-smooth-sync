@@ -26,13 +26,13 @@ export default function GoodsReceived() {
       const orgId = organization?.id;
       let res: any;
 
-      // Start with a broad select to avoid missing-column errors (e.g., grn_number, warehouse_id)
+      // Filter goods received by organization
       if (orgId) {
         try {
           res = await supabase
             .from("goods_received")
             .select("*")
-            .or(`organization_id.eq.${orgId},organization_id.is.null` as any)
+            .eq("organization_id", orgId)
             .order("received_date", { ascending: false });
           if (res.error) throw res.error;
         } catch (err: any) {

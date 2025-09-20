@@ -54,9 +54,20 @@ export default function PaymentsMade() {
     try {
       setLoading(true);
       
+      // Ensure organization filtering for both expenses and purchases
+      const orgFilter = organization?.id ? `.eq.organization_id.${organization.id}` : '';
+      
       const [{ data: expData }, { data: purData }] = await Promise.all([
-        supabase.from('expenses').select('id, expense_number, vendor_name, amount, expense_date, payment_method, status, receipt_url').order('created_at', { ascending: false }),
-        supabase.from('purchases').select('id, purchase_number, vendor_name, total_amount, purchase_date, status').order('created_at', { ascending: false }),
+        supabase
+          .from('expenses')
+          .select('id, expense_number, vendor_name, amount, expense_date, payment_method, status, receipt_url')
+          .eq('organization_id', organization?.id || '')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('purchases')
+          .select('id, purchase_number, vendor_name, total_amount, purchase_date, status')
+          .eq('organization_id', organization?.id || '')
+          .order('created_at', { ascending: false }),
       ]);
       
       setExpenses((expData || []) as any);
@@ -95,11 +106,49 @@ export default function PaymentsMade() {
   const deletePurchase = async (purchaseId: string) => {
     if (!confirm('Delete this purchase? This cannot be undone.')) return;
     try {
+      // Check for related payments and goods received records
+      const [paymentsCheck, goodsReceivedCheck] = await Promise.all([
+        supabase
+          .from('purchase_payments')
+          .select('id')
+          .eq('purchase_id', purchaseId)
+          .limit(1),
+        supabase
+          .from('goods_received')
+          .select('id')
+          .eq('purchase_id', purchaseId)
+          .limit(1)
+      ]);
+      
+      const hasPayments = paymentsCheck.data && paymentsCheck.data.length > 0;
+      const hasGoodsReceived = goodsReceivedCheck.data && goodsReceivedCheck.data.length > 0;
+      
+      if (hasPayments && hasGoodsReceived) {
+        toast.error('Cannot delete purchase: This purchase has payments made and goods received records. Please remove related records first.');
+        return;
+      }
+      
+      if (hasPayments) {
+        toast.error('Cannot delete purchase: This purchase has payment records. Please remove payments first.');
+        return;
+      }
+      
+      if (hasGoodsReceived) {
+        toast.error('Cannot delete purchase: This purchase has goods received records. Please remove goods received records first.');
+        return;
+      }
+      
       // Clean up related ledger transactions
       try {
         await deleteTransactionsByReference('purchase', purchaseId);
         await deleteTransactionsByReference('purchase_payment', purchaseId);
       } catch {}
+      
+      // Delete related purchase items first
+      await supabase
+        .from('purchase_items')
+        .delete()
+        .eq('purchase_id', purchaseId);
       
       // Delete the purchase record
       const { error } = await supabase

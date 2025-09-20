@@ -70,30 +70,31 @@ export default function GoodsReceivedForm() {
     return map;
   }, [purchaseItems]);
 
-  const loadOpenPurchases = useCallback(async () => {
-    const { data } = await supabase
-      .from("purchases")
-      .select("id, purchase_number, vendor_name, status, purchase_items(quantity, received_quantity)")
-      .in("status", ["pending", "partial"])
-      .order("purchase_date", { ascending: false });
+  const loadOpenPurchases = async () => {
+    const orgId = organization?.id;
+    if (!orgId) return;
+    
+    try {
+      const { data } = await supabase
+        .from("purchases")
+        .select("id, purchase_number, vendor_name, status")
+        .eq("organization_id", orgId)
+        .in("status", ["pending", "partial"])
+        .order("purchase_date", { ascending: false });
 
-    // Exclude purchases where all items are fully received
-    const filtered = ((data || []) as any[]).filter((p: any) => {
-      const items: any[] = Array.isArray(p.purchase_items) ? p.purchase_items : [];
-      if (items.length === 0) return true; // keep if no items to allow follow-up fixes
-      return items.some(it => Number(it.quantity || 0) > Number(it.received_quantity || 0));
-    });
+      const mapped: PurchaseOption[] = (data || []).map((p: any) => ({
+        id: p.id,
+        purchase_number: p.purchase_number,
+        vendor_name: p.vendor_name,
+        status: p.status,
+      }));
 
-    // Strip nested items before storing
-    const mapped: PurchaseOption[] = filtered.map((p: any) => ({
-      id: p.id,
-      purchase_number: p.purchase_number,
-      vendor_name: p.vendor_name,
-      status: p.status,
-    }));
-
-    setPurchases(mapped as any);
-  }, []);
+      setPurchases(mapped);
+    } catch (error) {
+      console.error('Error loading purchases:', error);
+      setPurchases([]);
+    }
+  };
 
   const loadWarehouses = useCallback(async () => {
     const orgId = organization?.id;
