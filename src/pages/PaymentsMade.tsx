@@ -92,6 +92,30 @@ export default function PaymentsMade() {
     }
   };
 
+  const deletePurchase = async (purchaseId: string) => {
+    if (!confirm('Delete this purchase? This cannot be undone.')) return;
+    try {
+      // Clean up related ledger transactions
+      try {
+        await deleteTransactionsByReference('purchase', purchaseId);
+        await deleteTransactionsByReference('purchase_payment', purchaseId);
+      } catch {}
+      
+      // Delete the purchase record
+      const { error } = await supabase
+        .from('purchases')
+        .delete()
+        .eq('id', purchaseId);
+      if (error) throw error;
+      
+      toast.success('Purchase deleted');
+      await loadData();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete purchase');
+    }
+  };
+
   // Combine expenses and purchases into a unified list
   const allPayments = useMemo(() => {
     const expensePayments = expenses.map(e => ({
@@ -417,6 +441,11 @@ export default function PaymentsMade() {
                         {payment.type === 'expense' && (
                           <DropdownMenuItem className="text-red-600" onClick={() => deleteExpense(payment.id)}>
                             <Trash2 className="mr-2 h-4 w-4" /> Delete Expense
+                          </DropdownMenuItem>
+                        )}
+                        {payment.type === 'purchase' && (
+                          <DropdownMenuItem className="text-red-600" onClick={() => deletePurchase(payment.id)}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete Purchase
                           </DropdownMenuItem>
                         )}
                         {payment.receipt_url && (
