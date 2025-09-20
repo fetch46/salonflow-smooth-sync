@@ -2,3 +2,6 @@ project_id = "eoxeoyyunhsdvjiwkttx"
 
 [functions.test-whatsapp]
 verify_jwt = false
+
+[functions.send-appointment-whatsapp]
+verify_jwt = false
