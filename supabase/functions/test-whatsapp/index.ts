@@ -51,8 +51,8 @@ serve(async (req) => {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          From: config.from_number,
-          To: `whatsapp:${test_number}`,
+          From: config.from_number.startsWith('whatsapp:') ? config.from_number : `whatsapp:${config.from_number}`,
+          To: test_number.startsWith('whatsapp:') ? test_number : `whatsapp:${test_number}`,
           Body: 'Test message from your business WhatsApp integration. If you received this, your WhatsApp integration is working correctly!'
         }),
       }
