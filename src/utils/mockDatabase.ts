@@ -668,7 +668,7 @@ export async function getInvoicesWithFallback(supabase: any) {
         .select(`
           id, invoice_number, customer_id, customer_name, customer_email, customer_phone,
           due_date, subtotal, tax_amount, discount_amount, total_amount, status,
-          payment_method, notes, jobcard_id, jobcard_reference, location_id, created_at, updated_at,
+          payment_method, notes, jobcard_id, jobcard_reference, location_id, organization_id, created_at, updated_at,
           client:customer_id (id, full_name, email, phone)
         `)
         .order('created_at', { ascending: false });
@@ -695,6 +695,7 @@ export async function getInvoicesWithFallback(supabase: any) {
           created_at: inv.created_at,
           updated_at: inv.updated_at,
           location_id: inv.location_id ?? null,
+          organization_id: inv.organization_id || null,
         }));
       }
     } catch (errNewSel: any) {
@@ -705,7 +706,7 @@ export async function getInvoicesWithFallback(supabase: any) {
     const { data, error } = await supabase
       .from('invoices')
       .select(`
-        id, invoice_number, client_id, issue_date, due_date, subtotal, tax_amount, total_amount, status, notes, location_id, created_at, updated_at,
+        id, invoice_number, client_id, issue_date, due_date, subtotal, tax_amount, total_amount, status, notes, location_id, organization_id, created_at, updated_at,
         client:client_id (id, full_name, email, phone)
       `)
       .order('created_at', { ascending: false });
@@ -730,6 +731,7 @@ export async function getInvoicesWithFallback(supabase: any) {
         created_at: inv.created_at,
         updated_at: inv.updated_at,
         location_id: inv.location_id ?? null,
+        organization_id: inv.organization_id || null,
       }));
     }
 
