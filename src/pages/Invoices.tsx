@@ -186,6 +186,9 @@ const DATE_FILTERS = [
 export default function Invoices() {
   const { formatCurrency, formatNumber } = useRegionalSettings();
   const orgTaxRate = useOrganizationTaxRate();
+  const { organization } = useOrganization();
+  const navigate = useNavigate();
+  
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -205,7 +208,6 @@ export default function Invoices() {
   const [locations, setLocations] = useState<Array<{ id: string; name: string; is_default?: boolean; is_active?: boolean }>>([]);
   const [isEditingLocation, setIsEditingLocation] = useState<boolean>(false);
   const [editLocationId, setEditLocationId] = useState<string>("");
-  const navigate = useNavigate();
 
   const safeFormatDate = (dateInput: string | Date | null | undefined, fmt: string): string => {
     const dateObj = typeof dateInput === 'string' ? new Date(dateInput) : dateInput instanceof Date ? dateInput : null;
@@ -239,11 +241,13 @@ export default function Invoices() {
   const [defaultLocationByStaffId, setDefaultLocationByStaffId] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    fetchInvoices();
-    fetchCustomers();
-    fetchServices();
-    fetchStaff();
-  }, []);
+    if (organization?.id) {
+      fetchInvoices();
+      fetchCustomers();
+      fetchServices();
+      fetchStaff();
+    }
+  }, [organization?.id]);
 
   // Redirect to full-page create if coming from job card
   useEffect(() => {
@@ -255,6 +259,8 @@ export default function Invoices() {
   }, [navigate]);
 
   const fetchInvoices = async () => {
+    if (!organization?.id) return;
+    
     try {
       setLoading(true);
       const data = await getInvoicesWithFallback(supabase);
@@ -347,7 +353,6 @@ export default function Invoices() {
   };
 
   // Ensure locations are loaded for view modal and labels
-  const { organization } = useOrganization();
   useEffect(() => {
     fetchLocations();
   }, [organization?.id]);
