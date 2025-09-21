@@ -58,12 +58,12 @@ export default function PaymentsMade() {
       const orgFilter = organization?.id ? `.eq.organization_id.${organization.id}` : '';
       
       const [{ data: expData }, { data: purData }] = await Promise.all([
-        supabase
+        (supabase as any)
           .from('expenses')
           .select('id, expense_number, vendor_name, amount, expense_date, payment_method, status, receipt_url')
           .eq('organization_id', organization?.id || '')
           .order('created_at', { ascending: false }),
-        supabase
+        (supabase as any)
           .from('purchases')
           .select('id, purchase_number, vendor_name, total_amount, purchase_date, status')
           .eq('organization_id', organization?.id || '')
