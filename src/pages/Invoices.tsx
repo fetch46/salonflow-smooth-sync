@@ -258,7 +258,11 @@ export default function Invoices() {
     try {
       setLoading(true);
       const data = await getInvoicesWithFallback(supabase);
-      setInvoices(data || []);
+      // Filter invoices by organization
+      const orgSpecificInvoices = (data || []).filter((invoice: any) => 
+        invoice.organization_id === organization?.id
+      );
+      setInvoices(orgSpecificInvoices || []);
     } catch (error) {
       console.error("Error fetching invoices:", error);
       toast.error("Failed to fetch invoices");
@@ -285,6 +289,7 @@ export default function Invoices() {
         .from("clients")
         .select("id, full_name, email, phone")
         .eq("is_active", true)
+        .eq('organization_id', organization?.id || '')
         .order("full_name");
 
       if (error) throw error;
@@ -300,6 +305,7 @@ export default function Invoices() {
         .from("services")
         .select("id, name, price")
         .eq("is_active", true)
+        .eq('organization_id', organization?.id || '')
         .order("name");
 
       if (error) throw error;
@@ -315,6 +321,7 @@ export default function Invoices() {
         .from("staff")
         .select("id, full_name")
         .eq("is_active", true)
+        .eq('organization_id', organization?.id || '')
         .order("full_name");
 
       if (error) throw error;

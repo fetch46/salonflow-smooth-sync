@@ -53,6 +53,7 @@ export default function InvoiceEdit() {
   });
   const [invoiceMeta, setInvoiceMeta] = useState<any | null>(null);
   const jobcardRequired = Boolean(((organization as any)?.settings || {})?.jobcard_required_on_invoice);
+  const disallowEditPaidInvoices = Boolean(((organization as any)?.settings || {})?.disallow_edit_paid_invoices);
 
   const [newItem, setNewItem] = useState({
     service_id: "",
@@ -149,7 +150,7 @@ export default function InvoiceEdit() {
             notes: inv.notes || "",
             jobcard_id: inv.jobcard_id || "",
             jobcard_reference: (inv as any).jobcard_reference || (inv as any).jobcard_id || "",
-            location_id: (inv as any).location_id || prev.location_id,
+            location_id: (inv as any).location_id || "",
           }));
           setInvoiceMeta(inv as any);
           
@@ -357,6 +358,13 @@ export default function InvoiceEdit() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
+    
+    // Check if editing paid invoices is disallowed
+    if (disallowEditPaidInvoices && invoiceMeta?.status === 'paid') {
+      toast.error('Editing paid invoices is not allowed. Please check accounting settings.');
+      return;
+    }
+    
     if (!formData.customer_name.trim()) return toast.error('Customer name is mandatory');
     if (selectedItems.length === 0) return toast.error('Please add at least one item to the invoice');
     if (!formData.location_id) return toast.error('Please select a location');

@@ -36,6 +36,7 @@ export function AccountingSettings() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [taxEnabled, setTaxEnabled] = useState(false);
   const [jobcardRequired, setJobcardRequired] = useState(false);
+  const [disallowEditPaidInvoices, setDisallowEditPaidInvoices] = useState(false);
   const [paymentMethodAccounts, setPaymentMethodAccounts] = useState<PaymentMethodAccount[]>([]);
 
   useEffect(() => {
@@ -71,6 +72,7 @@ export function AccountingSettings() {
         const settings = (orgData.settings as Record<string, any>) || {};
         setTaxEnabled(settings.tax_enabled || false);
         setJobcardRequired(settings.jobcard_required_on_invoice || false);
+        setDisallowEditPaidInvoices(settings.disallow_edit_paid_invoices || false);
         setPaymentMethodAccounts(settings.payment_method_accounts || []);
       }
 
@@ -139,6 +141,36 @@ export function AccountingSettings() {
     } catch (error) {
       console.error("Error updating job card requirement setting:", error);
       toast.error("Failed to update job card requirement");
+    }
+  };
+
+  const handleDisallowEditPaidInvoicesToggle = async (enabled: boolean) => {
+    try {
+      const currentSettings = await supabase
+        .from("organizations")
+        .select("settings")
+        .eq("id", organization?.id)
+        .single();
+
+      const settings = (currentSettings.data?.settings as Record<string, any>) || {};
+
+      const { error } = await supabase
+        .from("organizations")
+        .update({
+          settings: {
+            ...settings,
+            disallow_edit_paid_invoices: enabled
+          }
+        })
+        .eq("id", organization?.id);
+
+      if (error) throw error;
+
+      setDisallowEditPaidInvoices(enabled);
+      toast.success(`Paid invoice editing ${enabled ? 'disabled' : 'enabled'}`);
+    } catch (error) {
+      console.error("Error updating paid invoice editing setting:", error);
+      toast.error("Failed to update paid invoice editing");
     }
   };
 
@@ -272,6 +304,19 @@ export function AccountingSettings() {
             <Switch
               checked={jobcardRequired}
               onCheckedChange={handleJobcardRequiredToggle}
+            />
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-base font-medium">Disallow Editing Paid Invoices</Label>
+              <p className="text-sm text-muted-foreground">
+                Prevent users from editing invoices that have been marked as paid
+              </p>
+            </div>
+            <Switch
+              checked={disallowEditPaidInvoices}
+              onCheckedChange={handleDisallowEditPaidInvoicesToggle}
             />
           </div>
         </CardContent>

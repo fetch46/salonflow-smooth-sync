@@ -102,7 +102,7 @@ export default function StaffProfile() {
       const { data: commissions, error: commErr } = await supabase
         .from('staff_commissions')
         .select(`
-          id, commission_amount, commission_percentage, status, accrued_date,
+          id, commission_amount, commission_percentage, status, accrued_date, paid_date,
           invoice_items(
             id, description, unit_price, quantity, total_price,
             invoices(
