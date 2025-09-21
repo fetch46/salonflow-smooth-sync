@@ -70,31 +70,39 @@ export default function GoodsReceivedForm() {
     return map;
   }, [purchaseItems]);
 
-  const loadOpenPurchases = async () => {
+  const loadOpenPurchases = useCallback(async () => {
     const orgId = organization?.id;
     if (!orgId) return;
     
     try {
-      const { data } = await supabase
+      // Simplified approach to avoid type inference issues
+      const { data, error } = await (supabase as any)
         .from("purchases")
         .select("id, purchase_number, vendor_name, status")
         .eq("organization_id", orgId)
         .in("status", ["pending", "partial"])
         .order("purchase_date", { ascending: false });
 
-      const mapped: PurchaseOption[] = (data || []).map((p: any) => ({
-        id: p.id,
-        purchase_number: p.purchase_number,
-        vendor_name: p.vendor_name,
-        status: p.status,
-      }));
+      if (error) throw error;
+
+      const mapped: PurchaseOption[] = [];
+      if (data) {
+        for (const row of data) {
+          mapped.push({
+            id: row.id as string,
+            purchase_number: row.purchase_number as string,
+            vendor_name: row.vendor_name as string,
+            status: row.status as string,
+          });
+        }
+      }
 
       setPurchases(mapped);
     } catch (error) {
       console.error('Error loading purchases:', error);
       setPurchases([]);
     }
-  };
+  }, [organization?.id]);
 
   const loadWarehouses = useCallback(async () => {
     const orgId = organization?.id;
@@ -435,416 +443,379 @@ export default function GoodsReceivedForm() {
               return {
                 goods_received_id: header.id,
                 purchase_item_id,
-                item_id: it?.item_id || purchase_item_id, // fallback
+                item_id: it?.item_id || purchase_item_id,
                 quantity: Number(qty) || 0,
-                unit_cost: it?.unit_cost || 0
+                unit_cost: it?.unit_cost || 0,
               };
             });
             if (itemsPayload.length > 0) {
               await supabase.from("goods_received_items").insert(itemsPayload);
             }
           }
-        } catch (ignore) {
-          // If these tables do not exist in this environment, ignore silently
+        } catch (e) {
+          // If goods_received table doesn't exist or has issues, just log and continue
+          console.warn("Failed to insert receipt record, but inventory was updated", e);
         }
       };
 
-      if (!isEdit) {
-        try {
-          const payload = entries.map(([purchase_item_id, qty]) => ({ purchase_item_id, quantity: Number(qty) }));
-          const { data, error } = await supabase.rpc('record_goods_received', {
-            p_org_id: orgId,
-            p_purchase_id: purchaseId,
-            p_location_id: derivedLocationId,
-            p_warehouse_id: warehouseId,
-            p_received_date: receivedDate,
-            p_notes: notes,
-            p_lines: payload as any,
-          });
-          if (error) throw error;
-          // Guard: if RPC did not create a header, ensure one exists for listing
-          await ensureReceiptRecord(entries as any);
-        } catch (rpcError: any) {
-          // If RPC missing or fails, fallback
-          console.warn('record_goods_received RPC failed, applying manual receive fallback:', rpcError?.message || rpcError);
-          await manualReceive();
+      if (isEdit && id) {
+        // Editing mode - update existing goods received record
+        await supabase
+          .from("goods_received")
+          .update({
+            received_date: receivedDate,
+            warehouse_id: warehouseId,
+            notes: notes || null,
+          })
+          .eq("id", id);
+
+        // Update goods received items
+        // Delete all existing items for this goods received record
+        await supabase
+          .from("goods_received_items")
+          .delete()
+          .eq("goods_received_id", id);
+
+        // Insert new items
+        const itemsPayload = entries.map(([purchase_item_id, qty]) => {
+          const it = byId[purchase_item_id];
+          return {
+            goods_received_id: id,
+            purchase_item_id,
+            item_id: it?.item_id || purchase_item_id,
+            quantity: Number(qty) || 0,
+            unit_cost: it?.unit_cost || 0,
+          };
+        });
+
+        if (itemsPayload.length > 0) {
+          await supabase.from("goods_received_items").insert(itemsPayload);
         }
-        // After recording receipt (RPC or fallback), update purchase status
-        await updatePurchaseStatusAfterReceiving(purchaseId);
+
+        // Update inventory levels: reverse the original quantities and apply new ones
+        for (const [purchase_item_id, originalQty] of Object.entries(originalQuantities)) {
+          const it = byId[purchase_item_id];
+          if (!it) continue;
+
+          // Reverse original quantities
+          if (Number(originalQty) > 0) {
+            // Update by location
+            if (derivedLocationId) {
+              const { data: levelRows } = await supabase
+                .from("inventory_levels")
+                .select("id, quantity")
+                .eq("item_id", it.item_id)
+                .eq("location_id", derivedLocationId)
+                .limit(1);
+              const existing = (levelRows || [])[0] as { id: string; quantity: number } | undefined;
+              if (existing) {
+                await supabase
+                  .from("inventory_levels")
+                  .update({ quantity: Math.max(0, Number(existing.quantity || 0) - Number(originalQty)) })
+                  .eq("id", existing.id);
+              }
+            }
+
+            // Update by warehouse
+            if (warehouseId) {
+              const { data: whRows } = await supabase
+                .from("inventory_levels")
+                .select("id, quantity")
+                .eq("item_id", it.item_id)
+                .eq("warehouse_id", warehouseId)
+                .limit(1);
+              const existingWh = (whRows || [])[0] as { id: string; quantity: number } | undefined;
+              if (existingWh) {
+                await supabase
+                  .from("inventory_levels")
+                  .update({ quantity: Math.max(0, Number(existingWh.quantity || 0) - Number(originalQty)) })
+                  .eq("id", existingWh.id);
+              }
+            }
+          }
+        }
+
+        // Apply new quantities
+        for (const [purchase_item_id, newQty] of entries) {
+          const it = byId[purchase_item_id];
+          if (!it) continue;
+
+          // Update by location
+          if (derivedLocationId) {
+            const { data: levelRows } = await supabase
+              .from("inventory_levels")
+              .select("id, quantity")
+              .eq("item_id", it.item_id)
+              .eq("location_id", derivedLocationId)
+              .limit(1);
+            const existing = (levelRows || [])[0] as { id: string; quantity: number } | undefined;
+            if (existing) {
+              await supabase
+                .from("inventory_levels")
+                .update({ quantity: Number(existing.quantity || 0) + Number(newQty) })
+                .eq("id", existing.id);
+            } else {
+              await supabase
+                .from("inventory_levels")
+                .insert([{ item_id: it.item_id, location_id: derivedLocationId, quantity: Number(newQty) }]);
+            }
+          }
+
+          // Update by warehouse
+          if (warehouseId) {
+            const { data: whRows } = await supabase
+              .from("inventory_levels")
+              .select("id, quantity")
+              .eq("item_id", it.item_id)
+              .eq("warehouse_id", warehouseId)
+              .limit(1);
+            const existingWh = (whRows || [])[0] as { id: string; quantity: number } | undefined;
+            if (existingWh) {
+              await supabase
+                .from("inventory_levels")
+                .update({ quantity: Number(existingWh.quantity || 0) + Number(newQty) })
+                .eq("id", existingWh.id);
+            } else {
+              await supabase
+                .from("inventory_levels")
+                .insert([{ item_id: it.item_id, warehouse_id: warehouseId, location_id: derivedLocationId, quantity: Number(newQty) }]);
+            }
+          }
+        }
+
+        toast({ title: "Success", description: "Goods received updated successfully" });
       } else {
-        try {
-          // Build quantities map for update
-          const qMap: Record<string, number> = {};
-          for (const it of purchaseItems) {
-            qMap[it.id] = Number(quantities[it.id] || 0);
-          }
-          const { error } = await supabase.rpc('update_goods_received', {
-            p_org_id: orgId,
-            p_goods_received_id: id,
-            p_location_id: derivedLocationId,
-            p_warehouse_id: warehouseId,
-            p_received_date: receivedDate,
-            p_notes: notes,
-            p_quantities: qMap as any,
-          });
-          if (error) throw error;
-          // For update, ensure a header exists and items are present for listing
-          const editEntries = Object.entries(quantities).filter(([, q]) => Number(q) > 0) as [string, number][];
-          await ensureReceiptRecord(editEntries);
-        } catch (rpcError: any) {
-          // Conservative fallback for edit: apply deltas to inventory and update purchase items
-          console.warn('update_goods_received RPC failed, applying manual update fallback:', rpcError?.message || rpcError);
-
-          // Calculate deltas using originalQuantities (loaded in edit mode)
-          const byId: Record<string, PurchaseItem> = {} as any;
-          for (const it of purchaseItems) byId[it.id] = it;
-
-          // 1) Update purchase_items.received_quantity to new quantities (bounded by ordered)
-          for (const it of purchaseItems) {
-            const newQty = Math.max(0, Number(quantities[it.id] || 0));
-            const bounded = Math.min(Number(it.quantity || 0), newQty);
-            if (bounded !== Number(it.received_quantity || 0)) {
-              const { error: upErr } = await supabase
-                .from("purchase_items")
-                .update({ received_quantity: bounded })
-                .eq("id", it.id);
-              if (upErr) throw upErr;
-            }
-          }
-
-          // 2) Adjust inventory by moving from old header's warehouse/location to the newly selected one
-          // Load previous header to identify old warehouse/location
-          let oldHeader: { location_id: string | null; warehouse_id: string | null } | null = null;
-          try {
-            const { data: h } = await supabase
-              .from("goods_received")
-              .select("location_id, warehouse_id")
-              .eq("id", id)
-              .single();
-            oldHeader = (h as any) || null;
-          } catch {}
-
-          for (const it of purchaseItems) {
-            const prev = Number(originalQuantities[it.id] || 0);
-            const next = Math.max(0, Number(quantities[it.id] || 0));
-            const delta = next - prev;
-            const movedHeader = (oldHeader?.location_id !== derivedLocationId) || (oldHeader?.warehouse_id !== warehouseId);
-
-            // Reverse entire previous qty if header changed (remove from old loc/wh)
-            if (movedHeader && prev > 0) {
-              const oldLoc = oldHeader?.location_id || null;
-              const oldWh = oldHeader?.warehouse_id || null;
-              if (oldLoc) {
-                const { data: levelRows } = await supabase
-                  .from("inventory_levels")
-                  .select("id, quantity")
-                  .eq("item_id", it.item_id)
-                  .eq("location_id", oldLoc)
-                  .limit(1);
-                const existing = (levelRows || [])[0] as { id: string; quantity: number } | undefined;
-                if (existing) {
-                  await supabase
-                    .from("inventory_levels")
-                    .update({ quantity: Math.max(0, Number(existing.quantity || 0) - prev) })
-                    .eq("id", existing.id);
-                }
-              }
-              if (oldWh) {
-                const { data: whRows } = await supabase
-                  .from("inventory_levels")
-                  .select("id, quantity")
-                  .eq("item_id", it.item_id)
-                  .eq("warehouse_id", oldWh)
-                  .limit(1);
-                const existingWh = (whRows || [])[0] as { id: string; quantity: number } | undefined;
-                if (existingWh) {
-                  await supabase
-                    .from("inventory_levels")
-                    .update({ quantity: Math.max(0, Number(existingWh.quantity || 0) - prev) })
-                    .eq("id", existingWh.id);
-                }
-              }
-            }
-
-            // Apply to new location
-            {
-              const addQty = movedHeader ? next : delta;
-              if (addQty !== 0) {
-                const { data: levelRows } = await supabase
-                  .from("inventory_levels")
-                  .select("id, quantity")
-                  .eq("item_id", it.item_id)
-                  .eq("location_id", derivedLocationId)
-                  .limit(1);
-                const existing = (levelRows || [])[0] as { id: string; quantity: number } | undefined;
-                if (existing) {
-                  await supabase
-                    .from("inventory_levels")
-                    .update({ quantity: Math.max(0, Number(existing.quantity || 0) + addQty) })
-                    .eq("id", existing.id);
-                } else if (addQty > 0) {
-                  await supabase
-                    .from("inventory_levels")
-                    .insert([{ item_id: it.item_id, location_id: derivedLocationId, quantity: addQty }]);
-                }
-              }
-            }
-
-            // Apply to new warehouse
-            {
-              const addQty = movedHeader ? next : delta;
-              if (addQty !== 0) {
-                const { data: whRows } = await supabase
-                  .from("inventory_levels")
-                  .select("id, quantity")
-                  .eq("item_id", it.item_id)
-                  .eq("warehouse_id", warehouseId)
-                  .limit(1);
-                const existingWh = (whRows || [])[0] as { id: string; quantity: number } | undefined;
-                if (existingWh) {
-                  await supabase
-                    .from("inventory_levels")
-                    .update({ quantity: Math.max(0, Number(existingWh.quantity || 0) + addQty) })
-                    .eq("id", existingWh.id);
-                } else if (addQty > 0) {
-                  await supabase
-                    .from("inventory_levels")
-                    .insert([{ item_id: it.item_id, warehouse_id: warehouseId, location_id: derivedLocationId, quantity: addQty }]);
-                }
-              }
-            }
-          }
-
-          // 3) Try updating goods_received header and replacing items
-          try {
-                         await supabase
-               .from("goods_received")
-               .update({
-                 organization_id: orgId,
-                 received_date: receivedDate,
-                 warehouse_id: warehouseId,
-                 location_id: derivedLocationId,
-                 notes: notes || null,
-               })
-               .eq("id", id);
-            // Replace items
-            await supabase.from("goods_received_items").delete().eq("goods_received_id", id);
-            const itemsPayload = Object.entries(quantities)
-              .filter(([, q]) => Number(q) > 0)
-              .map(([purchase_item_id, q]) => {
-                const it = byId[purchase_item_id];
-                return {
-                  goods_received_id: id,
-                  purchase_item_id,
-                  item_id: it?.item_id || purchase_item_id, // fallback
-                  quantity: Number(q) || 0,
-                  unit_cost: it?.unit_cost || 0
-                };
-              });
-            if (itemsPayload.length > 0) {
-              await supabase.from("goods_received_items").insert(itemsPayload);
-            }
-          } catch (ignore) {
-            // Ignore if tables missing
-          }
-        }
-        // After updating receipt (RPC or fallback), update purchase status
+        // Creating new goods received
+        await manualReceive();
         await updatePurchaseStatusAfterReceiving(purchaseId);
+        toast({ title: "Success", description: "Goods received successfully" });
       }
 
-      toast({ title: "Saved", description: "Goods received recorded" });
       navigate("/goods-received");
-    } catch (e: any) {
-      console.error(e);
-      toast({ title: "Error", description: e?.message || "Failed to save goods received", variant: "destructive" });
+    } catch (error: any) {
+      console.error('Error saving goods received:', error);
+      toast({ title: "Error", description: error?.message || "Failed to save goods received", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
+  const handleCancel = () => {
+    navigate("/goods-received");
+  };
+
+  const handleQuantityChange = (purchaseItemId: string, value: string) => {
+    const numValue = Math.max(0, Number(value) || 0);
+    const remaining = remainingByItem[purchaseItemId] || 0;
+    const finalValue = Math.min(numValue, remaining);
+    setQuantities(prev => ({ ...prev, [purchaseItemId]: finalValue }));
+  };
+
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 pb-24 sm:pb-6 bg-gradient-to-br from-slate-50 to-slate-100/50 min-h-screen overflow-x-hidden">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-emerald-600 to-green-600 rounded-xl shadow-lg">
-            <Truck className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">{isEdit ? 'Edit Goods Received' : 'New Goods Received'}</h1>
-            <p className="text-slate-600">Receive items for a purchase into a warehouse</p>
-          </div>
-        </div>
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex items-center gap-4 mb-6">
+        <Button variant="ghost" onClick={() => navigate("/goods-received")} className="p-2">
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => navigate(-1)}><ArrowLeft className="h-4 w-4 mr-2"/>Back</Button>
-          <Button onClick={handleSave} disabled={loading}>{loading ? 'Saving...' : (isEdit ? 'Update' : 'Save')}</Button>
+          <Truck className="h-6 w-6 text-primary" />
+          <h1 className="text-2xl font-bold">
+            {isEdit ? "Edit Goods Received" : "Record Goods Received"}
+          </h1>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="shadow-lg border-0">
-            <CardHeader>
-              <CardTitle>Receipt Details</CardTitle>
-              <CardDescription>Select purchase and warehouse</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Purchase</Label>
-                  <Select value={purchaseId} onValueChange={setPurchaseId} disabled={isEdit}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select an open purchase" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {purchases.map(p => (
-                        <SelectItem key={p.id} value={p.id}>{p.purchase_number} · {p.vendor_name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Received Date</Label>
-                  <Input type="date" value={receivedDate} onChange={e => setReceivedDate(e.target.value)} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Warehouse<span className="text-red-600">*</span></Label>
-                <Select value={warehouseId} onValueChange={(value) => {
-                  console.log('Warehouse changed to:', value); // Debug log
-                  setWarehouseId(value);
-                }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select warehouse" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {warehouses.map(w => (
-                        <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                {warehouses.length === 0 && (
-                  <p className="text-sm text-muted-foreground">No warehouses found. Check if warehouses are configured for this organization.</p>
-                )}
-                {warehouseId && (
-                  <p className="text-xs text-muted-foreground">Selected: {warehouses.find(w => w.id === warehouseId)?.name || warehouseId}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label>Notes</Label>
-                <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional" />
-              </div>
-            </CardContent>
-          </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Goods Received Details</CardTitle>
+          <CardDescription>
+            {isEdit ? "Update the goods received record" : "Record goods received from a purchase order"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="purchase">Purchase Order *</Label>
+              <Select value={purchaseId} onValueChange={setPurchaseId} disabled={isEdit}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a purchase order" />
+                </SelectTrigger>
+                <SelectContent>
+                  {purchases.map((purchase) => (
+                    <SelectItem key={purchase.id} value={purchase.id}>
+                      {purchase.purchase_number} - {purchase.vendor_name} ({purchase.status})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <Card className="shadow-lg border-0">
-            <CardHeader>
-              <CardTitle>Items to Receive</CardTitle>
-              <CardDescription>Enter quantities to receive</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {purchaseItems.length === 0 ? (
-                <div className="text-sm text-muted-foreground">Select a purchase to load items</div>
-              ) : (
+            <div className="space-y-2">
+              <Label htmlFor="warehouse">Warehouse *</Label>
+              <Select value={warehouseId} onValueChange={setWarehouseId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select warehouse" />
+                </SelectTrigger>
+                <SelectContent>
+                  {warehouses.map((warehouse) => (
+                    <SelectItem key={warehouse.id} value={warehouse.id}>
+                      {warehouse.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="receivedDate">Received Date *</Label>
+              <Input
+                id="receivedDate"
+                type="date"
+                value={receivedDate}
+                onChange={(e) => setReceivedDate(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="notes">Notes</Label>
+            <Textarea
+              id="notes"
+              placeholder="Additional notes about this receipt..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+            />
+          </div>
+
+          {purchaseItems.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Items to Receive</h3>
+              </div>
+              
+              <div className="border rounded-lg">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Item</TableHead>
-                      <TableHead>Ordered</TableHead>
-                      <TableHead>Received</TableHead>
-                      <TableHead>Remaining</TableHead>
-                      <TableHead>Qty to Receive</TableHead>
-                      <TableHead></TableHead>
+                      <TableHead className="text-right">Ordered</TableHead>
+                      <TableHead className="text-right">Previously Received</TableHead>
+                      <TableHead className="text-right">Remaining</TableHead>
+                      <TableHead className="text-right">Receive Now</TableHead>
+                      <TableHead className="text-right">Unit Cost</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {purchaseItems.map(it => {
-                      const remaining = remainingByItem[it.id] ?? 0;
+                    {purchaseItems.map((item) => {
+                      const remaining = remainingByItem[item.id] || 0;
+                      const receivingNow = quantities[item.id] || 0;
+                      
                       return (
-                        <TableRow key={it.id}>
-                          <TableCell>{it.inventory_items?.name || it.item_id}</TableCell>
-                          <TableCell>{it.quantity}</TableCell>
-                          <TableCell>{it.received_quantity}</TableCell>
-                          <TableCell>{remaining}</TableCell>
-                          <TableCell>
-                            <Input type="number" min={0} max={remaining} value={quantities[it.id] ?? ''} onChange={e => setQuantities(prev => ({ ...prev, [it.id]: Math.max(0, Math.min(remaining, Number(e.target.value || 0))) }))} />
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">
+                            {item.inventory_items?.name || `Item ${item.item_id}`}
                           </TableCell>
-                          <TableCell>
-                            <Button type="button" variant="outline" size="sm" onClick={() => setQuantities(prev => ({ ...prev, [it.id]: remaining }))} disabled={remaining <= 0}>Receive All</Button>
+                          <TableCell className="text-right">
+                            {Number(item.quantity || 0).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {Number(item.received_quantity || 0).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {remaining.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Input
+                              type="number"
+                              min="0"
+                              max={remaining}
+                              step="0.01"
+                              value={receivingNow}
+                              onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                              className="w-24"
+                              disabled={remaining <= 0}
+                            />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            ${Number(item.unit_cost || 0).toFixed(2)}
                           </TableCell>
                         </TableRow>
                       );
                     })}
                   </TableBody>
                 </Table>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          <Card className="shadow-lg border-0">
-            <CardHeader>
-              <CardTitle>Summary</CardTitle>
-              <CardDescription>Totals of this receipt</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span>Items</span>
-                <span>{Object.values(quantities).filter(v => Number(v) > 0).length}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span>Total Qty</span>
-                <span>{Object.values(quantities).reduce((s, v) => s + Number(v || 0), 0)}</span>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          )}
 
+          {/* Transactions section for edit mode */}
           {isEdit && (
-            <Card className="shadow-lg border-0">
+            <Card>
               <CardHeader>
-                <CardTitle>Transactions</CardTitle>
-                <CardDescription>Ledger entries linked to this receipt</CardDescription>
+                <CardTitle>Related Transactions</CardTitle>
+                <CardDescription>
+                  Accounting transactions associated with this goods received record
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {transactionsLoading ? (
-                  <div className="text-sm text-muted-foreground">Loading transactions...</div>
-                ) : transactions.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">No transactions</div>
-                ) : (
-                  <div className="overflow-x-auto">
+                  <div className="text-center py-4">Loading transactions...</div>
+                ) : transactions.length > 0 ? (
+                  <div className="border rounded-lg">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>Date</TableHead>
                           <TableHead>Account</TableHead>
+                          <TableHead>Description</TableHead>
                           <TableHead className="text-right">Debit</TableHead>
                           <TableHead className="text-right">Credit</TableHead>
-                          <TableHead>Description</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {transactions.map(t => {
-                          const acc = accountsById[t.account_id];
-                          const accLabel = acc ? `${acc.code ? acc.code + ' - ' : ''}${acc.name}` : t.account_id;
+                        {transactions.map((tx) => {
+                          const account = accountsById[tx.account_id];
+                          const accountDisplay = account 
+                            ? `${account.code ? account.code + ' - ' : ''}${account.name}`
+                            : tx.account_id;
+                          
                           return (
-                            <TableRow key={t.id}>
-                              <TableCell>{(t.transaction_date || '').slice(0,10)}</TableCell>
-                              <TableCell>{accLabel}</TableCell>
-                              <TableCell className="text-right">{Number(t.debit_amount || 0).toLocaleString()}</TableCell>
-                              <TableCell className="text-right">{Number(t.credit_amount || 0).toLocaleString()}</TableCell>
-                              <TableCell>{t.description || ''}</TableCell>
+                            <TableRow key={tx.id}>
+                              <TableCell>{new Date(tx.transaction_date).toLocaleDateString()}</TableCell>
+                              <TableCell>{accountDisplay}</TableCell>
+                              <TableCell>{tx.description || '-'}</TableCell>
+                              <TableCell className="text-right">
+                                {tx.debit_amount ? `$${Number(tx.debit_amount).toFixed(2)}` : '-'}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {tx.credit_amount ? `$${Number(tx.credit_amount).toFixed(2)}` : '-'}
+                              </TableCell>
                             </TableRow>
                           );
                         })}
                       </TableBody>
                     </Table>
                   </div>
+                ) : (
+                  <div className="text-center py-4 text-muted-foreground">
+                    No transactions found for this goods received record
+                  </div>
                 )}
               </CardContent>
             </Card>
           )}
-        </div>
-      </div>
+
+          <div className="flex justify-end gap-4">
+            <Button variant="outline" onClick={handleCancel} disabled={loading}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={loading}>
+              {loading ? "Saving..." : isEdit ? "Update Receipt" : "Save Receipt"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
