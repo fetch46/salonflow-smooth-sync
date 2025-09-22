@@ -1124,7 +1124,17 @@ export async function deleteInvoicePaymentWithFallback(supabase: any, id: string
         ]);
         const totalAmount = Number((inv as any)?.total_amount || 0);
         const paidSum = (pays || []).reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
-        const nextStatus = paidSum >= totalAmount ? 'paid' : paidSum > 0 ? 'partial' : ((inv as any)?.status || 'sent');
+        
+        // Determine next status - if no payments remain, set to overdue instead of sent
+        let nextStatus: string;
+        if (paidSum >= totalAmount) {
+          nextStatus = 'paid';
+        } else if (paidSum > 0) {
+          nextStatus = 'partial';
+        } else {
+          // No payments left, set to overdue instead of sent
+          nextStatus = 'overdue';
+        }
         if ((inv as any)?.status !== nextStatus) {
           await supabase.from('invoices').update({ status: nextStatus }).eq('id', invId);
         }
@@ -1153,7 +1163,8 @@ export async function deleteInvoicePaymentWithFallback(supabase: any, id: string
             .filter((p: any) => p.invoice_id === invId)
             .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
           const total = Number(invoice.total_amount || 0);
-          const newStatus = paidSum >= total ? 'paid' : paidSum > 0 ? 'partial' : (invoice.status || 'sent');
+          // If no payments remain, set to overdue instead of sent
+          const newStatus = paidSum >= total ? 'paid' : paidSum > 0 ? 'partial' : 'overdue';
           receiptsArr[idx] = { ...invoice, status: newStatus, updated_at: nowIso };
           storage.receipts = receiptsArr;
         }
