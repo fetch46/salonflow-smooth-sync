@@ -14,6 +14,8 @@ import { Users, Receipt, Trash2, Plus, AlertCircle } from "lucide-react";
 import { useOrganizationCurrency, useOrganizationTaxRate, useOrganization } from "@/lib/saas/hooks";
 import { getInvoiceItemsWithFallback, getInvoicesWithFallback, updateInvoiceWithFallback } from "@/utils/mockDatabase";
 import { formatNumber } from "@/lib/currencyUtils";
+import { useJobCardChangeAlert } from "@/hooks/useJobCardChangeAlert";
+import { JobCardChangeAlert } from "@/components/ui/job-card-change-alert";
 
 export default function InvoiceEdit() {
   const navigate = useNavigate();
@@ -38,6 +40,7 @@ export default function InvoiceEdit() {
     total_amount: number;
     service_count?: number;
   } | null>(null);
+  const [invoiceMeta, setInvoiceMeta] = useState<any>(null);
 
   const [formData, setFormData] = useState({
     customer_id: "",
@@ -51,9 +54,6 @@ export default function InvoiceEdit() {
     jobcard_reference: "",
     location_id: "",
   });
-  const [invoiceMeta, setInvoiceMeta] = useState<any | null>(null);
-  const jobcardRequired = Boolean(((organization as any)?.settings || {})?.jobcard_required_on_invoice);
-  const disallowEditPaidInvoices = Boolean(((organization as any)?.settings || {})?.disallow_edit_paid_invoices);
 
   const [newItem, setNewItem] = useState({
     service_id: "",
@@ -67,6 +67,15 @@ export default function InvoiceEdit() {
 
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
   const [applyTax, setApplyTax] = useState<boolean>(true);
+  
+  const jobcardRequired = Boolean(((organization as any)?.settings || {})?.jobcard_required_on_invoice);
+  const disallowEditPaidInvoices = Boolean(((organization as any)?.settings || {})?.disallow_edit_paid_invoices);
+  
+  // Job Card Change Alert Hook
+  const jobCardChangeAlert = useJobCardChangeAlert(
+    formData.jobcard_reference || formData.jobcard_id,
+    invoiceMeta?.updated_at
+  );
 
   const fetchLocations = async () => {
     try {
@@ -473,6 +482,17 @@ export default function InvoiceEdit() {
           <Button onClick={handleSubmit}>Save Changes</Button>
         </div>
       </div>
+
+      {/* Job Card Change Alert */}
+      {jobCardChangeAlert.hasChanges && jobCardChangeAlert.jobCardInfo && (
+        <JobCardChangeAlert
+          jobCardNumber={jobCardChangeAlert.jobCardInfo.job_card_number}
+          clientName={jobCardChangeAlert.jobCardInfo.client_name}
+          lastUpdate={jobCardChangeAlert.jobCardInfo.updated_at}
+          onRefresh={jobCardChangeAlert.checkForChanges}
+          onViewJobCard={() => navigate(`/job-cards/${jobCardChangeAlert.jobCardInfo?.id}`)}
+        />
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-4">
