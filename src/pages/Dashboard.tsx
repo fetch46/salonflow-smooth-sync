@@ -573,7 +573,7 @@ const Dashboard = () => {
       {/* Enhanced Statistics Grid */}
       <div className="grid grid-cols-responsive-compact gap-3 sm:gap-4">
         {todayStats.map((stat, index) => (
-          <Card key={index} className={`${stat.bgClass}`}>
+          <Card key={`stat-${index}`} className={`${stat.bgClass}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 sm:p-3 pb-2">
               <CardTitle className={`text-sm font-medium ${stat.textColor}`}>
                 {stat.title}
@@ -692,7 +692,7 @@ const Dashboard = () => {
             <CardContent className="p-0">
               <div className="space-y-1">
                 {topPerformers.map((staff, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors">
+                  <div key={`recent-${index}`} className="flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors">
                     <div className="flex items-center gap-3 flex-1">
                       <div className="relative">
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-500 to-amber-500 flex items-center justify-center text-white font-medium text-xs">
@@ -743,7 +743,7 @@ const Dashboard = () => {
               <div className="grid grid-cols-2 gap-3">
                 {roleQuickActions.map((action, index) => (
                   <div
-                    key={index}
+                    key={`staff-${index}`}
                     role="button"
                     tabIndex={0}
                     onClick={action.action}
@@ -781,7 +781,7 @@ const Dashboard = () => {
           <CardContent className="p-0">
             <div className="max-h-56 sm:max-h-64 overflow-y-auto">
               {recentActivities.map((activity, index) => (
-                <div key={index} className="flex items-start gap-3 p-4 border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors">
+                <div key={`appointment-${index}`} className="flex items-start gap-3 p-4 border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors">
                   <div className={`p-2 rounded-lg bg-slate-50 ${activity.color}`}>
                     <activity.icon className="w-4 h-4" />
                   </div>

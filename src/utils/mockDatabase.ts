@@ -669,7 +669,7 @@ export async function getInvoicesWithFallback(supabase: any) {
           id, invoice_number, customer_id, customer_name, customer_email, customer_phone,
           due_date, subtotal, tax_amount, discount_amount, total_amount, status,
           payment_method, notes, jobcard_id, jobcard_reference, location_id, organization_id, created_at, updated_at,
-          client:customer_id (id, full_name, email, phone)
+          client:client_id (id, full_name, email, phone)
         `)
         .order('created_at', { ascending: false });
       if (error) throw error;

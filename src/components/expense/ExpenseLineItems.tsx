@@ -57,7 +57,7 @@ export function ExpenseLineItems({ lines, onLinesChange, accounts }: ExpenseLine
 
       <div className="space-y-3">
         {lines.map((line, index) => (
-          <div key={index} className="grid grid-cols-12 gap-2 items-end p-3 border rounded-lg">
+          <div key={`expense-item-${index}`} className="grid grid-cols-12 gap-2 items-end p-3 border rounded-lg">
             <div className="col-span-4">
               <Label className="text-xs">Account</Label>
               <Select

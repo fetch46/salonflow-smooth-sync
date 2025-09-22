@@ -579,7 +579,7 @@ export default function InventoryAdjustmentForm() {
               </div>
 
               {selectedItems.map((item, index) => (
-                <div key={index} className="grid grid-cols-7 gap-2 items-end p-3 border rounded-lg">
+                <div key={`adjustment-item-${index}`} className="grid grid-cols-7 gap-2 items-end p-3 border rounded-lg">
                   <div>
                     <Label>Item</Label>
                     <Select value={item.item_id} onValueChange={(value) => updateSelectedItem(index, "item_id", value)}>
