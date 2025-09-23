@@ -67,12 +67,16 @@ export const ProfitLossReport: React.FC<ProfitLossReportProps> = ({
       // Add completed job cards as revenue (where no invoice was created)
       let jobCardRevenue = 0;
       try {
-        const jobCardsQueryBuilder = supabase
+        let jobCardsQueryBuilder = supabase
           .from('job_cards')
-          .select('total_amount, updated_at')
+          .select('total_amount, updated_at, location_id')
           .eq('status', 'completed')
           .gte('updated_at', startDate)
           .lte('updated_at', endDate);
+
+        if (locationFilter !== 'all') {
+          jobCardsQueryBuilder = jobCardsQueryBuilder.eq('location_id', locationFilter);
+        }
 
         const { data: jobCards } = await jobCardsQueryBuilder;
         jobCardRevenue = (jobCards || []).reduce((sum: number, jc: any) => sum + Number(jc.total_amount || 0), 0);

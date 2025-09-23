@@ -153,7 +153,45 @@ export const deletionPatterns = {
     accountingCleanup: true
   }),
 
+  jobCard: (id: string) => deleteRecord('job_cards', id, {
+    customValidation: async (jobCardId) => {
+      // Check if job card is referenced in any invoice
+      const { data: invoices } = await supabase
+        .from('invoices')
+        .select('id')
+        .eq('jobcard_id', jobCardId);
+      
+      if (invoices && invoices.length > 0) {
+        return { 
+          canDelete: false, 
+          message: 'Cannot delete job card that has been referenced in an invoice. Please remove the reference first.' 
+        };
+      }
+      return { canDelete: true };
+    },
+    cascadeRules: [
+      { table: 'job_card_services', foreignKey: 'job_card_id', action: 'delete' },
+      { table: 'job_card_products', foreignKey: 'job_card_id', action: 'delete' },
+      { table: 'staff_commissions', foreignKey: 'job_card_id', action: 'delete' }
+    ]
+  }),
+
   invoice: (id: string) => deleteRecord('invoices', id, {
+    customValidation: async (invoiceId) => {
+      // Check if invoice has any payments
+      const { data: payments } = await supabase
+        .from('invoice_payments')
+        .select('id')
+        .eq('invoice_id', invoiceId);
+      
+      if (payments && payments.length > 0) {
+        return { 
+          canDelete: false, 
+          message: 'Cannot delete invoice that has received payments. Please remove payments first.' 
+        };
+      }
+      return { canDelete: true };
+    },
     cascadeRules: [
       { table: 'invoice_items', foreignKey: 'invoice_id', action: 'delete' },
       { table: 'invoice_payments', foreignKey: 'invoice_id', action: 'delete' },
