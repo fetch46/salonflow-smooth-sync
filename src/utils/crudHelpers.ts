@@ -156,12 +156,12 @@ export const deletionPatterns = {
   jobCard: (id: string) => deleteRecord('job_cards', id, {
     customValidation: async (jobCardId) => {
       // Check if job card is referenced in any invoice
-      const { data: invoices } = await supabase
+      const invoiceQuery = await (supabase as any)
         .from('invoices')
         .select('id')
         .eq('jobcard_id', jobCardId);
       
-      if (invoices && invoices.length > 0) {
+      if (invoiceQuery.data && invoiceQuery.data.length > 0) {
         return { 
           canDelete: false, 
           message: 'Cannot delete job card that has been referenced in an invoice. Please remove the reference first.' 
@@ -179,12 +179,12 @@ export const deletionPatterns = {
   invoice: (id: string) => deleteRecord('invoices', id, {
     customValidation: async (invoiceId) => {
       // Check if invoice has any payments
-      const { data: payments } = await supabase
+      const paymentQuery = await (supabase as any)
         .from('invoice_payments')
         .select('id')
         .eq('invoice_id', invoiceId);
       
-      if (payments && payments.length > 0) {
+      if (paymentQuery.data && paymentQuery.data.length > 0) {
         return { 
           canDelete: false, 
           message: 'Cannot delete invoice that has received payments. Please remove payments first.' 
