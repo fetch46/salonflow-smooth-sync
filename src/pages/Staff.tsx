@@ -186,10 +186,16 @@ export default function Staff() {
   const fetchStaff = useCallback(async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from("staff")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select("id, full_name, email, phone, specialties, is_active, commission_rate, created_at, updated_at");
+      
+      // Add organization filter for security
+      if (organization?.id) {
+        query = query.eq("organization_id", organization.id);
+      }
+      
+      const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) throw error;
       setStaff(data || []);

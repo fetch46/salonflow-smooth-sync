@@ -214,15 +214,18 @@ export default function CreateJobCard() {
   const fetchInitialData = async () => {
     setLoading(true);
     try {
+      // Organization-scoped queries for security
       if (!organization?.id) {
-        throw new Error('No active organization selected');
+        console.warn("No organization selected - cannot load job card data");
+        setLoading(false);
+        return;
       }
 
-      const [staffRes, clientsRes, servicesRes, appointmentsRes, locationsRes, orgRes, whRes] = await Promise.all([
-        supabase.from("staff").select("*").eq("is_active", true).eq('organization_id', organization.id),
-        supabase.from("clients").select("*").eq('organization_id', organization.id),
-        supabase.from("services").select("*").eq("is_active", true).eq('organization_id', organization.id),
-        supabase.from("appointments").select("*").eq('organization_id', organization.id).gte("appointment_date", format(new Date(), 'yyyy-MM-dd')),
+      const [staffRes, clientsRes, servicesRes, appointmentsRes, locationsRes, orgRes, warehousesRes] = await Promise.all([
+        supabase.from("staff").select("id, full_name, email, phone, specialties, is_active, commission_rate").eq("is_active", true).eq('organization_id', organization.id),
+        supabase.from("clients").select("id, full_name, email, phone, client_status").eq('organization_id', organization.id),
+        supabase.from("services").select("id, name, description, duration_minutes, price, category, is_active, commission_percentage").eq("is_active", true).eq('organization_id', organization.id),
+        supabase.from("appointments").select("id, customer_name, appointment_date, appointment_time, service_name, client_id, status").eq('organization_id', organization.id).gte("appointment_date", format(new Date(), 'yyyy-MM-dd')),
         supabase.from('business_locations').select('id, name, is_default').eq('organization_id', organization.id).order('name'),
         supabase.from('organizations').select('id, settings').eq('id', organization.id).single(),
         supabase.from('warehouses').select('id, name, is_active, location_id').eq('organization_id', organization.id).order('name')

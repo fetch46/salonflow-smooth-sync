@@ -188,8 +188,8 @@ export default function Services() {
       if (organization?.id) {
         const { data, error } = await supabase
           .from("services")
-          .select("*")
-          .or(`organization_id.eq.${organization.id},organization_id.is.null`)
+          .select("id, name, description, duration_minutes, price, category, is_active, created_at, updated_at, commission_percentage, location_id")
+          .eq("organization_id", organization.id)
           .order("created_at", { ascending: false });
 
         if (error) {
@@ -226,13 +226,10 @@ export default function Services() {
         return
       }
 
-      // No organization selected; fetch all
-      const { data, error } = await supabase
-        .from("services")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      setServices(data || []);
+      // No organization selected; return empty for security
+      console.warn("No organization selected - returning empty services list for security");
+      setServices([]);
+      return;
     } catch (error) {
       console.error("Error fetching services:", error);
       setServices([]);

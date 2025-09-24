@@ -125,14 +125,24 @@ export default function AppointmentForm() {
     }
   }, []);
 
-  const fetchInitialData = useCallback(async () => {
+    const fetchInitialData = useCallback(async () => {
     setLoading(true);
     try {
+      // Organization-scoped queries for security
+      if (!organization?.id) {
+        console.warn("No organization selected - returning empty data for security");
+        setStaff([]);
+        setClients([]);
+        setServices([]);
+        setLocations([]);
+        return;
+      }
+
       const [staffRes, clientsRes, servicesRes, locationsRes] = await Promise.all([
-        supabase.from("staff").select("*").eq("is_active", true),
-        supabase.from("clients").select("*"),
-        supabase.from("services").select("*").eq("is_active", true).eq('organization_id', organization?.id || ''),
-        supabase.from("business_locations").select("id, name").eq('organization_id', organization?.id || '').order("name", { ascending: true }),
+        supabase.from("staff").select("id, full_name, email, phone, specialties, is_active, commission_rate").eq("is_active", true).eq("organization_id", organization.id),
+        supabase.from("clients").select("id, full_name, email, phone, client_status").eq("organization_id", organization.id),
+        supabase.from("services").select("id, name, description, duration_minutes, price, category, is_active, commission_percentage").eq("is_active", true).eq('organization_id', organization.id),
+        supabase.from("business_locations").select("id, name").eq('organization_id', organization.id).order("name", { ascending: true }),
       ]);
 
       if (staffRes.error) throw staffRes.error;

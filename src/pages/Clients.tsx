@@ -190,10 +190,16 @@ export default function Clients() {
     try {
       setLoading(true);
       try {
-        let query = supabase.from("clients").select("*");
-        if (organization?.id) {
-          query = query.eq("organization_id", organization.id);
+        let query = supabase.from("clients").select("id, full_name, email, phone, address, notes, created_at, updated_at, client_status, preferred_technician_id, total_spent, total_visits, last_visit_date");
+        
+        // Organization filter is mandatory for security
+        if (!organization?.id) {
+          console.warn("No organization selected - returning empty clients list for security");
+          setClients([]);
+          return;
         }
+        
+        query = query.eq("organization_id", organization.id);
         const { data, error } = await query.order("created_at", { ascending: false });
         if (error) throw error;
 

@@ -161,11 +161,21 @@ export default function Appointments() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [appointmentsRes, staffRes, servicesRes, locationsRes] = await Promise.all([supabase.from("appointments").select("*").order("appointment_date", {
-        ascending: true
-      }), supabase.from("staff").select("*").eq("is_active", true), supabase.from("services").select("*").eq("is_active", true).eq('organization_id', organization?.id || ''), supabase.from("business_locations").select("id, name").eq('organization_id', organization?.id || '').order("name", {
-        ascending: true
-      })]);
+      // Organization-scoped queries to prevent data leakage
+      let appointmentsQuery = supabase.from("appointments").select("id, customer_name, customer_email, customer_phone, service_name, service_id, staff_id, appointment_date, appointment_time, duration_minutes, status, notes, price, created_at, client_id, location_id");
+      let staffQuery = supabase.from("staff").select("id, full_name, email, phone, specialties").eq("is_active", true);
+      
+      if (organization?.id) {
+        appointmentsQuery = appointmentsQuery.eq("organization_id", organization.id);
+        staffQuery = staffQuery.eq("organization_id", organization.id);
+      }
+      
+      const [appointmentsRes, staffRes, servicesRes, locationsRes] = await Promise.all([
+        appointmentsQuery.order("appointment_date", { ascending: true }),
+        staffQuery,
+        supabase.from("services").select("id, name, description, duration_minutes, price, category, commission_percentage").eq("is_active", true).eq('organization_id', organization?.id || ''),
+        supabase.from("business_locations").select("id, name").eq('organization_id', organization?.id || '').order("name", { ascending: true })
+      ]);
       if (appointmentsRes.error) throw appointmentsRes.error;
       if (staffRes.error) throw staffRes.error;
       if (servicesRes.error) throw servicesRes.error;
@@ -225,7 +235,7 @@ export default function Appointments() {
           const {
             data: apptServices,
             error: apptServicesError
-          } = await supabase.from("appointment_services").select("*").in("appointment_id", appointmentIds);
+          } = await supabase.from("appointment_services").select("id, appointment_id, service_id, staff_id, duration_minutes, unit_price, notes, commission_percentage").in("appointment_id", appointmentIds);
           if (apptServicesError) throw apptServicesError;
           const grouped: Record<string, AppointmentServiceItem[]> = {};
           (apptServices || []).forEach((item: any) => {

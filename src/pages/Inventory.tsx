@@ -1200,7 +1200,17 @@ export default function Inventory() {
     try {
       setIsLoading(true);
       // Fetch items and mappings
-      const { data: itemsRes, error: itemsErr } = await supabase.from('inventory_items').select('*').order('name');
+      // Organization-scoped query for security
+      if (!organization?.id) {
+        console.warn("No organization selected - skipping inventory items fetch for security");
+        return;
+      }
+      
+      const { data: itemsRes, error: itemsErr } = await supabase
+        .from('inventory_items')
+        .select('id, name, type, sku, unit, cost_price, selling_price, is_active, category')
+        .eq('organization_id', organization.id)
+        .order('name');
       if (itemsErr) throw itemsErr;
       const itemIds = (itemsRes || []).map((it: any) => it.id);
       let mappings: any[] = [];
