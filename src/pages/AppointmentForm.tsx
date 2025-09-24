@@ -132,7 +132,7 @@ export default function AppointmentForm() {
       if (!organization?.id) {
         console.warn("No organization selected - returning empty data for security");
         setStaff([]);
-        setClients([]);
+        setClientsList([]);
         setServices([]);
         setLocations([]);
         return;

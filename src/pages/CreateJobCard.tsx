@@ -241,7 +241,7 @@ export default function CreateJobCard() {
         const settings = (orgRes.data as any)?.settings || {};
         const initialLoc = (settings.jobcards_default_location_id || defaultLoc?.id || '') as string;
         setSelectedLocationId(initialLoc);
-        setWarehouses(whRes.data || []);
+        setWarehouses(warehousesRes.data || []);
         const initialWh = (settings.jobcards_default_warehouse_id || settings.pos_default_warehouse_id || '') as string;
         setSelectedWarehouseId(initialWh);
       }
