@@ -2089,6 +2089,77 @@ export type Database = {
         }
         Relationships: []
       }
+      mpesa_payments: {
+        Row: {
+          account_reference: string
+          amount: number
+          checkout_request_id: string | null
+          created_at: string
+          customer_message: string | null
+          id: string
+          merchant_request_id: string | null
+          mpesa_receipt_number: string | null
+          organization_id: string
+          phone_number: string
+          reference_id: string | null
+          reference_type: string | null
+          response_code: string | null
+          response_description: string | null
+          status: string
+          transaction_date: string | null
+          transaction_desc: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_reference: string
+          amount: number
+          checkout_request_id?: string | null
+          created_at?: string
+          customer_message?: string | null
+          id?: string
+          merchant_request_id?: string | null
+          mpesa_receipt_number?: string | null
+          organization_id: string
+          phone_number: string
+          reference_id?: string | null
+          reference_type?: string | null
+          response_code?: string | null
+          response_description?: string | null
+          status?: string
+          transaction_date?: string | null
+          transaction_desc?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_reference?: string
+          amount?: number
+          checkout_request_id?: string | null
+          created_at?: string
+          customer_message?: string | null
+          id?: string
+          merchant_request_id?: string | null
+          mpesa_receipt_number?: string | null
+          organization_id?: string
+          phone_number?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          response_code?: string | null
+          response_description?: string | null
+          status?: string
+          transaction_date?: string | null
+          transaction_desc?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mpesa_payments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
