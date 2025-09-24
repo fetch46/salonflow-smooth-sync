@@ -31,6 +31,7 @@ interface InvoiceLite {
   id: string;
   invoice_number: string;
   customer_id: string | null;
+  client_id: string | null;
   customer_name?: string;
   customer_email?: string | null;
   customer_phone?: string | null;
@@ -178,7 +179,7 @@ export default function PaymentsReceived() {
     const s = searchReceived.toLowerCase();
     return payments.filter(p => {
       const r = invoicesById[p.invoice_id];
-      const clientName = r?.customer_id ? (clientsById[r.customer_id]?.full_name || '') : '';
+      const clientName = r?.client_id ? (clientsById[r.client_id]?.full_name || '') : '';
       const matchesQuery = (
         (r?.invoice_number || '').toLowerCase().includes(s) ||
         clientName.toLowerCase().includes(s) ||
@@ -360,7 +361,7 @@ export default function PaymentsReceived() {
                 )}
                 {filteredReceived.map((payment) => {
                   const invoice = invoicesById[payment.invoice_id];
-                  const clientName = invoice?.customer_id ? (clientsById[invoice.customer_id]?.full_name || '—') : '—';
+                  const clientName = invoice?.client_id ? (clientsById[invoice.client_id]?.full_name || '—') : '—';
                   
                   return (
                     <TableRow key={payment.id} className="hover:bg-muted/50">
