@@ -14,6 +14,8 @@ import { useSaas } from "@/lib/saas";
 import { useOrganizationCurrency } from "@/lib/saas/hooks";
 import { getInvoicesWithBalanceWithFallback, recordInvoicePaymentWithFallback } from "@/utils/mockDatabase";
 import { postInvoicePaymentWithAccount, postInvoicePaymentToLedger } from "@/utils/ledger";
+import { MpesaPaymentModal } from "@/components/payments/MpesaPaymentModal";
+import { useMpesaPayments } from "@/hooks/useMpesaPayments";
 
 interface InvoiceLiteOption {
   id: string;
@@ -35,6 +37,8 @@ export default function PaymentReceivedNew() {
 
   const [loading, setLoading] = useState<boolean>(false);
   const [creating, setCreating] = useState<boolean>(false);
+  const [showMpesaModal, setShowMpesaModal] = useState<boolean>(false);
+  const { initiatePayment } = useMpesaPayments(organization?.id);
 
   const [createStatus, setCreateStatus] = useState<"unpaid" | "pending">("unpaid");
   const [invoiceOptions, setInvoiceOptions] = useState<InvoiceLiteOption[]>([]);
@@ -50,6 +54,7 @@ export default function PaymentReceivedNew() {
     payment_date: new Date().toISOString().slice(0, 10),
     account_id: "",
     customer_name: "",
+    customer_phone: "",
   });
 
   useEffect(() => {
@@ -137,8 +142,90 @@ export default function PaymentReceivedNew() {
     setForm((prev) => ({ ...prev, amount: String(outstanding > 0 ? outstanding.toFixed(2) : ""), customer_name: customerName }));
   };
 
+  const handleMpesaPayment = () => {
+    if (!selectedInvoiceId) {
+      toast.error("Select an invoice");
+      return;
+    }
+    
+    const amt = parseFloat(form.amount) || 0;
+    if (amt <= 0) {
+      toast.error("Enter a valid amount");
+      return;
+    }
+    
+    if (!form.customer_phone) {
+      toast.error("Customer phone number is required for M-Pesa payments");
+      return;
+    }
+    
+    setShowMpesaModal(true);
+  };
+
+  const handleMpesaSuccess = async (paymentId: string) => {
+    try {
+      setCreating(true);
+      const r = invoiceOptions.find((x) => x.id === selectedInvoiceId);
+      const amt = parseFloat(form.amount) || 0;
+      
+      // Record the payment in the system
+      const ok = await recordInvoicePaymentWithFallback(supabase, {
+        invoice_id: selectedInvoiceId,
+        amount: amt,
+        method: form.method,
+        reference_number: paymentId, // Use M-Pesa payment ID as reference
+        payment_date: form.payment_date,
+      });
+      
+      if (!ok) throw new Error("Failed to record payment");
+
+      // Post to ledger
+      try {
+        if (organization?.id) {
+          if (form.account_id) {
+            await postInvoicePaymentWithAccount({
+              organizationId: organization.id,
+              amount: amt,
+              depositAccountId: form.account_id,
+              invoiceId: selectedInvoiceId,
+              invoiceNumber: r?.invoice_number,
+              paymentDate: form.payment_date,
+            });
+          } else {
+            await postInvoicePaymentToLedger({
+              organizationId: organization.id,
+              amount: amt,
+              method: form.method,
+              invoiceId: selectedInvoiceId,
+              invoiceNumber: r?.invoice_number,
+              paymentDate: form.payment_date,
+            });
+          }
+        }
+      } catch (ledgerErr) {
+        console.warn("Ledger posting failed", ledgerErr);
+      }
+
+      toast.success("M-Pesa payment completed and recorded");
+      navigate("/payments");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to record M-Pesa payment");
+    } finally {
+      setCreating(false);
+      setShowMpesaModal(false);
+    }
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Handle M-Pesa payments differently
+    if (form.method === 'mpesa') {
+      handleMpesaPayment();
+      return;
+    }
+    
     if (!selectedInvoiceId) {
       toast.error("Select an invoice");
       return;
@@ -150,11 +237,7 @@ export default function PaymentReceivedNew() {
       toast.error("Invalid amount");
       return;
     }
-    // Enforce M-Pesa reference
-    if (String(form.method).toLowerCase() === 'mpesa' && !form.reference.trim()) {
-      toast.error('Reference is required for M-Pesa payments');
-      return;
-    }
+
     try {
       setCreating(true);
       const ok = await recordInvoicePaymentWithFallback(supabase, {
@@ -299,6 +382,19 @@ export default function PaymentReceivedNew() {
                 <Label>Customer</Label>
                 <Input value={form.customer_name} onChange={(e) => setForm((prev) => ({ ...prev, customer_name: e.target.value }))} placeholder="Customer name" />
               </div>
+              {form.method === 'mpesa' && (
+                <div className="space-y-2">
+                  <Label>Customer Phone <span className="text-red-500">*</span></Label>
+                  <Input
+                    value={form.customer_phone}
+                    onChange={(e) => setForm((prev) => ({ ...prev, customer_phone: e.target.value }))}
+                    placeholder="254XXXXXXXXX"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enter phone number in format 254XXXXXXXXX for M-Pesa payments
+                  </p>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Amount</Label>
                 <Input
@@ -322,13 +418,15 @@ export default function PaymentReceivedNew() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Reference (optional)</Label>
-                <Input
-                  value={form.reference}
-                  onChange={(e) => setForm((prev) => ({ ...prev, reference: e.target.value }))}
-                />
-              </div>
+              {form.method !== 'mpesa' && (
+                <div className="space-y-2">
+                  <Label>Reference (optional)</Label>
+                  <Input
+                    value={form.reference}
+                    onChange={(e) => setForm((prev) => ({ ...prev, reference: e.target.value }))}
+                  />
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Payment Date</Label>
                 <Input
@@ -358,13 +456,27 @@ export default function PaymentReceivedNew() {
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => navigate("/payments")}>Cancel</Button>
                 <Button type="submit" disabled={creating || !selectedInvoiceId}>
-                  Save Payment
+                  {form.method === 'mpesa' ? 'Send STK Push' : 'Save Payment'}
                 </Button>
               </div>
             </form>
           </CardContent>
         </Card>
       </div>
+
+      {/* M-Pesa Payment Modal */}
+      <MpesaPaymentModal
+        open={showMpesaModal}
+        onOpenChange={setShowMpesaModal}
+        amount={parseFloat(form.amount) || 0}
+        organizationId={organization?.id || ''}
+        accountReference={selectedInvoiceId ? `INV-${invoiceOptions.find(i => i.id === selectedInvoiceId)?.invoice_number}` : ''}
+        transactionDesc={`Payment for Invoice ${invoiceOptions.find(i => i.id === selectedInvoiceId)?.invoice_number}`}
+        referenceType="invoice_payment"
+        referenceId={selectedInvoiceId}
+        onSuccess={handleMpesaSuccess}
+        customerPhone={form.customer_phone}
+      />
     </div>
   );
 }

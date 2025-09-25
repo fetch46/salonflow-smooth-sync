@@ -21,6 +21,7 @@ import { WarehousesSettings } from "@/components/settings/WarehousesSettings";
 import { AccountingSettings } from "@/components/settings/AccountingSettings";
 import { ItemsSettings } from "@/components/settings/ItemsSettings";
 import { RegionalSettings } from "@/components/settings/RegionalSettings";
+import { MpesaSettings } from "@/components/settings/MpesaSettings";
 // ThemeColorPicker removed in favor of dropdown-based selectors
 
 // Subscription moved to dedicated page under Settings
@@ -143,7 +144,7 @@ export default function Settings() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-5 justify-start sm:justify-start">
+        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-6 justify-start sm:justify-start">
           <TabsTrigger value="company" className="justify-start gap-2 data-[state=active]:bg-muted">
             <Building className="h-4 w-4" />
             Company
@@ -163,6 +164,10 @@ export default function Settings() {
           <TabsTrigger value="warehouses" className="justify-start gap-2 data-[state=active]:bg-muted">
             <Warehouse className="h-4 w-4" />
             Warehouses
+          </TabsTrigger>
+          <TabsTrigger value="payments" className="justify-start gap-2 data-[state=active]:bg-muted">
+            <CreditCard className="h-4 w-4" />
+            Payments
           </TabsTrigger>
         </TabsList>
 
@@ -265,6 +270,11 @@ export default function Settings() {
           {/* Warehouses Settings */}
           <TabsContent value="warehouses">
             <WarehousesSettings />
+          </TabsContent>
+
+          {/* Payments Settings */}
+          <TabsContent value="payments">
+            <MpesaSettings />
           </TabsContent>
 
           

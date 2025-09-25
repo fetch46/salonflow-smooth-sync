@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,7 @@ interface MpesaPaymentModalProps {
   referenceType?: string;
   referenceId?: string;
   onSuccess?: (paymentId: string) => void;
+  customerPhone?: string;
 }
 
 const phoneSchema = z.string()
@@ -35,13 +36,21 @@ export const MpesaPaymentModal = ({
   transactionDesc,
   referenceType,
   referenceId,
-  onSuccess
+  onSuccess,
+  customerPhone: initialPhone
 }: MpesaPaymentModalProps) => {
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState(initialPhone || "");
   const [isLoading, setIsLoading] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'checking' | 'success' | 'failed'>('idle');
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const [checkoutRequestId, setCheckoutRequestId] = useState<string | null>(null);
+
+  // Update phone number when initialPhone changes
+  useEffect(() => {
+    if (initialPhone) {
+      setPhoneNumber(initialPhone);
+    }
+  }, [initialPhone]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
