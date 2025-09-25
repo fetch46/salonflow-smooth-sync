@@ -5,3 +5,15 @@ verify_jwt = false
 
 [functions.send-appointment-whatsapp]
 verify_jwt = false
+
+[functions.send-staff-whatsapp]
+verify_jwt = false
+
+[functions.mpesa-stk-push]
+verify_jwt = false
+
+[functions.mpesa-callback]
+verify_jwt = false
+
+[functions.test-mpesa-connection]
+verify_jwt = false

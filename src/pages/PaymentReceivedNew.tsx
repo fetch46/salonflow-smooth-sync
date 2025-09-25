@@ -133,13 +133,37 @@ export default function PaymentReceivedNew() {
       .filter((r) => (r.invoice_number || "").toLowerCase().includes(s));
   }, [invoiceOptions, invoiceSearch, createStatus]);
 
-  const onSelectInvoice = (id: string) => {
+  const onSelectInvoice = async (id: string) => {
     setSelectedInvoiceId(id);
     const outstanding = outstandingById[id] || 0;
     // Prefill amount and customer name if available
     const selected = invoiceOptions.find((x) => x.id === id);
     const customerName = (selected as any)?.customer_name || '';
-    setForm((prev) => ({ ...prev, amount: String(outstanding > 0 ? outstanding.toFixed(2) : ""), customer_name: customerName }));
+    
+    // Auto-fill customer phone from client data for M-Pesa payments
+    let customerPhone = '';
+    if (selected && (selected as any)?.client_id) {
+      try {
+        const { data: client } = await supabase
+          .from('clients')
+          .select('phone')
+          .eq('id', (selected as any).client_id)
+          .maybeSingle();
+        
+        if (client?.phone) {
+          customerPhone = client.phone;
+        }
+      } catch (error) {
+        console.warn('Failed to fetch client phone:', error);
+      }
+    }
+    
+    setForm((prev) => ({ 
+      ...prev, 
+      amount: String(outstanding > 0 ? outstanding.toFixed(2) : ""), 
+      customer_name: customerName,
+      customer_phone: customerPhone || prev.customer_phone
+    }));
   };
 
   const handleMpesaPayment = () => {
