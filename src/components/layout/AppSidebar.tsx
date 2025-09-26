@@ -203,6 +203,12 @@ const menuItems: MenuItem[] = [
         icon: FileText,
         feature: "accounting",
       },
+      {
+        title: "Payroll",
+        url: "/payroll",
+        icon: Users,
+        feature: "accounting",
+      },
     ],
   },
   {

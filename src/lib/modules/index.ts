@@ -138,6 +138,19 @@ export const CORE_MODULES: Record<string, Module> = {
       { path: '/journal', component: 'Journal', permissions: ['accounting:view'] },
       { path: '/reports', component: 'Reports', permissions: ['reports:view'] }
     ]
+  },
+  payroll: {
+    id: 'payroll',
+    name: 'Payroll',
+    description: 'Staff payroll and commission management',
+    icon: 'Users',
+    category: 'Financial Management',
+    permissions: ['payroll:view', 'payroll:create', 'payroll:edit'],
+    dependencies: ['accountant'],
+    routes: [
+      { path: '/payroll', component: 'Payroll', permissions: ['payroll:view'] },
+      { path: '/payroll/commissions', component: 'PayrollCommissions', permissions: ['payroll:view'] }
+    ]
   }
 };
 

@@ -81,6 +81,8 @@ const AccountView = lazyWithRetry(() => import("./pages/AccountView"));
 const Journal = lazyWithRetry(() => import("./pages/Journal"));
 const Purchases = lazyWithRetry(() => import("./pages/Purchases"));
 const StockTransfers = lazyWithRetry(() => import("./pages/StockTransfers"));
+const Payroll = lazyWithRetry(() => import("./pages/Payroll"));
+const PayrollCommissions = lazyWithRetry(() => import("./pages/PayrollCommissions"));
 
 const ProductEdit = lazyWithRetry(() => import("./pages/ProductEdit"));
 
@@ -303,6 +305,10 @@ const AppRoutes = () => {
           <Route path="journal" element={<ModuleGate moduleId="accountant"><Journal /></ModuleGate>} />
           <Route path="reports" element={<ModuleGate moduleId="accountant"><Reports /></ModuleGate>} />
           <Route path="specific-reports" element={<ModuleGate moduleId="accountant"><SpecificReports /></ModuleGate>} />
+          
+          {/* Payroll Module */}
+          <Route path="payroll" element={<ModuleGate moduleId="accountant"><Payroll /></ModuleGate>} />
+          <Route path="payroll/commissions" element={<ModuleGate moduleId="accountant"><PayrollCommissions /></ModuleGate>} />
           
           {/* Staff & General Settings (Always available) */}
           <Route path="staff" element={<Staff />} />
