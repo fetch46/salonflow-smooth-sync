@@ -975,7 +975,7 @@ Thank you for your business!`;
                       <SelectTrigger className="h-9 text-sm">
                         <SelectValue placeholder="Select service" />
                       </SelectTrigger>
-                      <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
+                      <SelectContent className="bg-popover border shadow-lg z-50">
                         {services.map((s: any) => (
                           <SelectItem key={s.id} value={s.id} className="text-sm">{s.name} - {symbol}{s.price}</SelectItem>
                         ))}
@@ -1011,7 +1011,7 @@ Thank you for your business!`;
                       <SelectTrigger className="h-9 text-sm">
                         <SelectValue placeholder="Select staff" />
                       </SelectTrigger>
-                      <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
+                      <SelectContent className="bg-popover border shadow-lg z-50">
                         {staff.map((s: any) => (
                           <SelectItem key={s.id} value={s.id} className="text-sm">{s.full_name}</SelectItem>
                         ))}
@@ -1101,7 +1101,7 @@ Thank you for your business!`;
                               <SelectTrigger className="h-9 text-sm w-40">
                                 <SelectValue placeholder="Select staff" />
                               </SelectTrigger>
-                              <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
+                              <SelectContent className="bg-popover border shadow-lg z-50">
                                 {staff.map((s: any) => (
                                   <SelectItem key={s.id} value={s.id} className="text-sm">{s.full_name}</SelectItem>
                                 ))}
@@ -1152,7 +1152,7 @@ Thank you for your business!`;
               </div>
             </div>
             {receivedPayment && (
-              <Card className="bg-white/90">
+              <Card className="bg-card/90">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm">Payment Details</CardTitle>
                 </CardHeader>
@@ -1228,7 +1228,7 @@ Thank you for your business!`;
       <div className="w-full xl:w-80 space-y-4">
         {/* Job Card Summary (replaces Invoice Details) */}
         {selectedJobCardInfo && (
-          <Card className="bg-white border border-slate-200">
+          <Card className="bg-card border">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg font-semibold text-slate-900">Job Card Summary</CardTitle>
             </CardHeader>
@@ -1255,7 +1255,7 @@ Thank you for your business!`;
           </Card>
         )}
         {/* Invoice Preview */}
-        <Card className="bg-white border border-slate-200">
+        <Card className="bg-card border">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg font-semibold text-slate-900">Invoice Preview</CardTitle>
           </CardHeader>
@@ -1368,7 +1368,7 @@ Thank you for your business!`;
             </CardHeader>
             <CardContent className="space-y-3">
               {commissionSummary.map((commission, idx) => (
-                <div key={idx} className="bg-white/60 p-3 rounded-lg">
+                <div key={idx} className="bg-card/60 p-3 rounded-lg">
                   <div className="font-medium text-green-900">{commission.name}</div>
                   <div className="text-lg font-bold text-green-700">
                     {symbol}{commission.amount.toFixed(2)}

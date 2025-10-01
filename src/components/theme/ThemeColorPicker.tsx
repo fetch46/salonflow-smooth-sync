@@ -95,7 +95,7 @@ export function ThemeColorPicker() {
               }}
             >
               <div 
-                className="w-4 h-4 rounded-full border border-white/20" 
+                className="w-4 h-4 rounded-full border border-border" 
                 style={{ backgroundColor: `hsl(${color.value})` }}
               />
               <span className="text-xs">{color.name}</span>

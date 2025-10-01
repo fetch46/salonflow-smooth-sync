@@ -178,7 +178,7 @@ export function SuperAdminSidebar() {
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         onClick={() => toggleSubmenu(item.title)}
-                        className="hover:bg-purple-100 text-black dark:text-slate-200 font-medium hover:text-purple-800 text-responsive-base h-12 px-3"
+                        className="hover:bg-purple-100 text-foreground font-medium hover:text-purple-800 text-responsive-base h-12 px-3"
                         size="lg"
                       >
                         <item.icon className="w-6 h-6" />
@@ -195,7 +195,7 @@ export function SuperAdminSidebar() {
                             <SidebarMenuSubItem key={subItem.title}>
                               <SidebarMenuSubButton 
                                 asChild
-                                className="hover:bg-purple-100 h-10 text-responsive-sm px-3 text-black dark:text-slate-200 font-medium"
+                                className="hover:bg-purple-100 h-10 text-responsive-sm px-3 text-foreground font-medium"
                                 isActive={location.pathname === subItem.url}
                               >
                                 <NavLink
@@ -204,7 +204,7 @@ export function SuperAdminSidebar() {
                                     `flex items-center gap-2 ${
                                       isActive 
                                         ? "bg-purple-200 text-purple-900 font-medium" 
-                                        : "text-black dark:text-slate-200 hover:text-black dark:hover:text-purple-800 font-medium"
+                                      : "text-foreground hover:text-purple-800 font-medium"
                                     }`
                                   }
                                   onClick={handleNavClick}
@@ -225,7 +225,7 @@ export function SuperAdminSidebar() {
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton 
                       asChild
-                      className="hover:bg-purple-100 text-black dark:text-slate-200 font-medium text-responsive-base h-12 px-3"
+                      className="hover:bg-purple-100 text-foreground font-medium text-responsive-base h-12 px-3"
                       isActive={location.pathname === item.url}
                       size="lg"
                     >
@@ -235,7 +235,7 @@ export function SuperAdminSidebar() {
                           `flex items-center gap-2 ${
                             isActive 
                               ? "bg-purple-200 text-purple-900 font-medium" 
-                              : "text-black dark:text-slate-200 hover:text-black dark:hover:text-purple-800 font-medium"
+                              : "text-foreground hover:text-purple-800 font-medium"
                           }`
                         }
                         onClick={handleNavClick}

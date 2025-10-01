@@ -6,28 +6,28 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 aria-selected:bg-primary aria-selected:text-white aria-selected:font-semibold aria-pressed:bg-primary aria-pressed:text-white aria-pressed:font-semibold data-[state=on]:bg-primary data-[state=on]:text-white data-[state=on]:font-semibold aria-selected:[&_svg]:text-white aria-pressed:[&_svg]:text-white data-[state=on]:[&_svg]:text-white",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground border border-primary/20 shadow-sm",
-        destructive: "bg-primary text-primary-foreground border border-primary/20 shadow-sm",
-        outline: "bg-primary text-primary-foreground border border-primary/20 shadow-sm",
-        secondary: "bg-primary text-primary-foreground border border-primary/20 shadow-sm",
-        ghost: "bg-primary text-primary-foreground border border-primary/20 shadow-sm",
-        link: "bg-primary text-primary-foreground border border-primary/20 shadow-sm",
-        solid: "bg-primary text-primary-foreground shadow-md transition-all duration-200 border border-primary/20",
-        "solid-destructive": "bg-primary text-primary-foreground shadow-md transition-all duration-200 border border-primary/20",
-        "solid-secondary": "bg-primary text-primary-foreground shadow-md transition-all duration-200 border border-primary/20",
-        "theme-neutral": "bg-primary text-primary-foreground border border-primary/20 shadow-sm transition-all duration-200",
-        whatsapp: "bg-[#25D366] text-white border border-[#25D366]/20 shadow-sm hover:bg-[#1EBE57] focus-visible:ring-[#25D366]",
+        default: "bg-primary text-white hover:bg-primary/90 active:scale-[0.98] shadow-sm border border-primary/20",
+        destructive: "bg-destructive text-white hover:bg-destructive/90 active:scale-[0.98] shadow-sm",
+        outline: "border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white active:scale-[0.98]",
+        secondary: "bg-secondary text-white hover:bg-secondary/80 active:scale-[0.98] shadow-sm",
+        ghost: "hover:bg-primary/10 hover:text-primary active:scale-[0.98]",
+        link: "text-primary underline-offset-4 hover:underline",
+        solid: "bg-primary text-white hover:bg-primary/90 shadow-md active:scale-[0.98]",
+        "solid-destructive": "bg-destructive text-white hover:bg-destructive/90 shadow-md active:scale-[0.98]",
+        "solid-secondary": "bg-secondary text-white hover:bg-secondary/80 shadow-md active:scale-[0.98]",
+        "theme-neutral": "bg-muted text-muted-foreground hover:bg-muted/80 active:scale-[0.98]",
+        whatsapp: "bg-[#25D366] text-white hover:bg-[#1EBE57] active:scale-[0.98] shadow-sm",
       },
       size: {
-        default: "h-9 px-4 py-2 text-responsive-sm",
-        sm: "h-8 rounded-sm px-3 text-responsive-xs",
-        lg: "h-10 rounded-sm px-8 text-responsive-base",
-        xl: "h-12 rounded-sm px-10 text-responsive-lg",
-        icon: "h-9 w-9",
+        default: "h-10 px-4 py-2",
+        sm: "h-9 rounded-md px-3 text-xs",
+        lg: "h-11 rounded-md px-8",
+        xl: "h-12 rounded-md px-10 text-base",
+        icon: "h-10 w-10",
       },
     },
     defaultVariants: {

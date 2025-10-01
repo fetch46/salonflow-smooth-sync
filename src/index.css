@@ -32,8 +32,8 @@ All colors MUST be HSL.
     --primary-light: var(--theme-primary-light, 221 83% 70%);
     --primary-lighter-70: color-mix(in hsl, hsl(var(--primary)) 30%, hsl(0 0% 100%) 70%);
 
-    --secondary: 217 19% 94%;
-    --secondary-foreground: 0 0% 13%;
+    --secondary: 217 19% 35%;
+    --secondary-foreground: 0 0% 100%;
 
     /* Muted: Subtle backgrounds with slight blue tint */
     --muted: 214 20% 96%;
@@ -242,7 +242,7 @@ All colors MUST be HSL.
     --primary-light: var(--theme-primary-light, 0 0% 20%);
     --primary-lighter-70: color-mix(in hsl, hsl(var(--primary)) 30%, hsl(0 0% 0%) 70%);
 
-    --secondary: 0 0% 14.9%;
+    --secondary: 0 0% 30%;
     --secondary-foreground: 0 0% 98%;
 
     --muted: 0 0% 14.9%;
