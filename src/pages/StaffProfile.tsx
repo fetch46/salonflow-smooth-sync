@@ -64,6 +64,7 @@ export default function StaffProfile() {
   const [activeTab, setActiveTab] = useState('activity');
   const [commissionRows, setCommissionRows] = useState<any[]>([]);
   const [appointments, setAppointments] = useState<any[]>([]);
+  const [payrollHistory, setPayrollHistory] = useState<any[]>([]);
 
   const [gallery, setGallery] = useState<StaffGalleryItem[]>([]);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -170,10 +171,23 @@ export default function StaffProfile() {
       }
 
       setAppointments(combined || []);
+
+      // Load payroll history (commission payments)
+      const { data: payrollData, error: payrollErr } = await supabase
+        .from('staff_commissions')
+        .select('*')
+        .eq('staff_id', id)
+        .eq('status', 'paid')
+        .order('paid_date', { ascending: false });
+      
+      if (!payrollErr) {
+        setPayrollHistory(payrollData || []);
+      }
     } catch (e) {
       console.error('Failed to load staff profile data', e);
       setCommissionRows([]);
       setAppointments([]);
+      setPayrollHistory([]);
     } finally {
       setLoading(false);
     }
@@ -462,6 +476,10 @@ export default function StaffProfile() {
                   <DollarSign className="w-4 h-4 mr-2" />
                   Commissions ({commissionTotals.count})
                 </TabsTrigger>
+                <TabsTrigger value="payroll" className="text-sm">
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Payroll ({payrollHistory.length})
+                </TabsTrigger>
                 <TabsTrigger value="gallery" className="text-sm">
                   <Camera className="w-4 h-4 mr-2" />
                   Gallery ({gallery.length})
@@ -560,6 +578,86 @@ export default function StaffProfile() {
                                 <Badge variant={row.status === 'paid' ? 'default' : 'secondary'}>
                                   {row.status}
                                 </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="payroll" className="space-y-4">
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-base">Payroll History</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-3 mb-6">
+                    <Card className="bg-gradient-to-br from-green-50 to-green-100/50">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm text-slate-600">Total Earned</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold text-green-600">{formatMoney(commissionTotals.earned)}</div>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-gradient-to-br from-blue-50 to-blue-100/50">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm text-slate-600">Total Paid</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold text-blue-600">{formatMoney(commissionTotals.paid)}</div>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-gradient-to-br from-amber-50 to-amber-100/50">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm text-slate-600">Pending</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold text-amber-600">{formatMoney(commissionTotals.pending)}</div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  
+                  {payrollHistory.length === 0 ? (
+                    <div className="text-center py-8 text-slate-500">
+                      <DollarSign className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No payroll payments found.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Payment Date</TableHead>
+                            <TableHead>Accrued Date</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Rate</TableHead>
+                            <TableHead>Reference</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {payrollHistory.map((payment) => (
+                            <TableRow key={payment.id}>
+                              <TableCell className="font-medium">
+                                {payment.paid_date ? formatDate(new Date(payment.paid_date), 'MMM dd, yyyy') : 'N/A'}
+                              </TableCell>
+                              <TableCell>
+                                {payment.accrued_date ? formatDate(new Date(payment.accrued_date), 'MMM dd, yyyy') : 'N/A'}
+                              </TableCell>
+                              <TableCell className="font-semibold text-green-600">
+                                {formatMoney(payment.commission_amount || 0)}
+                              </TableCell>
+                              <TableCell>{(payment.commission_percentage || 0).toFixed(1)}%</TableCell>
+                              <TableCell className="text-sm text-slate-600">
+                                {payment.payment_reference || 'N/A'}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="default">Paid</Badge>
                               </TableCell>
                             </TableRow>
                           ))}
