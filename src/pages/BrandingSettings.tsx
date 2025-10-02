@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Palette, Building, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -13,8 +12,8 @@ export default function BrandingSettings() {
   const [loading, setLoading] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState("blue");
   const [brandColors, setBrandColors] = useState({
-    primary: "221 83% 53%",
-    secondary: "217 19% 94%",
+    primary: "221.2 83.2% 53.3%",
+    secondary: "210 40% 96.1%",
     accent: "210 40% 96.1%",
     theme: "blue",
   });
@@ -34,135 +33,102 @@ export default function BrandingSettings() {
 
   const THEME_PRESETS = [
     { 
-      name: "Blue", 
-      id: "blue", 
-      description: "Professional blue theme", 
+      name: "Zinc", 
+      id: "zinc",
+      description: "Neutral and refined", 
       colors: { 
-        primary: "221 83% 53%", 
-        secondary: "217 19% 94%", 
-        accent: "210 40% 96.1%", 
-        preview: "hsl(221 83% 53%)" 
-      } 
-    },
-    { 
-      name: "Indigo", 
-      id: "indigo", 
-      description: "Deep indigo theme", 
-      colors: { 
-        primary: "234 89% 62%", 
-        secondary: "226 22% 94%", 
-        accent: "226 36% 95%", 
-        preview: "hsl(234 89% 62%)" 
-      } 
-    },
-    { 
-      name: "Green", 
-      id: "green", 
-      description: "Fresh nature theme", 
-      colors: { 
-        primary: "142 76% 36%", 
-        secondary: "138 16% 94%", 
-        accent: "141 32% 95%", 
-        preview: "hsl(142 76% 36%)" 
-      } 
-    },
-    { 
-      name: "Teal", 
-      id: "teal", 
-      description: "Modern teal theme", 
-      colors: { 
-        primary: "172 66% 50%", 
-        secondary: "174 20% 94%", 
-        accent: "173 36% 95%", 
-        preview: "hsl(172 66% 50%)" 
-      } 
-    },
-    { 
-      name: "Purple", 
-      id: "purple", 
-      description: "Royal purple theme", 
-      colors: { 
-        primary: "262 83% 58%", 
-        secondary: "261 20% 94%", 
-        accent: "261 36% 95%", 
-        preview: "hsl(262 83% 58%)" 
-      } 
-    },
-    { 
-      name: "Pink", 
-      id: "pink", 
-      description: "Playful pink theme", 
-      colors: { 
-        primary: "322 93% 64%", 
-        secondary: "324 20% 94%", 
-        accent: "323 36% 95%", 
-        preview: "hsl(322 93% 64%)" 
-      } 
-    },
-    { 
-      name: "Orange", 
-      id: "orange", 
-      description: "Energetic orange theme", 
-      colors: { 
-        primary: "25 95% 53%", 
-        secondary: "24 20% 94%", 
-        accent: "24 36% 95%", 
-        preview: "hsl(25 95% 53%)" 
-      } 
-    },
-    { 
-      name: "Red", 
-      id: "red", 
-      description: "Bold red theme", 
-      colors: { 
-        primary: "0 72% 51%", 
-        secondary: "0 20% 94%", 
-        accent: "0 36% 95%", 
-        preview: "hsl(0 72% 51%)" 
-      } 
-    },
-    { 
-      name: "Amber", 
-      id: "amber", 
-      description: "Warm amber theme", 
-      colors: { 
-        primary: "38 92% 50%", 
-        secondary: "37 20% 94%", 
-        accent: "37 36% 95%", 
-        preview: "hsl(38 92% 50%)" 
-      } 
-    },
-    { 
-      name: "Emerald", 
-      id: "emerald", 
-      description: "Luxurious emerald theme", 
-      colors: { 
-        primary: "160 84% 39%", 
-        secondary: "158 16% 94%", 
-        accent: "159 32% 95%", 
-        preview: "hsl(160 84% 39%)" 
+        primary: "240 5.9% 10%", 
+        secondary: "240 4.8% 95.9%", 
+        accent: "240 4.8% 95.9%", 
+        preview: "hsl(240 5.9% 10%)" 
       } 
     },
     { 
       name: "Slate", 
-      id: "slate", 
-      description: "Professional slate theme", 
+      id: "slate",
+      description: "Professional and modern", 
       colors: { 
-        primary: "215 19% 35%", 
-        secondary: "215 19% 94%", 
-        accent: "215 25% 95%", 
-        preview: "hsl(215 19% 35%)" 
+        primary: "215.4 16.3% 46.9%", 
+        secondary: "214.3 31.8% 91.4%", 
+        accent: "210 40% 96.1%", 
+        preview: "hsl(215.4 16.3% 46.9%)" 
       } 
     },
     { 
-      name: "Zinc", 
-      id: "zinc", 
-      description: "Neutral zinc theme", 
+      name: "Blue", 
+      id: "blue",
+      description: "Calm and trustworthy", 
       colors: { 
-        primary: "240 6% 26%", 
-        secondary: "240 6% 94%", 
-        accent: "240 6% 95%", 
-        preview: "hsl(240 6% 26%)" 
+        primary: "221.2 83.2% 53.3%", 
+        secondary: "210 40% 96.1%", 
+        accent: "210 40% 96.1%", 
+        preview: "hsl(221.2 83.2% 53.3%)" 
+      } 
+    },
+    { 
+      name: "Green", 
+      id: "green",
+      description: "Natural and fresh", 
+      colors: { 
+        primary: "142.1 76.2% 36.3%", 
+        secondary: "138 76% 96.9%", 
+        accent: "138 76% 96.9%", 
+        preview: "hsl(142.1 76.2% 36.3%)" 
+      } 
+    },
+    { 
+      name: "Orange", 
+      id: "orange",
+      description: "Energetic and bold", 
+      colors: { 
+        primary: "24.6 95% 53.1%", 
+        secondary: "24 100% 96.5%", 
+        accent: "24 100% 96.5%", 
+        preview: "hsl(24.6 95% 53.1%)" 
+      } 
+    },
+    { 
+      name: "Red", 
+      id: "red",
+      description: "Passionate and strong", 
+      colors: { 
+        primary: "0 72.2% 50.6%", 
+        secondary: "0 85% 97.3%", 
+        accent: "0 85% 97.3%", 
+        preview: "hsl(0 72.2% 50.6%)" 
+      } 
+    },
+    { 
+      name: "Rose", 
+      id: "rose",
+      description: "Elegant and warm", 
+      colors: { 
+        primary: "346.8 77.2% 49.8%", 
+        secondary: "355 100% 97.3%", 
+        accent: "355 100% 97.3%", 
+        preview: "hsl(346.8 77.2% 49.8%)" 
+      } 
+    },
+    { 
+      name: "Violet", 
+      id: "violet",
+      description: "Creative and vibrant", 
+      colors: { 
+        primary: "262.1 83.3% 57.8%", 
+        secondary: "270 100% 98%", 
+        accent: "270 100% 98%", 
+        preview: "hsl(262.1 83.3% 57.8%)" 
+      } 
+    },
+    { 
+      name: "Yellow", 
+      id: "yellow",
+      description: "Bright and optimistic", 
+      colors: { 
+        primary: "47.9 95.8% 53.1%", 
+        secondary: "54 91.7% 95.3%", 
+        accent: "54 91.7% 95.3%", 
+        preview: "hsl(47.9 95.8% 53.1%)" 
       } 
     }
   ];
@@ -325,87 +291,114 @@ export default function BrandingSettings() {
         </div>
       </div>
 
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <Card className="lg:col-span-7 shadow-lg border-2 hover:shadow-xl transition-shadow animate-fade-in">
-            <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b">
-              <CardTitle className="flex items-center gap-2">
-                <Palette className="h-5 w-5 text-primary" />
-                Quick Themes
-              </CardTitle>
-              <CardDescription>
-                Choose from pre-designed color schemes
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <Label className="text-sm font-semibold">Select Theme Preset</Label>
-                <Select value={selectedTheme} onValueChange={(v) => handleThemeChange(v)}>
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="Choose a theme" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {THEME_PRESETS.map((theme) => (
-                      <SelectItem key={theme.id} value={theme.id} className="flex items-center gap-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 rounded-full border" style={{ backgroundColor: theme.colors.preview }} />
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium">{theme.name}</span>
-                            <span className="text-[10px] text-muted-foreground">{theme.description}</span>
-                          </div>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="space-y-8">
+        {/* Theme Gallery */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Palette className="h-5 w-5 text-primary" />
+              Theme Gallery
+            </CardTitle>
+            <CardDescription>
+              Choose from our curated collection of professional themes
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {THEME_PRESETS.map((theme) => (
+                <button
+                  key={theme.id}
+                  onClick={() => handleThemeChange(theme.id)}
+                  className={`group relative p-4 rounded-xl border-2 transition-all text-left ${
+                    selectedTheme === theme.id
+                      ? 'border-primary bg-primary/5 shadow-md'
+                      : 'border-border hover:border-primary/50 hover:shadow-sm'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div 
+                      className="w-12 h-12 rounded-lg shrink-0 shadow-sm border"
+                      style={{ backgroundColor: theme.colors.preview }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-sm mb-1">{theme.name}</h3>
+                      <p className="text-xs text-muted-foreground">{theme.description}</p>
+                    </div>
+                  </div>
+                  {selectedTheme === theme.id && (
+                    <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card className="lg:col-span-5 shadow-lg border-2 hover:shadow-xl transition-shadow animate-fade-in">
-            <CardHeader className="bg-gradient-to-r from-secondary/5 to-secondary/10 border-b">
-              <CardTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5 text-primary" />
-                Live Preview
-              </CardTitle>
-              <CardDescription>
-                See how your colors look in action
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              <div className="grid grid-cols-3 gap-3">
-                <div className="text-center space-y-2">
-                  <div className="h-12 w-full rounded-lg border-2 shadow-sm transition-all hover-scale" style={{ backgroundColor: `hsl(${brandColors.primary})` }} />
-                  <span className="text-xs font-medium text-muted-foreground">Primary</span>
-                </div>
-                <div className="text-center space-y-2">
-                  <div className="h-12 w-full rounded-lg border-2 shadow-sm transition-all hover-scale" style={{ backgroundColor: `hsl(${(brandColors as any).secondary})` }} />
-                  <span className="text-xs font-medium text-muted-foreground">Secondary</span>
-                </div>
-                <div className="text-center space-y-2">
-                  <div className="h-12 w-full rounded-lg border-2 shadow-sm transition-all hover-scale" style={{ backgroundColor: `hsl(${brandColors.accent})` }} />
-                  <span className="text-xs font-medium text-muted-foreground">Accent</span>
+        {/* Preview Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5 text-primary" />
+              Live Preview
+            </CardTitle>
+            <CardDescription>
+              See how your selected theme looks across different components
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 space-y-6">
+            {/* Color Swatches */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <div 
+                  className="h-20 w-full rounded-lg shadow-sm border-2" 
+                  style={{ backgroundColor: `hsl(${brandColors.primary})` }} 
+                />
+                <div className="text-xs">
+                  <p className="font-medium">Primary</p>
+                  <p className="text-muted-foreground">{brandColors.primary}</p>
                 </div>
               </div>
+              <div className="space-y-2">
+                <div 
+                  className="h-20 w-full rounded-lg shadow-sm border-2" 
+                  style={{ backgroundColor: `hsl(${(brandColors as any).secondary})` }} 
+                />
+                <div className="text-xs">
+                  <p className="font-medium">Secondary</p>
+                  <p className="text-muted-foreground">{(brandColors as any).secondary}</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div 
+                  className="h-20 w-full rounded-lg shadow-sm border-2" 
+                  style={{ backgroundColor: `hsl(${brandColors.accent})` }} 
+                />
+                <div className="text-xs">
+                  <p className="font-medium">Accent</p>
+                  <p className="text-muted-foreground">{brandColors.accent}</p>
+                </div>
+              </div>
+            </div>
 
-              <div className="space-y-4 p-4 rounded-lg bg-background border">
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm">Primary Button</Button>
-                  <Button variant="secondary" size="sm">Secondary</Button>
-                  <Button variant="outline" size="sm">Outline</Button>
-                </div>
-                <div className="p-3 rounded-md bg-accent text-accent-foreground text-sm">Accent surface example</div>
-                <div className="p-3 rounded-md bg-secondary text-secondary-foreground text-sm">Secondary surface example</div>
-                <div className="text-xs text-muted-foreground">
-                  HSL Values:<br />
-                  Primary: {brandColors.primary}<br />
-                  Secondary: {(brandColors as any).secondary}<br />
-                  Accent: {brandColors.accent}
-                </div>
+            {/* Component Previews */}
+            <div className="space-y-4 p-6 rounded-lg border bg-muted/30">
+              <div className="flex flex-wrap gap-3">
+                <Button>Primary Button</Button>
+                <Button variant="secondary">Secondary</Button>
+                <Button variant="outline">Outline</Button>
+                <Button variant="destructive">Destructive</Button>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <div className="p-4 rounded-md bg-accent text-accent-foreground">
+                <p className="text-sm font-medium">Accent Surface</p>
+                <p className="text-xs mt-1 opacity-90">This is how accent surfaces appear with your theme</p>
+              </div>
+              <div className="p-4 rounded-md bg-secondary text-secondary-foreground">
+                <p className="text-sm font-medium">Secondary Surface</p>
+                <p className="text-xs mt-1 opacity-90">This is how secondary surfaces appear with your theme</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="flex justify-center pt-2">
           <Button onClick={saveBrandingSettings} disabled={loading} className="flex items-center gap-2 px-8 py-3 text-lg hover-scale shadow-lg" size="lg">

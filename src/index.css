@@ -27,13 +27,13 @@ All colors MUST be HSL.
     --popover-foreground: 0 0% 13%;
 
     /* Theme-aware primary colors - can be overridden via CSS custom properties */
-    --primary: var(--theme-primary, 221 83% 53%);
+    --primary: var(--theme-primary, 221.2 83.2% 53.3%);
     --primary-foreground: var(--theme-primary-foreground, 0 0% 100%);
-    --primary-light: var(--theme-primary-light, 221 83% 70%);
+    --primary-light: var(--theme-primary-light, 221.2 83.2% 70%);
     --primary-lighter-70: color-mix(in hsl, hsl(var(--primary)) 30%, hsl(0 0% 100%) 70%);
 
-    --secondary: 217 19% 35%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
 
     /* Muted: Subtle backgrounds with slight blue tint */
     --muted: 214 20% 96%;

@@ -3,17 +3,17 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 
-// Predefined color options
+// Shadcn-inspired color options
 const colorOptions = [
-  { name: "Blue", value: "220 70% 50%", foreground: "0 0% 98%" },
-  { name: "Purple", value: "270 70% 55%", foreground: "0 0% 98%" },
-  { name: "Green", value: "142 70% 45%", foreground: "0 0% 98%" },
-  { name: "Orange", value: "25 95% 53%", foreground: "0 0% 98%" },
-  { name: "Red", value: "0 72% 51%", foreground: "0 0% 98%" },
-  { name: "Pink", value: "330 81% 60%", foreground: "0 0% 98%" },
-  { name: "Cyan", value: "199 89% 48%", foreground: "0 0% 98%" },
-  { name: "Black", value: "0 0% 9%", foreground: "0 0% 98%" },
-  { name: "Gray", value: "0 0% 45%", foreground: "0 0% 98%" },
+  { name: "Zinc", value: "240 5.9% 10%", foreground: "0 0% 98%" },
+  { name: "Slate", value: "215.4 16.3% 46.9%", foreground: "0 0% 98%" },
+  { name: "Blue", value: "221.2 83.2% 53.3%", foreground: "0 0% 98%" },
+  { name: "Green", value: "142.1 76.2% 36.3%", foreground: "0 0% 98%" },
+  { name: "Orange", value: "24.6 95% 53.1%", foreground: "0 0% 98%" },
+  { name: "Red", value: "0 72.2% 50.6%", foreground: "0 0% 98%" },
+  { name: "Rose", value: "346.8 77.2% 49.8%", foreground: "0 0% 98%" },
+  { name: "Violet", value: "262.1 83.3% 57.8%", foreground: "0 0% 98%" },
+  { name: "Yellow", value: "47.9 95.8% 53.1%", foreground: "0 0% 9%" },
 ]
 
 export function ThemeColorPicker() {
