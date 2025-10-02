@@ -10,17 +10,17 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-white hover:bg-primary/90 active:scale-[0.98] shadow-sm border border-primary/20",
-        destructive: "bg-destructive text-white hover:bg-destructive/90 active:scale-[0.98] shadow-sm",
-        outline: "border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white active:scale-[0.98]",
-        secondary: "bg-secondary text-white hover:bg-secondary/80 active:scale-[0.98] shadow-sm",
-        ghost: "hover:bg-primary/10 hover:text-primary active:scale-[0.98]",
-        link: "text-primary underline-offset-4 hover:underline",
-        solid: "bg-primary text-white hover:bg-primary/90 shadow-md active:scale-[0.98]",
-        "solid-destructive": "bg-destructive text-white hover:bg-destructive/90 shadow-md active:scale-[0.98]",
-        "solid-secondary": "bg-secondary text-white hover:bg-secondary/80 shadow-md active:scale-[0.98]",
-        "theme-neutral": "bg-muted text-muted-foreground hover:bg-muted/80 active:scale-[0.98]",
-        whatsapp: "bg-[#25D366] text-white hover:bg-[#1EBE57] active:scale-[0.98] shadow-sm",
+        default: "bg-primary text-white active:scale-[0.98] shadow-sm border border-primary/20",
+        destructive: "bg-destructive text-white active:scale-[0.98] shadow-sm",
+        outline: "border-2 border-primary bg-background text-primary active:scale-[0.98]",
+        secondary: "bg-secondary text-white active:scale-[0.98] shadow-sm",
+        ghost: "bg-primary/10 text-primary active:scale-[0.98]",
+        link: "text-primary underline-offset-4",
+        solid: "bg-primary text-white shadow-md active:scale-[0.98]",
+        "solid-destructive": "bg-destructive text-white shadow-md active:scale-[0.98]",
+        "solid-secondary": "bg-secondary text-white shadow-md active:scale-[0.98]",
+        "theme-neutral": "bg-muted text-muted-foreground active:scale-[0.98]",
+        whatsapp: "bg-[#25D366] text-white active:scale-[0.98] shadow-sm",
       },
       size: {
         default: "h-10 px-4 py-2",
